@@ -26,7 +26,7 @@ rpm -i opendct_x.x.x-x_arch.rpm
 ```
 
 #### Windows 7+
-On Windows platforms, unless you have the 64-bit Java Runtime installed, use the 32-bit (x86) installer. The Windows installer will do upgrades so it is unnecessary to uninstall before installing a new version.
+On Windows platforms, unless you have the 64-bit Java Runtime installed, use the 32-bit (x86) installer. The Windows installer will do upgrades so it is unnecessary to uninstall before installing a new version. It is however necessary to stop the service before upgrading.
 
 ## Configuration
 

@@ -1,0 +1,1 @@
+These are static files used for distribution releases.

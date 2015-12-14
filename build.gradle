@@ -18,7 +18,7 @@ import org.gradle.internal.os.OperatingSystem
 
 plugins {
     id "nebula.os-package" version "2.2.6"
-    id "com.jfrog.bintray" version "1.3.1"
+    id "com.jfrog.bintray" version "1.4"
 }
 
 apply plugin: 'idea'
@@ -54,11 +54,14 @@ ext {
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
     minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
     buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
+    buildType = "Beta"
 
     javaVersion = '1.7'
+    buildVersion = "${majorVersion}.${minorVersion}.${buildVersion}"
+    buildVersionString = "${majorVersion}.${minorVersion}.${buildVersion}-${buildType}"
 }
 
-version = "${majorVersion}.${minorVersion}.${buildVersion}"
+version = buildVersion
 targetCompatibility = javaVersion
 sourceCompatibility = javaVersion
 
@@ -469,7 +472,7 @@ bintray {
         from ('build/distributions') {
             include '*.rpm', '*.deb', '*.msi'
         }
-        into "releases/${version}"
+        into "releases/${buildVersionString}"
     }
 
     dryRun = false //Whether to run this as dry-run, without deploying
@@ -487,9 +490,10 @@ bintray {
         publicDownloadNumbers = true
 
         version {
-            name = "${version}-Beta"
+            name = "${buildVersionString}"
             released  = new Date()
-            desc = "OpenDCT ${version}"
+            desc = "OpenDCT ${buildVersionString}"
+            vcsTag = "${buildVersionString}"
         }
     }
 }

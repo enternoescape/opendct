@@ -6,30 +6,30 @@ An open source digital cable tuner network encoder for [SageTV](http://forums.sa
 OpenDCT packaged releases are hosted on [Bintray.com](https://bintray.com/opendct/Releases/OpenDCT/view#files/releases/).
 *On Linux platforms it is recommended to only use the architecture of your distribution.*
 
-### Ubuntu 14.04
+#### Ubuntu 14.04
 ```
 apt-get install default-jre-headless
 dpkg -i opendct_x.x.x-x_arch.deb
 ```
 
-### CentOS 7
+#### CentOS 7
 ```
 yum install java-1.8.0-openjdk-headless
 rpm -i opendct_x.x.x-x_arch.rpm
 ```
 
-### Fedora 22
+#### Fedora 22
 ```
 dnf install java-1.8.0-openjdk-headless
 rpm -i opendct_x.x.x-x_arch.rpm
 ```
 
-### Windows 7+
+#### Windows 7+
 On Windows platforms, unless you have the 64-bit Java Runtime installed, use the 32-bit (x86) installer. The Windows installer will do upgrades so it is unnecessary to uninstall before installing a new version.
 
 ## Configuration
 
-### opendct.properties
+#### opendct.properties
 The majority of the configuration is done inside opendct.properties. The file is automatically populated after the first time the program is run. Do not make changes to this file while the program is running since your changes will be overwritten. This list is just the very basics to keep the program from communicating with undesired devices.
 
 * sagetv.device.global.ignore\_devices\_csv=
@@ -41,26 +41,26 @@ The majority of the configuration is done inside opendct.properties. The file is
 * sagetv.device.global.required\_devices\_loaded\_count=0
  * This is the number of devices that need to be detected and loaded before the required timeout.
 
-### Sage.properties
+#### Sage.properties
 
 After configuring OpenDCT, the SageTV service needs to be stopped. Open Sage.properties and find the property network\_encoder\_discovery and change the value to true. Start the SageTV service again while OpenDCT is running to discover the available capture devices.
 
 ## Compiling
 OpenDCT builds are created using Gradle. The following commands should get you started.
 
-### Create project files for Eclipse.
+#### Create project files for Eclipse.
 Execute:
 ```
 gradlew eclipse
 ```
 
-### Create project files for IntelliJ.
+#### Create project files for IntelliJ.
 Execute: 
 ```
 gradlew ideal
 ```
 
-### Compile the project and create packages for installation on Ubuntu 14.04, CentOS 7, Fedora 22 and Windows 7+.
+#### Compile the project and create packages for installation on Ubuntu 14.04, CentOS 7, Fedora 22 and Windows 7+.
 *Note: Building the Windows installer is currently only supported on Windows.*
 
 1. Install the latest [Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/) for your OS architecture.

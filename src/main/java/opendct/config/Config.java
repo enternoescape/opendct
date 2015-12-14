@@ -40,7 +40,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 3;
-    public static final int VERSION_BUILD = 4;
+    public static final int VERSION_BUILD = 5;
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + " Build " + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -48,7 +48,7 @@ public class Config {
     private static Properties properties = new Properties();
     private static volatile boolean isConfigOnly = false;
     private static volatile boolean isShutdown = false;
-    private static final HashMap<Integer, String> rtspPortMap = new HashMap<Integer, String>();
+    private static final HashMap<Integer, String> rtspPortMap = new HashMap<>();
 
     public static final OSVersion OS_VERSION = getOsVersion();
     public static final boolean IS_WINDOWS = (OS_VERSION == OSVersion.WINDOWS);
@@ -192,7 +192,7 @@ public class Config {
             Properties sortedProperties = new Properties() {
                 @Override
                 public synchronized Enumeration<Object> keys() {
-                    return Collections.enumeration(new TreeSet<Object>(super.keySet()));
+                    return Collections.enumeration(new TreeSet<>(super.keySet()));
                 }
             };
             sortedProperties.putAll(properties);
@@ -223,6 +223,10 @@ public class Config {
 
         File logDir = new File(CommandLine.getLogDir() + DIR_SEPARATOR + "archive");
         File files[] = logDir.listFiles();
+
+        if (files == null || files.length == 0) {
+            return;
+        }
 
         for (File file : files) {
             long daysOld = System.currentTimeMillis() - file.lastModified();
@@ -347,7 +351,7 @@ public class Config {
     public static short getShort(String key, short defaultValue) {
         logger.entry(key, defaultValue);
 
-        short returnValue = 0;
+        short returnValue = defaultValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
         try {
             returnValue = Short.valueOf(stringValue);
@@ -364,9 +368,9 @@ public class Config {
     public static int getInteger(String key, int defaultValue) {
         logger.entry(key, defaultValue);
 
-        int returnValue = 0;
+        int returnValue = defaultValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Integer.valueOf(stringValue);
         } catch (Exception e) {
@@ -382,9 +386,9 @@ public class Config {
     public static long getLong(String key, long defaultValue) {
         logger.entry(key, defaultValue);
 
-        long returnValue = 0;
+        long returnValue = defaultValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Long.valueOf(stringValue);
         } catch (Exception e) {
@@ -400,9 +404,9 @@ public class Config {
     public static float getFloat(String key, float defaultValue) {
         logger.entry(key, defaultValue);
 
-        float returnValue = 0;
+        float returnValue = defaultValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Float.valueOf(stringValue);
         } catch (Exception e) {
@@ -418,9 +422,9 @@ public class Config {
     public static double getDouble(String key, double defaultValue) {
         logger.entry(key, defaultValue);
 
-        double returnValue = 0;
+        double returnValue = defaultValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Double.valueOf(stringValue);
         } catch (Exception e) {
@@ -450,7 +454,8 @@ public class Config {
             StringBuilder mergedArray = new StringBuilder();
 
             for (String value : defaultValues) {
-                mergedArray.append(value + ",");
+                mergedArray.append(value);
+                mergedArray.append(",");
             }
 
             // Remove the extra comma at the end.
@@ -482,7 +487,8 @@ public class Config {
         StringBuilder mergedArray = new StringBuilder();
 
         for (String value : values) {
-            mergedArray.append(value + ",");
+            mergedArray.append(value);
+            mergedArray.append(",");
         }
 
         // Remove the extra comma at the end.
@@ -506,7 +512,7 @@ public class Config {
     public static InetAddress getInetAddress(String key, InetAddress defaultValue) {
         logger.entry(key, defaultValue);
 
-        InetAddress returnValue = null;
+        InetAddress returnValue;
         String stringValue = properties.getProperty(key, defaultValue.getHostAddress());
         try {
             returnValue = InetAddress.getByName(stringValue);
@@ -756,16 +762,17 @@ public class Config {
     /**
      * Returns a valid socket server port for the requested uniqueID.
      * <p/>
-     * The value of encoder_listen_port is generated
+     * The value of encoder_listen_port is generated.
      *
-     * @param uniqueID
-     * @param encoderLevel
-     * @return
+     * @param uniqueID This is the unique id of the capture device.
+     * @param encoderLevel Provide an encoder level for this server socket. This is used to
+     *                     determine if the socket can be shared or not.
+     * @return Returns an available socket server port.
      */
     public static int getSocketServerPort(int uniqueID, String encoderLevel) {
         logger.entry(uniqueID, encoderLevel);
 
-        int returnValue = 0;
+        int returnValue;
 
         // We want to make sure that nothing happens involving port assignment while this is running.
         synchronized (getSocketServerPort) {
@@ -803,7 +810,7 @@ public class Config {
 
             // Check the configuration file for other port configurations before assuming this one can be used.
             Enumeration keyNames = properties.propertyNames();
-            ArrayList<Integer> portArray = new ArrayList<Integer>();
+            ArrayList<Integer> portArray = new ArrayList<>();
 
             while (keyNames.hasMoreElements()) {
                 String currentKey = (String) keyNames.nextElement();
@@ -814,13 +821,13 @@ public class Config {
                         portArray.add(getValue);
                     }
 
-                    String getEncoderLevel = getString(currentKey.substring(0, currentKey.length() - "encoder_listen_port".length() - 1) + ".encoder_level", encoderLevel);
+                    /*String getEncoderLevel = getString(currentKey.substring(0, currentKey.length() - "encoder_listen_port".length() - 1) + ".encoder_level", encoderLevel);
 
-                    if (getEncoderLevel.equals("3.0") && !newDeviceIncrement && getValue != 0) {
+                    if (getEncoderLevel.equals("3.0") && getValue != 0) {
 
                         // Take the first port that can be shared if we are allowing this.
                         return logger.exit(getValue);
-                    }
+                    }*/
                 }
             }
 

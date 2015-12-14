@@ -1,0 +1,28 @@
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Intellij
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Gradle
+/.gradle
+/build/
+
+# Debug
+/archive/
+/opendct*.log*
+/opendct.properties
+/opendct.properties.backup
+/lineup/
+/target/

@@ -1,0 +1,492 @@
+/*
+ * Copyright 2015 The OpenDCT Authors. All Rights Reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import org.gradle.internal.os.OperatingSystem
+
+plugins {
+    id "nebula.os-package" version "2.2.6"
+    id "com.jfrog.bintray" version "1.3.1"
+}
+
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+apply plugin: 'java'
+apply plugin: 'maven'
+
+group = 'opendct'
+description = 'Digital Cable Tuner for SageTV.'
+
+repositories {
+    mavenCentral()
+	maven {
+        url "http://4thline.org/m2"
+    }
+}
+
+ext {
+    linuxPackageRelease = '1'
+    linuxInstallPath = '/opt/opendct'
+    linuxUser = 'opendct'
+    linuxGroup = 'opendct';
+
+    winWixCompile = 'build/wix/compile'
+    winWixSource = 'build/wix/source'
+    winWixConfig = 'build/wix/config'
+
+	ffmpegVersion = '2.8.1-1.1'
+	log4jVersion = '2.5'
+    jnaVersion = '4.2.1'
+
+	versionText = new File('src/main/java/opendct/config/Config.java').text
+    majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
+    minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
+    buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
+
+    javaVersion = '1.7'
+}
+
+version = "${majorVersion}.${minorVersion}.${buildVersion}"
+targetCompatibility = javaVersion
+sourceCompatibility = javaVersion
+
+configurations {
+    compile
+	windows_x86
+	windows_x86_64
+	linux_x86
+	linux_x86_64
+}
+
+dependencies {
+    compile fileTree(dir: 'lib', include: ['*.jar'])
+    compile 'org.seamless:seamless-http:1.1.0'
+	compile 'org.seamless:seamless-util:1.1.0'
+	compile 'org.seamless:seamless-xml:1.1.0'
+	compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
+    compile "org.apache.logging.log4j:log4j-core:${log4jVersion}"
+	compile 'commons-cli:commons-cli:1.3'
+	compile "net.java.dev.jna:jna:${jnaVersion}"
+	compile "net.java.dev.jna:jna-platform:${jnaVersion}"
+	compile "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}"
+
+	windows_x86 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86"
+	windows_x86 configurations.compile
+
+	windows_x86_64 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64"
+	windows_x86_64 configurations.compile
+
+	linux_x86 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86"
+	linux_x86 configurations.compile
+
+	linux_x86_64 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64"
+	linux_x86_64 configurations.compile
+}
+
+idea {
+    project {
+        languageLevel = javaVersion
+    }
+
+    module {
+
+        // The binary will not conflict at runtime and if you're running a 64-bit OS, you could use
+        // either one. There doesn't appear to be a good way to automatically detect this.
+        if (OperatingSystem.current().isWindows()) {
+            scopes.RUNTIME.plus += [configurations.windows_x86]
+            scopes.RUNTIME.plus += [configurations.windows_x86_64]
+        } else {
+            scopes.RUNTIME.plus += [configurations.linux_x86]
+            scopes.RUNTIME.plus += [configurations.linux_x86_64]
+        }
+
+        if (OperatingSystem.current().isWindows()) {
+            scopes.TEST.plus += [configurations.windows_x86]
+            scopes.TEST.plus += [configurations.windows_x86_64]
+        } else {
+            scopes.TEST.plus += [configurations.linux_x86]
+            scopes.TEST.plus += [configurations.linux_x86_64]
+        }
+
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+eclipse {
+    classpath {
+        if (OperatingSystem.current().isWindows()) {
+            plusConfigurations += [configurations.windows_x86]
+            plusConfigurations += [configurations.windows_x86_64]
+        } else {
+            plusConfigurations += [configurations.linux_x86]
+            plusConfigurations += [configurations.linux_x86_64]
+        }
+
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+jar {
+	exclude 'log4j2.xml'
+	exclude 'opendct.properties'
+}
+
+ospackage {
+    release = linuxPackageRelease
+    user = linuxUser
+    permissionGroup = linuxGroup
+    packager = "OpenDCT Authors"
+    url = "https://github.com/enternoescape/opendct"
+
+    os = LINUX
+    type = BINARY
+
+    into linuxInstallPath
+
+    from(jar.outputs.files) {
+        into 'lib'
+    }
+
+    from('src/main/resources') {
+        include 'log4j2.xml'
+        into 'lib'
+    }
+
+    from('src/main/resources') {
+        include 'opendct.properties'
+        fileType CONFIG | NOREPLACE
+        into 'conf'
+    }
+
+    from('build/jsw') {
+        include 'conf/*'
+        include 'doc/*'
+        include 'lib/*'
+        into 'jsw'
+    }
+
+    from('build/jsw') {
+        include 'bin/*'
+        into 'jsw'
+        fileMode 0755
+    }
+
+    from('scripts/any') {
+        include '*'
+        into ''
+        fileMode 0550
+    }
+
+    from('distribution') {
+        include 'LICENSE'
+        include 'licenses/*'
+        into ''
+    }
+}
+
+task buildWin32(dependsOn: build) << {
+	println "Built native binary for Windows 32-bit..."
+
+}
+
+task buildWin64(dependsOn: build) << {
+	println "Built native binary for Windows 64-bit..."
+
+}
+
+task buildLinux32(dependsOn: build) << {
+	println "Built native binary for Linux 32-bit..."
+
+}
+
+task buildLinux64(dependsOn: build) << {
+	println "Built native binary for Linux 64-bit..."
+
+}
+
+def changeJsw(String arch, String dependency) {
+    delete 'build/jsw'
+
+    copy {
+        from "jsw/${arch}"
+        include "bin/*"
+        include "doc/*"
+        include "lib/*"
+        into 'build/jsw'
+    }
+
+
+    StringBuilder stringBuilder = new StringBuilder("wrapper.java.classpath.1=%WRAPPER_HOME%/lib/wrapper.jar\r\n");
+    def counter = 2
+
+    FileCollection files = jar.outputs.files
+    files.each { File file ->
+        stringBuilder.append("wrapper.java.classpath.${counter}=%OPENDCT_HOME%/lib/${file.name}\r\n")
+        counter += 1
+    }
+
+    files = configurations.getByName(dependency)
+    files.each { File file ->
+        stringBuilder.append("wrapper.java.classpath.${counter}=%OPENDCT_HOME%/lib/${file.name}\r\n")
+        counter += 1
+    }
+
+
+    copy {
+        from "jsw/${arch}"
+        include "conf/wrapper.conf"
+        into 'build/jsw'
+
+        filter {
+            String line -> line.replaceAll("wrapper.java.classpath.1=%WRAPPER_HOME%/lib/wrapper.jar", stringBuilder.toString())
+        }
+    }
+}
+
+def sourceWin() {
+
+    delete winWixCompile
+    delete winWixSource
+    delete winWixConfig
+
+    copy {
+        from 'scripts/wix'
+        include 'Product.wxs'
+        include 'Product_en-us.wxl'
+        include 'WixUI_DCT.wxs'
+        into winWixCompile
+    }
+
+    copy {
+        from 'distribution'
+        include 'images/OpenDCT.ico'
+        include 'images/BannerTop.bmp'
+        include 'images/Dialog.bmp'
+        into winWixCompile
+    }
+
+    copy {
+        from jar.outputs.files
+        into "${winWixSource}/lib"
+    }
+
+    copy {
+        from 'src/main/resources'
+        include 'log4j2.xml'
+        into "${winWixSource}/lib"
+    }
+
+    copy {
+        from 'distribution'
+        include 'LICENSE'
+        include 'README.html'
+        include 'licenses/*'
+        include 'images/OpenDCT Console.ico'
+        include 'images/OpenDCT Service.ico'
+        include 'images/OpenDCT.ico'
+        into winWixSource
+    }
+
+    copy {
+        from 'src/main/resources'
+        include 'opendct.properties'
+        into winWixConfig
+    }
+}
+
+def packageWin(String arch) {
+    if (!OperatingSystem.current().isWindows()) {
+        //[js] I understand this could be done with Wix using Wine.
+        throw new GradleException('Wix will only build installers on Windows platforms.');
+    }
+
+    exec {
+        workingDir 'scripts/wix'
+        commandLine 'cmd', '/c', "WixBuild.cmd", arch, version
+    }
+}
+
+task packageWin32(dependsOn:  buildWin32) << {
+    println 'Creating install package for Windows 32-bit...'
+
+    changeJsw('windows-x86', 'windows_x86')
+
+    sourceWin()
+
+    copy {
+        from configurations.windows_x86
+        into "${winWixSource}/lib"
+    }
+
+    packageWin('x86')
+}
+
+task packageWin64(dependsOn:  buildWin64) << {
+    println 'Creating install package for Windows 64-bit...'
+
+    changeJsw('windows-x86_64', 'windows_x86_64')
+
+    sourceWin()
+
+    copy {
+        from configurations.windows_x86_64
+        into "${winWixSource}/lib"
+    }
+
+    packageWin('x64')
+}
+
+task packageLinux32(dependsOn: buildLinux32) << {
+    println 'Creating install packages for Linux 32-bit...'
+
+    changeJsw('linux-x86', 'linux_x86')
+
+    task buildRpm32(type: Rpm) {
+        arch = I386
+
+        from("scripts/rpm/systemd") {
+            include "opendct.service"
+            into "/etc/systemd/system"
+            fileMode 0664
+            addParentDirs false
+            user = "root"
+            permissionGroup = "root"
+        }
+
+        into linuxInstallPath
+
+        from(configurations.linux_x86) {
+            into 'lib'
+        }
+
+        preInstall file('scripts/rpm/preInstall.sh')
+        postInstall file('scripts/rpm/postInstall.sh')
+        preUninstall file('scripts/rpm/preUninstall.sh')
+        postUninstall file('scripts/rpm/postUninstall.sh')
+    }
+
+    task buildDeb32(type: Deb) {
+        arch = I386
+
+        into linuxInstallPath
+
+        from(configurations.linux_x86) {
+            into 'lib'
+        }
+
+        preInstall file('scripts/deb/preInstall.sh')
+        postInstall file('scripts/deb/postInstall.sh')
+        preUninstall file('scripts/deb/preUninstall.sh')
+        postUninstall file('scripts/deb/postUninstall.sh')
+    }
+
+    tasks.buildRpm32.execute();
+    tasks.buildDeb32.execute();
+}
+
+task packageLinux64(dependsOn: buildLinux64) << {
+    println 'Creating install packages for Linux 64-bit...'
+
+    changeJsw('linux-x86_64', 'linux_x86_64')
+
+    task buildRpm64(type: Rpm) {
+        arch = X86_64
+
+        from("scripts/rpm/systemd") {
+            include "opendct.service"
+            into "/usr/lib/systemd/system"
+            fileMode 0664
+            addParentDirs false
+            user = "root"
+            permissionGroup = "root"
+        }
+
+        into linuxInstallPath
+
+        from(configurations.linux_x86_64) {
+            into 'lib'
+        }
+
+        preInstall file('scripts/rpm/preInstall.sh')
+        postInstall file('scripts/rpm/postInstall.sh')
+        preUninstall file('scripts/rpm/preUninstall.sh')
+        postUninstall file('scripts/rpm/postUninstall.sh')
+    }
+
+    task buildDeb64(type: Deb) {
+        arch = "amd64"
+
+        into linuxInstallPath
+
+        from(configurations.linux_x86_64) {
+            into 'lib'
+        }
+
+        preInstall file('scripts/deb/preInstall.sh')
+        postInstall file('scripts/deb/postInstall.sh')
+        preUninstall file('scripts/deb/preUninstall.sh')
+        postUninstall file('scripts/deb/postUninstall.sh')
+    }
+
+    tasks.buildRpm64.execute();
+    tasks.buildDeb64.execute();
+}
+
+task buildAll() {
+    dependsOn buildWin32
+    dependsOn buildWin64
+    dependsOn buildLinux32
+    dependsOn buildLinux64
+}
+
+task packageAll() {
+    dependsOn packageWin32
+    dependsOn packageWin64
+    dependsOn packageLinux32
+    dependsOn packageLinux64
+}
+
+//gradlew bintrayUpload
+bintray {
+    user = System.getenv("BINTRAY_USER")
+    key = System.getenv("BINTRAY_API");
+
+    filesSpec {
+        from ('build/distributions') {
+            include '*.rpm', '*.deb', '*.msi'
+        }
+        into "releases/${version}"
+    }
+
+    dryRun = false //Whether to run this as dry-run, without deploying
+    publish = true //If version should be auto published after an upload
+    pkg {
+        repo = 'Releases'
+        name = 'OpenDCT'
+        userOrg = 'opendct'
+        desc = "OpenDCT Release"
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/enternoescape/opendct.git'
+        labels = ['opendct', 'sagetv']
+        publicDownloadNumbers = true
+        version {
+            name = version
+            released  = new Date()
+            desc = "OpenDCT ${version}"
+        }
+    }
+}

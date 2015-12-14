@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" shutdownHook="disable">
+    <Properties>
+        <Property name="LOG_ROOT">${sys:opendct_log_root}</Property>
+        <Property name="LOG_DIR">${sys:opendct_log_root}/</Property>
+        <Property name="LOG_ARCHIVE">${sys:opendct_log_root}/archive</Property>
+        <Property name="DEF_PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{0} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Do NOT remove the Console entry unless you know what you are doing -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${DEF_PATTERN}"/>
+        </Console>
+
+        <RollingFile
+                name="RollingFile"
+                fileName="${LOG_DIR}/opendct.log"
+                filePattern="${LOG_ARCHIVE}/opendct.%d{yyyy-MM-dd}-%i.log.gz"
+				append="true">
+
+            <PatternLayout pattern="${DEF_PATTERN}"/>
+
+            <Policies>
+                <OnStartupTriggeringPolicy/>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="20 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="50"/>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Root level="DEBUG">
+            <AppenderRef level="INFO" ref="Console"/>
+            <AppenderRef level="DEBUG" ref="RollingFile"/>
+        </Root>
+        <Logger name="opendct.consumer.upload" level="DEBUG" additivity="true">
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+        <Logger name="opendct.consumer.buffers" level="DEBUG" additivity="true">
+            <AppenderRef ref="RollingFile"/>
+        </Logger>        
+    </Loggers>
+</Configuration>

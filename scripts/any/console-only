@@ -1,0 +1,6 @@
+#!/bin/sh
+
+cd /opt/opendct/jsw/bin
+./sh.script.in console
+
+exit $?

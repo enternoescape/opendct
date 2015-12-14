@@ -1,0 +1,14 @@
+[Unit]
+Description=OpenDCT Digital Cable Tuner for SageTV
+Documentation=https://github.com/enternoescape/opendct
+After=local-fs.target remote-fs.target network-online.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/opendct/opendct.pid
+ExecStart=/opt/opendct/service start
+ExecStop=/opt/opendct/service stop
+ExecRestart=/opt/opendct/service restart
+
+[Install]
+WantedBy=multi-user.target

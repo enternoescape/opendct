@@ -1,0 +1,536 @@
+﻿<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
+<html xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:mg="http://www.araxis.com/2002/Merge/Reporting" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<title>2. Araxis Merge File Comparison Report</title>
+<style type="text/css">
+body { background: #fff;  color: #000; margin: 0px 14px 14px 14px; }
+h1, h2, h3, h4, h5 {
+	padding: 0em;
+	margin: 1.5em 0em .25em 0em;
+	text-align: left;
+	font-weight: normal;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 70%;
+	max-width: 55em;
+}
+body, h4, h5, p, ol, ul, li, td, th { font-family: Verdana, Arial, Helvetica, sans-serif; text-align: left; }
+
+h4, h5, p, ol, ul, li { font-size: 70%; }
+input {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 120%;
+}
+
+h1 { margin: 14px 0em 1.2em 0em; font-size: 112%; line-height: 130%;}
+h2 { font-size: 125%; line-height: 84%;}
+h3 { margin-top: 1.4em; font-size: 81%; }
+h4 { margin-top: 1em; font-size: 70%; }
+h5 { margin-top: 1em; font-size: 100%; font-style: italic;}
+h1 strong, h2 strong, h3 strong, h4 strong { font-weight: bold; }
+
+p { margin: 6px 0em 6px 0em; max-width: 55em;}
+p.code, code {}
+p { font-size: 70%; line-height: 125%; }
+table { font-size: 70%;}
+
+p.copyright, .small { font-size: 60%; line-height: 120%; }
+p.copyright { margin: 3px 0px 0px 0px; padding: 0px; text-align: left; }
+acronym { font-variant: small-caps; }
+div.pad { padding: 3px; }
+span.lineEndings { color: red; font-size: 70%; }
+
+table.mgRowGroup, table.mgRowGroupFolder { border: 1px solid #a0a0a0; margin: 10px 0px 10px 0px; width: 100%; table-layout: fixed; border-collapse: collapse; }
+table.mgRowGroup td { vertical-align: top; padding: 0; }
+table.mgRowGroupFolder td { vertical-align: top; padding: 1px 0 1px 0; }
+div.IP { width: 2px; height: 1em; float: left; }
+
+img.mgFldrIcon {float: left; text-align: left; margin: -1px 2px 0px 0px;  height: 16px; width: 16px; border: none; vertical-align: top; background-color: transparent;}
+div.mgFldrIcon {float: left; width: auto;}
+span.left {float: left;width: auto;}
+span.right {float: right;width: auto;}
+
+table.bordered { border-collapse: collapse; border: 1px solid #a0a0a0; margin: 10px 0px 10px 0px;}
+table.bordered th, table.bordered td { vertical-align: top; padding: 3px; border: 1px solid #a0a0a0;}
+table.bordered th { background-color: #e5e5e5; }
+table.bordered td.group { background-color: #f5f5f5; }
+span.disabledNavigation { color: #a0a0a0; }
+div.navigation { margin-top: 14px; font-size: 70%; }
+				
+                span.U1, span.U1 a {float: left; width: auto;color: #000000; background-color: #FFFFFF; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.U1 a {text-decoration: underline;}
+td.U1 {color: #000000; background-color: #FFFFFF; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.R1, span.R1 a {float: left; width: auto;color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.R1 a {text-decoration: underline;}
+td.R1 {color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.I1, span.I1 a {float: left; width: auto;color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.I1 a {text-decoration: underline;}
+td.I1 {color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.C1, span.C1 a {float: left; width: auto;color: #FF0000; background-color: #A6CAF0; font-family: "Courier New"; font-weight: bold; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.C1 a {text-decoration: underline;}
+td.C1 {color: #FF0000; background-color: #A6CAF0; font-family: "Courier New"; font-weight: bold; font-style: normal; font-size: 8pt; text-decoration: none; }
+td.nbgC1 {color: #FF0000; font-family: "Courier New"; font-weight: bold; font-style: normal; font-size: 8pt; text-decoration: none; background-color: #FFFFFF; }
+span.U2, span.U2 a {float: left; width: auto;color: #000000; background-color: #FFFFFF; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.U2 a {text-decoration: underline;}
+td.U2 {color: #000000; background-color: #FFFFFF; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.R2, span.R2 a {float: left; width: auto;color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.R2 a {text-decoration: underline;}
+td.R2 {color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.I2, span.I2 a {float: left; width: auto;color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.I2 a {text-decoration: underline;}
+td.I2 {color: #FF0000; background-color: #C0DCC0; font-family: "Courier New"; font-weight: normal; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.C2, span.C2 a {float: left; width: auto;color: #FF0000; background-color: #A6CAF0; font-family: "Courier New"; font-weight: bold; font-style: normal; font-size: 8pt; text-decoration: none; }
+span.C2 a {text-decoration: underline;}
+td.C2 {color: #FF0000; background-color: #A6CAF0; font-family: "Courier New"; font-weight: bold; font-style: normal; font-size: 8pt; text-decoration: none; }
+td.nbgC2 {color: #FF0000; font-family: "Courier New"; font-weight: bold; font-style: normal; font-size: 8pt; text-decoration: none; background-color: #FFFFFF; }
+
+span.selected { background-color: highlight; color: highlighttext; }
+span.selected a {background-color: highlight; color: highlighttext; text-decoration: underline; }
+			</style>
+</head>
+<body>
+<h1><strong>2. Araxis Merge File Comparison Report</strong></h1>
+<p>Produced by <strong>Araxis Merge</strong> on <strong>Mon Nov 30 02:07:13 2015 UTC</strong>. See <a href="http://www.araxis.com/" title="Link to the Araxis corporate web site">www.araxis.com</a> for information about Merge. This report uses XHTML and CSS2, and is best viewed with a reasonably standards compliant browser such as the latest version of <a href="http://www.mozilla.org/products/firefox/" title="Link to the Firefox page on the Mozilla website">Firefox</a> or <a href="http://www.microsoft.com/ie/" title="Link to the Microsoft website">Internet Explorer</a>. For optimum results when printing this report, use landscape orientation and enable printing of background images and colours in your browser.</p>
+<h3><strong>2.1&nbsp;Files compared</strong></h3>
+<table class="bordered">
+<tr>
+<th>#</th>
+<th>Location</th>
+<th>File</th>
+<th>Last Modified</th>
+</tr>
+<tr>
+<td>1</td>
+<td>D:\devel\wrapper_3.2.3_x86_64\changes\before_files</td>
+<td>build32.bat</td>
+<td>Wed Oct 18 04:21:14 2006 UTC</td>
+</tr>
+<tr>
+<td>2</td>
+<td>D:\devel\wrapper_3.2.3_x86_64\changes\after_files</td>
+<td>build32.bat</td>
+<td>Thu Nov 26 01:21:35 2015 UTC</td>
+</tr>
+</table>
+<h3><strong>2.2&nbsp;Comparison summary</strong></h3>
+<table class="bordered">
+<tr>
+<th rowspan="2" style="vertical-align: bottom;">Description</th>
+<th colspan="2">Between<br />Files 1 and 2</th>
+</tr>
+<tr>
+<th style="text-align: right;">Text Blocks</th>
+<th style="text-align: right;">Lines</th>
+</tr>
+<tr>
+<td>Unchanged</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">20</td>
+</tr>
+<tr>
+<td>Changed</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td>Inserted</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Removed</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+</table>
+<h3><strong>2.3&nbsp;Comparison options</strong></h3>
+<table class="bordered" style="width: 55em;">
+<tr>
+<th>Whitespace</th>
+<td>All differences in whitespace within lines are ignored</td>
+</tr>
+<tr>
+<th>Character case</th>
+<td>Differences in character case are significant</td>
+</tr>
+<tr>
+<th>Line endings</th>
+<td>Differences in line endings (<code>CR</code> and <code>LF</code> characters) are ignored</td>
+</tr>
+<tr>
+<th>CR/LF characters</th>
+<td>Not shown in the comparison detail</td>
+</tr>
+</table>
+<h3><strong>2.4&nbsp;Active regular expressions</strong></h3>
+<table class="bordered">
+<tr>
+<th>Expression</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>^[ \t]*$</code></td>
+<td>Blank lines</td>
+</tr>
+</table>
+<h3><strong>2.5&nbsp;Comparison detail</strong></h3>
+<table class="mgRowGroup">
+<col style="width: 5em;" />
+<col style="width: 1em;" />
+<col width="*" />
+<col style="width: 1em;" />
+<col style="width: 5em;" />
+<col style="width: 1em;" />
+<col width="*" />
+<tr>
+<td class="U1" style="text-align: right;">1</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">@echo&nbsp;off</span>
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">1</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">@echo&nbsp;off</span>
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">2</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">setlocal</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">2</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">setlocal</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">3</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">3</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">4</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">echo&nbsp;-----</span>
+<span class="U1">----------</span>
+<span class="U1">-----</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">4</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">echo&nbsp;-----</span>
+<span class="U2">----------</span>
+<span class="U2">-----</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">5</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">echo&nbsp;Wrapp</span>
+<span class="U1">er&nbsp;Build&nbsp;S</span>
+<span class="U1">ystem</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">5</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">echo&nbsp;Wrapp</span>
+<span class="U2">er&nbsp;Build&nbsp;S</span>
+<span class="U2">ystem</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">6</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">echo&nbsp;-----</span>
+<span class="U1">----------</span>
+<span class="U1">-----</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">6</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">echo&nbsp;-----</span>
+<span class="U2">----------</span>
+<span class="U2">-----</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">7</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">7</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">8</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">set&nbsp;OLD_AN</span>
+<span class="U1">T_HOME=%AN</span>
+<span class="U1">T_HOME%</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">8</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">set&nbsp;OLD_AN</span>
+<span class="U2">T_HOME=%AN</span>
+<span class="U2">T_HOME%</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">9</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">9</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">10</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">if&nbsp;not&nbsp;"%W</span>
+<span class="U1">RAPPER_TOO</span>
+<span class="U1">LS%"==""&nbsp;g</span>
+<span class="U1">oto&nbsp;runAnt</span>
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">10</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">if&nbsp;not&nbsp;"%W</span>
+<span class="U2">RAPPER_TOO</span>
+<span class="U2">LS%"==""&nbsp;g</span>
+<span class="U2">oto&nbsp;runAnt</span>
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">11</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">11</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="C1" style="text-align: right;">12</td>
+<td class="C1" style="text-decoration: none;">&nbsp;</td>
+<td class="nbgC1">
+<span class="U1">set&nbsp;WRAPPE</span>
+<span class="U1">R_TOOLS=to</span>
+<span class="U1">ols/apache</span>
+<span class="U1">-ant-1.</span>
+<span class="C1">6.2</span>
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="C2" style="text-align: right;">12</td>
+<td class="C2" style="text-decoration: none;">&nbsp;</td>
+<td class="nbgC2">
+<span class="U2">set&nbsp;WRAPPE</span>
+<span class="U2">R_TOOLS=to</span>
+<span class="U2">ols/apache</span>
+<span class="U2">-ant-1.</span>
+<span class="C2">9.6</span>
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">13</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">13</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">14</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">:runAnt</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">14</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">:runAnt</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">15</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">set&nbsp;ANT_HO</span>
+<span class="U1">ME=%WRAPPE</span>
+<span class="U1">R_TOOLS%</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">15</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">set&nbsp;ANT_HO</span>
+<span class="U2">ME=%WRAPPE</span>
+<span class="U2">R_TOOLS%</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">16</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">call&nbsp;%WRAP</span>
+<span class="U1">PER_TOOLS%</span>
+<span class="U1">\bin\ant.b</span>
+<span class="U1">at&nbsp;-logger</span>
+<span class="U1">&nbsp;org.apach</span>
+<span class="U1">e.tools.an</span>
+<span class="U1">t.NoBanner</span>
+<span class="U1">Logger&nbsp;-em</span>
+<span class="U1">acs&nbsp;-Dtool</span>
+<span class="U1">s.dir=%WRA</span>
+<span class="U1">PPER_TOOLS</span>
+<span class="U1">%&nbsp;-Dbits=3</span>
+<span class="U1">2&nbsp;%1&nbsp;%2&nbsp;%3</span>
+<span class="U1">&nbsp;%4&nbsp;%5&nbsp;%6&nbsp;</span>
+<span class="U1">%7&nbsp;%8</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">16</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">call&nbsp;%WRAP</span>
+<span class="U2">PER_TOOLS%</span>
+<span class="U2">\bin\ant.b</span>
+<span class="U2">at&nbsp;-logger</span>
+<span class="U2">&nbsp;org.apach</span>
+<span class="U2">e.tools.an</span>
+<span class="U2">t.NoBanner</span>
+<span class="U2">Logger&nbsp;-em</span>
+<span class="U2">acs&nbsp;-Dtool</span>
+<span class="U2">s.dir=%WRA</span>
+<span class="U2">PPER_TOOLS</span>
+<span class="U2">%&nbsp;-Dbits=3</span>
+<span class="U2">2&nbsp;%1&nbsp;%2&nbsp;%3</span>
+<span class="U2">&nbsp;%4&nbsp;%5&nbsp;%6&nbsp;</span>
+<span class="U2">%7&nbsp;%8</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">17</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">17</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2" />
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">18</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">:end</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">18</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">:end</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">19</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">set&nbsp;ANT_HO</span>
+<span class="U1">ME=%OLD_AN</span>
+<span class="U1">T_HOME%</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">19</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">set&nbsp;ANT_HO</span>
+<span class="U2">ME=%OLD_AN</span>
+<span class="U2">T_HOME%</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">20</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1">set&nbsp;OLD_AN</span>
+<span class="U1">T_HOME=</span>
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">20</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2">set&nbsp;OLD_AN</span>
+<span class="U2">T_HOME=</span>
+</td>
+</tr>
+<tr>
+<td class="U1" style="text-align: right;">21</td>
+<td class="U1" style="text-decoration: none;">&nbsp;</td>
+<td class="U1">
+<span class="U1" />
+</td>
+<td>&nbsp;</td>
+<td class="U2" style="text-align: right;">21</td>
+<td class="U2" style="text-decoration: none;">&nbsp;</td>
+<td class="U2">
+<span class="U2" />
+</td>
+</tr>
+</table>
+<p class="copyright" style="margin-top: 25px; padding-top: 2px; border-top: solid #a0a0a0 1px; max-width: none;">Araxis Merge (but not the data content of this report) is Copyright  &copy; 1993-2006 Araxis Ltd (<a href="http://www.araxis.com/" title="Link to the Araxis corporate web site">www.araxis.com</a>). All rights reserved.</p>
+</body>
+</html>

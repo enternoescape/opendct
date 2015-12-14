@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head><title>OpenDCT Readme</title></head>
+<body>
+
+<h1>OpenDCT Readme</h1>
+<p>
+	OpenDCT is an open source digital cable tuner network encoder for
+	<a href="http://forums.sagetv.com/forums/index.php">SageTV</a>.
+</p>
+
+<h2>Configuration</h2>
+<p>
+	The majority of the configuration is done inside opendct.properties. The file is automatically
+	populated after the first time the program is run. Do not make changes to this file while the program
+	is running since your changes will be overwritten. This list is just the very basics to keep the
+	program from communicating with undesired devices.
+</p>
+<p>
+	After configuring OpenDCT, the SageTV service needs to be stopped. Open Sage.properties and find the
+	property network_encoder_discovery and change the value to true. Start the SageTV service again while
+	OpenDCT is running to discover the available capture devices.
+</p>
+
+<ul>
+	<li>sagetv.device.global.ignore_devices_csv=</li>
+	<ul><li>
+		This is a comma delimited list of tuners or entire devices to be ignored if they are discovered.
+		The names on this list must perfectly match the name of the tuner or "parent" device as it is named
+		when discovered. When a device is on the list, all tuners on that device will be excluded.
+	</li></ul><p/>
+
+	<li>sagetv.device.global.only_devices_csv=</li>
+	<ul><li>
+		This property if set always supersedes ignore_devices_csv. This is a comma delimited list of tuners
+		or entire devices allowed to be initialized if they are discovered. The names on this list must 
+		perfectly match the name of the tuner or "parent" device as it is named when discovered.
+	</li></ul><p/>
+
+	<li>sagetv.device.global.required_devices_loaded_timeout_ms=30000</li>
+	<ul><li>
+		This is the amount of time allowed in milliseconds to pass while waiting for the required number of
+		devices before the program will exit with a failure.
+	</li></ul><p/>
+
+	<li>sagetv.device.global.required_devices_loaded_count=0</li>
+	<ul><li>
+		This is the number of devices that need to be detected and loaded before the required timeout.
+	</li></ul><p/>
+	
+	<li>sagetv.device.<unique_id>.device_name</li>
+	<ul><li>
+		The name of the device can be changed by this property. If you change the name here, you will need
+		to re-detect the capture device in SageTV or SageTV will not be able to communicate with it
+		anymore. Capture devices cannot have the same name.
+	</li></ul><p/>
+</ul>
+
+<h1>Reporting Issues</h1>
+<p>
+	First check the <a href="http://forums.sagetv.com/forums/index.php">SageTV forums</a> to help eliminate
+	other possibilities in your environment/configuration that are unrelated to OpenDCT. Also the forums
+	could help if the issue is actually a problem resultsing from an incorrect configuration of OpenDCT. If
+	it is determined that it must be an issue with OpenDCT that should be addressed, please create a
+	<a href="https://github.com/enternoescape/opendct/issues/new">new issue on GitHub</a>. Please be very
+	specific and attach SageTV and OpenDCT log files if possible.
+</p>
+
+<h1>License</h1>
+<p>
+	This project is licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache
+	License, Version 2.0</a> with no warranty (expressed or implied) for any purpose.
+</p>
+
+</body>
+</html>

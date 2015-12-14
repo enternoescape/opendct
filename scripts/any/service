@@ -1,0 +1,35 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          opendct
+# Required-Start:    $local_fs $remote_fs $network
+# Required-Stop:     $local_fs $remote_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      S 0 1 6
+# Short-Description: OpenDCT Digital Cable Tuner for SageTV
+# Description:       This is the init script for the OpenDCT service.
+### END INIT INFO
+
+start() {
+	if test ! -e /var/log/opendct; then
+		mkdir -p /var/log/opendct
+	fi
+
+	if test ! -e /var/run/opendct; then
+		mkdir -p /var/run/opendct
+	fi
+
+	chown opendct:opendct /var/log/opendct
+	chown opendct:opendct /var/run/opendct
+}
+
+case "$1" in
+	'start')
+			start
+			;;
+esac
+
+cd /opt/opendct/jsw/bin
+./sh.script.in "$@"
+
+exit $?

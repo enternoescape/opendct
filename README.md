@@ -3,23 +3,24 @@
 An open source digital cable tuner network encoder for [SageTV](http://forums.sagetv.com/forums/index.php).
 
 ## Download
-Official OpenDCT builds are hosted on [Bintray.com](https://bintray.com/opendct). *On Linux platforms it is recommended to only use the architecture of your distribution.*
+OpenDCT packaged releases are hosted on [Bintray.com](https://bintray.com/opendct/Releases/OpenDCT/view#files/releases/).
+*On Linux platforms it is recommended to only use the architecture of your distribution.*
 
 ### Ubuntu 14.04
 ```
-apt-get install default-jre-headless;
+apt-get install default-jre-headless
 dpkg -i opendct_x.x.x-x_arch.deb
 ```
 
 ### CentOS 7
 ```
-yum install java-1.8.0-openjdk-headless;
+yum install java-1.8.0-openjdk-headless
 rpm -i opendct_x.x.x-x_arch.rpm
 ```
 
 ### Fedora 22
 ```
-dnf install java-1.8.0-openjdk-headless;
+dnf install java-1.8.0-openjdk-headless
 rpm -i opendct_x.x.x-x_arch.rpm
 ```
 
@@ -44,7 +45,7 @@ The majority of the configuration is done inside opendct.properties. The file is
 
 After configuring OpenDCT, the SageTV service needs to be stopped. Open Sage.properties and find the property network\_encoder\_discovery and change the value to true. Start the SageTV service again while OpenDCT is running to discover the available capture devices.
 
-## Compile
+## Compiling
 OpenDCT builds are created using Gradle. The following commands should get you started.
 
 ### Create project files for Eclipse.
@@ -74,8 +75,7 @@ gradlew ideal
 ```
 gradlew packageAll
 ```
-
-4.  The packages will be found under build/distributions.
+*The packages will be found under build/distributions.*
 
 # Reporting Issues
 First check the [SageTV forums](http://forums.sagetv.com/forums/index.php) to help eliminate other possibilities in your environment/configuration that are unrelated to OpenDCT. Also the forums could help if the issue is actually a problem involving an incorrect configuration of OpenDCT. If it is determined that it must be an issue with OpenDCT that should be addressed, please create a [new issue on GitHub](https://github.com/enternoescape/opendct/issues/new). Please be very specific and attach SageTV and OpenDCT log files if possible.

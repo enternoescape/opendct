@@ -27,13 +27,12 @@
 	<?if $(var.Platform) = x64 ?>
 		<?define Win64 = "yes" ?>
 		<?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
-		<?define projectSourcePath = "$(var.ProjectDir)" ?>
 	<?else ?>
 		<?define Win64 = "no" ?>
 		<?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
-		<?define projectSourcePath = "$(var.ProjectDir)" ?>
 	<?endif ?>
 
+	<?define projectSourcePath = "$(var.ProjectDir)" ?>
 	<?define jswSourcePath = "$(var.projectSourcePath)\jsw" ?>
 	<?define configSourcePath = "$(var.projectSourcePath)\wix\config" ?>
 
@@ -151,30 +150,35 @@
 					<Directory Id="jswDir" Name="jsw">
 						<Directory Id="jswBinDir" Name="bin">
 							<Component Id="jswWrapper.exe" Guid="{0acc4829-4194-4aa4-acde-4afb5da49294}" Win64="$(var.Win64)">
-								<File Source="$(var.jswSourcePath)\bin\wrapper.exe" Id="jswWrapper.exe" KeyPath="yes" />
-								<File Source="$(var.jswSourcePath)\bin\wrapper.exe.manifest" Id="jswWrapper.exe.manifest" />
+								<File Source="$(var.jswSourcePath)\bin\wrapper.exe" Vital="yes" Id="jswWrapper.exe" KeyPath="yes" />
+								<File Source="$(var.jswSourcePath)\bin\wrapper.exe.manifest" Vital="yes" Id="jswWrapper.exe.manifest" />
+								
+								<ServiceInstall Id="jswWrapper.exe.service" Name="opendct" DisplayName="SageTV OpenDCT" Type="ownProcess" Start="auto" Vital="yes"
+									ErrorControl="normal" Description="SageTV OpenDCT Java Network Encoder for Digital Cable Tuners"
+									Arguments="-s &quot;[INSTALLDIR]\jsw\conf\wrapper.conf&quot;" />
+								<ServiceControl Id="jswWrapper.exe.service" Name="opendct" Wait="yes" Stop="both" Remove="uninstall"/>									
 							</Component>
-							<Component Id="jswInstallOpenDCTNT.bat" Guid="{0acc4829-4194-4aa4-acde-4afb5da49295}" Win64="$(var.Win64)">
-								<File Source="$(var.jswSourcePath)\bin\InstallOpenDCT-NT.bat" Id="jswInstallOpenDCTNT.bat" KeyPath="yes" Vital="yes" >
-									<Shortcut Id="ShortcutJswInstallOpenDCTNT.bat" 
+							<Component Id="jswStartOpenDCTNT.bat" Guid="{0acc4829-4194-4aa4-acde-4afb5da49295}" Win64="$(var.Win64)">
+								<File Source="$(var.jswSourcePath)\bin\StartOpenDCT-NT.bat" Id="jswStartOpenDCTNT.bat" KeyPath="yes" Vital="yes">
+									<Shortcut Id="ShortcutStartOpenDCTNT.bat"
 										Directory="ProgramMenuDir"
 										Advertise="yes"
-										Name="OpenDCT Service Install"
-										Description="Installs the OpenDCT service so OpenDCT can be run as a service."
+										Name="OpenDCT Start Service"
+										Description="Starts the OpenDCT service."
 										WorkingDirectory="jswBinDir">
-											<Icon Id="jswInstallOpenDCTNT.ico" SourceFile="$(var.rootSourcePath)\images\OpenDCT Service.ico" />
+											<Icon Id="ShortcutStartOpenDCTNT.ico" SourceFile="$(var.rootSourcePath)\images\OpenDCT Service.ico" />
 									</Shortcut>
 								</File>
 							</Component>
-							<Component Id="jswUninstallOpenDCTNT.bat" Guid="{0acc4829-4194-4aa4-acde-4afb5da49296}" Win64="$(var.Win64)">
-								<File Source="$(var.jswSourcePath)\bin\UninstallOpenDCT-NT.bat" Id="jswUninstallOpenDCTNT.bat" KeyPath="yes" Vital="yes">
-									<Shortcut Id="ShortcutJswUninstallOpenDCTNT.bat" 
+							<Component Id="jswStopOpenDCTNT.bat" Guid="{0acc4829-4194-4aa4-acde-4afb5da49296}" Win64="$(var.Win64)">
+								<File Source="$(var.jswSourcePath)\bin\StopOpenDCT-NT.bat" Id="jswStopOpenDCTNT.bat" KeyPath="yes" Vital="yes">
+									<Shortcut Id="ShortcutStopOpenDCTNT.bat"
 										Directory="ProgramMenuDir"
 										Advertise="yes"
-										Name="OpenDCT Service Uninstall"
-										Description="Uninstalls the OpenDCT service so OpenDCT will not be available to run as a service."
+										Name="OpenDCT Stop Service"
+										Description="Starts the OpenDCT service."
 										WorkingDirectory="jswBinDir">
-											<Icon Id="ShortcutJswUninstallOpenDCTNT.ico" SourceFile="$(var.rootSourcePath)\images\OpenDCT Service.ico" />
+											<Icon Id="ShortcutStopOpenDCTNT.ico" SourceFile="$(var.rootSourcePath)\images\OpenDCT Service.ico" />
 									</Shortcut>
 								</File>
 							</Component>
@@ -255,14 +259,14 @@
 	<Feature Id="Complete" Title="!(loc.ApplicationName)" Description="!(loc.FeatureCompleteDescription)" Display="expand" Level="1" ConfigurableDirectory="INSTALLDIR">
 
          <!-- A feature block for the main (GUI) program and all its dependencies -->
-        <Feature Id="MainProgram" Title="!(loc.FeatureMainProgramTitle)" Description="!(loc.FeatureMainProgramDescription)" Level="1" AllowAdvertise="yes" TypicalDefault="advertise">
+        <Feature Id="MainProgram" Title="!(loc.FeatureMainProgramTitle)" Description="!(loc.FeatureMainProgramDescription)" Level="1" >
 			<ComponentRef Id="INSTALLDIR" />
 			<ComponentRef Id="ProgramMenuDir" />
 						
-			<ComponentRef Id="jswWrapper.exe" />			 
-			<ComponentRef Id="jswInstallOpenDCTNT.bat" />
-			<ComponentRef Id="jswUninstallOpenDCTNT.bat" />
+			<ComponentRef Id="jswWrapper.exe" />			 			
 			<ComponentRef Id="jswOpenDCT.bat" />
+			<ComponentRef Id="jswStartOpenDCTNT.bat" />
+			<ComponentRef Id="jswStopOpenDCTNT.bat" />
 			
 			<ComponentRef Id="jswWrapper.conf" />
 			

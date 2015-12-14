@@ -17,6 +17,11 @@ fi
 getent group opendct >/dev/null || groupadd -r opendct
 getent passwd opendct >/dev/null || useradd -r -g opendct -d /opt/opendct -s /bin/bash -c "OpenDCT Service Account" opendct
 
+if test -e /usr/lib/systemd/system/opendct.service; then
+	systemctl disable opendct.service
+	systemctl stop opendct.service
+fi
+
 if test ! -e /var/log/opendct; then
     mkdir -p /var/log/opendct
 fi

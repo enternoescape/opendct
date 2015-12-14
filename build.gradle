@@ -480,11 +480,14 @@ bintray {
         userOrg = 'opendct'
         desc = "OpenDCT Release"
         licenses = ['Apache-2.0']
+        websiteUrl = 'https://github.com/enternoescape/opendct'
         vcsUrl = 'https://github.com/enternoescape/opendct.git'
-        labels = ['opendct', 'sagetv']
+        issueTrackerUrl = 'https://github.com/enternoescape/opendct/issues'
+        labels = ['opendct', 'sagetv', 'opensagetv']
         publicDownloadNumbers = true
+
         version {
-            name = version
+            name = "${version}-Beta"
             released  = new Date()
             desc = "OpenDCT ${version}"
         }

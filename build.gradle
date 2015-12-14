@@ -58,7 +58,7 @@ ext {
 
     javaVersion = '1.7'
     buildVersion = "${majorVersion}.${minorVersion}.${buildVersion}"
-    buildVersionString = "${majorVersion}.${minorVersion}.${buildVersion}-${buildType}"
+    buildVersionString = "${buildVersion}-${buildType}"
 }
 
 version = buildVersion
@@ -472,7 +472,7 @@ bintray {
         from ('build/distributions') {
             include '*.rpm', '*.deb', '*.msi'
         }
-        into "releases/${buildVersionString}"
+        into "releases/${buildVersion}"
     }
 
     dryRun = false //Whether to run this as dry-run, without deploying

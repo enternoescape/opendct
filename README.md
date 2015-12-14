@@ -4,6 +4,7 @@ An open source digital cable tuner network encoder for [SageTV](http://forums.sa
 
 ## Download
 OpenDCT packaged releases are hosted on [Bintray.com](https://bintray.com/opendct/Releases/OpenDCT/view#files/releases/).
+
 *On Linux platforms it is recommended to only use the architecture of your distribution.*
 
 #### Ubuntu 14.04
@@ -49,13 +50,11 @@ After configuring OpenDCT, the SageTV service needs to be stopped. Open Sage.pro
 OpenDCT builds are created using Gradle. The following commands should get you started.
 
 #### Create project files for Eclipse.
-Execute:
 ```
 gradlew eclipse
 ```
 
 #### Create project files for IntelliJ.
-Execute: 
 ```
 gradlew ideal
 ```

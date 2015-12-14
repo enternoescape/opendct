@@ -64,11 +64,11 @@ gradlew ideal
 
 1. Install the latest [Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/) for your OS architecture.
 
-2. Install the [Wix Toolset](http://wixtoolset.org/) so you can build the packages for Windows.
+2. Install the [WiX Toolset](http://wixtoolset.org/) so you can build the packages for Windows.
 
  * You may need to re-open the console window so the newly set WIX environment will be available.
  * Optionally you can tell the script where the binary is located. See the README.md under scripts/wix for details.
- * If the Wix binaries cannot be found, the build will fail after the Linux packages have been created.
+ * If the WiX binaries cannot be found, the build will fail after the Linux packages have been created.
 
 3. Execute:
 ```

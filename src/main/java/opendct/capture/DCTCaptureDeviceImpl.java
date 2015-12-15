@@ -647,13 +647,20 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         // The producer and consumer methods are requested to not block. If they don't shut down in
         // time, it will be caught and handled later. This gives us a small gain in speed.
         stopProducing(false);
-        stopConsuming(false);
+
+        // If we are trying to restart the stream, we don't need to stop the consumer.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            stopConsuming(false);
+        }
 
         // Get a new producer and consumer.
         RTPProducer newRTPProducer = getNewRTPProducer();
-        SageTVConsumer newConsumer = null;
+        SageTVConsumer newConsumer;
 
-        if (scanOnly) {
+        // If we are trying to restart the stream, we don't need to get a new consumer.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            newConsumer = sageTVConsumerRunnable;
+        } else if (scanOnly) {
             newConsumer = getNewChannelScanSageTVConsumer();
             newConsumer.consumeToNull(true);
         } else {
@@ -762,84 +769,92 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             return logger.exit(false);
         }
 
-        // If we are buffering this can create too much backlog and overruns the file based buffer.
-        if (bufferSize == 0) {
-            try {
-                newConsumer.setProgram(hdhrTuner.getProgram());
-
-                int timeout = 50;
-
-                while (newConsumer.getProgram() == -1) {
-                    Thread.sleep(100);
+        // If we are trying to restart the stream, we don't need to stop the consumer.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            // If we are buffering this can create too much backlog and overruns the file based buffer.
+            if (bufferSize == 0) {
+                try {
                     newConsumer.setProgram(hdhrTuner.getProgram());
 
-                    if (timeout-- < 0) {
-                        logger.error("Unable to get program after 5 seconds.");
-                        newConsumer.setProgram(-1);
-                        break;
-                    }
+                    int timeout = 50;
 
-                    if (tuningThread != Thread.currentThread()) {
-                        stopProducing(false);
-                        return logger.exit(false);
+                    while (newConsumer.getProgram() == -1) {
+                        Thread.sleep(100);
+                        newConsumer.setProgram(hdhrTuner.getProgram());
+
+                        if (timeout-- < 0) {
+                            logger.error("Unable to get program after 5 seconds.");
+                            newConsumer.setProgram(-1);
+                            break;
+                        }
+
+                        if (tuningThread != Thread.currentThread()) {
+                            stopProducing(false);
+                            return logger.exit(false);
+                        }
                     }
+                } catch (IOException e) {
+                    logger.error("Unable to get program => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to get program => ", e);
+                } catch (InterruptedException e) {
+                    logger.debug("Unable to get program => ", e);
+                    return logger.exit(false);
                 }
-            } catch (IOException e) {
-                logger.error("Unable to get program => ", e);
-            } catch (GetSetException e) {
-                logger.error("Unable to get program => ", e);
-            } catch (InterruptedException e) {
-                logger.debug("Unable to get program => ", e);
-                return logger.exit(false);
-            }
 
-            try {
-                newConsumer.setPids(hdhrTuner.getFilter());
-
-                int timeout = 50;
-
-                while (newConsumer.getPids().length <= 1) {
-                    Thread.sleep(100);
+                try {
                     newConsumer.setPids(hdhrTuner.getFilter());
 
-                    if (timeout-- < 0) {
-                        logger.error("Unable to get PIDs after 5 seconds.");
-                        newConsumer.setPids(new int[0]);
-                        break;
-                    }
+                    int timeout = 50;
 
-                    if (tuningThread != Thread.currentThread()) {
-                        stopProducing(false);
-                        return logger.exit(false);
+                    while (newConsumer.getPids().length <= 1) {
+                        Thread.sleep(100);
+                        newConsumer.setPids(hdhrTuner.getFilter());
+
+                        if (timeout-- < 0) {
+                            logger.error("Unable to get PIDs after 5 seconds.");
+                            newConsumer.setPids(new int[0]);
+                            break;
+                        }
+
+                        if (tuningThread != Thread.currentThread()) {
+                            stopProducing(false);
+                            return logger.exit(false);
+                        }
                     }
+                } catch (IOException e) {
+                    logger.error("Unable to get PIDs => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to get PIDs => ", e);
+                } catch (InterruptedException e) {
+                    logger.debug("Unable to get PIDs => ", e);
+                    return logger.exit(false);
                 }
-            } catch (IOException e) {
-                logger.error("Unable to get PIDs => ", e);
-            } catch (GetSetException e) {
-                logger.error("Unable to get PIDs => ", e);
-            } catch (InterruptedException e) {
-                logger.debug("Unable to get PIDs => ", e);
-                return logger.exit(false);
             }
+
+            logger.info("Configuring and starting the new SageTV consumer...");
+
+            if (uploadID > 0 && remoteAddress != null) {
+                newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
+            } else if (!scanOnly) {
+                newConsumer.consumeToFilename(filename);
+            }
+
+            startConsuming(newConsumer, encodingQuality, bufferSize);
+        } else {
+            logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
-
-        logger.info("Configuring and starting the new SageTV consumer...");
-
-        if (uploadID > 0 && remoteAddress != null) {
-            newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
-        } else if (!scanOnly) {
-            newConsumer.consumeToFilename(filename);
-        }
-
-        startConsuming(newConsumer, encodingQuality, bufferSize);
 
         if (logger.isDebugEnabled()) {
             long endTime = System.currentTimeMillis();
             logger.debug("Time to RTSP: {}ms, Total tuning time: {}ms", rtspTime - startTime, endTime - startTime);
         }
 
-        if (!scanOnly) {
-            monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+        // If we are trying to restart the stream, we only need one monitoring thread.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            if (!scanOnly) {
+                monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+            }
         }
 
         setLastChannel(channel);
@@ -865,13 +880,20 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         // The producer and consumer methods are requested to not block. If they don't shut down in
         // time, it will be caught and handled later. This gives us a small gain in speed.
         stopProducing(false);
-        stopConsuming(false);
+
+        // If we are trying to restart the stream, we don't need to stop the consumer.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            stopConsuming(false);
+        }
 
         // Get a new producer and consumer.
         RTPProducer newRTPProducer = getNewRTPProducer();
-        SageTVConsumer newConsumer = null;
+        SageTVConsumer newConsumer;
 
-        if (scanOnly) {
+        // If we are trying to restart the stream, we don't need to create a new consumer.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            newConsumer = sageTVConsumerRunnable;
+        } else if (scanOnly) {
             newConsumer = getNewChannelScanSageTVConsumer();
             newConsumer.consumeToNull(true);
         } else {
@@ -921,80 +943,92 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
         // If we are buffering this can create too much backlog and overruns the file based buffer.
         if (bufferSize == 0) {
-            try {
-                int getProgram = InfiniTVStatus.GetProgram(encoderIPAddress, encoderNumber, 5);
-                newConsumer.setProgram(getProgram);
-
-                int timeout = 50;
-
-                while (newConsumer.getProgram() == -1) {
-                    Thread.sleep(100);
-                    getProgram = InfiniTVStatus.GetProgram(encoderIPAddress, encoderNumber, 5);
+            // If we are trying to restart the stream, we don't need to change anything on the
+            // consumer.
+            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+                try {
+                    int getProgram = InfiniTVStatus.GetProgram(encoderIPAddress, encoderNumber, 5);
                     newConsumer.setProgram(getProgram);
 
-                    if (timeout-- < 0) {
-                        logger.error("Unable to get program after more than 5 seconds.");
-                        return logger.exit(false);
-                    }
+                    int timeout = 50;
 
-                    if (tuningThread != Thread.currentThread()) {
-                        stopProducing(false);
-                        return logger.exit(false);
+                    while (newConsumer.getProgram() == -1) {
+                        Thread.sleep(100);
+                        getProgram = InfiniTVStatus.GetProgram(encoderIPAddress, encoderNumber, 5);
+                        newConsumer.setProgram(getProgram);
+
+                        if (timeout-- < 0) {
+                            logger.error("Unable to get program after more than 5 seconds.");
+                            return logger.exit(false);
+                        }
+
+                        if (tuningThread != Thread.currentThread()) {
+                            stopProducing(false);
+                            return logger.exit(false);
+                        }
                     }
+                } catch (IOException e) {
+                    logger.error("Unable to get program number => ", e);
+                } catch (InterruptedException e) {
+                    logger.debug("Unable to get program number => ", e);
+                    return logger.exit(false);
                 }
-            } catch (IOException e) {
-                logger.error("Unable to get program number => ", e);
-            } catch (InterruptedException e) {
-                logger.debug("Unable to get program number => ", e);
-                return logger.exit(false);
-            }
 
-            try {
-                int pids[] = InfiniTVStatus.GetPids(encoderIPAddress, encoderNumber, 5);
-                newConsumer.setPids(pids);
-
-                int timeout = 50;
-
-                while (newConsumer.getPids().length <= 1) {
-                    Thread.sleep(100);
-                    pids = InfiniTVStatus.GetPids(encoderIPAddress, encoderNumber, 5);
+                try {
+                    int pids[] = InfiniTVStatus.GetPids(encoderIPAddress, encoderNumber, 5);
                     newConsumer.setPids(pids);
 
-                    if (timeout-- < 0) {
-                        logger.error("Unable to get PIDs after more than 5 seconds.");
-                        return logger.exit(false);
-                    }
+                    int timeout = 50;
 
-                    if (tuningThread != Thread.currentThread()) {
-                        stopProducing(false);
-                        return logger.exit(false);
+                    while (newConsumer.getPids().length <= 1) {
+                        Thread.sleep(100);
+                        pids = InfiniTVStatus.GetPids(encoderIPAddress, encoderNumber, 5);
+                        newConsumer.setPids(pids);
+
+                        if (timeout-- < 0) {
+                            logger.error("Unable to get PIDs after more than 5 seconds.");
+                            return logger.exit(false);
+                        }
+
+                        if (tuningThread != Thread.currentThread()) {
+                            stopProducing(false);
+                            return logger.exit(false);
+                        }
                     }
+                } catch (IOException e) {
+                    logger.error("Unable to get PID numbers => ", e);
+                } catch (InterruptedException e) {
+                    logger.debug("Unable to get PID numbers => ", e);
+                    return logger.exit(false);
                 }
-            } catch (IOException e) {
-                logger.error("Unable to get PID numbers => ", e);
-            } catch (InterruptedException e) {
-                logger.debug("Unable to get PID numbers => ", e);
-                return logger.exit(false);
             }
         }
 
-        logger.info("Configuring and starting the new SageTV consumer...");
+        // If we are trying to restart the stream, we don't need to stop the consumer.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            logger.info("Configuring and starting the new SageTV consumer...");
 
-        if (uploadID > 0 && remoteAddress != null) {
-            newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
-        } else if (!scanOnly) {
-            newConsumer.consumeToFilename(filename);
+            if (uploadID > 0 && remoteAddress != null) {
+                newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
+            } else if (!scanOnly) {
+                newConsumer.consumeToFilename(filename);
+            }
+
+            startConsuming(newConsumer, encodingQuality, bufferSize);
+        } else {
+            logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
-
-        startConsuming(newConsumer, encodingQuality, bufferSize);
 
         if (logger.isDebugEnabled()) {
             long endTime = System.currentTimeMillis();
             logger.debug("Time to RTSP: {}ms, Total tuning time: {}ms", rtspTime - startTime, endTime - startTime);
         }
 
-        if (!scanOnly) {
-            monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+        // Make sure only one monitor thread is running per request.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            if (!scanOnly) {
+                monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+            }
         }
 
         setLastChannel(channel);
@@ -1047,12 +1081,21 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
             stopProducing(false);
-            stopConsuming(false);
+
+            // If we are trying to restart the stream, we don't need to stop the consumer.
+            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+                stopConsuming(false);
+            } else {
+                logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
+            }
 
             RTPProducer newRTPProducer = getNewRTPProducer();
-            SageTVConsumer newConsumer = null;
+            SageTVConsumer newConsumer;
 
-            if (scanOnly) {
+            // If we are trying to restart the stream, we don't need to stop the consumer and producer.
+            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+                newConsumer = sageTVConsumerRunnable;
+            } else if (scanOnly) {
                 newConsumer = getNewChannelScanSageTVConsumer();
                 newConsumer.consumeToNull(true);
             } else {
@@ -1229,47 +1272,55 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             subscriptionCleanup();
 
-            try {
-                String programString = muxAction.SERVICE_ACTIONS.queryActionVariable("ProgramNumber");
-                int program = Integer.valueOf(programString);
-                newConsumer.setProgram(program);
-            } catch (Exception e) {
-                logger.warn("Unable to parse program => ", e);
-            }
-
-            try {
-                String pidsString = muxAction.SERVICE_ACTIONS.queryActionVariable("PIDList");
-                String split[] = pidsString.split(",");
-                int pids[] = new int[split.length];
-
-                for(int i = 0; i < pids.length; i++) {
-                    pids[i] = Integer.parseInt(split[i].trim(), 16);
+            // If we are trying to restart the stream, we don't need to stop the consumer.
+            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+                try {
+                    String programString = muxAction.SERVICE_ACTIONS.queryActionVariable("ProgramNumber");
+                    int program = Integer.valueOf(programString);
+                    newConsumer.setProgram(program);
+                } catch (Exception e) {
+                    logger.warn("Unable to parse program => ", e);
                 }
 
-                newConsumer.setPids(pids);
-            } catch (Exception e) {
-                logger.warn("Unable to parse PIDs => ", e);
-            }
+                try {
+                    String pidsString = muxAction.SERVICE_ACTIONS.queryActionVariable("PIDList");
+                    String split[] = pidsString.split(",");
+                    int pids[] = new int[split.length];
 
-            logger.info("Configuring and starting the SageTV consumer...");
+                    for (int i = 0; i < pids.length; i++) {
+                        pids[i] = Integer.parseInt(split[i].trim(), 16);
+                    }
 
-            if (uploadID > 0 && remoteAddress != null) {
-                newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
-            } else if (!scanOnly) {
-                newConsumer.consumeToFilename(filename);
+                    newConsumer.setPids(pids);
+                } catch (Exception e) {
+                    logger.warn("Unable to parse PIDs => ", e);
+                }
+
+                logger.info("Configuring and starting the SageTV consumer...");
+
+                if (uploadID > 0 && remoteAddress != null) {
+                    newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
+                } else if (!scanOnly) {
+                    newConsumer.consumeToFilename(filename);
+                } else {
+                    newConsumer.consumeToNull(true);
+                }
+
+                startConsuming(newConsumer, encodingQuality, bufferSize);
             } else {
-                newConsumer.consumeToNull(true);
+                logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
             }
-
-            startConsuming(newConsumer, encodingQuality, bufferSize);
 
             if (logger.isDebugEnabled()) {
                 long endTime = System.currentTimeMillis();
                 logger.debug("Time to RTSP: {}ms, Total tuning time: {}ms", rtspTime - startTime, endTime - startTime);
             }
 
-            if (!scanOnly) {
-                monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+            // Don't start more than one monitoring thread.
+            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+                if (!scanOnly) {
+                    monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+                }
             }
         }
 
@@ -1289,40 +1340,47 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
                 int timeout = 0;
+                long lastValue = 0;
 
-                try {
-                    if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
-                        // Music Choice channels take forever to start and with a 4 second timeout,
-                        // they might never start.
-                        timeout = 16000;
-                    } else {
-                        timeout = 4000;
-                    }
-
-                    Thread.sleep(timeout);
-                } catch (InterruptedException e) {
-                    return;
-                }
-
-                if (getRecordedBytes() == 0 && !Thread.currentThread().isInterrupted()) {
-                    String filename = originalFilename;
-                    String encodingQuality = originalEncodingQuality;
-                    int uploadID = originalUploadID;
-
-                    // Since it's possible that a SWITCH may have happened since we last started the
-                    // recording, this keeps everything consistent.
-                    if (sageTVConsumerRunnable != null) {
-                        filename = sageTVConsumerRunnable.getEncoderFilename();
-                        encodingQuality = sageTVConsumerRunnable.getEncoderQuality();
-                        uploadID = sageTVConsumerRunnable.getEncoderUploadID();
-                    }
-
-                    logger.error("No data was streamed after {} milliseconds. Re-tuning channel...", timeout);
-                    stopDevice();
-                    startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+                if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
+                    // Music Choice channels take forever to start and with a 4 second timeout,
+                    // they might never start.
+                    timeout = 16000;
                 } else {
-                    logger.info("Streamed first {} bytes.", getRecordedBytes());
+                    timeout = 4000;
                 }
+
+                while (!Thread.currentThread().isInterrupted()) {
+                    lastValue = getRecordedBytes();
+
+                    try {
+                        Thread.sleep(timeout);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+
+                    if (getRecordedBytes() == lastValue && !Thread.currentThread().isInterrupted()) {
+                        String filename = originalFilename;
+                        String encodingQuality = originalEncodingQuality;
+                        int uploadID = originalUploadID;
+
+                        // Since it's possible that a SWITCH may have happened since we last started the
+                        // recording, this keeps everything consistent.
+                        if (sageTVConsumerRunnable != null) {
+                            filename = sageTVConsumerRunnable.getEncoderFilename();
+                            encodingQuality = sageTVConsumerRunnable.getEncoderQuality();
+                            uploadID = sageTVConsumerRunnable.getEncoderUploadID();
+                        }
+
+                        logger.error("No data was streamed after {} milliseconds. Re-tuning channel...", timeout);
+                        stopDevice();
+                        startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+                    } else {
+                        logger.info("Streamed first {} bytes.", getRecordedBytes());
+                    }
+                }
+
+                logger.info("Tuning monitoring thread stopped.");
             }
         });
 
@@ -1471,8 +1529,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
-        //stopEncoding();
-        super.stopDevice();
+        // If we are trying to restart the stream, we don't need to stop the consumer and producer.
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            super.stopDevice();
+        }
 
         logger.exit();
     }

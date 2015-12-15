@@ -16,7 +16,7 @@
   -->
 
 <service>
-    <short>webmin</short>
+    <short>opendct</short>
     <description>opendct</description>
 
     <!-- SageTV media server port (uploadID) -->

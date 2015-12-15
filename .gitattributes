@@ -5,8 +5,8 @@
 *.xml text eol=cr
 *.sh text eol=cr
 *.in text eol=cr
+*. text eol=cr
 
-*. binary
 *.dll binary
 *.exe binary
 *.png binary

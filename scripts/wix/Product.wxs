@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:fire="http://schemas.microsoft.com/wix/FirewallExtension">
 
 	<!--
 	Unattended setup: The following variable can be set:
@@ -97,6 +97,8 @@
 	<!--
 	 Launch conditions end
 	-->
+	
+	<Component Id="OpenDCTFirewallException" Guid="{0acc4829-4194-4aa4-acde-4afb5da49200}">
 
 	<!-- Save the command line value INSTALLDIR and restore it later in the sequence or it will be overwritten by the value saved to the registry during an upgrade -->
 	<!-- http://robmensching.com/blog/posts/2010/5/2/the-wix-toolsets-remember-property-pattern/ -->
@@ -151,7 +153,12 @@
 						<Directory Id="jswBinDir" Name="bin">
 							<Component Id="jswWrapper.exe" Guid="{0acc4829-4194-4aa4-acde-4afb5da49294}" Win64="$(var.Win64)">
 								<File Source="$(var.jswSourcePath)\bin\wrapper.exe" Vital="yes" Id="jswWrapper.exe" KeyPath="yes" />
-								<File Source="$(var.jswSourcePath)\bin\wrapper.exe.manifest" Vital="yes" Id="jswWrapper.exe.manifest" />
+
+								<fire:FirewallException Id="jswWrapper.exe.ex1" Name="OpenDCT (JSW)" />
+								<fire:FirewallException Id="jswWrapper.exe.ex2" Name="OpenDCT (Media Server)" Port="7818" Protocol="tcp" />
+								<fire:FirewallException Id="jswWrapper.exe.ex3" Name="OpenDCT (SageTV Network Encoder)" Port="9000-9100" Protocol="tcp" />
+								<fire:FirewallException Id="jswWrapper.exe.ex4" Name="OpenDCT (SageTV Discovery)" Port="8271" Protocol="udp" />
+								<fire:FirewallException Id="jswWrapper.exe.ex5" Name="OpenDCT (RTP)" Port="8300-8500" Protocol="udp" />
 								
 								<ServiceInstall Id="jswWrapper.exe.service" Name="opendct" DisplayName="SageTV OpenDCT" Type="ownProcess" Start="auto" Vital="yes"
 									ErrorControl="normal" Description="SageTV OpenDCT Java Network Encoder for Digital Cable Tuners"

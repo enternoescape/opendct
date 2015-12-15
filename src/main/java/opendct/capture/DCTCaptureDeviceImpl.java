@@ -649,7 +649,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         stopProducing(false);
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
             stopConsuming(false);
         }
 
@@ -658,7 +658,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         SageTVConsumer newConsumer;
 
         // If we are trying to restart the stream, we don't need to get a new consumer.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread != null && monitorThread == Thread.currentThread()) {
             newConsumer = sageTVConsumerRunnable;
         } else if (scanOnly) {
             newConsumer = getNewChannelScanSageTVConsumer();
@@ -770,7 +770,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
             // If we are buffering this can create too much backlog and overruns the file based buffer.
             if (bufferSize == 0) {
                 try {
@@ -851,7 +851,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         // If we are trying to restart the stream, we only need one monitoring thread.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
             if (!scanOnly) {
                 monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
             }
@@ -882,7 +882,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         stopProducing(false);
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
             stopConsuming(false);
         }
 
@@ -891,7 +891,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         SageTVConsumer newConsumer;
 
         // If we are trying to restart the stream, we don't need to create a new consumer.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread != null && monitorThread == Thread.currentThread()) {
             newConsumer = sageTVConsumerRunnable;
         } else if (scanOnly) {
             newConsumer = getNewChannelScanSageTVConsumer();
@@ -945,7 +945,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         if (bufferSize == 0) {
             // If we are trying to restart the stream, we don't need to change anything on the
             // consumer.
-            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            if (monitorThread == null || monitorThread != Thread.currentThread()) {
                 try {
                     int getProgram = InfiniTVStatus.GetProgram(encoderIPAddress, encoderNumber, 5);
                     newConsumer.setProgram(getProgram);
@@ -1005,7 +1005,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
             logger.info("Configuring and starting the new SageTV consumer...");
 
             if (uploadID > 0 && remoteAddress != null) {
@@ -1025,7 +1025,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         // Make sure only one monitor thread is running per request.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
             if (!scanOnly) {
                 monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
             }
@@ -1083,7 +1083,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             stopProducing(false);
 
             // If we are trying to restart the stream, we don't need to stop the consumer.
-            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            if (monitorThread == null || monitorThread != Thread.currentThread()) {
                 stopConsuming(false);
             } else {
                 logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
@@ -1093,7 +1093,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             SageTVConsumer newConsumer;
 
             // If we are trying to restart the stream, we don't need to stop the consumer and producer.
-            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            if (monitorThread != null && monitorThread == Thread.currentThread()) {
                 newConsumer = sageTVConsumerRunnable;
             } else if (scanOnly) {
                 newConsumer = getNewChannelScanSageTVConsumer();
@@ -1273,7 +1273,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             subscriptionCleanup();
 
             // If we are trying to restart the stream, we don't need to stop the consumer.
-            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            if (monitorThread == null || monitorThread != Thread.currentThread()) {
                 try {
                     String programString = muxAction.SERVICE_ACTIONS.queryActionVariable("ProgramNumber");
                     int program = Integer.valueOf(programString);
@@ -1317,7 +1317,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
             // Don't start more than one monitoring thread.
-            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            if (monitorThread == null || monitorThread != Thread.currentThread()) {
                 if (!scanOnly) {
                     monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
                 }
@@ -1341,6 +1341,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
                 int timeout = 0;
                 long lastValue = 0;
+                boolean firstPass = true;
 
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
                     // Music Choice channels take forever to start and with a 4 second timeout,
@@ -1351,7 +1352,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 }
 
                 while (!Thread.currentThread().isInterrupted()) {
-                    lastValue = getRecordedBytes();
+                    lastValue = sageTVProducerRunnable.getPackets();
 
                     try {
                         Thread.sleep(timeout);
@@ -1359,7 +1360,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         return;
                     }
 
-                    if (getRecordedBytes() == lastValue && !Thread.currentThread().isInterrupted()) {
+                    long currentValue = sageTVProducerRunnable.getPackets();
+
+                    if (currentValue == lastValue && !Thread.currentThread().isInterrupted()) {
                         String filename = originalFilename;
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;
@@ -1375,7 +1378,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         logger.error("No data was streamed after {} milliseconds. Re-tuning channel...", timeout);
                         stopDevice();
                         startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
-                    } else {
+                    }
+
+                    if (getRecordedBytes() != 0 && firstPass) {
+                        firstPass = false;
                         logger.info("Streamed first {} bytes.", getRecordedBytes());
                     }
                 }
@@ -1530,7 +1536,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         // If we are trying to restart the stream, we don't need to stop the consumer and producer.
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
             super.stopDevice();
         }
 

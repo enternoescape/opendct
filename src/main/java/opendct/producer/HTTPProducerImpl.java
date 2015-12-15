@@ -37,6 +37,9 @@ public class HTTPProducerImpl implements HTTPProducer {
     private URL availableURL[] = new URL[0];
     private int selectedURL = 0;
 
+    private final Object receivedLock = new Object();
+    private volatile long bytesReceived = 0;
+
     private SageTVConsumer sageTVConsumer = null;
     private byte localBuffer[] = new byte[32768];
 
@@ -122,6 +125,12 @@ public class HTTPProducerImpl implements HTTPProducer {
         return 0;
     }
 
+    public long getPackets() {
+        synchronized (receivedLock) {
+            return bytesReceived;
+        }
+    }
+
     public void stopProducing() {
         try {
             httpURLConnection.disconnect();
@@ -182,6 +191,11 @@ public class HTTPProducerImpl implements HTTPProducer {
                 try {
                     if (inputStream != null) {
                         readBytes = inputStream.read(localBuffer, 0, localBuffer.length);
+
+                        synchronized (receivedLock) {
+                            bytesReceived += readBytes;
+                        }
+
                         if (readBytes > 0) {
                             sageTVConsumer.write(localBuffer, 0, readBytes);
                         } else {

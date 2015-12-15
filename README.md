@@ -56,7 +56,7 @@ gradlew eclipse
 
 #### Create project files for IntelliJ.
 ```
-gradlew ideal
+gradlew idea
 ```
 
 #### Compile the project and create packages for installation on Ubuntu 14.04, CentOS 7, Fedora 22 and Windows 7+.

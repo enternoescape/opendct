@@ -275,6 +275,12 @@ def sourceWin() {
     }
 
     copy {
+        from 'scripts/wix'
+        include 'FirewallRules.cmd'
+        into "${winWixSource}"
+    }
+
+    copy {
         from 'distribution'
         include 'images/OpenDCT.ico'
         include 'images/BannerTop.bmp'
@@ -364,8 +370,17 @@ task packageLinux32(dependsOn: buildLinux32) << {
         from("scripts/rpm/systemd") {
             include "opendct.service"
             into "/etc/systemd/system"
-            fileMode 0664
-            addParentDirs false
+            fileMode = 0664
+            addParentDirs = false
+            user = "root"
+            permissionGroup = "root"
+        }
+
+        from('scripts/rpm/firewalld') {
+            include 'opendct.xml'
+            into '/etc/firewalld/services'
+            fileMode = 0640
+            addParentDirs = false
             user = "root"
             permissionGroup = "root"
         }
@@ -391,6 +406,11 @@ task packageLinux32(dependsOn: buildLinux32) << {
             into 'lib'
         }
 
+        from('scripts/deb/ufw') {
+            into ''
+            fileMode 0755
+        }
+
         preInstall file('scripts/deb/preInstall.sh')
         postInstall file('scripts/deb/postInstall.sh')
         preUninstall file('scripts/deb/preUninstall.sh')
@@ -412,8 +432,17 @@ task packageLinux64(dependsOn: buildLinux64) << {
         from("scripts/rpm/systemd") {
             include "opendct.service"
             into "/usr/lib/systemd/system"
-            fileMode 0664
-            addParentDirs false
+            fileMode = 0664
+            addParentDirs = false
+            user = "root"
+            permissionGroup = "root"
+        }
+
+        from('scripts/rpm/firewalld') {
+            include 'opendct.xml'
+            into '/etc/firewalld/services'
+            fileMode = 0640
+            addParentDirs = false
             user = "root"
             permissionGroup = "root"
         }
@@ -437,6 +466,11 @@ task packageLinux64(dependsOn: buildLinux64) << {
 
         from(configurations.linux_x86_64) {
             into 'lib'
+        }
+
+        from('scripts/deb/ufw') {
+            into ''
+            fileMode 0755
         }
 
         preInstall file('scripts/deb/preInstall.sh')

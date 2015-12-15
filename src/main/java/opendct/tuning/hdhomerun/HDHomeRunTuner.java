@@ -16,6 +16,7 @@
 
 package opendct.tuning.hdhomerun;
 
+import opendct.config.Config;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStreamInfo;
 import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
@@ -44,6 +45,7 @@ public class HDHomeRunTuner {
     private String filter;
     private String target;
 
+    public final boolean ALWAYS_FORCE_LOCKKEY;
     private int currentLockkey;
 
     public HDHomeRunTuner(HDHomeRunDevice device, int tuner) {
@@ -65,6 +67,8 @@ public class HDHomeRunTuner {
         } catch (GetSetException e) {
 
         }
+
+        ALWAYS_FORCE_LOCKKEY = Config.getBoolean("hdhr.always_force_lockkey", false);
     }
 
     /**
@@ -306,7 +310,29 @@ public class HDHomeRunTuner {
         if (getLockkey().contains("none")) {
             currentLockkey = -1;
         } else {
-            throw new GetSetException("The tuner is not locked by this computer. It is locked by" +
+            if (ALWAYS_FORCE_LOCKKEY) {
+                forceClearLockkey();
+            } else {
+                throw new GetSetException("The tuner is not locked by this computer. It is locked by" +
+                        " a computer with the IP address '" + lockkey + "'.");
+            }
+        }
+    }
+
+    /**
+     * Clears the current lockkey regardless of what device has a lock on it.
+     *
+     * @throws IOException Thrown if communication with the device was incomplete or is not possible
+     *                     at this time.
+     * @throws GetSetException Thrown if the device returns an error instead of a value.
+     */
+    public void forceClearLockkey() throws IOException, GetSetException {
+        set("lockkey", "force", currentLockkey);
+
+        if (getLockkey().contains("none")) {
+            currentLockkey = -1;
+        } else {
+            throw new GetSetException("Unable to force the lock to be removed. It is locked by" +
                     " a computer with the IP address '" + lockkey + "'.");
         }
     }
@@ -318,7 +344,7 @@ public class HDHomeRunTuner {
      *                     at this time.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
-    public void forceClearLockkey() throws IOException, GetSetException {
+    public void forceKnownClearLockkey() throws IOException, GetSetException {
         if (getLockkey().contains("none")) {
             return;
         }

@@ -76,7 +76,11 @@ public class RegisterDevice {
                             // if it is not already running.
                             SageTVManager.addCaptureDevice(captureDevice);
 
-                            NetworkPowerEventManger.POWER_EVENT_LISTENER.addDependentInterface(captureDevice.getEncoderIpAddress());
+                            try {
+                                NetworkPowerEventManger.POWER_EVENT_LISTENER.addDependentInterface(captureDevice.getEncoderIpAddress());
+                            } catch (Exception e) {
+                                logger.error("Unable to register device with a valid network interface => ", e);
+                            }
 
                             successfulAdds += 1;
                         } catch (NullPointerException e) {

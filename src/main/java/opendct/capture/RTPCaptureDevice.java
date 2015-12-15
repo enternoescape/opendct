@@ -206,7 +206,7 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
                     rtpProducerThread.join(1000);
                 }
             } else {
-                logger.debug("Consumer was not running.");
+                logger.debug("Producer was not running.");
             }
         } catch (InterruptedException e) {
             logger.debug("'{}' thread was interrupted => {}",

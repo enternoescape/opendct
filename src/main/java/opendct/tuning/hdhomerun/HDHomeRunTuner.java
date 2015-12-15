@@ -241,6 +241,10 @@ public class HDHomeRunTuner {
     public String getLockkey() throws IOException, GetSetException {
         lockkey = get("lockkey");
 
+        if (lockkey == null) {
+            lockkey = "none";
+        }
+
         return lockkey;
     }
 

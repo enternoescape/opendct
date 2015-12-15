@@ -39,8 +39,8 @@ public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
     public static final int VERSION_MAJOR = 0;
-    public static final int VERSION_MINOR = 3;
-    public static final int VERSION_BUILD = 6;
+    public static final int VERSION_MINOR = 4;
+    public static final int VERSION_BUILD = 1;
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + " Build " + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();

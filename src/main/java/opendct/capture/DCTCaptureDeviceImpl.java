@@ -1627,6 +1627,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     public boolean isReady() {
         if(isHDHRTune() && hdhrLock) {
             try {
+                // If we are forcing the lock key to be overridden, this will do it.
+                hdhrTuner.clearLockkey();
+
                 int returnValue = hdhrTuner.isLockedByThisComputer();
 
                 if (returnValue == 0) {

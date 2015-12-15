@@ -1,0 +1,6 @@
+#!/bin/bash
+
+sudo ufw allow 7818/tcp
+sudo ufw allow 9000-9100/tcp
+sudo ufw allow 8271/udp
+sudo ufw allow 8300-8500/udp

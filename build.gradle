@@ -275,6 +275,12 @@ def sourceWin() {
     }
 
     copy {
+        from 'scripts/wix'
+        include 'FirewallRules.cmd'
+        into "${winWixSource}"
+    }
+
+    copy {
         from 'distribution'
         include 'images/OpenDCT.ico'
         include 'images/BannerTop.bmp'

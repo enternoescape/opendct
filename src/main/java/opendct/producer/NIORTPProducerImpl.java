@@ -42,7 +42,8 @@ public class NIORTPProducerImpl implements RTPProducer {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
 
-    private volatile int packetsReceived = 0;
+    private volatile long packetsReceived = 0;
+    private volatile long packetsLastReceived = 0;
     private int localPort = 0;
     private final int udpReceiveBufferSize =
             Config.getInteger("producer.nio.udp_receive_buffer", 1328000);
@@ -143,6 +144,10 @@ public class NIORTPProducerImpl implements RTPProducer {
                 boolean firstPacketsReceived = true;
 
                 while(!stop.get() && !Thread.currentThread().isInterrupted()) {
+                    synchronized (receiveMonitor) {
+                        packetsLastReceived = packetsReceived;
+                    }
+
                     try {
                         Thread.sleep(5000);
                     } catch (InterruptedException e) {
@@ -150,14 +155,14 @@ public class NIORTPProducerImpl implements RTPProducer {
                         break;
                     }
 
-                    int recentPackets = 0;
+                    long recentPackets;
 
                     synchronized (receiveMonitor) {
                         recentPackets = packetsReceived;
                         packetsReceived = 0;
                     }
 
-                    if (recentPackets == 0) {
+                    if (recentPackets == packetsLastReceived) {
                         logger.info("No packets received in over 5 seconds.");
 
                         if (datagramChannel != null) {
@@ -285,5 +290,11 @@ public class NIORTPProducerImpl implements RTPProducer {
         logger.info("Producer thread has stopped.");
         running.set(false);
         stop.set(false);
+    }
+
+    public long getPackets() {
+        synchronized (receiveMonitor) {
+            return packetsReceived;
+        }
     }
 }

@@ -56,6 +56,15 @@ public interface SageTVProducer extends Runnable {
     public int getPacketsLost();
 
     /**
+     * Returns the total number of packets/bytes received.
+     * <p/>
+     * This is just here to be polled to see if data is coming in.
+     *
+     * @return The number of packets received.
+     */
+    public long getPackets();
+
+    /**
      * Stop anything that an interrupt will not stop in the producer as quickly as possible.
      */
     public void stopProducing();

@@ -1376,8 +1376,19 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         }
 
                         logger.error("No data was streamed after {} milliseconds. Re-tuning channel...", timeout);
-                        stopDevice();
-                        startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+
+                        boolean tuned = false;
+
+                        while (!tuned && !Thread.currentThread().isInterrupted()) {
+                            stopDevice();
+                            tuned = startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException e) {
+                                return;
+                            }
+                        }
                     }
 
                     if (getRecordedBytes() != 0 && firstPass) {

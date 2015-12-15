@@ -1,0 +1,14 @@
+# Default
+* text=auto
+
+# Keep Linux scripts working correctly.
+*.xml text eol=cr
+*.sh text eol=cr
+*.in text eol=cr
+
+*. binary
+*.exe binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.bin binary

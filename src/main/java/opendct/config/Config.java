@@ -719,7 +719,7 @@ public class Config {
 
         Random r = new Random();
 
-        // 400 / 2 = 200 ports should be plenty.
+        // 200 / 2 = 100 ports should be plenty.
         int lowRange = Config.getInteger("rtsp.port_low", 8300);
         int highRange = Config.getInteger("rtsp.port_high", 8500);
 

@@ -45,6 +45,10 @@ public class Util {
         while (networkInteface.hasMoreElements()) {
             NetworkInterface networkInterface = networkInteface.nextElement();
 
+            if (networkInterface.isLoopback()) {
+                continue;
+            }
+
             for (InterfaceAddress address : networkInterface.getInterfaceAddresses()) {
                 byte localIPAddress[] = address.getAddress().getAddress();
 

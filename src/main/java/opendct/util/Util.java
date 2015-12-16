@@ -40,16 +40,16 @@ public class Util {
     public static InetAddress getLocalIPForRemoteIP(InetAddress remoteAddress) throws SocketException {
         byte remoteAddressBytes[] = remoteAddress.getAddress();
 
-        Enumeration<NetworkInterface> networkInteface = NetworkInterface.getNetworkInterfaces();
+        Enumeration<NetworkInterface> networkInterface = NetworkInterface.getNetworkInterfaces();
 
-        while (networkInteface.hasMoreElements()) {
-            NetworkInterface networkInterface = networkInteface.nextElement();
+        while (networkInterface.hasMoreElements()) {
+            NetworkInterface currentInterface = networkInterface.nextElement();
 
-            if (networkInterface.isLoopback()) {
+            if (currentInterface.isLoopback()) {
                 continue;
             }
 
-            for (InterfaceAddress address : networkInterface.getInterfaceAddresses()) {
+            for (InterfaceAddress address : currentInterface.getInterfaceAddresses()) {
                 byte localIPAddress[] = address.getAddress().getAddress();
 
                 // Make sure these are the same kind of IP addresses. This should only differ if one of

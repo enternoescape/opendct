@@ -45,6 +45,7 @@ public class Util {
         while (networkInterface.hasMoreElements()) {
             NetworkInterface currentInterface = networkInterface.nextElement();
 
+            // Never try to match a loopback interface. You will sometimes lose!
             if (currentInterface.isLoopback()) {
                 continue;
             }

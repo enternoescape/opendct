@@ -112,6 +112,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private HDHomeRunTuner hdhrTuner = null;
     private boolean forceExternalUnlock = Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
     private int encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
+    private String encoderPoolName = "default";
 
     private Thread monitorThread = null;
     private volatile Thread tuningThread = null;
@@ -249,8 +250,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             if (cableCardPresent) {
                 encoderDeviceType = CaptureDeviceType.DCT_INFINITV;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "dct");
             } else {
                 encoderDeviceType = CaptureDeviceType.QAM_INFINITV;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "qam");
             }
 
             encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
@@ -276,8 +279,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             if (cableCardPresent) {
                 encoderDeviceType = CaptureDeviceType.DCT_PRIME;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "dct");
             } else {
                 encoderDeviceType = CaptureDeviceType.QAM_PRIME;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "qam");
             }
 
             encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
@@ -397,6 +402,15 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     public void setMerit(int merit) {
         Config.setInteger("encoder_merit", merit);
         encoderMerit = merit;
+    }
+
+    public String encoderPoolName() {
+        return encoderPoolName;
+    }
+
+    public void setEncoderPoolName(String poolName) {
+        Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
+        encoderPoolName = poolName;
     }
 
     public boolean isExternalLocked() {

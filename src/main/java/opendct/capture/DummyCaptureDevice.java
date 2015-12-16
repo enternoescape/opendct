@@ -29,12 +29,14 @@ public class DummyCaptureDevice implements CaptureDevice {
     public final String encoderVersion;
     public String lineup;
     public int merit;
+    public String poolName;
 
-    public DummyCaptureDevice(String parentName, String encoderName, String encoderVersion, String lineup) {
+    public DummyCaptureDevice(String parentName, String encoderName, String encoderVersion, String lineup, String tunerPool) {
         this.parentName = parentName;
         this.encoderName = encoderName;
         this.encoderVersion = encoderVersion;
         this.lineup = lineup;
+        this.poolName = tunerPool;
         merit = 0;
     }
 
@@ -82,6 +84,14 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public void setMerit(int merit) {
         this.merit = merit;
+    }
+
+    public String encoderPoolName() {
+        return poolName;
+    }
+
+    public void setEncoderPoolName(String poolName) {
+        this.poolName = poolName;
     }
 
     public boolean isExternalLocked() {

@@ -261,6 +261,23 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public void setMerit(int merit);
 
     /**
+     * Returns the name of the tuner pool for this encoder.
+     *
+     * @return The name of the tuner pool.
+     */
+    public String encoderPoolName();
+
+    /**
+     * Sets the name of the tuner pool for this encoder.
+     * <p/>
+     * This value should only be changed by this method via SageTVManager. If changed any other way
+     * the results could be unpredictable.
+     *
+     * @param poolName The new name of the tuner pool.
+     */
+    public void setEncoderPoolName(String poolName);
+
+    /**
      * Is the encoder is currently locked by an external program?
      * <p/>
      * This feature is mostly for HDHomeRun devices, but it could be extended for other devices if

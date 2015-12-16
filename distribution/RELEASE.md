@@ -18,3 +18,8 @@
 > with the SageTV discovery port.
 > *Added optional support for the HDHomeRun lock to be taken even if another device has already
 > locked it.
+
+#### 0.3.9-Beta
+> *Removed loopback devices from the auto-detection of the local interface.  
+> *Added custom property on a per parent basis to manually set the IP address of the local interface
+> to use for device communication.

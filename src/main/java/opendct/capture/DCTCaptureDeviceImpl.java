@@ -395,6 +395,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     }
 
     public void setMerit(int merit) {
+        Config.setInteger("encoder_merit", merit);
         encoderMerit = merit;
     }
 

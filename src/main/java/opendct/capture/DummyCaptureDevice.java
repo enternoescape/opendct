@@ -74,6 +74,14 @@ public class DummyCaptureDevice implements CaptureDevice {
         this.locked = locked;
     }
 
+    public boolean isExternalLocked() {
+        return false;
+    }
+
+    public boolean setExternalLock(boolean locked) {
+        return true;
+    }
+
     public boolean getChannelInfoOffline(TVChannel tvChannel) {
         return false;
     }

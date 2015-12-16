@@ -111,6 +111,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private boolean autoMapTuning = Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
     private HDHomeRunTuner hdhrTuner = null;
     private boolean forceExternalUnlock = Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
+    private int encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
 
     private Thread monitorThread = null;
     private volatile Thread tuningThread = null;
@@ -387,6 +388,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 logger.debug("Capture device is now re-{}.", (locked ? "locked" : "unlocked"));
             }
         }
+    }
+
+    public int getMerit() {
+        return encoderMerit;
+    }
+
+    public void setMerit(int merit) {
+        encoderMerit = merit;
     }
 
     public boolean isExternalLocked() {

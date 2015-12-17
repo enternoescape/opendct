@@ -423,8 +423,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 return returnValue;
             } catch (IOException e) {
                 logger.error("Unable to get the locked status of HDHomeRun because it cannot be reached => ", e);
+
+                // If we can't reach it, it's as good as locked.
+                return true;
             } catch (GetSetException e) {
                 logger.error("Unable to get the locked status of HDHomeRun because the command did not work => ", e);
+
+                // The device must not support locking.
+                return false;
             }
         }
 

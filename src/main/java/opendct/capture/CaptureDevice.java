@@ -221,12 +221,12 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public String getEncoderVersion();
 
     /**
-     * Return <i>true</i> if the encoder is currently locked.
+     * Is the encoder is currently locked?
      * <p/>
      * This value should be set and cleared by SageTVManager. When this is set, the tuner is not to
      * be doing anything other than the recording that was requested by the SageTV server. This
      * should be checked before an attempt to do anything that might interrupt a recording is
-     * performed. Additional checks and synchronized locks should be a part of any method intended
+     * performed. Additional checks and synchronized locks must be a part of any method intended
      * to be used based off of the results of this value.
      *
      * @return <i>true</i> if the encoder is in progress.
@@ -244,6 +244,61 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @param locked Put the capture device into locked status.
      */
     public void setLocked(boolean locked);
+
+    /**
+     * Returns merit for this encoder. A higher merit means this device will have a higher priority
+     * over other encoders.
+     *
+     * @return Merit value.
+     */
+    public int getMerit();
+
+    /**
+     * Sets the merit for this encoder. This is used to change the merit value at runtime.
+     *
+     * @param merit New merit value.
+     */
+    public void setMerit(int merit);
+
+    /**
+     * Returns the name of the tuner pool for this encoder.
+     *
+     * @return The name of the tuner pool.
+     */
+    public String encoderPoolName();
+
+    /**
+     * Sets the name of the tuner pool for this encoder.
+     * <p/>
+     * This value should only be changed by this method via SageTVManager. If changed any other way
+     * the results could be unpredictable.
+     *
+     * @param poolName The new name of the tuner pool.
+     */
+    public void setEncoderPoolName(String poolName);
+
+    /**
+     * Is the encoder is currently locked by an external program?
+     * <p/>
+     * This feature is mostly for HDHomeRun devices, but it could be extended for other devices if
+     * we find a use.
+     *
+     * @return <i>true</i> if the encoder is locked by an external program.
+     */
+    public boolean isExternalLocked();
+
+    /**
+     * Set the tuner to be locked/unlocked.
+     * <p/>
+     * This feature is mostly for HDHomeRun devices, but it could be extended for other devices if
+     * we find a use. Forcing an unlock will be a per tuner feature that this method will only
+     * execute if the tuner itself will allow it. This possibility is the reason for a return value
+     * to indicate if the device was unlocked or not.
+     *
+     * @param locked <i>true</i> to lock the encoder via it's external "native" method.
+     * @return <i>true</i> if the device was successfully locked/unlocked.
+     */
+    public boolean setExternalLock(boolean locked);
 
     /**
      * Tunes a channel outside of any requests from the SageTV server and updates information about

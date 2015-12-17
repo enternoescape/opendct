@@ -16,6 +16,7 @@
 
 package opendct;
 
+import com.sun.beans.finder.ConstructorFinder;
 import javafx.beans.binding.ListBinding;
 import opendct.channel.ChannelManager;
 import opendct.config.CommandLine;
@@ -24,6 +25,7 @@ import opendct.config.ExitCode;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
+import opendct.sagetv.SageTVPoolManager;
 import opendct.tuning.hdhomerun.HDHomeRunManager;
 import opendct.tuning.upnp.UpnpManager;
 import org.apache.logging.log4j.LogManager;
@@ -42,10 +44,6 @@ import java.util.Map;
 public class Main {
     //TODO: [js] Fix line endings for stack traces to use \r\n to be consistent with all other log entries.
     private static final Logger logger = LogManager.getLogger(Main.class);
-
-    private static boolean enablePowerManagement = false;
-    private static boolean useUPnP = false;
-    private static boolean useHDHR = false;
 
     public static void main(String[] args) throws Exception {
         logger.info("Starting OpenDCT {}...", Config.VERSION);
@@ -116,7 +114,7 @@ public class Main {
         UpnpManager.configureUPnPLogging();
 
         // I think this should be turned on by default for now so it actually gets tested.
-        enablePowerManagement = Config.getBoolean("pm.enabled", true);
+        boolean enablePowerManagement = Config.getBoolean("pm.enabled", true);
 
         if (enablePowerManagement) {
             if (!PowerMessageManager.EVENTS.startPump()) {
@@ -193,12 +191,12 @@ public class Main {
 
         // Currently the program doesn't do much without this part, but in the future we might have
         // a capture device that doesn't use UPnP so we would want it disabled if we don't need it.
-        useUPnP = Config.getBoolean("upnp.enabled", true);
+        boolean useUPnP = Config.getBoolean("upnp.enabled", true);
 
         // If this is enabled, this will discover for HDHomeRun devices. At the moment this won't
         // actually create any devices based on discovery, but it will find devices and prevent
         // duplicates.
-        useHDHR = Config.getBoolean("hdhr.enabled", false);
+        boolean useHDHR = Config.getBoolean("hdhr.enabled", false);
 
         Config.saveConfig();
 
@@ -237,6 +235,7 @@ public class Main {
 
         if (channelUpdates) {
             ChannelManager.startUpdateChannelsThread();
+            PowerMessageManager.EVENTS.addListener(ChannelManager.POWER_EVENT_LISTENER);
         }
 
         Config.saveConfig();

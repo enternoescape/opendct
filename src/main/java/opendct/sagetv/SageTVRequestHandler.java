@@ -26,6 +26,7 @@ package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
 import opendct.config.Config;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -93,7 +94,7 @@ public class SageTVRequestHandler implements Runnable {
         logger.entry();
 
         if (captureDevice != null) {
-            setThreadName(captureDevice);
+            setThreadName(null, captureDevice.getEncoderName());
         }
 
         try {
@@ -141,28 +142,29 @@ public class SageTVRequestHandler implements Runnable {
                     // VERSION
                     //=============================================================================================
                     if (lastRequest.equals("VERSION")) {
-                        if (captureDevice != null) {
-                            //V1 & V2
-                            sendResponse(captureDevice.getEncoderVersion() + "\r\n");
-                        } else {
-                            //V3
-                            sendResponse("3.0\r\n");
-                        }
+                        // We are all version 3.0 capture devices. There doesn't appear to be any
+                        // value in distinguishing.
+                        sendResponse("3.0\r\n");
                     } else if (lastRequest.startsWith("STOP")) {
                         if (lastRequest.contains(" ")) {
                             //It appears we can have more than one tuner on the same port.
                             String deviceName = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
                             //This is not a mistake.
-                            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(deviceName, true);
+                            CaptureDevice captureDevice = getVCaptureDeviceToPoolCaptureDevice(deviceName, true);
 
                             if (captureDevice != null) {
-                                setThreadName(captureDevice);
+                                setThreadName(deviceName, captureDevice.getEncoderName());
                                 captureDevice.stopEncoding();
                                 unlockEncoder(captureDevice);
                             } else {
                                 logger.error("SageTV requested the tuner '{}' and it does not exist at this time.", deviceName);
                             }
+
+                            removeVCaptureDeviceToPoolCaptureDevice(deviceName);
+
+                            setThreadName(deviceName, deviceName);
+
                             sendResponse("OK\r\n");
                         } else {
                             if (captureDevice != null) {
@@ -183,12 +185,15 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         int uploadID = 0;
 
+                        String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else {
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
                         String channel = tokens.nextToken();
@@ -198,7 +203,7 @@ public class SageTVRequestHandler implements Runnable {
                         String encoding = tokens.nextToken();
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             preRecording();
 
@@ -243,20 +248,24 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         Integer uploadID = 0;
 
+                        String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else {
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
+
                         String channel = tokens.nextToken();
                         long bufferSize = Long.parseLong(tokens.nextToken());
                         String filename = tokens.nextToken();
                         String encoding = tokens.nextToken();
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             preRecording();
 
@@ -300,18 +309,23 @@ public class SageTVRequestHandler implements Runnable {
                         currentRecordFile = null;
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(7), "|");
                         Integer uploadID = 0;
+
+                        String vCaptureDevice = null;
                         if (tokens.countTokens() == 4) {
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else if (tokens.countTokens() == 3) {
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
+
                         String channel = tokens.nextToken();
                         long bufferSize = Long.parseLong(tokens.nextToken());
                         String filename = tokens.nextToken();
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             preRecording();
 
@@ -349,16 +363,22 @@ public class SageTVRequestHandler implements Runnable {
                         currentRecordFile = null;
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(7), "|");
                         Integer uploadID = 0;
+
+                        String vCaptureDevice = null;
                         if (tokens.countTokens() == 4) {
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else if (tokens.countTokens() == 3) {
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
+
                         String channel = tokens.nextToken();
                         String filename = tokens.nextToken();
+
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             preRecording();
 
@@ -392,13 +412,16 @@ public class SageTVRequestHandler implements Runnable {
                         // GET_START (return time in milliseconds since start of recording)
                         //=============================================================================================
                     } else if (lastRequest.startsWith("GET_START")) {
+
+                        String vCaptureDevice = null;
                         if (lastRequest.indexOf(' ') != -1) {
                             // V3 encoder
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(lastRequest.substring(lastRequest.indexOf(' ') + 1), true);
+                            vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
+                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             captureDevice.getRecordStart();
                         }
 
@@ -406,13 +429,16 @@ public class SageTVRequestHandler implements Runnable {
                         // GET_SIZE (return the size of a recording as the encoder sees it)
                         //=============================================================================================
                     } else if (lastRequest.startsWith("GET_SIZE")) {
+
+                        String vCaptureDevice = null;
                         if (lastRequest.indexOf(' ') != -1) {
                             // V3 encoder
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(lastRequest.substring(lastRequest.indexOf(' ') + 1), true);
+                            vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
+                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             sendResponse(captureDevice.getRecordedBytes() + "\r\n");
                         }
 
@@ -426,7 +452,7 @@ public class SageTVRequestHandler implements Runnable {
                         captureDevice = SageTVManager.getCaptureDeviceByFilename(getFilename);
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(null, captureDevice.getEncoderName());
 
                             sendTraceResponse(captureDevice.getRecordedBytes() + "\r\n");
                         } else {
@@ -449,15 +475,18 @@ public class SageTVRequestHandler implements Runnable {
                         //=============================================================================================
                     } else if (lastRequest.startsWith("TUNE ")) {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(5), "|");
+
+                        String vCaptureDevice = null;
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
                         String chanString = tokens.nextToken();
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             captureDevice.tuneToChannel(chanString);
                         }
@@ -469,16 +498,19 @@ public class SageTVRequestHandler implements Runnable {
                         //=============================================================================================
                     } else if (lastRequest.startsWith("AUTOTUNE ")) {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(9), "|");
+
+                        String vCaptureDevice = null;
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
                         String chanString = tokens.nextToken();
                         Boolean returnValue = false;
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             returnValue = captureDevice.autoTuneChannel(chanString);
                         }
@@ -490,16 +522,19 @@ public class SageTVRequestHandler implements Runnable {
                         //=============================================================================================
                     } else if (lastRequest.startsWith("AUTOSCAN ")) {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(9), "|");
+
+                        String vCaptureDevice = null;
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            vCaptureDevice = tokens.nextToken();
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
                         String chanString = tokens.nextToken();
                         boolean returnValue = false;
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             returnValue = captureDevice.autoScanChannel(chanString);
                         }
@@ -511,16 +546,18 @@ public class SageTVRequestHandler implements Runnable {
                         //=============================================================================================
                     } else if (lastRequest.startsWith("AUTOINFOSCAN ")) {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring("AUTOINFOSCAN ".length()), "|");
+
+                        String vCaptureDevice = tokens.nextToken();
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
-                            captureDevice = SageTVManager.getSageTVCaptureDevice(tokens.nextToken(), true);
+                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
                         String chanString = tokens.nextToken();
                         String returnValue = "ERROR";
 
                         if (captureDevice != null) {
-                            setThreadName(captureDevice);
+                            setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             returnValue = captureDevice.scanChannelInfo(chanString);
                         }
@@ -595,8 +632,25 @@ public class SageTVRequestHandler implements Runnable {
         logger.exit();
     }
 
-    private void setThreadName(CaptureDevice captureDevice) {
-        String newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + captureDevice.getEncoderName();
+    private void setThreadName(String virtualDevice, String poolDevice) {
+
+        if (virtualDevice == null && poolDevice == null) {
+            return;
+        } else if (Util.isNullOrEmpty(virtualDevice)) {
+            virtualDevice = SageTVPoolManager.getPoolCaptureDeviceToVCaptureDevice(poolDevice);
+        } else if (Util.isNullOrEmpty(poolDevice)) {
+            poolDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(virtualDevice);
+        }
+
+        String newThreadName;
+
+        if ((virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice;
+        } else if (virtualDevice == null) {
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > NoVirtualDevice";
+        } else {
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > " + virtualDevice;
+        }
 
         if (logger.isDebugEnabled()) {
             // This probably takes more time than it saves. This will only be checked in debug mode so
@@ -695,5 +749,29 @@ public class SageTVRequestHandler implements Runnable {
         } else {
             logger.debug("Replied: '{}'", response);
         }
+    }
+
+    private CaptureDevice getAndLockCaptureDevice(String deviceName, boolean wait) {
+        String pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(deviceName);
+
+        if (pCaptureDevice != null) {
+            return SageTVManager.getSageTVCaptureDevice(pCaptureDevice, wait);
+        }
+
+        return null;
+    }
+
+    private CaptureDevice getVCaptureDeviceToPoolCaptureDevice(String deviceName, boolean wait) {
+        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(deviceName);
+
+        if (pCaptureDevice != null) {
+            return SageTVManager.getSageTVCaptureDevice(pCaptureDevice, wait);
+        }
+
+        return null;
+    }
+
+    private void removeVCaptureDeviceToPoolCaptureDevice(String deviceName) {
+        SageTVPoolManager.removeCaptureDeviceMapping(deviceName);
     }
 }

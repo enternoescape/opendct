@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 
 public class Main {
-    //TODO: [js] Fix line endings for stack traces to use \r\n to be consistent with all other log entries.
     private static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) throws Exception {

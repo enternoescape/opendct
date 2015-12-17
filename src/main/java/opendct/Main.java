@@ -241,7 +241,6 @@ public class Main {
         boolean usePoolMonitor = Config.getBoolean("pool.monitor_enabled", false);
 
         if (usePoolMonitor) {
-            SageTVPoolManager.startPoolMonitorThread();
             PowerMessageManager.EVENTS.addListener(SageTVPoolManager.POWER_EVENT_LISTENER);
         }
 

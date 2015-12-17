@@ -644,12 +644,12 @@ public class SageTVRequestHandler implements Runnable {
 
         String newThreadName;
 
-        if ((poolDevice != null && poolDevice.equals(virtualDevice)) || virtualDevice == null) {
-            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice;
-        } else if (poolDevice == null) {
-            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":NoPoolDevice => " + virtualDevice;
+        if ((virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice;
+        } else if (virtualDevice == null) {
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > NoVirtualDevice";
         } else {
-            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " => " + virtualDevice;
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > " + virtualDevice;
         }
 
         if (logger.isDebugEnabled()) {

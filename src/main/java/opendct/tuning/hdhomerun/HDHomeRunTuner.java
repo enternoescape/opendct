@@ -45,7 +45,6 @@ public class HDHomeRunTuner {
     private String filter;
     private String target;
 
-    public final boolean ALWAYS_FORCE_LOCKKEY;
     private int currentLockkey;
 
     public HDHomeRunTuner(HDHomeRunDevice device, int tuner) {
@@ -67,8 +66,6 @@ public class HDHomeRunTuner {
         } catch (GetSetException e) {
 
         }
-
-        ALWAYS_FORCE_LOCKKEY = Config.getBoolean("hdhr.always_force_lockkey", false);
     }
 
     /**
@@ -310,12 +307,8 @@ public class HDHomeRunTuner {
         if (getLockkey().contains("none")) {
             currentLockkey = -1;
         } else {
-            if (ALWAYS_FORCE_LOCKKEY) {
-                forceClearLockkey();
-            } else {
-                throw new GetSetException("The tuner is not locked by this computer. It is locked by" +
-                        " a computer with the IP address '" + lockkey + "'.");
-            }
+            throw new GetSetException("The tuner is not locked by this computer. It is locked by" +
+                    " a computer with the IP address '" + lockkey + "'.");
         }
     }
 

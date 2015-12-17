@@ -102,9 +102,9 @@ public class Main {
                 } catch (Exception e) {
                     logger.error("There was an unexpected exception while trying to turn off console logging => ", e);
                 }
+            } else {
+                logger.info("Unable to turn off console due to missing configuration.");
             }
-        } else {
-            logger.info("Unable to turn off console due to missing configuration.");
         }
 
         logger.info("OpenDCT logging to the directory '{}'.", CommandLine.getLogDir());

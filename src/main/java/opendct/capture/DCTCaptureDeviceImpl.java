@@ -241,7 +241,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         try {
-            localIPAddress = Util.getLocalIPForRemoteIP(rtpStreamRemoteIP);
+            localIPAddress = Config.getInetAddress( propertiesDeviceParent + "local_ip_override", Util.getLocalIPForRemoteIP(rtpStreamRemoteIP));
         } catch (SocketException e) {
             logger.error("Unable to get the IP address for localhost => {}", e);
         }
@@ -332,7 +332,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
         // This is the only step that would actually manipulate the capture device which is
         // undesirable when we are just gathering configuration data.
-        if (!Config.isConfigOnly()) {
+        /*if (!Config.isConfigOnly()) {
             try {
                 // This make sure the capture devices is in a known state.
                 if (!isHDHRTune() && !isHttpTune()) {
@@ -370,7 +370,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             } catch (Exception e) {
                 logger.error("An unexpected exception was created while stopping the device => ", e);
             }
-        }
+        }*/
 
         logger.exit();
     }

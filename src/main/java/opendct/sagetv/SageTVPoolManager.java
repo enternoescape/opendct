@@ -223,9 +223,9 @@ public class SageTVPoolManager  {
 
                     if (logger.isDebugEnabled()) {
                         long endTime = System.currentTimeMillis();
-                        logger.debug("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
+                        logger.warn("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
                     } else {
-                        logger.debug("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
+                        logger.warn("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
                     }
 
                     return captureDevice.getEncoderName();

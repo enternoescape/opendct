@@ -410,6 +410,17 @@ public class SageTVPoolManager  {
                             CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
                             CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
 
+                            if (c1 == null && c2 == null) {
+                                logger.warn("'{}' and '{}' don't exist.", o1, o2);
+                                return 0;
+                            } else if (c1 == null) {
+                                logger.warn("'{}' doesn't exist.", o1);
+                                return -1;
+                            } else if (c2 == null) {
+                                logger.warn("'{}' doesn't exist.", o2);
+                                return 1;
+                            }
+
                             if (c1.getMerit() > c2.getMerit()) {
                                 return -1;
                             } else if (c1.getMerit() < c2.getMerit()) {

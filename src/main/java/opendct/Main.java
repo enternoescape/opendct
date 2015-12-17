@@ -238,12 +238,6 @@ public class Main {
             PowerMessageManager.EVENTS.addListener(ChannelManager.POWER_EVENT_LISTENER);
         }
 
-        boolean usePoolMonitor = Config.getBoolean("pool.monitor_enabled", false);
-
-        if (usePoolMonitor) {
-            PowerMessageManager.EVENTS.addListener(SageTVPoolManager.POWER_EVENT_LISTENER);
-        }
-
         Config.saveConfig();
         if (CommandLine.isConfigOnly()) {
             logger.info("Running in config only mode for '{}' seconds...", CommandLine.getRunSeconds());

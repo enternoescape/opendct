@@ -21,6 +21,7 @@ import opendct.capture.CaptureDeviceType;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -114,7 +115,7 @@ public class SageTVManager implements PowerEventListener {
 
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
-            if (captureDevice.encoderPoolName() != null && !captureDevice.encoderPoolName().equals("")) {
+            if (!Util.isNullOrEmpty(captureDevice.encoderPoolName())) {
                 SageTVPoolManager.addPoolCaptureDevice(captureDevice.encoderPoolName(), captureDevice.getEncoderName());
             }
 

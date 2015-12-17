@@ -243,7 +243,7 @@ public class SageTVPoolManager  {
         }
     }
 
-    public static void removePCaptureDevice(String vCaptureDevice) {
+    public static void removePoolCaptureDevice(String vCaptureDevice) {
         vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
@@ -295,7 +295,7 @@ public class SageTVPoolManager  {
      */
     public static void addPoolCaptureDevice(String poolName, String captureDevice) {
         if (Util.isNullOrEmpty(poolName)) {
-            removePCaptureDevice(captureDevice);
+            removePoolCaptureDevice(captureDevice);
             return;
         }
 

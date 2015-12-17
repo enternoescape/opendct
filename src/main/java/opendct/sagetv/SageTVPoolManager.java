@@ -38,11 +38,12 @@ public class SageTVPoolManager  {
     // This could get a little confusing, so try to keep it clear when referring to capture devices.
     // The SageTVPoolManager should be the only class that will swap things around if needed.
 
-    private static final ReentrantReadWriteLock vCaptureDeviceToPoolCaptureDeviceLock = new ReentrantReadWriteLock();
+    private static final ReentrantReadWriteLock captureDeviceMappingLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock poolNameToPoolCaptureDevicesLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock vCaptureDeviceToPoolNameLock = new ReentrantReadWriteLock();
 
     private static final HashMap<String, String> vCaptureDeviceToPoolCaptureDevice = new HashMap<>();
+    private static final HashMap<String, String> poolCaptureDeviceToVCaptureDevice = new HashMap<>();
     private static final HashMap<String, ArrayList<String>> poolNameToPoolCaptureDevices = new HashMap<>();
     private static final HashMap<String, String> vCaptureDeviceToPoolName = new HashMap<>();
 
@@ -77,7 +78,7 @@ public class SageTVPoolManager  {
 
         if (poolName == null || !usePools) {
             // This device is not associated with any pool so it will just be mapped to itself.
-            setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, vCaptureDevice);
+            setCaptureDeviceMapping(vCaptureDevice, vCaptureDevice);
 
             CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, false);
 
@@ -105,7 +106,7 @@ public class SageTVPoolManager  {
             // happened, but not strange enough to prevent us from proceeding.
             logger.warn("'{}' claims to be a part of the pool named '{}' but the pool does not exist.", vCaptureDevice, poolName);
 
-            setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, vCaptureDevice);
+            setCaptureDeviceMapping(vCaptureDevice, vCaptureDevice);
 
             CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, false);
 
@@ -157,7 +158,7 @@ public class SageTVPoolManager  {
                     captureDevice.setLocked(true);
 
                     // Map device so we can find it later by the name SageTV uses.
-                    setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, poolCaptureDevice);
+                    setCaptureDeviceMapping(vCaptureDevice, poolCaptureDevice);
 
                     if (logger.isDebugEnabled()) {
                         long endTime = System.currentTimeMillis();
@@ -187,7 +188,7 @@ public class SageTVPoolManager  {
                     if (captureDevice.setExternalLock(false)) {
 
                         // Map device so we can find it later by the name SageTV uses.
-                        setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, captureDevice.getEncoderName());
+                        setCaptureDeviceMapping(vCaptureDevice, captureDevice.getEncoderName());
 
                         captureDevice.setLocked(true);
 
@@ -208,9 +209,15 @@ public class SageTVPoolManager  {
         }
     }
 
-    private static void setVCaptureDeviceToPoolCaptureDevice(String vCaptureDevice, String pCaptureDevice) {
+    /**
+     * Sets the virtual capture device to pool capture device mapping and the reverse.
+     *
+     * @param vCaptureDevice The name of the virtual capture device.
+     * @param pCaptureDevice The name of the pool capture device.
+     */
+    private static void setCaptureDeviceMapping(String vCaptureDevice, String pCaptureDevice) {
 
-        vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
+        captureDeviceMappingLock.writeLock().lock();
 
         try {
             if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
@@ -218,19 +225,31 @@ public class SageTVPoolManager  {
             }
 
             vCaptureDeviceToPoolCaptureDevice.put(vCaptureDevice, pCaptureDevice);
+            poolCaptureDeviceToVCaptureDevice.put(pCaptureDevice, vCaptureDevice);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
+            captureDeviceMappingLock.writeLock().unlock();
         }
     }
 
-    public static void removeVCaptureDeviceToPoolCaptureDevice(String vCaptureDevice) {
-        vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
+    /**
+     * Removes the virtual capture device to pool capture device mapping and the reverse.
+     *
+     * @param vCaptureDevice The virtual capture device to remove.
+     */
+    public static void removeCaptureDeviceMapping(String vCaptureDevice) {
+        captureDeviceMappingLock.writeLock().lock();
 
         try {
             if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
                 vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
+            }
+
+            String pCaptureDevice = vCaptureDeviceToPoolCaptureDevice.get(vCaptureDevice);
+
+            if (pCaptureDevice != null) {
+                poolCaptureDeviceToVCaptureDevice.remove(pCaptureDevice);
             }
 
             vCaptureDeviceToPoolCaptureDevice.remove(vCaptureDevice);
@@ -239,7 +258,7 @@ public class SageTVPoolManager  {
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
+            captureDeviceMappingLock.writeLock().unlock();
         }
     }
 
@@ -356,7 +375,6 @@ public class SageTVPoolManager  {
             poolCaptureDevices.add(captureDevice);
 
             poolCaptureDevices.sort(new Comparator<String>() {
-                @Override
                 public int compare(String o1, String o2) {
                     CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
                     CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
@@ -397,7 +415,7 @@ public class SageTVPoolManager  {
      * effect.
      */
     public void resortMerits() {
-        vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
+        captureDeviceMappingLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
@@ -435,7 +453,7 @@ public class SageTVPoolManager  {
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
+            captureDeviceMappingLock.writeLock().unlock();
             poolNameToPoolCaptureDevicesLock.writeLock().unlock();
             vCaptureDeviceToPoolNameLock.writeLock().unlock();
         }
@@ -486,7 +504,7 @@ public class SageTVPoolManager  {
 
         String returnValue = null;
 
-        vCaptureDeviceToPoolCaptureDeviceLock.readLock().lock();
+        captureDeviceMappingLock.readLock().lock();
 
         try {
             if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
@@ -497,7 +515,7 @@ public class SageTVPoolManager  {
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            vCaptureDeviceToPoolCaptureDeviceLock.readLock().unlock();
+            captureDeviceMappingLock.readLock().unlock();
         }
 
         return returnValue;

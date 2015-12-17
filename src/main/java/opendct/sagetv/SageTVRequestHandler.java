@@ -717,6 +717,6 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     private void removeVCaptureDeviceToPoolCaptureDevice(String deviceName) {
-        SageTVPoolManager.removeVCaptureDeviceToPoolCaptureDevice(deviceName);
+        SageTVPoolManager.removeCaptureDeviceMapping(deviceName);
     }
 }

@@ -707,7 +707,7 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     private CaptureDevice getVCaptureDeviceToPoolCaptureDevice(String deviceName, boolean wait) {
-        String pCaptureDevice = SageTVPoolManager.vCaptureDeviceToPoolCaptureDevice(deviceName);
+        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(deviceName);
 
         if (pCaptureDevice != null) {
             return SageTVManager.getSageTVCaptureDevice(pCaptureDevice, wait);

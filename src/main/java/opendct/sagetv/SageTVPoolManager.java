@@ -18,18 +18,15 @@ package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
 import opendct.config.Config;
-import opendct.power.PowerEventListener;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class SageTVPoolManager implements PowerEventListener {
+public class SageTVPoolManager  {
     private static final Logger logger = LogManager.getLogger(SageTVPoolManager.class);
-    public static PowerEventListener POWER_EVENT_LISTENER = new SageTVPoolManager();
-    private AtomicBoolean suspend = new AtomicBoolean(false);
 
     // Virtual capture devices are the names of the devices as seen by SageTV.
     // Pool capture device are the name of the devices actually being used by OpenDCT.
@@ -50,9 +47,6 @@ public class SageTVPoolManager implements PowerEventListener {
     private static final HashMap<String, String> vCaptureDeviceToPoolName = new HashMap<>();
 
     private static boolean usePools = Config.getBoolean("pool.enabled", false);
-    private static final Object bestDeviceWriteLock = new Object();
-    private static Thread poolMonitor;
-    private static long poolMonitorPolling;
 
     /**
      * Finds the best available capture device in the pool, locks it and puts it on the map, then
@@ -73,19 +67,24 @@ public class SageTVPoolManager implements PowerEventListener {
             vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
         }
 
-        final String pCaptureDevice = vCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
+        final String pCaptureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
 
         if (pCaptureDevice != null) {
             return pCaptureDevice;
         }
 
-        final String poolName = vCaptureDeviceToPoolName(vCaptureDevice);
+        final String poolName = getVCaptureDeviceToPoolName(vCaptureDevice);
 
         if (poolName == null || !usePools) {
             // This device is not associated with any pool so it will just be mapped to itself.
             setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, vCaptureDevice);
 
             CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, false);
+
+            if (captureDevice == null) {
+                return null;
+            }
+
             captureDevice.setLocked(true);
 
             if (logger.isDebugEnabled()) {
@@ -98,7 +97,7 @@ public class SageTVPoolManager implements PowerEventListener {
             return vCaptureDevice;
         }
 
-        final ArrayList<String> poolCaptureDevices = poolNameToPoolCaptureDevices(poolName);
+        final ArrayList<String> poolCaptureDevices = getPoolNameToPoolCaptureDevices(poolName);
 
         if (poolCaptureDevices == null) {
             // This device is not associated with any pool so it will just be mapped to itself, but
@@ -109,6 +108,11 @@ public class SageTVPoolManager implements PowerEventListener {
             setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, vCaptureDevice);
 
             CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, false);
+
+            if (captureDevice == null) {
+                return null;
+            }
+
             captureDevice.setLocked(true);
 
             if (logger.isDebugEnabled()) {
@@ -136,6 +140,10 @@ public class SageTVPoolManager implements PowerEventListener {
                 // they are re-sorted by merit.
                 for (String poolCaptureDevice : poolCaptureDevices) {
                     CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(poolCaptureDevice, false);
+
+                    if (captureDevice == null) {
+                        continue;
+                    }
 
                     if (captureDevice.isLocked()) {
                         continue;
@@ -235,18 +243,89 @@ public class SageTVPoolManager implements PowerEventListener {
         }
     }
 
-    /**
-     * Add a capture device to a pool.
-     *
-     * @param poolName The name of the pool.
-     * @param captureDevice The name of the pool capture device.
-     */
-    public static void addPoolCaptureDevice(String poolName, String captureDevice) {
+    public static void removePCaptureDevice(String vCaptureDevice) {
         vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
         try {
+            if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
+                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
+            }
+
+            for (Map.Entry<String, ArrayList<String>> poolCaptureDeviceKVP : poolNameToPoolCaptureDevices.entrySet()) {
+
+                ArrayList<String> poolCaptureDevices = poolCaptureDeviceKVP.getValue();
+                ArrayList<String> removePoolCaptureDevices = new ArrayList<>();
+
+                for (String poolCaptureDevice : poolCaptureDevices) {
+                    if (poolCaptureDevice.equals(vCaptureDevice)) {
+                        removePoolCaptureDevices.add(poolCaptureDevice);
+                    }
+                }
+
+                for (String removeDevice : removePoolCaptureDevices) {
+                    poolCaptureDevices.remove(removeDevice);
+                }
+
+                logger.debug("The capture device '{}' has been removed from the '{}' pool.", vCaptureDevice, poolCaptureDeviceKVP.getKey());
+            }
+
+            vCaptureDeviceToPoolName.remove(vCaptureDevice);
+
+            // Don't clear the mapping since the device might still be in use and we won't be able
+            // to find it again. This will clean itself up when SageTV send a STOP command.
+            //vCaptureDeviceToPoolCaptureDevice.remove(vCaptureDevice);
+        } catch (Exception e) {
+            logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
+            poolNameToPoolCaptureDevicesLock.writeLock().unlock();
+            vCaptureDeviceToPoolNameLock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Add a capture device to a pool.
+     * <p/>
+     * If a <i>null</i> or empty string is provided for the pool name, the device will be removed.
+     *
+     * @param poolName The name of the pool.
+     * @param captureDevice The name of the pool capture device.
+     */
+    public static void addPoolCaptureDevice(String poolName, String captureDevice) {
+        if (Util.isNullOrEmpty(poolName)) {
+            removePCaptureDevice(captureDevice);
+            return;
+        }
+
+        vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
+        poolNameToPoolCaptureDevicesLock.writeLock().lock();
+        vCaptureDeviceToPoolNameLock.writeLock().lock();
+
+        try {
+            String oldPool = vCaptureDeviceToPoolName.get(captureDevice);
+
+            if (oldPool != null && oldPool.equals(poolName)) {
+                logger.debug("The capture device '{}' has already been added to the '{}' pool.", captureDevice, poolName);
+                return;
+            } else if (oldPool != null && !oldPool.equals(poolName)) {
+                ArrayList<String> poolCaptureDevices = poolNameToPoolCaptureDevices.get(poolName);
+                ArrayList<String> removePoolCaptureDevices = new ArrayList<>();
+
+                for (String poolCaptureDevice : poolCaptureDevices) {
+                    if (poolCaptureDevice.equals(captureDevice)) {
+                        removePoolCaptureDevices.add(poolCaptureDevice);
+                    }
+                }
+
+                for (String removeDevice : removePoolCaptureDevices) {
+                    poolCaptureDevices.remove(removeDevice);
+                }
+
+                logger.debug("The capture device '{}' has been moved from the '{}' pool to the '{}' pool.", captureDevice, oldPool, poolName);
+            }
+
             vCaptureDeviceToPoolName.put(captureDevice, poolName);
             ArrayList<String> poolCaptureDevices = poolNameToPoolCaptureDevices.get(poolName);
 
@@ -331,7 +410,7 @@ public class SageTVPoolManager implements PowerEventListener {
      * @return Returns the name of the pool associated with this capture device. If no pool is
      *         associated <i>null</i> will be returned.
      */
-    public static String vCaptureDeviceToPoolName(String vCaptureDevice) {
+    public static String getVCaptureDeviceToPoolName(String vCaptureDevice) {
 
         String returnValue = null;
 
@@ -362,7 +441,7 @@ public class SageTVPoolManager implements PowerEventListener {
      * @param vCaptureDevice The name of the virtual capture device as provided by SageTV.
      * @return The name of the pool capture device.
      */
-    public static String vCaptureDeviceToPoolCaptureDevice(String vCaptureDevice) {
+    public static String getVCaptureDeviceToPoolCaptureDevice(String vCaptureDevice) {
 
         String returnValue = null;
 
@@ -392,7 +471,7 @@ public class SageTVPoolManager implements PowerEventListener {
      * @param poolName The name of the pool requested.
      * @return An array of the devices associated with the pool or 'null' if the pool doesn't exist.
      */
-    public static ArrayList<String> poolNameToPoolCaptureDevices(String poolName) {
+    public static ArrayList<String> getPoolNameToPoolCaptureDevices(String poolName) {
 
         ArrayList<String> returnValue = null;
 
@@ -414,39 +493,12 @@ public class SageTVPoolManager implements PowerEventListener {
         return returnValue;
     }
 
+    /**
+     * Are pools enabled?
+     *
+     * @return
+     */
     public static boolean isUsePools() {
         return usePools;
-    }
-
-    public void onSuspendEvent() {
-        if (suspend.getAndSet(true)) {
-            logger.error("onSuspendEvent: The computer is going into suspend mode and SageTVPoolManager has possibly not recovered from the last suspend event.");
-        } else {
-            logger.debug("onSuspendEvent: Stopping services due to a suspend event.");
-        }
-    }
-
-    public void onResumeSuspendEvent() {
-        if (!suspend.getAndSet(false)) {
-            logger.error("onResumeSuspendEvent: The computer returned from suspend mode and SageTVPoolManager possibly did not shutdown since the last suspend event.");
-        } else {
-            logger.debug("onResumeSuspendEvent: Starting services due to a resume event.");
-        }
-    }
-
-    public void onResumeCriticalEvent() {
-        if (!suspend.getAndSet(false)) {
-            logger.error("onResumeCriticalEvent: The computer returned from suspend mode and SageTVPoolManager possibly did not shutdown since the last suspend event.");
-        } else {
-            logger.debug("onResumeCriticalEvent: Starting services due to a resume event.");
-        }
-    }
-
-    public void onResumeAutomaticEvent() {
-        if (!suspend.getAndSet(false)) {
-            logger.error("onResumeAutomaticEvent: The computer returned from suspend mode and SageTVPoolManager possibly did not shutdown since the last suspend event.");
-        } else {
-            logger.debug("onResumeAutomaticEvent: Starting services due to a resume event.");
-        }
     }
 }

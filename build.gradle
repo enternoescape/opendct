@@ -232,7 +232,6 @@ def changeJsw(String arch, String dependency) {
         into 'build/jsw'
     }
 
-
     StringBuilder stringBuilder = new StringBuilder("wrapper.java.classpath.1=%WRAPPER_HOME%/lib/wrapper.jar\r\n");
     def counter = 2
 

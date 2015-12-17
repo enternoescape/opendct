@@ -21,6 +21,7 @@ import opendct.capture.CaptureDeviceType;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -114,6 +115,9 @@ public class SageTVManager implements PowerEventListener {
 
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
+            if (!Util.isNullOrEmpty(captureDevice.encoderPoolName())) {
+                SageTVPoolManager.addPoolCaptureDevice(captureDevice.encoderPoolName(), captureDevice.getEncoderName());
+            }
 
             logger.info("The capture device '{}' is ready.", captureDevice.getEncoderName());
 
@@ -133,7 +137,7 @@ public class SageTVManager implements PowerEventListener {
                 SageTVDiscovery.startDiscoveryBroadcast(newPort);
             }
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             portToSocketServerLock.writeLock().unlock();
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();
@@ -158,7 +162,7 @@ public class SageTVManager implements PowerEventListener {
                 // This is blocking.
                 stvSocketServer.stopListening();
             } catch (Exception e) {
-                logger.error("An unexpected exception occurred while stopping a SageTV Socket Server => {}", e);
+                logger.error("An unexpected exception occurred while stopping a SageTV Socket Server => ", e);
             }
         }
     }
@@ -177,7 +181,7 @@ public class SageTVManager implements PowerEventListener {
                 // This is non-blocking.
                 stvSocketServer.startListening();
             } catch (Exception e) {
-                logger.error("An unexpected exception occurred while starting a SageTV Socket Server => {}", e);
+                logger.error("An unexpected exception occurred while starting a SageTV Socket Server => ", e);
 
             }
         }
@@ -219,7 +223,7 @@ public class SageTVManager implements PowerEventListener {
                 }
             }
         } catch (Exception e) {
-            logger.error("An unexpected error occurred while stopping and clearing all of the capture devices => {}", e);
+            logger.error("An unexpected error occurred while stopping and clearing all of the capture devices => ", e);
         } finally {
 
             // We need all of these exclusive locks or there could be trouble. If only there was a
@@ -268,7 +272,7 @@ public class SageTVManager implements PowerEventListener {
                 }
             }
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             portToSocketServerLock.readLock().unlock();
         }
@@ -284,8 +288,8 @@ public class SageTVManager implements PowerEventListener {
      * all required devices are accounted for or not.
      *
      * @param deviceName This is the name of the capture device.
-     * @param wait       When <i>true</i> this will wait for all of the required capture devices to be
-     *                   loaded if it is not found on the first attempt.
+     * @param wait When <i>true</i> this will wait for all of the required capture devices to be
+     *             loaded if it is not found on the first attempt.
      * @return The capture device requested or <i>null</i> if it doesn't exist.
      */
     public static CaptureDevice getSageTVCaptureDevice(String deviceName, boolean wait) {
@@ -301,7 +305,7 @@ public class SageTVManager implements PowerEventListener {
             }
             captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             captureDeviceNameToCaptureDeviceLock.readLock().unlock();
         }
@@ -324,7 +328,7 @@ public class SageTVManager implements PowerEventListener {
                     }
                     captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
                 } catch (Exception e) {
-                    logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+                    logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
                 } finally {
                     captureDeviceNameToCaptureDeviceLock.readLock().unlock();
                 }
@@ -348,7 +352,7 @@ public class SageTVManager implements PowerEventListener {
         try {
             captureDeviceToFiles.put(captureDevice, filename);
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             captureDeviceToFilesLock.writeLock().unlock();
         }
@@ -370,7 +374,7 @@ public class SageTVManager implements PowerEventListener {
         try {
             fileToUploadID.put(filename, uploadID);
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             fileToUploadIDLock.writeLock().unlock();
         }
@@ -401,7 +405,7 @@ public class SageTVManager implements PowerEventListener {
                 }
             }
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             captureDeviceToFilesLock.readLock().unlock();
         }
@@ -444,7 +448,7 @@ public class SageTVManager implements PowerEventListener {
                 }
             }
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             portToSocketServerLock.readLock().unlock();
         }
@@ -504,7 +508,7 @@ public class SageTVManager implements PowerEventListener {
                 tunerPropertiesList.addAll(Arrays.asList(tunerProperties));
             }
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => {}", e);
+            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             captureDeviceNameToCaptureDeviceLock.readLock().unlock();
         }

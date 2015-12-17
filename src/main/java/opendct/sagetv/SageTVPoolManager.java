@@ -265,7 +265,7 @@ public class SageTVPoolManager  {
     /**
      * Removes a capture device from the pool manager completely.
      *
-     * @param vCaptureDevice
+     * @param vCaptureDevice The name of the virtual capture device.
      */
     public static void removePoolCaptureDevice(String vCaptureDevice) {
         //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
@@ -508,10 +508,38 @@ public class SageTVPoolManager  {
 
         try {
             if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length());
+                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
             }
 
             returnValue = vCaptureDeviceToPoolCaptureDevice.get(vCaptureDevice);
+        } catch (Exception e) {
+            logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            captureDeviceMappingLock.readLock().unlock();
+        }
+
+        return returnValue;
+    }
+
+    /**
+     * Returns the actual virtual SageTV capture device currently associated with the pool capture
+     * device.
+     *
+     * @param pCaptureDevice The name of the pool capture device as provided by the pool.
+     * @return The name of the virtual capture device.
+     */
+    public static String getPoolCaptureDeviceToVCaptureDevice(String pCaptureDevice) {
+
+        String returnValue = null;
+
+        captureDeviceMappingLock.readLock().lock();
+
+        try {
+            if (pCaptureDevice.endsWith(" Digital TV Tuner")) {
+                pCaptureDevice = pCaptureDevice.substring(0, pCaptureDevice.length() - " Digital TV Tuner".length()).trim();
+            }
+
+            returnValue = poolCaptureDeviceToVCaptureDevice.get(pCaptureDevice);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {

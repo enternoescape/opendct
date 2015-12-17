@@ -61,10 +61,8 @@ public class HDHomeRunTuner {
         // This will attempt to set the lock key in the correct state.
         try {
             isLockedByThisComputer();
-        } catch (IOException e) {
-
-        } catch (GetSetException e) {
-
+        } catch (Exception e) {
+            // It doesn't really matter if this fails or not at this moment.
         }
     }
 
@@ -76,10 +74,10 @@ public class HDHomeRunTuner {
      *
      * @return A String array always with a length of 7. If a request was never successful for a
      * value, it will be null. The list is in the following order: status, streaminfo,
-     * channel, program, lockkey, vChannel, vstatus.
+     * channel, program, lockkey, vchannel, vstatus, channelmap, debug, filter, target.
      */
     public String[] getLastReturnValues() {
-        String returnValue[] = new String[7];
+        String returnValue[] = new String[11];
 
         returnValue[0] = status;
         returnValue[1] = streamInfo;
@@ -88,6 +86,10 @@ public class HDHomeRunTuner {
         returnValue[4] = lockkey;
         returnValue[5] = vChannel;
         returnValue[6] = vstatus;
+        returnValue[7] = channelmap;
+        returnValue[8] = debug;
+        returnValue[9] = filter;
+        returnValue[10] = target;
 
         return returnValue;
     }

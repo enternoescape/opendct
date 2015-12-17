@@ -42,6 +42,8 @@ public class PrimeChannels {
             Config.getStringArray("channels.prime.ignore_channels_csv", "");
     private static final boolean removeDuplicateChannels =
             Config.getBoolean("channels.prime.remove_duplicate_channels", true);
+    private static final boolean enableAllChannels =
+            Config.getBoolean("channels.prime.enable_all_channels", true);
 
     /**
      * This will populate the provided channel lineup with the latest channel information provided
@@ -54,6 +56,9 @@ public class PrimeChannels {
         logger.entry();
 
         boolean returnValue = true;
+        // This only applies when ClearQAM is not in use because we can't do anything with the
+        // returned information.
+        boolean enableAllChannels = PrimeChannels.enableAllChannels;
 
         HttpURLConnection httpURLConnection = null;
         HashSet<String> newChannelList = new HashSet<String>();
@@ -111,6 +116,7 @@ public class PrimeChannels {
                     if (channel != null && name != null && channelUrl != null) {
 
                         if (channel.equals("5000")) {
+                            enableAllChannels = false;
                             logger.warn("The HDHomeRun Prime appears to be in ClearQAM mode. You" +
                                     " either need to use a channel lineup from a device with a" +
                                     " CableCARD, manually map the channels with their programs" +
@@ -157,9 +163,19 @@ public class PrimeChannels {
                         if (!isDuplicate) {
                             if (oldChannel == null) {
                                 TVChannelImpl primeChannel = new TVChannelImpl(channel, name, channelUrl, ignore);
+
+                                if (enableAllChannels) {
+                                    primeChannel.setTunable(true);
+                                }
+
                                 channelLineup.addChannel(primeChannel);
                             } else {
                                 oldChannel.setUrl(channelUrl);
+
+                                if (enableAllChannels) {
+                                    oldChannel.setTunable(true);
+                                }
+
                                 channelLineup.updateChannel(oldChannel);
                             }
                         }

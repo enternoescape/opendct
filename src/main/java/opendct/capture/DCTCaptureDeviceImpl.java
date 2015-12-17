@@ -103,11 +103,16 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private boolean cableCardPresent = false;
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
+
+
     private boolean httpTune = Config.getBoolean("upnp.dct.http_tuning", true);
     private boolean hdhrTune = Config.getBoolean("upnp.dct.hdhr_tuning", true);
     private boolean autoMapReference = Config.getBoolean("upnp.qam.automap_reference_lookup", true);
     private boolean autoMapTuning = Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
     private HDHomeRunTuner hdhrTuner = null;
+    private boolean forceExternalUnlock = Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
+    private int encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
+    private String encoderPoolName = "default";
 
     private Thread monitorThread = null;
     private volatile Thread tuningThread = null;
@@ -245,8 +250,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             if (cableCardPresent) {
                 encoderDeviceType = CaptureDeviceType.DCT_INFINITV;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "dct");
             } else {
                 encoderDeviceType = CaptureDeviceType.QAM_INFINITV;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "qam");
             }
 
             encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
@@ -272,8 +279,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             if (cableCardPresent) {
                 encoderDeviceType = CaptureDeviceType.DCT_PRIME;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "dct");
             } else {
                 encoderDeviceType = CaptureDeviceType.QAM_PRIME;
+                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "qam");
             }
 
             encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
@@ -386,12 +395,71 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
     }
 
-    public void setHDHRLock(boolean locked) {
+    public int getMerit() {
+        return encoderMerit;
+    }
+
+    public void setMerit(int merit) {
+        Config.setInteger("encoder_merit", merit);
+        encoderMerit = merit;
+    }
+
+    public String encoderPoolName() {
+        return encoderPoolName;
+    }
+
+    public void setEncoderPoolName(String poolName) {
+        Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
+        encoderPoolName = poolName;
+    }
+
+    public boolean isExternalLocked() {
+        if (isHDHRTune()) {
+            try {
+                boolean returnValue = hdhrTuner.isLocked();
+
+                logger.info("HDHomeRun is currently {}.", (returnValue ? "locked" : "unlocked"));
+
+                return returnValue;
+            } catch (IOException e) {
+                logger.error("Unable to get the locked status of HDHomeRun because it cannot be reached => ", e);
+
+                // If we can't reach it, it's as good as locked.
+                return true;
+            } catch (GetSetException e) {
+                logger.error("Unable to get the locked status of HDHomeRun because the command did not work => ", e);
+
+                // The device must not support locking.
+                return false;
+            }
+        }
+
+        // For devices that don't support locking, we need to just assume they must not be
+        // locked or we will have issues tuning channels.
+        return false;
+    }
+
+    public boolean setExternalLock(boolean locked) {
+        if (isHDHRTune()) {
+            return setHDHRLock(locked);
+        }
+
+        // For devices that don't support locking, there isn't anything to change.
+        return true;
+    }
+
+    private boolean setHDHRLock(boolean locked) {
         if (isHDHRTune()) {
             if (hdhrLock && locked) {
                 try {
+                    if (forceExternalUnlock) {
+                        hdhrTuner.forceClearLockkey();
+                    }
+
                     hdhrTuner.setLockkey(localIPAddress);
                     logger.info("HDHomeRun is now locked.");
+
+                    return true;
                 } catch (IOException e) {
                     logger.error("Unable to lock HDHomeRun because it cannot be reached => ", e);
                 } catch (GetSetException e) {
@@ -399,8 +467,15 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 }
             } else if (hdhrLock) {
                 try {
-                    hdhrTuner.clearLockkey();
+                    if (forceExternalUnlock) {
+                        hdhrTuner.forceClearLockkey();
+                    } else {
+                        hdhrTuner.clearLockkey();
+                    }
+
                     logger.info("HDHomeRun is now unlocked.");
+
+                    return true;
                 } catch (IOException e) {
                     logger.error("Unable to unlock HDHomeRun because it cannot be reached => ", e);
                 } catch (GetSetException e) {
@@ -408,6 +483,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 }
             }
         }
+
+        return false;
     }
 
     /**
@@ -509,7 +586,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     public boolean getChannelInfoOffline(TVChannel tvChannel) {
         logger.entry();
 
-        if (isLocked()) {
+        if (isLocked() || isExternalLocked()) {
             return logger.exit(false);
         }
 
@@ -1625,27 +1702,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      * @return <i>true</i> if everything is ready for tuning.
      */
     public boolean isReady() {
-        if(isHDHRTune() && hdhrLock) {
-            try {
-                // If we are forcing the lock key to be overridden, this will do it.
-                hdhrTuner.clearLockkey();
-
-                int returnValue = hdhrTuner.isLockedByThisComputer();
-
-                if (returnValue == 0) {
-                    logger.error("Unable to tune channel because we" +
-                            " don't have a lock on the capture device.");
-                }
-
-                //If there is no lock or if we have the lock, we are ok.
-                return returnValue == -1 || returnValue == 1;
-            } catch (IOException e) {
-                logger.error("Unable to get the lock status of this HDHomeRun because it cannot be reached => ", e);
-            } catch (GetSetException e) {
-                logger.error("Unable to get the lock status of this HDHomeRun because the command did not work => ", e);
-            }
-        }
-
         return true;
     }
 

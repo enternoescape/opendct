@@ -194,9 +194,9 @@ public class SageTVPoolManager  {
 
                         if (logger.isDebugEnabled()) {
                             long endTime = System.currentTimeMillis();
-                            logger.debug("'{}' pool capture device selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
+                            logger.debug("'{}' pool capture device was externally locked and was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
                         } else {
-                            logger.info("'{}' pool capture device selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
+                            logger.info("'{}' pool capture device was externally locked and was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
                         }
 
                         return captureDevice.getEncoderName();
@@ -399,6 +399,8 @@ public class SageTVPoolManager  {
                     return 0;
                 }
             });
+
+            logger.info("The capture device '{}' has been added to the '{}' pool.", captureDevice, poolName);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {

@@ -243,8 +243,13 @@ public class SageTVPoolManager  {
         }
     }
 
+    /**
+     * Removes a capture device from the pool manager completely.
+     *
+     * @param vCaptureDevice
+     */
     public static void removePoolCaptureDevice(String vCaptureDevice) {
-        vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
+        //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
@@ -252,6 +257,8 @@ public class SageTVPoolManager  {
             if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
                 vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
             }
+
+            ArrayList<String> removePools = new ArrayList<>();
 
             for (Map.Entry<String, ArrayList<String>> poolCaptureDeviceKVP : poolNameToPoolCaptureDevices.entrySet()) {
 
@@ -268,18 +275,27 @@ public class SageTVPoolManager  {
                     poolCaptureDevices.remove(removeDevice);
                 }
 
-                logger.debug("The capture device '{}' has been removed from the '{}' pool.", vCaptureDevice, poolCaptureDeviceKVP.getKey());
+                if (poolCaptureDevices.size() == 0) {
+                    removePools.add(poolCaptureDeviceKVP.getKey());
+                }
+
+                logger.info("The capture device '{}' has been removed from the '{}' pool.", vCaptureDevice, poolCaptureDeviceKVP.getKey());
+            }
+
+            for (String removePool : removePools) {
+                logger.info("Removed the pool '{}' since it no longer contains any capture devices.", removePool);
+                poolNameToPoolCaptureDevices.remove(removePool);
             }
 
             vCaptureDeviceToPoolName.remove(vCaptureDevice);
 
             // Don't clear the mapping since the device might still be in use and we won't be able
-            // to find it again. This will clean itself up when SageTV send a STOP command.
+            // to find it again. This will clean itself up when SageTV sends a STOP command.
             //vCaptureDeviceToPoolCaptureDevice.remove(vCaptureDevice);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
+            //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
             poolNameToPoolCaptureDevicesLock.writeLock().unlock();
             vCaptureDeviceToPoolNameLock.writeLock().unlock();
         }
@@ -289,6 +305,8 @@ public class SageTVPoolManager  {
      * Add a capture device to a pool.
      * <p/>
      * If a <i>null</i> or empty string is provided for the pool name, the device will be removed.
+     * If the device already exists in a pool, and the pool provided is different, it will be moved
+     * to the new pool.
      *
      * @param poolName The name of the pool.
      * @param captureDevice The name of the pool capture device.
@@ -299,7 +317,7 @@ public class SageTVPoolManager  {
             return;
         }
 
-        vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
+        //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
@@ -323,7 +341,7 @@ public class SageTVPoolManager  {
                     poolCaptureDevices.remove(removeDevice);
                 }
 
-                logger.debug("The capture device '{}' has been moved from the '{}' pool to the '{}' pool.", captureDevice, oldPool, poolName);
+                logger.info("The capture device '{}' has been moved from the '{}' pool to the '{}' pool.", captureDevice, oldPool, poolName);
             }
 
             vCaptureDeviceToPoolName.put(captureDevice, poolName);
@@ -332,6 +350,7 @@ public class SageTVPoolManager  {
             if (poolCaptureDevices == null) {
                 poolCaptureDevices = new ArrayList<>();
                 poolNameToPoolCaptureDevices.put(poolName, poolCaptureDevices);
+                logger.info("The pool '{}' has been created.", poolName);
             }
 
             poolCaptureDevices.add(captureDevice);
@@ -341,6 +360,17 @@ public class SageTVPoolManager  {
                 public int compare(String o1, String o2) {
                     CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
                     CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
+
+                    if (c1 == null && c2 == null) {
+                        logger.warn("'{}' and '{}' don't exist.", o1, o2);
+                        return 0;
+                    } else if (c1 == null) {
+                        logger.warn("'{}' doesn't exist.", o1);
+                        return -1;
+                    } else if (c2 == null) {
+                        logger.warn("'{}' doesn't exist.", o2);
+                        return 1;
+                    }
 
                     if (c1.getMerit() > c2.getMerit()) {
                         return -1;
@@ -354,7 +384,7 @@ public class SageTVPoolManager  {
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
+            //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
             poolNameToPoolCaptureDevicesLock.writeLock().unlock();
             vCaptureDeviceToPoolNameLock.writeLock().unlock();
         }

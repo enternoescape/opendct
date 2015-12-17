@@ -49,7 +49,6 @@ public class SageTVPoolManager implements PowerEventListener {
     private static final HashMap<String, ArrayList<String>> poolNameToPoolCaptureDevices = new HashMap<>();
     private static final HashMap<String, String> vCaptureDeviceToPoolName = new HashMap<>();
 
-
     private static boolean usePools = Config.getBoolean("pool.enabled", false);
     private static final Object bestDeviceWriteLock = new Object();
     private static Thread poolMonitor;
@@ -59,7 +58,9 @@ public class SageTVPoolManager implements PowerEventListener {
      * Finds the best available capture device in the pool, locks it and puts it on the map, then
      * returns the pool capture device.
      * <p/>
-     * If the capture device is not in a pool, it is mapped directly to itself.
+     * If the capture device is not in a pool, it is mapped directly to itself. If the mapping has
+     * not been removed for the capture device (usually done on STOP), the last mapping will be
+     * returned.
      *
      * @param vCaptureDevice The name of the virtual capture device.
      * @return The name of the pool capture device or <i>null</i> if no device is available.
@@ -69,7 +70,13 @@ public class SageTVPoolManager implements PowerEventListener {
         long startTime = System.currentTimeMillis();
 
         if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-            vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length());
+            vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
+        }
+
+        final String pCaptureDevice = vCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
+
+        if (pCaptureDevice != null) {
+            return pCaptureDevice;
         }
 
         final String poolName = vCaptureDeviceToPoolName(vCaptureDevice);
@@ -78,7 +85,7 @@ public class SageTVPoolManager implements PowerEventListener {
             // This device is not associated with any pool so it will just be mapped to itself.
             setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, vCaptureDevice);
 
-            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, true);
+            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, false);
             captureDevice.setLocked(true);
 
             if (logger.isDebugEnabled()) {
@@ -101,7 +108,7 @@ public class SageTVPoolManager implements PowerEventListener {
 
             setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, vCaptureDevice);
 
-            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, true);
+            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(vCaptureDevice, false);
             captureDevice.setLocked(true);
 
             if (logger.isDebugEnabled()) {
@@ -128,7 +135,7 @@ public class SageTVPoolManager implements PowerEventListener {
                 // These are already in their order of merit since every time a new device is added,
                 // they are re-sorted by merit.
                 for (String poolCaptureDevice : poolCaptureDevices) {
-                    CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(poolCaptureDevice, true);
+                    CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(poolCaptureDevice, false);
 
                     if (captureDevice.isLocked()) {
                         continue;
@@ -139,10 +146,10 @@ public class SageTVPoolManager implements PowerEventListener {
                         continue;
                     }
 
+                    captureDevice.setLocked(true);
+
                     // Map device so we can find it later by the name SageTV uses.
                     setVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, poolCaptureDevice);
-
-                    captureDevice.setLocked(true);
 
                     if (logger.isDebugEnabled()) {
                         long endTime = System.currentTimeMillis();
@@ -199,10 +206,28 @@ public class SageTVPoolManager implements PowerEventListener {
 
         try {
             if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length());
+                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
             }
 
             vCaptureDeviceToPoolCaptureDevice.put(vCaptureDevice, pCaptureDevice);
+        } catch (Exception e) {
+            logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
+        }
+    }
+
+    public static void removeVCaptureDeviceToPoolCaptureDevice(String vCaptureDevice) {
+        vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
+
+        try {
+            if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
+                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
+            }
+
+            vCaptureDeviceToPoolCaptureDevice.remove(vCaptureDevice);
+
+            logger.info("Cleared mapping for virtual capture device '{}'.", vCaptureDevice);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
@@ -222,7 +247,7 @@ public class SageTVPoolManager implements PowerEventListener {
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
         try {
-            vCaptureDeviceToPoolCaptureDevice.put(captureDevice, poolName);
+            vCaptureDeviceToPoolName.put(captureDevice, poolName);
             ArrayList<String> poolCaptureDevices = poolNameToPoolCaptureDevices.get(poolName);
 
             if (poolCaptureDevices == null) {
@@ -235,8 +260,8 @@ public class SageTVPoolManager implements PowerEventListener {
             poolCaptureDevices.sort(new Comparator<String>() {
                 @Override
                 public int compare(String o1, String o2) {
-                    CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, true);
-                    CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, true);
+                    CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
+                    CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
 
                     if (c1.getMerit() > c2.getMerit()) {
                         return -1;
@@ -273,8 +298,8 @@ public class SageTVPoolManager implements PowerEventListener {
                     poolKeyValue.getValue().sort(new Comparator<String>() {
                         @Override
                         public int compare(String o1, String o2) {
-                            CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, true);
-                            CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, true);
+                            CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
+                            CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
 
                             if (c1.getMerit() > c2.getMerit()) {
                                 return -1;
@@ -314,7 +339,7 @@ public class SageTVPoolManager implements PowerEventListener {
 
         try {
             if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length());
+                vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
             }
 
             returnValue = vCaptureDeviceToPoolName.get(vCaptureDevice);
@@ -387,6 +412,10 @@ public class SageTVPoolManager implements PowerEventListener {
         }
 
         return returnValue;
+    }
+
+    public static boolean isUsePools() {
+        return usePools;
     }
 
     public void onSuspendEvent() {

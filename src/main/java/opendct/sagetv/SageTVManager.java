@@ -114,6 +114,9 @@ public class SageTVManager implements PowerEventListener {
 
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
+            if (captureDevice.encoderPoolName() != null && !captureDevice.encoderPoolName().equals("")) {
+                SageTVPoolManager.addPoolCaptureDevice(captureDevice.encoderPoolName(), captureDevice.getEncoderName());
+            }
 
             logger.info("The capture device '{}' is ready.", captureDevice.getEncoderName());
 
@@ -284,8 +287,8 @@ public class SageTVManager implements PowerEventListener {
      * all required devices are accounted for or not.
      *
      * @param deviceName This is the name of the capture device.
-     * @param wait       When <i>true</i> this will wait for all of the required capture devices to be
-     *                   loaded if it is not found on the first attempt.
+     * @param wait When <i>true</i> this will wait for all of the required capture devices to be
+     *             loaded if it is not found on the first attempt.
      * @return The capture device requested or <i>null</i> if it doesn't exist.
      */
     public static CaptureDevice getSageTVCaptureDevice(String deviceName, boolean wait) {

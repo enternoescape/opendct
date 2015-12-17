@@ -202,6 +202,34 @@ public class SageTVPoolManager  {
                         return captureDevice.getEncoderName();
                     }
                 }
+
+                // If we can't find a device that's online, let's try to tune the first internally
+                // unlocked tuner.
+                // If we can't find a device that's not locked, then we need to use one that is.
+                for (CaptureDevice captureDevice : externalLocked) {
+                    if (captureDevice.isLocked()) {
+                        // If suddenly a capture device has become locked and all of the other
+                        // devices are externally locked, go back to see if anything else is now
+                        // unlocked and doesn't have an external lock.
+                        tryAgain = true;
+                        continue;
+                    }
+
+                    captureDevice.setExternalLock(false);
+
+                    setCaptureDeviceMapping(vCaptureDevice, captureDevice.getEncoderName());
+
+                    captureDevice.setLocked(true);
+
+                    if (logger.isDebugEnabled()) {
+                        long endTime = System.currentTimeMillis();
+                        logger.debug("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
+                    } else {
+                        logger.debug("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
+                    }
+
+                    return captureDevice.getEncoderName();
+                }
             }
 
             logger.error("Unable to locate a free pool capture device for '{}'.");

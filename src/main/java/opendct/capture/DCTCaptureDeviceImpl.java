@@ -580,7 +580,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     public boolean getChannelInfoOffline(TVChannel tvChannel) {
         logger.entry();
 
-        if (isLocked()) {
+        if (isLocked() || isExternalLocked()) {
             return logger.exit(false);
         }
 

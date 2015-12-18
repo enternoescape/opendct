@@ -16,17 +16,26 @@
 
 package opendct.tuning.upnp.config;
 
+import opendct.config.Config;
 import org.fourthline.cling.DefaultUpnpServiceConfiguration;
 import org.fourthline.cling.transport.impl.CDATAGENAEventProcessorImpl;
+import org.fourthline.cling.transport.impl.NetworkAddressFactoryImpl;
 import org.fourthline.cling.transport.impl.SOAPActionProcessorImpl;
 import org.fourthline.cling.transport.spi.GENAEventProcessor;
+import org.fourthline.cling.transport.spi.NetworkAddressFactory;
 import org.fourthline.cling.transport.spi.SOAPActionProcessor;
+
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Iterator;
 
 public class DCTDefaultUpnpServiceConfiguration {
 
     // Extending this class will add a dependency for javax.enterprise.inject.Alternative
     // so this is the easier alternative.
     public static DefaultUpnpServiceConfiguration getDCTDefault() {
+        final int listenPort = Config.getInteger("upnp.service.configuration.listen_port", 8501);
+
         return new DefaultUpnpServiceConfiguration() {
 
             @Override
@@ -39,6 +48,22 @@ public class DCTDefaultUpnpServiceConfiguration {
             public GENAEventProcessor getGenaEventProcessor() {
                 // Modified to return the CDATA returned in the XML of DCT subscription events.
                 return new CDATAGENAEventProcessorImpl();
+            }
+
+            @Override
+            public NetworkAddressFactory createNetworkAddressFactory() {
+
+                new NetworkAddressFactoryImpl(0);
+
+                return new NetworkAddressFactoryImpl(listenPort) {
+                    @Override
+                    public Iterator<NetworkInterface> getNetworkInterfaces() {
+                        Iterator<NetworkInterface> interfaces = super.getNetworkInterfaces();
+
+                        return interfaces;
+                    }
+                };
+
             }
         };
     }

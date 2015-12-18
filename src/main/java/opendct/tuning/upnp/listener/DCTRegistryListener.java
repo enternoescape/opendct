@@ -18,17 +18,20 @@ package opendct.tuning.upnp.listener;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.fourthline.cling.model.NetworkAddress;
 import org.fourthline.cling.model.meta.LocalDevice;
 import org.fourthline.cling.model.meta.RemoteDevice;
 import org.fourthline.cling.registry.Registry;
 import org.fourthline.cling.registry.RegistryListener;
+
+import java.util.HashSet;
 
 public class DCTRegistryListener implements RegistryListener {
     private static final Logger logger = LogManager.getLogger(DCTRegistryListener.class);
 
     public void remoteDeviceDiscoveryStarted(Registry registry, RemoteDevice device) {
         logger.entry();
-        logger.trace("UPnP remote device '{}' discovered.", device.getDisplayString());
+        logger.trace("UPnP remote device '{}' SSDP datagram received and parsed.", device.getDisplayString());
         logger.exit();
     }
 
@@ -40,12 +43,9 @@ public class DCTRegistryListener implements RegistryListener {
 
     public void remoteDeviceAdded(Registry registry, RemoteDevice device) {
         logger.entry();
-        logger.debug("UPnP remote device '{}' is now available.", device.getDisplayString());
+        logger.info("UPnP remote device '{}' discovered.", device.getDisplayString());
 
-        // The event should trigger a method that will attempt to add this device to the
-        // tuners collection. If the encoder already exists, it do nothing since that is
-        // the safest thing to do.
-
+        // The event triggers a method that will attempt to add this device to the capture devices.
         RegisterDevice.addRemoteDevice(registry, device);
 
         logger.exit();

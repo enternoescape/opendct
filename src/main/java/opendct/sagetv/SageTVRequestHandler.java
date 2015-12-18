@@ -651,8 +651,8 @@ public class SageTVRequestHandler implements Runnable {
         }
 
         if (logger.isDebugEnabled()) {
-            // This probably takes more time than it saves. This will only be checked in debug mode so
-            // we don't keep seeing that the thread name changed when it didn't actually change.
+            // This probably takes more time than it saves. This will only be checked in debug mode
+            // so we don't keep seeing that the thread name changed when it didn't actually change.
             if (newThreadName.equals(Thread.currentThread().getName())) {
                 return;
             }
@@ -716,7 +716,7 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     /**
-     * Prints the response out to the log and then sends the response to SageTV.\
+     * Prints the response out to the log and then sends the response to SageTV.
      * <p/>
      * This will only log if we are logging trace specifically for this class.
      *
@@ -733,7 +733,7 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     /**
-     * Prints the response out to the log and then sends the response to SageTV.\
+     * Prints the response out to the log and then sends the response to SageTV.
      *
      * @param response This is the string to respond to SageTV.
      * @throws IOException Thrown if there is an I/O error.

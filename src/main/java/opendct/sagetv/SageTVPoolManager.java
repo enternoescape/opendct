@@ -617,7 +617,7 @@ public class SageTVPoolManager  {
     /**
      * Are pools enabled?
      *
-     * @return
+     * @return <i>true</i> if pools are enabled.
      */
     public static boolean isUsePools() {
         return usePools;

@@ -58,6 +58,8 @@ import java.net.SocketException;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDevice {
     private final Logger logger = LogManager.getLogger(DCTCaptureDeviceImpl.class);
@@ -116,7 +118,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
     private Thread monitorThread = null;
     private volatile Thread tuningThread = null;
-    private volatile boolean locked = false;
+    private AtomicBoolean locked = new AtomicBoolean(false);
     private final Object exclusiveLock = new Object();
 
     // When this is enabled, the DCT is put into a state that is only waiting for a channel to be
@@ -330,62 +332,24 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 offlineScan,
                 rtpLocalPort);
 
-        // This is the only step that would actually manipulate the capture device which is
-        // undesirable when we are just gathering configuration data.
-        /*if (!Config.isConfigOnly()) {
-            try {
-                // This make sure the capture devices is in a known state.
-                if (!isHDHRTune() && !isHttpTune()) {
-                    logger.debug("Checking for current connections...");
-                    String connectionID = connectionManagerSubscription.
-                            getConnectionManagerCurrentConnectionIDs();
-
-                    if (!connectionID.equals("") ||
-                            (encoderDeviceType == CaptureDeviceType.DCT_PRIME &&
-                                    !connectionID.equals("0"))) {
-
-                        GetMediaInfo getMediaInfo =
-                                avTransportAction.getGetMediaInfo(connectionManagerAVTransportID);
-
-                        if (getMediaInfo == null || getMediaInfo.getCurrentURI().equals("")) {
-                            logger.error("Error getting the value of AVTransport/{}/GetMediaInfo/CurrentURI.",
-                                    connectionManagerAVTransportID);
-                        } else {
-                            String uri = getMediaInfo.getCurrentURI();
-                            rtpStreamRemoteURI = URI.create(uri);
-
-                            logger.info("Closing open sessions...");
-                            avTransportAction.setStop(connectionManagerAVTransportID);
-                            connectionManagerAction.setConnectionComplete(connectionID);
-                            rtspClient.stopRTPStream(rtpStreamRemoteURI);
-                        }
-                    } else {
-                        logger.debug("No connections are available to terminate.");
-                    }
-
-                    stopEncoding();
-                } else {
-                    stopDevice();
-                }
-            } catch (Exception e) {
-                logger.error("An unexpected exception was created while stopping the device => ", e);
-            }
-        }*/
-
         logger.exit();
     }
 
     public boolean isLocked() {
-        return locked;
+        return locked.get();
     }
 
-    public void setLocked(boolean locked) {
-        boolean messageLock = this.locked;
+    public boolean setLocked(boolean locked) {
+        boolean messageLock = this.locked.get();
 
-        this.locked = locked;
+        // This means the lock was already set
+        if (this.locked.getAndSet(locked) == locked) {
+            logger.info("Capture device is was already {}.", (locked ? "locked" : "unlocked"));
+            return false;
+        }
 
         synchronized (exclusiveLock) {
-            this.locked = locked;
+            this.locked.set(locked);
 
             if (messageLock != locked) {
                 logger.info("Capture device is now {}.", (locked ? "locked" : "unlocked"));
@@ -393,6 +357,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 logger.debug("Capture device is now re-{}.", (locked ? "locked" : "unlocked"));
             }
         }
+
+        return true;
     }
 
     public int getMerit() {

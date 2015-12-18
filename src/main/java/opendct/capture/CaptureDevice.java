@@ -242,8 +242,11 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * be used by SageTVRequestHandler. No other methods should ever use this.
      *
      * @param locked Put the capture device into locked status.
+     * @return <i>true</i> if successfully locked. This allows for multiple tuning requests to try
+     *         to lock the same device at the same time, but only one will be successful and the
+     *         others will need to try the next device.
      */
-    public void setLocked(boolean locked);
+    public boolean setLocked(boolean locked);
 
     /**
      * Returns merit for this encoder. A higher merit means this device will have a higher priority

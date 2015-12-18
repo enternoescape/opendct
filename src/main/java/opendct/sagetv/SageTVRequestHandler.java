@@ -751,8 +751,12 @@ public class SageTVRequestHandler implements Runnable {
         }
     }
 
-    private CaptureDevice getAndLockCaptureDevice(String deviceName, boolean wait) {
-        String pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(deviceName);
+    private CaptureDevice getAndLockCaptureDevice(String vCaptureDevice, boolean wait) {
+        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
+
+        if (pCaptureDevice == null) {
+            pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(vCaptureDevice);
+        }
 
         if (pCaptureDevice != null) {
             return SageTVManager.getSageTVCaptureDevice(pCaptureDevice, wait);
@@ -761,8 +765,8 @@ public class SageTVRequestHandler implements Runnable {
         return null;
     }
 
-    private CaptureDevice getVCaptureDeviceToPoolCaptureDevice(String deviceName, boolean wait) {
-        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(deviceName);
+    private CaptureDevice getVCaptureDeviceToPoolCaptureDevice(String vCaptureDevice, boolean wait) {
+        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
 
         if (pCaptureDevice != null) {
             return SageTVManager.getSageTVCaptureDevice(pCaptureDevice, wait);

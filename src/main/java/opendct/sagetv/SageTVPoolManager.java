@@ -406,7 +406,8 @@ public class SageTVPoolManager  {
 
             poolCaptureDevices.add(captureDevice);
 
-            poolCaptureDevices.sort(new Comparator<String>() {
+            Collections.sort(poolCaptureDevices, new Comparator<String>() {
+                @Override
                 public int compare(String o1, String o2) {
                     CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
                     CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
@@ -456,7 +457,8 @@ public class SageTVPoolManager  {
         try {
             for (Map.Entry<String, ArrayList<String>> poolKeyValue: poolNameToPoolCaptureDevices.entrySet()) {
                 if (poolKeyValue.getValue() != null) {
-                    poolKeyValue.getValue().sort(new Comparator<String>() {
+
+                    Collections.sort(poolKeyValue.getValue(), new Comparator<String>() {
                         @Override
                         public int compare(String o1, String o2) {
                             CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);

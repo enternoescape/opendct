@@ -769,6 +769,11 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     private CaptureDevice getVCaptureDeviceToPoolCaptureDevice(String vCaptureDevice, boolean wait) {
+
+        if (!SageTVPoolManager.isUsePools()) {
+            return SageTVManager.getSageTVCaptureDevice(vCaptureDevice, wait);
+        }
+
         String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
 
         if (pCaptureDevice != null) {
@@ -779,6 +784,8 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     private void removeVCaptureDeviceToPoolCaptureDevice(String deviceName) {
-        SageTVPoolManager.removeCaptureDeviceMapping(deviceName);
+        if (SageTVPoolManager.isUsePools()) {
+            SageTVPoolManager.removeCaptureDeviceMapping(deviceName);
+        }
     }
 }

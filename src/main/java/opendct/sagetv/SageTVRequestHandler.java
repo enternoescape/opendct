@@ -634,10 +634,14 @@ public class SageTVRequestHandler implements Runnable {
 
         if (virtualDevice == null && poolDevice == null) {
             return;
-        } else if (Util.isNullOrEmpty(virtualDevice)) {
-            virtualDevice = SageTVPoolManager.getPoolCaptureDeviceToVCaptureDevice(poolDevice);
-        } else if (Util.isNullOrEmpty(poolDevice)) {
-            poolDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(virtualDevice);
+        }
+
+        if (SageTVPoolManager.isUsePools()) {
+            if (Util.isNullOrEmpty(virtualDevice)) {
+                virtualDevice = SageTVPoolManager.getPoolCaptureDeviceToVCaptureDevice(poolDevice);
+            } else if (Util.isNullOrEmpty(poolDevice)) {
+                poolDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(virtualDevice);
+            }
         }
 
         String newThreadName;

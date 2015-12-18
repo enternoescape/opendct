@@ -682,38 +682,13 @@ public class Config {
         return logger.exit(returnValue);
     }
 
-
-    /*// This allows us to change out the packet processing interface when consuming content.
-    // Since some of these will support more formats than others it is up to the end user
-    // to pick what they want to use.
-    public static TSPacketProcessor getTSPacketProcessor(String key, String tsPacketProcessor) {
-        logger.entry(key, tsPacketProcessor);
-
-        TSPacketProcessor returnValue;
-        String clientName = properties.getProperties(key, tsPacketProcessor);
-
-        if (clientName.endsWith("JavaTSPacketProcessorImpl")) {
-            returnValue = new JavaTSPacketProcessorImpl();
-        } else {
-            try {
-                returnValue = (TSPacketProcessor)Class.forName(clientName).newInstance();
-            } catch (Exception e) {
-                logger.error("The property '{}' with the value '{}' does not refer to valid TSPacketProcessor implementation. Using default implementation '{}' => {}", key, clientName, tsPacketProcessor, e);
-                try {
-                    returnValue = (TSPacketProcessor)Class.forName(tsPacketProcessor).newInstance();
-                } catch (Exception e1) {
-                    logger.error("The default property '{}' with the value '{}' does not refer to valid TSPacketProcessor implementation. Returning built in default 'JavaTSPacketProcessorImpl' => {}", key, clientName, tsPacketProcessor, e1);
-                    returnValue = new JavaTSPacketProcessorImpl();
-                }
-            }
-        }
-
-        properties.setProperty(key, returnValue.getClass().getName());
-
-        return logger.exit(returnValue);
-    }*/
-
-    // Take a number...
+    /**
+     * Get a free RTSP port from the pool.
+     *
+     * @param encoderName The name of the encoder requesting the port. This could be used later to
+     *                    determine what encoder has what reservation.
+     * @return The port assigned to this encoder.
+     */
     public static int getFreeRTSPPort(String encoderName) {
         logger.entry();
 
@@ -752,11 +727,45 @@ public class Config {
         return logger.exit(returnPort);
     }
 
-    // ...give back a number.
+    /**
+     * Returns a reserved RTSP port back to the pool.
+     *
+     * @param returnPort The port number to return.
+     */
     public static void returnFreeRTSPPort(int returnPort) {
         synchronized (getRTSPPort) {
             rtspPortMap.remove(returnPort);
         }
+    }
+
+    /**
+     * Returns all referenced socket server ports in properties.
+     *
+     * @return An array of all socket server ports.
+     */
+    public static int[] getAllSocketServerPort() {
+        HashSet<Integer> sockets = new HashSet<>();
+
+        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+            String key = (String)entry.getKey();
+            String value = (String)entry.getValue();
+
+            if (key.startsWith("sagetv.device.") && key.endsWith(".encoder_listen_port")) {
+                try {
+                    sockets.add(Integer.valueOf(value));
+                } catch (NumberFormatException e) {
+                    logger.error("The property '{}' with the value '{}' does not contain a valid integer.", key, value);
+                }
+            }
+        }
+
+        int returnSockets[] = new int[sockets.size()];
+        int counter = 0;
+        for (Integer socket : sockets) {
+            returnSockets[counter++] = socket;
+        }
+
+        return returnSockets;
     }
 
     /**

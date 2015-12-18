@@ -185,6 +185,7 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         int uploadID = 0;
 
+                        preRecording();
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
@@ -205,7 +206,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             if (captureDevice.isReady()) {
                                 boolean success = true;
@@ -248,6 +248,7 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         Integer uploadID = 0;
 
+                        preRecording();
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
@@ -267,7 +268,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             if (captureDevice.isReady()) {
                                 boolean success;
@@ -327,7 +327,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             boolean success;
 
@@ -380,7 +379,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             boolean success;
                             if (captureDevice.canEncodeUploadID() && uploadID != 0) {
@@ -609,7 +607,7 @@ public class SageTVRequestHandler implements Runnable {
                     in.close();
                 }
             } catch (Exception e) {
-                logger.trace("Failed to close BufferedReader => {}", e);
+                logger.trace("Failed to close BufferedReader => ", e);
             }
 
             try {
@@ -617,7 +615,7 @@ public class SageTVRequestHandler implements Runnable {
                     out.close();
                 }
             } catch (Exception e) {
-                logger.trace("Failed to close OutputStreamWriter => {}", e);
+                logger.trace("Failed to close OutputStreamWriter => ", e);
             }
 
             try {
@@ -625,7 +623,7 @@ public class SageTVRequestHandler implements Runnable {
                     socket.close();
                 }
             } catch (Exception e) {
-                logger.trace("Failed to close socket => {}", e);
+                logger.trace("Failed to close socket => ", e);
             }
         }
 
@@ -636,15 +634,19 @@ public class SageTVRequestHandler implements Runnable {
 
         if (virtualDevice == null && poolDevice == null) {
             return;
-        } else if (Util.isNullOrEmpty(virtualDevice)) {
-            virtualDevice = SageTVPoolManager.getPoolCaptureDeviceToVCaptureDevice(poolDevice);
-        } else if (Util.isNullOrEmpty(poolDevice)) {
-            poolDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(virtualDevice);
+        }
+
+        if (SageTVPoolManager.isUsePools()) {
+            if (Util.isNullOrEmpty(virtualDevice)) {
+                virtualDevice = SageTVPoolManager.getPoolCaptureDeviceToVCaptureDevice(poolDevice);
+            } else if (Util.isNullOrEmpty(poolDevice)) {
+                poolDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(virtualDevice);
+            }
         }
 
         String newThreadName;
 
-        if ((virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
+        if (!SageTVPoolManager.isUsePools() || (virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice;
         } else if (virtualDevice == null) {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > NoVirtualDevice";
@@ -653,8 +655,8 @@ public class SageTVRequestHandler implements Runnable {
         }
 
         if (logger.isDebugEnabled()) {
-            // This probably takes more time than it saves. This will only be checked in debug mode so
-            // we don't keep seeing that the thread name changed when it didn't actually change.
+            // This probably takes more time than it saves. This will only be checked in debug mode
+            // so we don't keep seeing that the thread name changed when it didn't actually change.
             if (newThreadName.equals(Thread.currentThread().getName())) {
                 return;
             }
@@ -718,7 +720,7 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     /**
-     * Prints the response out to the log and then sends the response to SageTV.\
+     * Prints the response out to the log and then sends the response to SageTV.
      * <p/>
      * This will only log if we are logging trace specifically for this class.
      *
@@ -735,7 +737,7 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     /**
-     * Prints the response out to the log and then sends the response to SageTV.\
+     * Prints the response out to the log and then sends the response to SageTV.
      *
      * @param response This is the string to respond to SageTV.
      * @throws IOException Thrown if there is an I/O error.
@@ -751,8 +753,17 @@ public class SageTVRequestHandler implements Runnable {
         }
     }
 
-    private CaptureDevice getAndLockCaptureDevice(String deviceName, boolean wait) {
-        String pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(deviceName);
+    private CaptureDevice getAndLockCaptureDevice(String vCaptureDevice, boolean wait) {
+
+        if (!SageTVPoolManager.isUsePools()) {
+            return SageTVManager.getSageTVCaptureDevice(vCaptureDevice, wait);
+        }
+
+        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
+
+        if (pCaptureDevice == null) {
+            pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(vCaptureDevice);
+        }
 
         if (pCaptureDevice != null) {
             return SageTVManager.getSageTVCaptureDevice(pCaptureDevice, wait);
@@ -761,8 +772,13 @@ public class SageTVRequestHandler implements Runnable {
         return null;
     }
 
-    private CaptureDevice getVCaptureDeviceToPoolCaptureDevice(String deviceName, boolean wait) {
-        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(deviceName);
+    private CaptureDevice getVCaptureDeviceToPoolCaptureDevice(String vCaptureDevice, boolean wait) {
+
+        if (!SageTVPoolManager.isUsePools()) {
+            return SageTVManager.getSageTVCaptureDevice(vCaptureDevice, wait);
+        }
+
+        String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
 
         if (pCaptureDevice != null) {
             return SageTVManager.getSageTVCaptureDevice(pCaptureDevice, wait);
@@ -772,6 +788,8 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     private void removeVCaptureDeviceToPoolCaptureDevice(String deviceName) {
-        SageTVPoolManager.removeCaptureDeviceMapping(deviceName);
+        if (SageTVPoolManager.isUsePools()) {
+            SageTVPoolManager.removeCaptureDeviceMapping(deviceName);
+        }
     }
 }

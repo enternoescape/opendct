@@ -115,6 +115,7 @@ public class SageTVManager implements PowerEventListener {
 
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
+
             if (!Util.isNullOrEmpty(captureDevice.encoderPoolName())) {
                 SageTVPoolManager.addPoolCaptureDevice(captureDevice.encoderPoolName(), captureDevice.getEncoderName());
             }
@@ -441,7 +442,7 @@ public class SageTVManager implements PowerEventListener {
         ArrayList<CaptureDevice> captureDevices = new ArrayList<CaptureDevice>();
 
         try {
-            for (HashMap.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {
+            for (Map.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {
                 CaptureDevice captureDevice = captureDeviceMap.getValue();
                 if (captureDeviceType == null || captureDevice.getEncoderDeviceType() == captureDeviceType) {
                     captureDevices.add(captureDevice);
@@ -463,7 +464,7 @@ public class SageTVManager implements PowerEventListener {
         ArrayList<String> tunerPropertiesList = new ArrayList<String>();
 
         try {
-            for (HashMap.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {
+            for (Map.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {
                 CaptureDevice captureDevice = captureDeviceMap.getValue();
 
                 // This allows us to make a capture device only appear in detection for a server on

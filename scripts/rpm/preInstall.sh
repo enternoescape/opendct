@@ -14,23 +14,4 @@ if ! whereis -b java | grep -e "/java" >> /dev/null; then
     exit 1
 fi
 
-getent group opendct >/dev/null || groupadd -r opendct
-getent passwd opendct >/dev/null || useradd -r -g opendct -d /opt/opendct -s /bin/bash -c "OpenDCT Service Account" opendct
-
-if test -e /usr/lib/systemd/system/opendct.service; then
-	systemctl disable opendct.service
-	systemctl stop opendct.service
-fi
-
-if test ! -e /var/log/opendct; then
-    mkdir -p /var/log/opendct
-fi
-
-if test ! -e /var/run/opendct; then
-    mkdir -p /var/run/opendct
-fi
-
-chown opendct:opendct /var/log/opendct
-chown opendct:opendct /var/run/opendct
-
 exit 0

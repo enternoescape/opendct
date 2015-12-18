@@ -21,6 +21,7 @@ import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 
 import java.net.InetAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DummyCaptureDevice implements CaptureDevice {
 
@@ -68,14 +69,18 @@ public class DummyCaptureDevice implements CaptureDevice {
         return encoderVersion;
     }
 
-    private volatile boolean locked = false;
+    private AtomicBoolean locked = new AtomicBoolean(false);
 
     public boolean isLocked() {
-        return locked;
+        return locked.get();
     }
 
-    public void setLocked(boolean locked) {
-        this.locked = locked;
+    public boolean setLocked(boolean locked) {
+        if (this.locked.getAndSet(locked) == locked) {
+            return false;
+        }
+
+        return true;
     }
 
     public int getMerit() {

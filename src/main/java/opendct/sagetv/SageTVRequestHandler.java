@@ -649,9 +649,9 @@ public class SageTVRequestHandler implements Runnable {
         if (!SageTVPoolManager.isUsePools() || (virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice;
         } else if (virtualDevice == null) {
-            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > NoVirtualDevice";
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ": NoVirtualDevice > " + poolDevice;
         } else {
-            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > " + virtualDevice;
+            newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice + " > " + poolDevice;
         }
 
         if (logger.isDebugEnabled()) {
@@ -762,6 +762,16 @@ public class SageTVRequestHandler implements Runnable {
         String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
 
         if (pCaptureDevice == null) {
+            pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(vCaptureDevice);
+        }
+
+        if (pCaptureDevice == null) {
+            try {
+                SageTVManager.blockUntilCaptureDevicesLoaded();
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while waiting for devices to be detected => ", e);
+            }
+
             pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(vCaptureDevice);
         }
 

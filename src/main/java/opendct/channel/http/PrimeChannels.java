@@ -119,7 +119,7 @@ public class PrimeChannels {
                             enableAllChannels = false;
                             logger.warn("The HDHomeRun Prime appears to be in ClearQAM mode. You" +
                                     " either need to use a channel lineup from a device with a" +
-                                    " CableCARD, manually map the channels with their programs" +
+                                    " CableCARD or manually map the channels with their programs" +
                                     " and frequencies. Auto-mapping is enabled by default and" +
                                     " will find the best match based on other lineups.");
                         }

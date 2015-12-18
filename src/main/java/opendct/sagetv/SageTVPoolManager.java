@@ -126,115 +126,119 @@ public class SageTVPoolManager  {
             return vCaptureDevice;
         }
 
-        // We only need to synchronize per pool.
-        synchronized (poolName) {
-            boolean tryAgain = true;
+        boolean tryAgain = true;
 
-            while (tryAgain && !Thread.currentThread().isInterrupted()) {
-                tryAgain = false;
+        while (tryAgain && !Thread.currentThread().isInterrupted()) {
+            tryAgain = false;
 
-                // Temporarily Store all of the capture devices we might come back to so we don't need
-                // to look them up twice.
-                ArrayList<CaptureDevice> externalLocked = new ArrayList<>();
+            // Temporarily Store all of the capture devices we might come back to so we don't need
+            // to look them up twice.
+            ArrayList<CaptureDevice> externalLocked = new ArrayList<>();
 
-                // These are already in their order of merit since every time a new device is added,
-                // they are re-sorted by merit.
-                for (String poolCaptureDevice : poolCaptureDevices) {
-                    CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(poolCaptureDevice, false);
+            // These are already in their order of merit since every time a new device is added,
+            // they are re-sorted by merit.
+            for (String poolCaptureDevice : poolCaptureDevices) {
+                CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(poolCaptureDevice, false);
 
-                    if (captureDevice == null) {
-                        continue;
-                    }
+                if (captureDevice == null) {
+                    continue;
+                }
 
-                    if (captureDevice.isLocked()) {
-                        continue;
-                    }
+                if (captureDevice.isLocked()) {
+                    continue;
+                }
 
-                    if (captureDevice.isExternalLocked()) {
-                        externalLocked.add(captureDevice);
-                        continue;
-                    }
+                if (captureDevice.isExternalLocked()) {
+                    externalLocked.add(captureDevice);
+                    continue;
+                }
 
-                    captureDevice.setLocked(true);
+                if (!captureDevice.setLocked(true)) {
+                    continue;
+                }
+
+                // Map device so we can find it later by the name SageTV uses.
+                setCaptureDeviceMapping(vCaptureDevice, poolCaptureDevice);
+
+                if (logger.isDebugEnabled()) {
+                    long endTime = System.currentTimeMillis();
+                    logger.debug("'{}' pool capture device selected for virtual capture device '{}' in {}ms.", poolCaptureDevice, vCaptureDevice, endTime - startTime);
+                } else {
+                    logger.info("'{}' pool capture device selected for virtual capture device '{}'.", poolCaptureDevice, vCaptureDevice);
+                }
+
+                return poolCaptureDevice;
+            }
+
+            if (Thread.currentThread().isInterrupted()) {
+                logger.warn("The thread was interrupted before a pool capture device could be found.");
+                return null;
+            }
+
+            // If we can't find a device that's not locked, then we need to use one that is.
+            for (CaptureDevice captureDevice : externalLocked) {
+                if (captureDevice.isLocked()) {
+                    // If suddenly a capture device has become locked and all of the other
+                    // devices are externally locked, go back to see if anything else is now
+                    // unlocked and doesn't have an external lock.
+                    tryAgain = true;
+                    continue;
+                }
+
+                if (captureDevice.setExternalLock(false)) {
 
                     // Map device so we can find it later by the name SageTV uses.
-                    setCaptureDeviceMapping(vCaptureDevice, poolCaptureDevice);
-
-                    if (logger.isDebugEnabled()) {
-                        long endTime = System.currentTimeMillis();
-                        logger.debug("'{}' pool capture device selected for virtual capture device '{}' in {}ms.", poolCaptureDevice, vCaptureDevice, endTime - startTime);
-                    } else {
-                        logger.info("'{}' pool capture device selected for virtual capture device '{}'.", poolCaptureDevice, vCaptureDevice);
-                    }
-
-                    return poolCaptureDevice;
-                }
-
-                if (Thread.currentThread().isInterrupted()) {
-                    logger.warn("The thread was interrupted before a pool capture device could be found.");
-                    return null;
-                }
-
-                // If we can't find a device that's not locked, then we need to use one that is.
-                for (CaptureDevice captureDevice : externalLocked) {
-                    if (captureDevice.isLocked()) {
-                        // If suddenly a capture device has become locked and all of the other
-                        // devices are externally locked, go back to see if anything else is now
-                        // unlocked and doesn't have an external lock.
-                        tryAgain = true;
-                        continue;
-                    }
-
-                    if (captureDevice.setExternalLock(false)) {
-
-                        // Map device so we can find it later by the name SageTV uses.
-                        setCaptureDeviceMapping(vCaptureDevice, captureDevice.getEncoderName());
-
-                        captureDevice.setLocked(true);
-
-                        if (logger.isDebugEnabled()) {
-                            long endTime = System.currentTimeMillis();
-                            logger.debug("'{}' pool capture device was externally locked and was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
-                        } else {
-                            logger.info("'{}' pool capture device was externally locked and was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
-                        }
-
-                        return captureDevice.getEncoderName();
-                    }
-                }
-
-                // If we can't find a device that's online, let's try to tune the first internally
-                // unlocked tuner.
-                // If we can't find a device that's not locked, then we need to use one that is.
-                for (CaptureDevice captureDevice : externalLocked) {
-                    if (captureDevice.isLocked()) {
-                        // If suddenly a capture device has become locked and all of the other
-                        // devices are externally locked, go back to see if anything else is now
-                        // unlocked and doesn't have an external lock.
-                        tryAgain = true;
-                        continue;
-                    }
-
-                    captureDevice.setExternalLock(false);
-
                     setCaptureDeviceMapping(vCaptureDevice, captureDevice.getEncoderName());
 
-                    captureDevice.setLocked(true);
+                    if (!captureDevice.setLocked(true)) {
+                        continue;
+                    }
 
                     if (logger.isDebugEnabled()) {
                         long endTime = System.currentTimeMillis();
-                        logger.warn("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
+                        logger.debug("'{}' pool capture device was externally locked and was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
                     } else {
-                        logger.warn("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
+                        logger.info("'{}' pool capture device was externally locked and was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
                     }
 
                     return captureDevice.getEncoderName();
                 }
             }
 
-            logger.error("Unable to locate a free pool capture device for '{}'.");
-            return null;
+            // If we can't find a device that's online, let's try to tune the first internally
+            // unlocked tuner.
+            // If we can't find a device that's not locked, then we need to use one that is.
+            for (CaptureDevice captureDevice : externalLocked) {
+                if (captureDevice.isLocked()) {
+                    // If suddenly a capture device has become locked and all of the other
+                    // devices are externally locked, go back to see if anything else is now
+                    // unlocked and doesn't have an external lock.
+                    tryAgain = true;
+                    continue;
+                }
+
+                if (!captureDevice.setLocked(true)) {
+                    continue;
+                }
+
+                captureDevice.setExternalLock(false);
+
+                setCaptureDeviceMapping(vCaptureDevice, captureDevice.getEncoderName());
+
+                if (logger.isDebugEnabled()) {
+                    long endTime = System.currentTimeMillis();
+                    logger.warn("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}' in {}ms.", captureDevice.getEncoderName(), vCaptureDevice, endTime - startTime);
+                } else {
+                    logger.warn("'{}' pool capture device was unable to be externally unlocked, but we have no other options so it was selected for virtual capture device '{}'.", captureDevice.getEncoderName(), vCaptureDevice);
+                }
+
+                return captureDevice.getEncoderName();
+            }
         }
+
+        logger.error("Unable to locate a free pool capture device for '{}'.");
+        return null;
+
     }
 
     /**

@@ -34,7 +34,7 @@ public class DCTDefaultUpnpServiceConfiguration {
     // Extending this class will add a dependency for javax.enterprise.inject.Alternative
     // so this is the easier alternative.
     public static DefaultUpnpServiceConfiguration getDCTDefault() {
-        final int listenPort = Config.getInteger("upnp.service.configuration.listen_port", 8501);
+        final int listenPort = Config.getInteger("upnp.service.configuration.http_listen_port", 8501);
 
         return new DefaultUpnpServiceConfiguration() {
 
@@ -52,10 +52,9 @@ public class DCTDefaultUpnpServiceConfiguration {
 
             @Override
             public NetworkAddressFactory createNetworkAddressFactory() {
-
-                new NetworkAddressFactoryImpl(0);
-
                 return new NetworkAddressFactoryImpl(listenPort) {
+
+
                     @Override
                     public Iterator<NetworkInterface> getNetworkInterfaces() {
                         Iterator<NetworkInterface> interfaces = super.getNetworkInterfaces();

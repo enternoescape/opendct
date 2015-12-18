@@ -36,4 +36,4 @@
 > SageTV and get exactly the list on the Prime returned up to 159 channels.
 > *Fixed a few methods that might not run cleanly on Java 1.7.
 > *Internal: Fixed the Gradle script so the Linux packages will always be correct regardless of how
-> the files where downloaded. 
+> the files were downloaded. 

@@ -46,8 +46,19 @@ public class SageTVSocketServer implements Runnable {
         this.captureDevice = captureDevice;
     }
 
+    /**
+     * Starts the listening server.
+     * <p/>
+     * Be careful when calling this method without a lock since this method will close the JVM if it
+     * fails to open the port because the port is in use by another process since this is a critical
+     * function of the program.
+     *
+     * @return <i>true</i> if the port was opened or <i>false</i> if the port is already open.
+     */
     public boolean startListening() {
         logger.entry();
+
+        boolean error = false;
 
         synchronized (listeningLock) {
             logger.debug("Setting listening flag...");
@@ -66,16 +77,19 @@ public class SageTVSocketServer implements Runnable {
                 serverSocket = new ServerSocket(listenPort);
             } catch (IOException e) {
                 logger.error("Unable to open SocketServer on port {} => {}", listenPort, e);
-                ExitCode.SAGETV_SOCKET.terminateJVM();
-                return logger.exit(false);
+                error = true;
             }
 
-            try {
+            if (!error) {
                 socketServerThread.setName("SageTVSocketServer-" + socketServerThread.getId() + ":" + listenPort);
                 socketServerThread.start();
-            } catch (Exception e) {
-                logger.error("There was a problem starting the listening thread for port {} => {}", listenPort, e);
             }
+        }
+
+        if (error) {
+            // Doing this within a lock will cause the lock to be released.
+            ExitCode.SAGETV_SOCKET.terminateJVM();
+            return logger.exit(false);
         }
 
         return logger.exit(true);
@@ -159,6 +173,7 @@ public class SageTVSocketServer implements Runnable {
 
     public void run() {
         logger.entry();
+        logger.info("Started listening on port {}...", listenPort);
 
         Thread requestThread = null;
         Thread oldRequestThread = null;
@@ -229,7 +244,7 @@ public class SageTVSocketServer implements Runnable {
             }
         }
 
-        logger.info("Listening thread has stopped.");
+        logger.info("Stopped listening on port {}...", listenPort);
         logger.exit();
     }
 }

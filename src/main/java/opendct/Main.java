@@ -154,11 +154,6 @@ public class Main {
             }
         });
 
-        // This will place the ChannelManager third in the queue for standby events. It will prevent
-        // offline scanning from further interaction with the capture devices when we are trying to
-        // stop them.
-        PowerMessageManager.EVENTS.addListener(ChannelManager.POWER_EVENT_LISTENER);
-
         // This loads all of the currently saved channel lineups from the lineups folder.
         ChannelManager.loadChannelLineups();
 
@@ -175,6 +170,10 @@ public class Main {
         // 30 seconds. The default device count is 0. These values are saved after the first run and
         // can be changed after stopping the program.
         SageTVManager.startWaitingForCaptureDevices();
+
+        // When this is set to true SageTV will open all ports assigned to any capture device in the
+        // configuration properties.
+        boolean earlyPortAssignment = Config.getBoolean("sagetv.early_port_assignment", false);
 
         // When this is set to true, all new devices will receive the same communication port
         // number. This is intelligently handled when SageTVManager creates instances of
@@ -198,6 +197,10 @@ public class Main {
         boolean useHDHR = Config.getBoolean("hdhr.enabled", false);
 
         Config.saveConfig();
+
+        if (earlyPortAssignment) {
+            SageTVManager.addAndStartSocketServers(Config.getAllSocketServerPorts());
+        }
 
         if (useUPnP) {
             UpnpManager.startUpnpServices();

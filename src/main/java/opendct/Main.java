@@ -154,11 +154,6 @@ public class Main {
             }
         });
 
-        // This will place the ChannelManager third in the queue for standby events. It will prevent
-        // offline scanning from further interaction with the capture devices when we are trying to
-        // stop them.
-        PowerMessageManager.EVENTS.addListener(ChannelManager.POWER_EVENT_LISTENER);
-
         // This loads all of the currently saved channel lineups from the lineups folder.
         ChannelManager.loadChannelLineups();
 

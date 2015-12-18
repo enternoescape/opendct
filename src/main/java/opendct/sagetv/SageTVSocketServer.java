@@ -46,6 +46,15 @@ public class SageTVSocketServer implements Runnable {
         this.captureDevice = captureDevice;
     }
 
+    /**
+     * Starts the listening server.
+     * <p/>
+     * Be careful when calling this method without a lock since this method will close the JVM if it
+     * fails to open the port because the port is in use by another process since this is a critical
+     * function of the program.
+     *
+     * @return <i>true</i> if the port was opened or <i>false</i> if the port is already open.
+     */
     public boolean startListening() {
         logger.entry();
 

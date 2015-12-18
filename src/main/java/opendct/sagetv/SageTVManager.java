@@ -86,18 +86,22 @@ public class SageTVManager implements PowerEventListener {
             throw new SocketException("There are no available ports within the provided range. The tuner cannot start.");
         }
 
+        boolean failure = false;
+        SageTVSocketServer socketServer = null;
+        boolean portInUse = false;
+
         portToSocketServerLock.writeLock().lock();
         captureDeviceNameToCaptureDeviceLock.writeLock().lock();
 
         try {
             if (captureDeviceNameToCaptureDevice.get(captureDevice.getEncoderName()) != null) {
                 logger.error("A capture device with the name '{}' already exists.", captureDevice.getEncoderName());
-                ExitCode.SAGETV_DUPLICATE.terminateJVM();
+                throw new Exception("Duplicate capture device.");
             }
 
             //Check to see if a socket server is already running with this port.
-            SageTVSocketServer socketServer = portToSocketServer.get(newPort);
-            boolean portInUse = !(socketServer == null);
+            socketServer = portToSocketServer.get(newPort);
+            portInUse = !(socketServer == null);
 
             if (portInUse) {
                 // If the port is already in use, all we need to do is let
@@ -108,15 +112,12 @@ public class SageTVManager implements PowerEventListener {
                 socketServer.enableConcurrentConnections();
             } else {
                 socketServer = new SageTVSocketServer(newPort, captureDevice);
-                if (!Config.isConfigOnly()) {
-                    socketServer.startListening();
-                }
             }
 
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
 
-            if (!Util.isNullOrEmpty(captureDevice.encoderPoolName())) {
+            if (!Util.isNullOrEmpty(captureDevice.encoderPoolName()) && SageTVPoolManager.isUsePools()) {
                 SageTVPoolManager.addPoolCaptureDevice(captureDevice.encoderPoolName(), captureDevice.getEncoderName());
             }
 
@@ -138,10 +139,21 @@ public class SageTVManager implements PowerEventListener {
                 SageTVDiscovery.startDiscoveryBroadcast(newPort);
             }
         } catch (Exception e) {
-            logger.trace("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+            failure = true;
+            logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
             portToSocketServerLock.writeLock().unlock();
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();
+        }
+
+        if (failure) {
+            // We can't kill the JVM within a lock because the lock will not be released.
+            ExitCode.SAGETV_DUPLICATE.terminateJVM();
+        } else if (!portInUse) {
+            if (!Config.isConfigOnly()) {
+                // This can kill the JVM, so we start listening outside of the lock.
+                socketServer.startListening();
+            }
         }
 
         logger.exit();
@@ -158,6 +170,7 @@ public class SageTVManager implements PowerEventListener {
      */
     public static void stopAllSocketServers() {
         ArrayList<SageTVSocketServer> stvSocketServers = getAllSageTVSocketServers();
+
         for (SageTVSocketServer stvSocketServer : stvSocketServers) {
             try {
                 // This is blocking.
@@ -189,7 +202,9 @@ public class SageTVManager implements PowerEventListener {
     }
 
     /**
-     * Add additional sockets to listen on for requests.
+     * Add and open sockets to listen on for requests.
+     * <p/>
+     * This method will not attempt to open an sockets that are already assigned.
      *
      * @param ports A list of sockets to be added.
      */
@@ -197,22 +212,29 @@ public class SageTVManager implements PowerEventListener {
         logger.entry(ports);
 
         for (int port : ports) {
+            portToSocketServerLock.writeLock().lock();
+
+            SageTVSocketServer stvSocketServer = null;
+
+            try {
                 ArrayList<SageTVSocketServer> sageTVSocketServers = new ArrayList<>();
 
-                portToSocketServerLock.writeLock().lock();
-
-                try {
-                    if (portToSocketServer.get(port) == null) {
-                        SageTVSocketServer stvSocketServer = new SageTVSocketServer(port, null);
-                        stvSocketServer.startListening();
-                        portToSocketServer.put(port, stvSocketServer);
-                    }
-                } catch (Exception e) {
-                    logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
-                } finally {
-                    portToSocketServerLock.writeLock().unlock();
+                if (portToSocketServer.get(port) == null) {
+                    stvSocketServer = new SageTVSocketServer(port, null);
+                    portToSocketServer.put(port, stvSocketServer);
                 }
+            } catch (Exception e) {
+                logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+            } finally {
+                portToSocketServerLock.writeLock().unlock();
             }
+
+            // If we do this within the lock and it crashes the JVM, everything will lock up because
+            // portToSocketServerLock doesn't get unlocked.
+            if (stvSocketServer != null) {
+                stvSocketServer.startListening();
+            }
+        }
 
         logger.exit();
     }
@@ -229,6 +251,10 @@ public class SageTVManager implements PowerEventListener {
      * has completed.
      */
     public static void stopAndClearAllCaptureDevices() {
+        if (devicesWaitingThread.isAlive()) {
+            devicesWaitingThread.interrupt();
+        }
+
         // This only needs a read lock. Since it uses captureDeviceToSocketServerLock and we can't
         // upgrade to a write lock, that create a problem.
         ArrayList<CaptureDevice> captureDevices = getAllSageTVCaptureDevices();

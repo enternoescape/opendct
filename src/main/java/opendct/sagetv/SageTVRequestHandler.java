@@ -664,9 +664,11 @@ public class SageTVRequestHandler implements Runnable {
             if (!lastRequest.startsWith("GET_FILE_SIZE ") || LOG_TRACE) {
                 logger.debug("Renaming the thread '{}' to '{}'...", Thread.currentThread().getName(), newThreadName);
             }
-        }
 
-        Thread.currentThread().setName(newThreadName);
+            Thread.currentThread().setName(newThreadName);
+        } else {
+            Thread.currentThread().setName(newThreadName);
+        }
     }
 
     /**

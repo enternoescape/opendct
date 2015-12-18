@@ -185,6 +185,7 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         int uploadID = 0;
 
+                        preRecording();
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
@@ -205,7 +206,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             if (captureDevice.isReady()) {
                                 boolean success = true;
@@ -248,6 +248,7 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         Integer uploadID = 0;
 
+                        preRecording();
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
@@ -267,7 +268,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             if (captureDevice.isReady()) {
                                 boolean success;
@@ -327,7 +327,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             boolean success;
 
@@ -380,7 +379,6 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
-                            preRecording();
 
                             boolean success;
                             if (captureDevice.canEncodeUploadID() && uploadID != 0) {
@@ -609,7 +607,7 @@ public class SageTVRequestHandler implements Runnable {
                     in.close();
                 }
             } catch (Exception e) {
-                logger.trace("Failed to close BufferedReader => {}", e);
+                logger.trace("Failed to close BufferedReader => ", e);
             }
 
             try {
@@ -617,7 +615,7 @@ public class SageTVRequestHandler implements Runnable {
                     out.close();
                 }
             } catch (Exception e) {
-                logger.trace("Failed to close OutputStreamWriter => {}", e);
+                logger.trace("Failed to close OutputStreamWriter => ", e);
             }
 
             try {
@@ -625,7 +623,7 @@ public class SageTVRequestHandler implements Runnable {
                     socket.close();
                 }
             } catch (Exception e) {
-                logger.trace("Failed to close socket => {}", e);
+                logger.trace("Failed to close socket => ", e);
             }
         }
 
@@ -644,7 +642,7 @@ public class SageTVRequestHandler implements Runnable {
 
         String newThreadName;
 
-        if ((virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
+        if (!SageTVPoolManager.isUsePools() || (virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice;
         } else if (virtualDevice == null) {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + poolDevice + " > NoVirtualDevice";
@@ -752,6 +750,11 @@ public class SageTVRequestHandler implements Runnable {
     }
 
     private CaptureDevice getAndLockCaptureDevice(String vCaptureDevice, boolean wait) {
+
+        if (!SageTVPoolManager.isUsePools()) {
+            return SageTVManager.getSageTVCaptureDevice(vCaptureDevice, wait);
+        }
+
         String pCaptureDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
 
         if (pCaptureDevice == null) {

@@ -28,12 +28,13 @@
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
 > so it will be considered experimental for now. ClearQAM and DCT devices are automatically put in 
-> their own pools.
-> *Fixed up some logging excess with the InfiniTV channel updates.
+> their own pools. Tuning is based on merit, then if the device is locked externally or not. Do not
+> combine capture devices in a pool that cannot tune the same channels.  
+> *cleaned up some logging excess with the InfiniTV channel updates.
 > *Added a channels.prime.enable_all_channels=true property that when true and and the lineup is
 > detected to not be ClearQAM, all channels are assumed tunable. This is a safe setting since the
 > list is a result of a channel scan unlike the InfiniTV. This allows you to do a channel scan from
 > SageTV and get exactly the list on the Prime returned up to 159 channels.
-> *Fixed a few methods that might not run cleanly on Java 1.7.
-> *Internal: Fixed the Gradle script so the Linux packages will always be correct regardless of how
-> the files were downloaded. 
+> *Fixed a few methods that might not run in all cases on Java 1.7.
+> *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
+> how the files were downloaded. 

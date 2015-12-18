@@ -25,12 +25,12 @@
 > interface to use for device communication.
 
 #### 0.4.0-Beta
-> *Added tuner pooling as an experimental feature turned off by default set the property
+> *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
 > so it will be considered experimental for now. ClearQAM and DCT devices are automatically put in 
 > their own pools.
 > *Fixed up some logging excess with the InfiniTV channel updates.
-> *Added an channels.prime.enable_all_channels=true property that when true and and the lineup is
+> *Added a channels.prime.enable_all_channels=true property that when true and and the lineup is
 > detected to not be ClearQAM, all channels are assumed tunable. This is a safe setting since the
 > list is a result of a channel scan unlike the InfiniTV. This allows you to do a channel scan from
 > SageTV and get exactly the list on the Prime returned up to 159 channels.

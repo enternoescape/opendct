@@ -98,7 +98,7 @@ public class InfiniTVChannels {
             boolean ignore = false;
             String line;
             while ((line = bufferedReader.readLine()) != null) {
-                logger.debug("Parsing line '{}'.", line);
+                logger.trace("Parsing line '{}'.", line);
                 if (parsing) {
                     // This should ensure we are probably working with the right data and
                     // allows us to make some assumptions later.
@@ -187,8 +187,6 @@ public class InfiniTVChannels {
 
                                         updated = true;
                                     } else {
-                                        logger.debug("Updating channel values...");
-
                                         if (!oldChannel.getModulation().equals(values[2])) {
                                             oldChannel.setModulation(values[2]);
                                             updated = true;
@@ -215,6 +213,7 @@ public class InfiniTVChannels {
                                         }
 
                                         if (updated) {
+                                            logger.debug("Updating channel values...");
                                             channelLineup.updateChannel(oldChannel);
                                         }
                                     }
@@ -232,7 +231,7 @@ public class InfiniTVChannels {
                                         line, e);
                             }
                         } else {
-                            logger.debug("Skipping line because it does not split into 6 strings.");
+                            logger.debug("Skipping the line '{}' because it does not split into 6 strings.", line);
                         }
                     } else if (line.contains(REQUEST_END)) {
                         parsing = false;

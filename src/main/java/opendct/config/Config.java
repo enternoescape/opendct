@@ -743,8 +743,8 @@ public class Config {
      *
      * @return An array of all socket server ports.
      */
-    public static int[] getAllSocketServerPort() {
-        HashSet<Integer> sockets = new HashSet<>();
+    public static int[] getAllSocketServerPorts() {
+        HashSet<Integer> ports = new HashSet<>();
 
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
             String key = (String)entry.getKey();
@@ -752,20 +752,20 @@ public class Config {
 
             if (key.startsWith("sagetv.device.") && key.endsWith(".encoder_listen_port")) {
                 try {
-                    sockets.add(Integer.valueOf(value));
+                    ports.add(Integer.valueOf(value));
                 } catch (NumberFormatException e) {
                     logger.error("The property '{}' with the value '{}' does not contain a valid integer.", key, value);
                 }
             }
         }
 
-        int returnSockets[] = new int[sockets.size()];
+        int returnPorts[] = new int[ports.size()];
         int counter = 0;
-        for (Integer socket : sockets) {
-            returnSockets[counter++] = socket;
+        for (Integer socket : ports) {
+            returnPorts[counter++] = socket;
         }
 
-        return returnSockets;
+        return returnPorts;
     }
 
     /**

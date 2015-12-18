@@ -159,6 +159,7 @@ public class SageTVSocketServer implements Runnable {
 
     public void run() {
         logger.entry();
+        logger.info("Started listening on port {}...", listenPort);
 
         Thread requestThread = null;
         Thread oldRequestThread = null;
@@ -229,7 +230,7 @@ public class SageTVSocketServer implements Runnable {
             }
         }
 
-        logger.info("Listening thread has stopped.");
+        logger.info("Stopped listening on port {}...", listenPort);
         logger.exit();
     }
 }

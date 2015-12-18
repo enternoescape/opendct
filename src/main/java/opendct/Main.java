@@ -176,6 +176,10 @@ public class Main {
         // can be changed after stopping the program.
         SageTVManager.startWaitingForCaptureDevices();
 
+        // When this is set to true SageTV will open all ports assigned to any capture device in the
+        // configuration properties.
+        boolean earlyPortAssignment = Config.getBoolean("sagetv.early_port_assignment", false);
+
         // When this is set to true, all new devices will receive the same communication port
         // number. This is intelligently handled when SageTVManager creates instances of
         // SageTVSocketServer. When a new instance is being added, if it shares the same port
@@ -198,6 +202,10 @@ public class Main {
         boolean useHDHR = Config.getBoolean("hdhr.enabled", false);
 
         Config.saveConfig();
+
+        if (earlyPortAssignment) {
+            SageTVManager.addAndStartSocketServers(Config.getAllSocketServerPorts());
+        }
 
         if (useUPnP) {
             UpnpManager.startUpnpServices();

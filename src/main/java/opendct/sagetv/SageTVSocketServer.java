@@ -58,6 +58,8 @@ public class SageTVSocketServer implements Runnable {
     public boolean startListening() {
         logger.entry();
 
+        boolean error = false;
+
         synchronized (listeningLock) {
             logger.debug("Setting listening flag...");
 
@@ -75,16 +77,19 @@ public class SageTVSocketServer implements Runnable {
                 serverSocket = new ServerSocket(listenPort);
             } catch (IOException e) {
                 logger.error("Unable to open SocketServer on port {} => {}", listenPort, e);
-                ExitCode.SAGETV_SOCKET.terminateJVM();
-                return logger.exit(false);
+                error = true;
             }
 
-            try {
+            if (!error) {
                 socketServerThread.setName("SageTVSocketServer-" + socketServerThread.getId() + ":" + listenPort);
                 socketServerThread.start();
-            } catch (Exception e) {
-                logger.error("There was a problem starting the listening thread for port {} => {}", listenPort, e);
             }
+        }
+
+        if (error) {
+            // Doing this within a lock will cause the lock to be released.
+            ExitCode.SAGETV_SOCKET.terminateJVM();
+            return logger.exit(false);
         }
 
         return logger.exit(true);

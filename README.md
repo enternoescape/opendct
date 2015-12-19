@@ -43,6 +43,7 @@ The majority of the configuration is done inside opendct.properties. The file is
  * This is the number of devices that need to be detected and loaded before the required timeout.
 
 > Available as of version 0.4 (compile only; not yet released)
+
 * upnp.service.configuration.ignore\_interfaces\_csv=
  * Specify the name of interfaces in a comma delimited list of network interfaces as they are named by Java to be ignored when UPnP is performing discovery.
 * upnp.service.configuration.ignore\_local\_ip\_csv=

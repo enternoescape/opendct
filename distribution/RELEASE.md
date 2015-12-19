@@ -24,7 +24,7 @@
 > *Added custom property on a per parent property to manually set the IP address of the local
 > interface to use for device communication.
 
-#### 0.4.0-Beta
+#### 0.4.0-Beta (compile only; not released)
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
 > so it will be considered experimental for now. ClearQAM and DCT devices are automatically put in 
@@ -38,7 +38,9 @@
 > *Added the properties upnp.service.configuration.ignore_interfaces_csv and
 > upnp.service.configuration.ignore_local_ip_csv so you can exclude interfaces from UPnP detection
 > by name and/or by local IP address.
-> *Fixed line endings on Windows for Exceptions logged by log4j2.
+> *Fixed line endings on Windows for exceptions logged by log4j2.
+> *Internal: Removed concurrent connection checking since it doesn't do anything helpful and uses
+> some resources.
 > *Internal: Fixed a few methods that might not run in all cases on Java 1.7.
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 

@@ -1384,6 +1384,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
                 int timeout = 0;
                 long lastValue = 0;
+                long currentValue = 0;
                 boolean firstPass = true;
 
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
@@ -1403,7 +1404,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         return;
                     }
 
-                    long currentValue = sageTVProducerRunnable.getPackets();
+                    currentValue = sageTVProducerRunnable.getPackets();
 
                     if (currentValue == lastValue && !Thread.currentThread().isInterrupted()) {
                         String filename = originalFilename;
@@ -1432,6 +1433,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                                 return;
                             }
                         }
+
+                        logger.info("Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
                     }
 
                     if (getRecordedBytes() != 0 && firstPass) {

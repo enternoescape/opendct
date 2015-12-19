@@ -115,7 +115,7 @@ public class UpnpManager implements PowerEventListener {
 
             returnValue = true;
         } catch (Exception e) {
-            logger.error("UPnP services were unable to start => {}", e);
+            logger.error("UPnP services were unable to start => ", e);
             running = false;
             returnValue = false;
         } finally {

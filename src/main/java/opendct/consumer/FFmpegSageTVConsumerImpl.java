@@ -658,7 +658,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                                 lastWriteBuffer.limit(switchIndex - 1);
                                 streamBuffer.position(switchIndex);
 
-                                while (lastWriteBuffer.hasRemaining()) {
+                                while (lastWriteBuffer.hasRemaining() && !Thread.currentThread().isInterrupted()) {
                                     int savedSize = currentFile.write(lastWriteBuffer);
                                     bytesStreamed.addAndGet(savedSize);
 

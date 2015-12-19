@@ -87,7 +87,7 @@ public class DCTDefaultUpnpServiceConfiguration {
                             }
                         }
 
-                        logger.info("Using the interface '{}' with IP address {} for UPnP discovery.", networkInterface.getName(), address);
+                        logger.info("Using the interface '{}' with IP address {} for UPnP discovery.", networkInterface.getName(), address.getHostAddress());
 
                         return true;
                     }

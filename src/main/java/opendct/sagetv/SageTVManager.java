@@ -103,14 +103,7 @@ public class SageTVManager implements PowerEventListener {
             socketServer = portToSocketServer.get(newPort);
             portInUse = !(socketServer == null);
 
-            if (portInUse) {
-                // If the port is already in use, all we need to do is let
-                // request handler know that it can now support multiple
-                // SageTV server connections. You will notice that
-                // socketServer was also set when looking up if the port
-                // was already in use.
-                socketServer.enableConcurrentConnections();
-            } else {
+            if (!portInUse) {
                 socketServer = new SageTVSocketServer(newPort, captureDevice);
             }
 

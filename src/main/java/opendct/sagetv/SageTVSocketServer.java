@@ -29,7 +29,6 @@ public class SageTVSocketServer implements Runnable {
     private final Logger logger = LogManager.getLogger(SageTVSocketServer.class);
 
     private volatile boolean listening = false;
-    private volatile boolean allowConcurrentConnections = false;
     private Thread socketServerThread;
     private final Object listeningLock = new Object();
 
@@ -154,23 +153,6 @@ public class SageTVSocketServer implements Runnable {
         return listenPort;
     }
 
-    /**
-     * Enable multiple connections to be allowed on this socket server.
-     * <p/>
-     * Once enabled, this cannot be disabled since it would put us in a bad place organizationally.
-     * For example, what server would we exclusively choose. This is enabled by SageTVManager when
-     * more than one capture device wants to use the same port.
-     */
-    public void enableConcurrentConnections() {
-        logger.entry();
-
-        allowConcurrentConnections = true;
-
-        logger.debug("Concurrent connections have been enabled.");
-
-        logger.exit();
-    }
-
     public void run() {
         logger.entry();
         logger.info("Started listening on port {}...", listenPort);
@@ -187,31 +169,10 @@ public class SageTVSocketServer implements Runnable {
 
                 Socket socket = serverSocket.accept();
 
-                // Stop the previous thread if it is still running...
-                if (!allowConcurrentConnections) {
-                    oldRequestThread = requestThread;
-                }
-
-                // ...after we start the new thread.
-                if (allowConcurrentConnections) {
-                    requestThread = new Thread(new SageTVRequestHandler(socket, null));
-                } else {
-                    requestThread = new Thread(new SageTVRequestHandler(socket, captureDevice));
-                }
+                requestThread = new Thread(new SageTVRequestHandler(socket, captureDevice));
                 requestThread.setName("SageTVRequestHandler-" + requestThread.getId() + ":Unknown-" + listenPort);
                 requestThread.start();
 
-                // We only want one line of communication to SageTV per port at
-                // any time. This of course will have unexpected results if
-                // more than one server tries to use this port.
-                if (oldRequestThread != null) {
-                    try {
-                        logger.debug("A new connection has been established with a SageTV server. Closing old connection...");
-                        oldRequestThread.interrupt();
-                    } catch (Exception e) {
-                        logger.error("There was an error while attempting to stop the thread => {}", e);
-                    }
-                }
             } catch (IOException e) {
                 if (listening) {
                     logger.error("Unable to accept connections on port {} => {}", listenPort, e);

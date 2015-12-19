@@ -16,8 +16,6 @@
 
 package opendct;
 
-import com.sun.beans.finder.ConstructorFinder;
-import javafx.beans.binding.ListBinding;
 import opendct.channel.ChannelManager;
 import opendct.config.CommandLine;
 import opendct.config.Config;
@@ -25,21 +23,15 @@ import opendct.config.ExitCode;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
-import opendct.sagetv.SageTVPoolManager;
 import opendct.tuning.hdhomerun.HDHomeRunManager;
 import opendct.tuning.upnp.UpnpManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 public class Main {
     private static final Logger logger = LogManager.getLogger(Main.class);

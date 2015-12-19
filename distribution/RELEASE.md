@@ -21,7 +21,8 @@
 > locked it.
 
 #### 0.3.9-Beta
-> *Removed loopback devices from the auto-detection of the local interface.  
+> *Removed loopback devices from the auto-detection of the local interface.
+
 > *Added custom property on a per parent property to manually set the IP address of the local
 > interface to use for device communication.
 

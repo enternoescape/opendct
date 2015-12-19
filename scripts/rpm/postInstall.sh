@@ -21,7 +21,7 @@ chown opendct:opendct /var/run/opendct
 chown opendct:opendct /opt/opendct
 
 # This should fix a potential SELinux issue.
-restorecon /etc/firewalld/services/webmin.xml
+restorecon /etc/firewalld/services/opendct.xml
 
 echo "To use the provided firewalld rules type:"
 echo "firewall-cmd --get-default-zone"

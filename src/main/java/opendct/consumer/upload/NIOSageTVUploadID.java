@@ -213,7 +213,7 @@ public class NIOSageTVUploadID {
             while (true) {
                 try {
                     sendMessage("WRITE " + offset + " " + slice.remaining() + "\r\n");
-                    while (slice.hasRemaining()) {
+                    while (slice.hasRemaining() && !Thread.currentThread().isInterrupted()) {
                         int sentBytes = socketChannel.write(slice);
                         logger.trace("Transferred {} stream bytes to SageTV server. {} bytes remaining.", sentBytes, slice.remaining());
                     }
@@ -314,9 +314,10 @@ public class NIOSageTVUploadID {
 
         // Set the timeout for 30 seconds. If the message has been waiting for that long it's not likely to be relevant.
         messageInTimeout = System.currentTimeMillis() + 30000;
+        long messageReceivedTimeout = System.currentTimeMillis() + 2000;
 
         if (socketChannel != null && socketChannel.isConnected()) {
-            while (true) {
+            while (messageReceivedTimeout < System.currentTimeMillis()) {
                 logger.debug("messageInBytes = {}", messageInBytes);
                 if (messageInBytes > 0) {
                     while (messageInBuffer.hasRemaining()) {
@@ -346,6 +347,10 @@ public class NIOSageTVUploadID {
                     logger.debug("Received {} bytes from SageTV server.", messageInBytes);
                 }
             }
+        }
+
+        if (messageReceivedTimeout >= System.currentTimeMillis()) {
+            throw new IOException("No response from SageTV after 2 seconds.");
         }
 
         logger.warn("Unable to receive '{}' because the socket has not been initialized.");

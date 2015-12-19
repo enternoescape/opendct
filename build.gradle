@@ -291,7 +291,7 @@ def sourceWin() {
     copy {
         from 'scripts/wix'
         include 'FirewallRules.cmd'
-        into "${winWixSource}"
+        into winWixSource
     }
 
     copy {
@@ -334,7 +334,7 @@ def sourceWin() {
 def packageWin(String arch) {
     if (!OperatingSystem.current().isWindows()) {
         //[js] I understand this could be done with Wix using Wine.
-        throw new GradleException('Wix will only build installers on Windows platforms.');
+        throw new GradleException('WiX will only build installers on Windows platforms.');
     }
 
     exec {

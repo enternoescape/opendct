@@ -58,15 +58,6 @@ public class DCTDefaultUpnpServiceConfiguration {
             @Override
             public NetworkAddressFactory createNetworkAddressFactory() {
                 return new NetworkAddressFactoryImpl(listenPort) {
-
-
-                    @Override
-                    public Iterator<NetworkInterface> getNetworkInterfaces() {
-                        Iterator<NetworkInterface> interfaces = super.getNetworkInterfaces();
-
-                        return interfaces;
-                    }
-
                     @Override
                     protected boolean isUsableAddress(NetworkInterface networkInterface, InetAddress address) {
                         if (!super.isUsableAddress(networkInterface, address)) {

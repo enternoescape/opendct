@@ -1418,7 +1418,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                             uploadID = sageTVConsumerRunnable.getEncoderUploadID();
                         }
 
-                        logger.error("No data was streamed after {} milliseconds. Re-tuning channel...", timeout);
+                        logger.error("No data was streamed after {} milliseconds. Tuner reports copy protection status is '{}'. Re-tuning channel...", timeout, getCopyProtection());
 
                         boolean tuned = false;
 

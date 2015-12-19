@@ -34,7 +34,7 @@
 > *Added a channels.prime.enable_all_channels=true property that when true and and the lineup is
 > detected to not be ClearQAM, all channels are assumed tunable. This is a safe setting since the
 > list is a result of a channel scan unlike the InfiniTV. This allows you to do a channel scan from
-> SageTV and get exactly the list on the Prime returned up to 159 channels.
+> SageTV and get exactly the list on the Prime returned up to 159 channels (SageTV limitation).
 > *Added the properties upnp.service.configuration.ignore_interfaces_csv and
 > upnp.service.configuration.ignore_local_ip_csv so you can exclude interfaces from UPnP detection
 > by name and/or by local IP address.

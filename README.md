@@ -41,7 +41,12 @@ The majority of the configuration is done inside opendct.properties. The file is
  * This is the amount of time allowed in milliseconds to pass while waiting for the required number of devices before the program will exit with a failure.
 * sagetv.device.global.required\_devices\_loaded\_count=0
  * This is the number of devices that need to be detected and loaded before the required timeout.
-
+> Available as of version 0.4 (compile only; not yet released)
+* upnp.service.configuration.ignore\_interfaces\_csv=
+ * Specify the name of interfaces in a comma delimited list of network interfaces as they are named by Java to be ignored when UPnP is performing discovery.
+* upnp.service.configuration.ignore\_local\_ip\_csv=
+ * Specify the IP addresses of local interfaces in a comma delimited list to be ignored when UPnP is performing discovery.
+ 
 #### Sage.properties
 
 After configuring OpenDCT, the SageTV service needs to be stopped. Open Sage.properties and find the property network\_encoder\_discovery and change the value to true. Start the SageTV service again while OpenDCT is running to discover the available capture devices.

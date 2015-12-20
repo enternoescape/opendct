@@ -15,6 +15,7 @@
  */
 
 import org.gradle.internal.os.OperatingSystem
+import org.apache.tools.ant.filters.*
 
 plugins {
     id "nebula.os-package" version "2.2.6"
@@ -177,13 +178,25 @@ ospackage {
 
     from('build/jsw') {
         include 'conf/*'
-        include 'doc/*'
         include 'lib/*'
         into 'jsw'
     }
 
     from('build/jsw') {
-        include 'bin/*'
+        include 'doc/*'
+        into 'jsw'
+
+    }
+
+    from('build/jsw') {
+        include 'bin/sh.script.in'
+        into 'jsw'
+        fileMode 0755
+        filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
+    }
+
+    from('build/jsw') {
+        include 'bin/wrapper'
         into 'jsw'
         fileMode 0755
     }
@@ -192,12 +205,14 @@ ospackage {
         include '*'
         into ''
         fileMode 0550
+        filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
     }
 
     from('distribution') {
         include 'LICENSE'
         include 'licenses/*'
         into ''
+        filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
     }
 }
 
@@ -231,7 +246,6 @@ def changeJsw(String arch, String dependency) {
         include "lib/*"
         into 'build/jsw'
     }
-
 
     StringBuilder stringBuilder = new StringBuilder("wrapper.java.classpath.1=%WRAPPER_HOME%/lib/wrapper.jar\r\n");
     def counter = 2
@@ -277,7 +291,7 @@ def sourceWin() {
     copy {
         from 'scripts/wix'
         include 'FirewallRules.cmd'
-        into "${winWixSource}"
+        into winWixSource
     }
 
     copy {
@@ -320,7 +334,7 @@ def sourceWin() {
 def packageWin(String arch) {
     if (!OperatingSystem.current().isWindows()) {
         //[js] I understand this could be done with Wix using Wine.
-        throw new GradleException('Wix will only build installers on Windows platforms.');
+        throw new GradleException('WiX will only build installers on Windows platforms.');
     }
 
     exec {
@@ -374,6 +388,7 @@ task packageLinux32(dependsOn: buildLinux32) << {
             addParentDirs = false
             user = "root"
             permissionGroup = "root"
+            filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
         }
 
         from('scripts/rpm/firewalld') {
@@ -383,6 +398,7 @@ task packageLinux32(dependsOn: buildLinux32) << {
             addParentDirs = false
             user = "root"
             permissionGroup = "root"
+            filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
         }
 
         into linuxInstallPath
@@ -409,6 +425,7 @@ task packageLinux32(dependsOn: buildLinux32) << {
         from('scripts/deb/ufw') {
             into ''
             fileMode 0755
+            filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
         }
 
         preInstall file('scripts/deb/preInstall.sh')
@@ -436,6 +453,7 @@ task packageLinux64(dependsOn: buildLinux64) << {
             addParentDirs = false
             user = "root"
             permissionGroup = "root"
+            filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
         }
 
         from('scripts/rpm/firewalld') {
@@ -445,6 +463,7 @@ task packageLinux64(dependsOn: buildLinux64) << {
             addParentDirs = false
             user = "root"
             permissionGroup = "root"
+            filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
         }
 
         into linuxInstallPath
@@ -471,6 +490,7 @@ task packageLinux64(dependsOn: buildLinux64) << {
         from('scripts/deb/ufw') {
             into ''
             fileMode 0755
+            filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
         }
 
         preInstall file('scripts/deb/preInstall.sh')

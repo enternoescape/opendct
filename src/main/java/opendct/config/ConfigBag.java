@@ -616,12 +616,47 @@ public class ConfigBag {
         try {
             returnValue = InetAddress.getByName(stringValue);
         } catch (Exception e) {
-            logger.error("The property '{}' should be an integer, but '{}' was returned. Using the default value of '{}'", key, stringValue, defaultValue.getHostAddress());
+            logger.error("The property '{}' should be an IP address, but '{}' was returned. Using the default value of '{}'", key, stringValue, defaultValue.getHostAddress());
             returnValue = defaultValue;
         }
 
         if (setOnGet) {
             setInetAddress(key, returnValue);
+        }
+
+        return logger.exit(returnValue);
+    }
+
+    public InetAddress[] getInetAddressArray(String key, InetAddress... defaultValue) {
+        logger.entry(key, defaultValue);
+
+        InetAddress returnValue[];
+        String defaultValueString[] = new String[defaultValue.length];
+
+        for(int i = 0; i < defaultValueString.length; i++) {
+            defaultValueString[i] = defaultValue[i].getHostAddress();
+        }
+
+        String returnValueString[] = getStringArray(key, defaultValueString);
+        returnValue = new InetAddress[returnValueString.length];
+
+        try {
+            for (int i = 0; i < returnValue.length; i++) {
+                returnValue[i] = InetAddress.getByName(returnValueString[i]);
+            }
+        } catch (Exception e) {
+            logger.error("The property '{}' should be an IP addresses, but '{}' was returned. Using the default values of '{}'", key, returnValueString, defaultValueString);
+            returnValue = defaultValue;
+        }
+
+        if (setOnGet) {
+            defaultValueString = new String[returnValue.length];
+
+            for(int i = 0; i < defaultValueString.length; i++) {
+                defaultValueString[i] = returnValue[i].getHostAddress();
+            }
+
+            setStringArray(key, defaultValueString);
         }
 
         return logger.exit(returnValue);

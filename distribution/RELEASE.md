@@ -31,6 +31,9 @@
 
 > *Added wrapper.exe to firewall exceptions on Windows installer.
 
+#### 0.3.11-Beta
+> *Fixed a regression in local interface auto-detection due to a GitHub commit failure.
+
 #### 0.4.0-Beta (compile only; not released)
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
@@ -39,6 +42,8 @@
 > combine capture devices in a pool that cannot tune the same channels.  
 
 > *Cleaned up some logging excess with the InfiniTV channel updates.
+
+> *Fixed duplicate detection removing all channels but one when Prime is in ClearQAM mode.
 
 > *Added a channels.prime.enable_all_channels=true property that when true and and the lineup is
 > detected to not be ClearQAM, all channels are assumed tunable. This is a safe setting since the
@@ -51,10 +56,11 @@
 
 > *Fixed line endings on Windows for exceptions logged by log4j2.
 
-> *Internal: Removed concurrent connection checking since it doesn't do anything helpful and uses
-> some resources.
+> *Internal: Removed concurrent connection checking since it doesn't do anything helpful and is now
+> one less decision branch.
 
 > *Internal: Fixed a few methods that might not run in all cases on Java 1.7.
 
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 
+

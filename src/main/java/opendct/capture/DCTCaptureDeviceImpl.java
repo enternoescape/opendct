@@ -98,7 +98,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private long offlineDetectionMinBytes =
             Config.getLong("upnp.dct.offline_detection_min_bytes", 18800);
 
-    private String encoderLineup = "unknown";
     private boolean offlineScan = false;
 
     private int encoderNumber = -1;
@@ -106,15 +105,17 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
 
-
-    private boolean httpTune = Config.getBoolean("upnp.dct.http_tuning", true);
-    private boolean hdhrTune = Config.getBoolean("upnp.dct.hdhr_tuning", true);
-    private boolean autoMapReference = Config.getBoolean("upnp.qam.automap_reference_lookup", true);
-    private boolean autoMapTuning = Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
+    private boolean httpTune =
+            Config.getBoolean("upnp.dct.http_tuning", true);
+    private boolean hdhrTune =
+            Config.getBoolean("upnp.dct.hdhr_tuning", true);
+    private boolean autoMapReference =
+            Config.getBoolean("upnp.qam.automap_reference_lookup", true);
+    private boolean autoMapTuning =
+            Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
     private HDHomeRunTuner hdhrTuner = null;
-    private boolean forceExternalUnlock = Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
-    private int encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
-    private String encoderPoolName = "default";
+    private boolean forceExternalUnlock =
+            Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
 
     private Thread monitorThread = null;
     private volatile Thread tuningThread = null;
@@ -251,17 +252,17 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         try {
             localIPAddress = Config.getInetAddress( propertiesDeviceParent + "local_ip_override", Util.getLocalIPForRemoteIP(rtpStreamRemoteIP));
         } catch (SocketException e) {
-            logger.error("Unable to get the IP address for localhost => {}", e);
+            logger.error("Unable to get the IP address for localhost => ", e);
         }
 
         if (manufacturer.equals("Ceton Corporation")) {
 
             if (cableCardPresent) {
                 encoderDeviceType = CaptureDeviceType.DCT_INFINITV;
-                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "dct");
+                setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
             } else {
                 encoderDeviceType = CaptureDeviceType.QAM_INFINITV;
-                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "qam");
+                setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
             }
 
             encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
@@ -287,13 +288,13 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             if (cableCardPresent) {
                 encoderDeviceType = CaptureDeviceType.DCT_PRIME;
-                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "dct");
+                setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
             } else {
                 encoderDeviceType = CaptureDeviceType.QAM_PRIME;
-                encoderPoolName = Config.getString(propertiesDeviceRoot + "encoder_pool", "qam");
+                setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
             }
 
-            encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
+            setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
             offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
@@ -365,24 +366,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         return true;
-    }
-
-    public int getMerit() {
-        return encoderMerit;
-    }
-
-    public void setMerit(int merit) {
-        Config.setInteger("encoder_merit", merit);
-        encoderMerit = merit;
-    }
-
-    public String encoderPoolName() {
-        return encoderPoolName;
-    }
-
-    public void setEncoderPoolName(String poolName) {
-        Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
-        encoderPoolName = poolName;
     }
 
     public boolean isExternalLocked() {
@@ -553,7 +536,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      * @param tvChannel A TVChannel object with at the very least a defined channel or frequency and
      *                  program. Otherwise there is nothing to tune.
      * @return <i>true</i> if the test was complete and successful. <i>false</i> if we should try
-     * again on a different capture device since this one is currently locked.
+     *         again on a different capture device since this one is currently locked.
      */
     public boolean getChannelInfoOffline(TVChannel tvChannel) {
         logger.entry();
@@ -1632,42 +1615,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         return false;
     }
 
-    private int scanChannelIndex = 0;
-    private TVChannel scanChannels[];
-    private boolean channelScanFirstZero = true;
-
-    /**
-     * This pulls from the last offline channel scan data. If an offline scan has never happened,
-     * this will return that none of the channels are tunable.
-     *
-     * @param channel The index of the tunable channel being requested.
-     * @return The next channel that is tunable or ERROR if we are at the end of the list.
-     */
-    public String scanChannelInfo(String channel) {
-        if (scanChannels == null) {
-            scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
-        }
-
-        if (channel.equals("-1")) {
-            scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
-            scanChannelIndex = 0;
-            channelScanFirstZero = true;
-
-            return "OK";
-        }
-
-        if (channelScanFirstZero) {
-            channelScanFirstZero = false;
-            return "OK";
-        }
-
-        if (scanChannelIndex < scanChannels.length) {
-            return scanChannels[scanChannelIndex++].getChannel();
-        }
-
-        return "ERROR";
-    }
-
     /**
      * If this returns <i>false</i>, the tuning process stops and returns ERROR to SageTV. It
      * doesn't look like SageTV acknowledges this even though the SageTV network encoder code would
@@ -1678,14 +1625,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      */
     public boolean isReady() {
         return true;
-    }
-
-    public String getChannelLineup() {
-        return encoderLineup;
-    }
-
-    public void setChannelLineup(String lineup) {
-        encoderLineup = lineup;
     }
 
     public BroadcastStandard getBroadcastStandard() {

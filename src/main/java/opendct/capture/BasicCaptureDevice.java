@@ -16,6 +16,8 @@
 
 package opendct.capture;
 
+import opendct.channel.ChannelManager;
+import opendct.channel.TVChannel;
 import opendct.config.Config;
 import opendct.consumer.FFmpegSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
@@ -59,6 +61,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     // SageTV properties
     protected String lastChannel = "";
     protected AtomicLong recordingStartTime = new AtomicLong(0);
+    protected AtomicLong lastRecordedBytes = new AtomicLong(0);
+    protected int encoderMerit = 0;
+    protected String encoderPoolName = "";
+    protected String encoderLineup = "unknown";
 
     // Pre-pend this value for saving and getting properties related to just this tuner.
     protected final String propertiesDeviceRoot;
@@ -153,6 +159,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         canEncodeUploadID = sageTVConsumerRunnable.acceptsUploadID();
 
         lastChannel = Config.getString(propertiesDeviceRoot + "last_channel", "-1");
+        encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
 
         logger.exit();
     }
@@ -295,6 +302,45 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     }
 
     /**
+     * Get the current merit value for this encoder.
+     *
+     * @return The current merit value.
+     */
+    public int getMerit() {
+        return encoderMerit;
+    }
+
+    /**
+     * Sets the current encoder merit value and saves it.
+     *
+     * @param merit New merit value.
+     */
+    public void setMerit(int merit) {
+        Config.setInteger("encoder_merit", merit);
+        encoderMerit = merit;
+
+    }
+
+    /**
+     * Gets the current encoder pool.
+     *
+     * @return The the name of the current pool.
+     */
+    public String encoderPoolName() {
+        return encoderPoolName;
+    }
+
+    /**
+     * Sets the current encoder pool value and saves it.
+     *
+     * @param poolName The new name of the tuner pool.
+     */
+    public void setEncoderPoolName(String poolName) {
+        Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
+        encoderPoolName = poolName;
+    }
+
+    /**
      * Get the time in milliseconds since this recording started.
      *
      * @return The time in milliseconds since the recording started.
@@ -335,6 +381,14 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             logger.error("getRecordedBytes created an unexpected exception => ", e);
         }
 
+        // If the last reported bytes streamed is greater than the currently returned value, send 0
+        // to SageTV this time. The next pass will return the actual value. This should help when
+        // using SWITCH and will be harmless if it's triggered any other time since this value has
+        // nothing to do with the data being written out.
+        if (lastRecordedBytes.getAndSet(returnValue) > returnValue) {
+            returnValue = 0;
+        }
+
         return logger.exit(returnValue);
     }
 
@@ -369,6 +423,50 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
     public boolean autoScanChannel(String channel) {
         return autoTuneChannel(channel);
+    }
+
+    private int scanChannelIndex = 0;
+    private TVChannel scanChannels[];
+    private boolean channelScanFirstZero = true;
+
+    /**
+     * This pulls from the last offline channel scan data. If an offline scan has never happened,
+     * this will return that none of the channels are tunable.
+     *
+     * @param channel The index of the tunable channel being requested.
+     * @return The next channel that is tunable or ERROR if we are at the end of the list.
+     */
+    public String scanChannelInfo(String channel) {
+        if (scanChannels == null) {
+            scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
+        }
+
+        if (channel.equals("-1")) {
+            scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
+            scanChannelIndex = 0;
+            channelScanFirstZero = true;
+
+            return "OK";
+        }
+
+        if (channelScanFirstZero) {
+            channelScanFirstZero = false;
+            return "OK";
+        }
+
+        if (scanChannelIndex < scanChannels.length) {
+            return scanChannels[scanChannelIndex++].getChannel();
+        }
+
+        return "ERROR";
+    }
+
+    public String getChannelLineup() {
+        return encoderLineup;
+    }
+
+    public void setChannelLineup(String lineup) {
+        encoderLineup = lineup;
     }
 
     /**

@@ -16,6 +16,7 @@
 
 package opendct.channel.http;
 
+import opendct.capture.CaptureDeviceType;
 import opendct.channel.ChannelLineup;
 import opendct.channel.TVChannel;
 import opendct.channel.TVChannelImpl;
@@ -59,6 +60,7 @@ public class PrimeChannels {
         // This only applies when ClearQAM is not in use because we can't do anything with the
         // returned information.
         boolean enableAllChannels = PrimeChannels.enableAllChannels;
+        boolean isQam = false;
 
         HttpURLConnection httpURLConnection = null;
         HashSet<String> newChannelList = new HashSet<String>();
@@ -117,6 +119,7 @@ public class PrimeChannels {
 
                         if (channel.equals("5000")) {
                             enableAllChannels = false;
+                            isQam = true;
                             logger.warn("The HDHomeRun Prime appears to be in ClearQAM mode. You" +
                                     " either need to use a channel lineup from a device with a" +
                                     " CableCARD or manually map the channels with their programs" +
@@ -146,7 +149,7 @@ public class PrimeChannels {
 
                         boolean isDuplicate = false;
 
-                        if (removeDuplicateChannels) {
+                        if (removeDuplicateChannels && !isQam) {
                             isDuplicate = channelLineup.isDuplicate(channel, name);
 
                             if (isDuplicate) {

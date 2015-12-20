@@ -55,6 +55,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected String recordEncodingQuality = "";
     protected String recordLastFilename = null;
     protected int recordLastUploadID = 0;
+    protected AtomicLong lastRecordedBytes = new AtomicLong(0);
 
     // SageTV properties
     protected String lastChannel = "";
@@ -333,6 +334,14 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             }
         } catch (Exception e) {
             logger.error("getRecordedBytes created an unexpected exception => ", e);
+        }
+
+        // If the last reported bytes streamed is greater than the currently returned value, send 0
+        // to SageTV this time. The next pass will return the actual value. This should help when
+        // using SWITCH and will be harmless if it's triggered any other time since this value has
+        // nothing to do with the data being written out.
+        if (lastRecordedBytes.getAndSet(returnValue) > returnValue) {
+            returnValue = 0;
         }
 
         return logger.exit(returnValue);

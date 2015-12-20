@@ -147,9 +147,15 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         if (getProtocolInfo != null && getProtocolInfo.getSource().equals("rtsp-rtp-udp:*:dri-mp2t:*")) {
             connectionManagerSourceProtocol = "rtsp-rtp-udp:*:dri-mp2t:*";
             connectionManagerAVTransportID = "0";
+        } else if (getProtocolInfo == null || getProtocolInfo.getSource() == null) {
+            logger.warn("The source protocol could not be determined. Using the default 'rtsp-rtp-udp:*:dri-mp2t:*'");
+            connectionManagerSourceProtocol = "rtsp-rtp-udp:*:dri-mp2t:*";
+            connectionManagerAVTransportID = "0";
         } else {
-            connectionManagerSubscription.stop();
-            throw new InitializationException("The ConnectionManager service did not return a supported protocol.");
+            logger.warn("The source protocol returned '{}'. Using the default 'rtsp-rtp-udp:*:dri-mp2t:*'", getProtocolInfo.getSource());
+            connectionManagerSourceProtocol = "rtsp-rtp-udp:*:dri-mp2t:*";
+            connectionManagerAVTransportID = "0";
+            //throw new InitializationException("The ConnectionManager service did not return a supported protocol.");
         }
 
         // Connection to AVTransport service.

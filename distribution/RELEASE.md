@@ -16,5 +16,15 @@
 > **Ubuntu 14.04 will provide a script to enable rules via ufw.
 > **Changed default RTP receiving port change to 8300-8500 since the previous default could conflict
 > with the SageTV discovery port.
+
 > *Added optional support for the HDHomeRun lock to be taken even if another device has already
 > locked it.
+
+#### 0.3.9-Beta
+> *Removed loopback devices from the auto-detection of the local interface.
+
+> *Added custom property on a per parent property to manually set the IP address of the local
+> interface to use for device communication.
+
+#### 0.3.10-Beta
+> *Relaxed the source protocol requirement when creating a new UPnP capture device.

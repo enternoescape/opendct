@@ -91,7 +91,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         this.merit = merit;
     }
 
-    public String encoderPoolName() {
+    public String getEncoderPoolName() {
         return poolName;
     }
 

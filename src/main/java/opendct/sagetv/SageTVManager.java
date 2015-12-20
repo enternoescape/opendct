@@ -110,8 +110,8 @@ public class SageTVManager implements PowerEventListener {
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
 
-            if (!Util.isNullOrEmpty(captureDevice.encoderPoolName()) && SageTVPoolManager.isUsePools()) {
-                SageTVPoolManager.addPoolCaptureDevice(captureDevice.encoderPoolName(), captureDevice.getEncoderName());
+            if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
+                SageTVPoolManager.addPoolCaptureDevice(captureDevice.getEncoderPoolName(), captureDevice.getEncoderName());
             }
 
             logger.info("The capture device '{}' is ready.", captureDevice.getEncoderName());

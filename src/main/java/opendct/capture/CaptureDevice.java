@@ -268,7 +268,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *
      * @return The name of the tuner pool.
      */
-    public String encoderPoolName();
+    public String getEncoderPoolName();
 
     /**
      * Sets the name of the tuner pool for this encoder.

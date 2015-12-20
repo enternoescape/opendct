@@ -616,8 +616,10 @@ public class ChannelManager implements PowerEventListener {
             availableChannels.deleteCharAt(availableChannels.length() - 1);
         }
 
-        configBag.setString("sagetv.unavailable_channels", unavailableChannels.toString());
-        configBag.setString("sagetv.available_channels", availableChannels.toString());
+        configBag.removeAllByRootKey("sagetv.unavailable_channels_ref");
+        configBag.removeAllByRootKey("sagetv.available_channels_ref");
+        configBag.setString("sagetv.unavailable_channels_ref", unavailableChannels.toString());
+        configBag.setString("sagetv.available_channels_ref", availableChannels.toString());
 
         return configBag.saveConfig();
     }

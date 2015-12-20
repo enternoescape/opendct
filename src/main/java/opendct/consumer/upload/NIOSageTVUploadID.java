@@ -317,7 +317,7 @@ public class NIOSageTVUploadID {
         long messageReceivedTimeout = System.currentTimeMillis() + 2000;
 
         if (socketChannel != null && socketChannel.isConnected()) {
-            while (messageReceivedTimeout < System.currentTimeMillis()) {
+            while (messageReceivedTimeout > System.currentTimeMillis()) {
                 logger.debug("messageInBytes = {}", messageInBytes);
                 if (messageInBytes > 0) {
                     while (messageInBuffer.hasRemaining()) {

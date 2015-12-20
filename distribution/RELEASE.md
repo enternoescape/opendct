@@ -16,11 +16,13 @@
 > **Ubuntu 14.04 will provide a script to enable rules via ufw.
 > **Changed default RTP receiving port change to 8300-8500 since the previous default could conflict
 > with the SageTV discovery port.
+
 > *Added optional support for the HDHomeRun lock to be taken even if another device has already
 > locked it.
 
 #### 0.3.9-Beta
-> *Removed loopback devices from the auto-detection of the local interface.  
+> *Removed loopback devices from the auto-detection of the local interface.
+
 > *Added custom property on a per parent property to manually set the IP address of the local
 > interface to use for device communication.
 
@@ -30,17 +32,24 @@
 > so it will be considered experimental for now. ClearQAM and DCT devices are automatically put in 
 > their own pools. Tuning is based on merit, then if the device is locked externally or not. Do not
 > combine capture devices in a pool that cannot tune the same channels.  
+
 > *Cleaned up some logging excess with the InfiniTV channel updates.
+
 > *Added a channels.prime.enable_all_channels=true property that when true and and the lineup is
 > detected to not be ClearQAM, all channels are assumed tunable. This is a safe setting since the
 > list is a result of a channel scan unlike the InfiniTV. This allows you to do a channel scan from
 > SageTV and get exactly the list on the Prime returned up to 159 channels (SageTV limitation).
+
 > *Added the properties upnp.service.configuration.ignore_interfaces_csv and
 > upnp.service.configuration.ignore_local_ip_csv so you can exclude interfaces from UPnP detection
 > by name and/or by local IP address.
+
 > *Fixed line endings on Windows for exceptions logged by log4j2.
+
 > *Internal: Removed concurrent connection checking since it doesn't do anything helpful and uses
 > some resources.
+
 > *Internal: Fixed a few methods that might not run in all cases on Java 1.7.
+
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 

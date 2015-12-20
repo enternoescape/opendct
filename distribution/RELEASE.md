@@ -30,3 +30,6 @@
 > *Relaxed the source protocol requirement when creating a new UPnP capture device.
 
 > *Added wrapper.exe to firewall exceptions on Windows installer.
+
+#### 0.3.11-Beta
+> *Fixed a regression in local interface auto-detection due to a GitHub commit failure.

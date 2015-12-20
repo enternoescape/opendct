@@ -242,9 +242,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         try {
-            localIPAddress = Util.getLocalIPForRemoteIP(rtpStreamRemoteIP);
+            localIPAddress = Config.getInetAddress( propertiesDeviceParent + "local_ip_override", Util.getLocalIPForRemoteIP(rtpStreamRemoteIP));
         } catch (SocketException e) {
-            logger.error("Unable to get the IP address for localhost => {}", e);
+            logger.error("Unable to get the IP address for localhost => ", e);
         }
 
         if (manufacturer.equals("Ceton Corporation")) {

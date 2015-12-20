@@ -28,3 +28,5 @@
 
 #### 0.3.10-Beta
 > *Relaxed the source protocol requirement when creating a new UPnP capture device.
+
+> *Added wrapper.exe to firewall exceptions on Windows installer.

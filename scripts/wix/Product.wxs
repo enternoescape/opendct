@@ -99,8 +99,8 @@
 	-->
 	
 	<CustomAction Id="FirewallExceptions" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" Return='ignore'
-		ExeCommand="[SystemFolder]cmd /c &quot;[INSTALLDIR]FirewallRules.cmd&quot;" />
-	
+		ExeCommand="[SystemFolder]cmd /c &quot;&quot;[INSTALLDIR]FirewallRules.cmd&quot; &quot;[#jswWrapper.exe]&quot;&quot;" />
+
 	<!-- Save the command line value INSTALLDIR and restore it later in the sequence or it will be overwritten by the value saved to the registry during an upgrade -->
 	<!-- http://robmensching.com/blog/posts/2010/5/2/the-wix-toolsets-remember-property-pattern/ -->
 	<CustomAction Id='SaveCmdLineValueINSTALLDIR' Property='CMDLINE_INSTALLDIR' Value='[INSTALLDIR]' Execute='firstSequence' />

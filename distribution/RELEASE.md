@@ -43,6 +43,8 @@
 
 > *Cleaned up some logging excess with the InfiniTV channel updates.
 
+> *Fixed duplicate detection removing all channels but one when Prime is in ClearQAM mode.
+
 > *Added a channels.prime.enable_all_channels=true property that when true and and the lineup is
 > detected to not be ClearQAM, all channels are assumed tunable. This is a safe setting since the
 > list is a result of a channel scan unlike the InfiniTV. This allows you to do a channel scan from
@@ -54,10 +56,11 @@
 
 > *Fixed line endings on Windows for exceptions logged by log4j2.
 
-> *Internal: Removed concurrent connection checking since it doesn't do anything helpful and uses
-> some resources.
+> *Internal: Removed concurrent connection checking since it doesn't do anything helpful and is now
+> one less decision branch.
 
 > *Internal: Fixed a few methods that might not run in all cases on Java 1.7.
 
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 
+

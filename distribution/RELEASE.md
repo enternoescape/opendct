@@ -26,6 +26,9 @@
 > *Added custom property on a per parent property to manually set the IP address of the local
 > interface to use for device communication.
 
+#### 0.3.10-Beta
+> *Relaxed the source protocol requirement when creating a new UPnP capture device.
+
 #### 0.4.0-Beta (compile only; not released)
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,

@@ -300,7 +300,6 @@ public class SageTVPoolManager  {
      * @param vCaptureDevice The name of the virtual capture device.
      */
     public static void removePoolCaptureDevice(String vCaptureDevice) {
-        //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
@@ -346,7 +345,6 @@ public class SageTVPoolManager  {
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
             poolNameToPoolCaptureDevicesLock.writeLock().unlock();
             vCaptureDeviceToPoolNameLock.writeLock().unlock();
         }
@@ -363,12 +361,15 @@ public class SageTVPoolManager  {
      * @param captureDevice The name of the pool capture device.
      */
     public static void addPoolCaptureDevice(String poolName, String captureDevice) {
+        if (!isUsePools()) {
+            return;
+        }
+
         if (Util.isNullOrEmpty(poolName)) {
             removePoolCaptureDevice(captureDevice);
             return;
         }
 
-        //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
@@ -437,7 +438,6 @@ public class SageTVPoolManager  {
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            //vCaptureDeviceToPoolCaptureDeviceLock.writeLock().unlock();
             poolNameToPoolCaptureDevicesLock.writeLock().unlock();
             vCaptureDeviceToPoolNameLock.writeLock().unlock();
         }
@@ -449,7 +449,7 @@ public class SageTVPoolManager  {
      * Run this any time you change the merit of any tuner at runtime for the new merit to take
      * effect.
      */
-    public void resortMerits() {
+    public static void resortAllMerits() {
         captureDeviceMappingLock.writeLock().lock();
         poolNameToPoolCaptureDevicesLock.writeLock().lock();
         vCaptureDeviceToPoolNameLock.writeLock().lock();
@@ -486,6 +486,53 @@ public class SageTVPoolManager  {
                     });
                 }
             }
+        } catch (Exception e) {
+            logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            captureDeviceMappingLock.writeLock().unlock();
+            poolNameToPoolCaptureDevicesLock.writeLock().unlock();
+            vCaptureDeviceToPoolNameLock.writeLock().unlock();
+        }
+    }
+
+    public static void resortMerits(String poolName) {
+        ArrayList<String> encoders = poolNameToPoolCaptureDevices.get(poolName);
+
+        if (encoders == null) {
+            return;
+        }
+
+        captureDeviceMappingLock.writeLock().lock();
+        poolNameToPoolCaptureDevicesLock.writeLock().lock();
+        vCaptureDeviceToPoolNameLock.writeLock().lock();
+
+        try {
+                Collections.sort(encoders, new Comparator<String>() {
+                    @Override
+                    public int compare(String o1, String o2) {
+                        CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
+                        CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
+
+                        if (c1 == null && c2 == null) {
+                            logger.warn("'{}' and '{}' don't exist.", o1, o2);
+                            return 0;
+                        } else if (c1 == null) {
+                            logger.warn("'{}' doesn't exist.", o1);
+                            return -1;
+                        } else if (c2 == null) {
+                            logger.warn("'{}' doesn't exist.", o2);
+                            return 1;
+                        }
+
+                        if (c1.getMerit() > c2.getMerit()) {
+                            return -1;
+                        } else if (c1.getMerit() < c2.getMerit()) {
+                            return 1;
+                        }
+
+                        return 0;
+                    }
+                });
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {

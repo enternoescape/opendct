@@ -23,6 +23,7 @@ import opendct.consumer.FFmpegSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.SageTVProducer;
 import opendct.sagetv.SageTVManager;
+import opendct.sagetv.SageTVPoolManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -319,6 +320,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         Config.setInteger("encoder_merit", merit);
         encoderMerit = merit;
 
+        SageTVPoolManager.resortMerits(encoderPoolName);
     }
 
     /**
@@ -326,7 +328,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return The the name of the current pool.
      */
-    public String encoderPoolName() {
+    public String getEncoderPoolName() {
         return encoderPoolName;
     }
 
@@ -338,6 +340,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     public void setEncoderPoolName(String poolName) {
         Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
         encoderPoolName = poolName;
+
+        SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName);
     }
 
     /**

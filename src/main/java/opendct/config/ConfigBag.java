@@ -148,6 +148,14 @@ public class ConfigBag {
             return logger.exit(false);
         }
 
+        File file = new File(FILE_NAME);
+        File fileBackup = new File(FILE_NAME + ".backup");
+        try {
+            Util.copyFile(file, fileBackup, true);
+        } catch (IOException e) {
+            file.renameTo(fileBackup);
+        }
+
         FileOutputStream fileOutputStream;
         try {
             fileOutputStream = new FileOutputStream(FILE_NAME);

@@ -45,7 +45,7 @@ public class Util {
         while (networkInterface.hasMoreElements()) {
             NetworkInterface currentInterface = networkInterface.nextElement();
 
-            // Never try to match a loopback interface. You will sometimes lose!
+            // Never try to match a loopback interface.
             if (currentInterface.isLoopback()) {
                 continue;
             }
@@ -63,18 +63,24 @@ public class Util {
                 int localSubnetLength = address.getNetworkPrefixLength();
 
                 boolean match = true;
-                int bits = localSubnet.length * 8;
+                int bits = localSubnetLength;
                 for (int i = 0; i < localSubnet.length; i++) {
-                    localSubnet[i] = (byte) (localSubnetLength >> bits);
-                    bits -= 8;
+                    if (bits < 8) {
+                        localSubnet[i] = (byte) ~((1 << 8 - bits) - 1);
 
-                    byte localAnd = (byte) (localIPAddress[i] & localSubnet[i]);
-                    byte remoteAnd = (byte) (remoteAddressBytes[i] & localSubnet[i]);
+                        byte localAnd = (byte) (localIPAddress[i] & localSubnet[i]);
+                        byte remoteAnd = (byte) (remoteAddressBytes[i] & localSubnet[i]);
 
-                    if (localAnd != remoteAnd) {
+                        if (localAnd != remoteAnd) {
+                            match = false;
+                            break;
+                        }
+                    } else if (!(localIPAddress[i] == remoteAddressBytes[i])) {
                         match = false;
                         break;
                     }
+
+                    bits -= 8;
                 }
 
                 if (!match) {
@@ -91,12 +97,17 @@ public class Util {
     public static NetworkInterface getNetworkInterfaceForRemoteIPAddress(InetAddress remoteAddress) throws SocketException {
         byte remoteAddressBytes[] = remoteAddress.getAddress();
 
-        Enumeration<NetworkInterface> networkInteface = NetworkInterface.getNetworkInterfaces();
+        Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
 
-        while (networkInteface.hasMoreElements()) {
-            NetworkInterface networkInterface = networkInteface.nextElement();
+        while (networkInterfaces.hasMoreElements()) {
+            NetworkInterface currentInterface = networkInterfaces.nextElement();
 
-            for (InterfaceAddress address : networkInterface.getInterfaceAddresses()) {
+            // Never try to match a loopback interface.
+            if (currentInterface.isLoopback()) {
+                continue;
+            }
+
+            for (InterfaceAddress address : currentInterface.getInterfaceAddresses()) {
                 byte localIPAddress[] = address.getAddress().getAddress();
 
                 // Make sure these are the same kind of IP addresses. This should only differ if one of
@@ -109,25 +120,31 @@ public class Util {
                 int localSubnetLength = address.getNetworkPrefixLength();
 
                 boolean match = true;
-                int bits = localSubnet.length * 8;
+                int bits = localSubnetLength;
                 for (int i = 0; i < localSubnet.length; i++) {
-                    localSubnet[i] = (byte) (localSubnetLength >> bits);
-                    bits -= 8;
+                    if (bits < 8) {
+                        localSubnet[i] = (byte) ~((1 << 8 - bits) - 1);
 
-                    byte localAnd = (byte) (localIPAddress[i] & localSubnet[i]);
-                    byte remoteAnd = (byte) (remoteAddressBytes[i] & localSubnet[i]);
+                        byte localAnd = (byte) (localIPAddress[i] & localSubnet[i]);
+                        byte remoteAnd = (byte) (remoteAddressBytes[i] & localSubnet[i]);
 
-                    if (localAnd != remoteAnd) {
+                        if (localAnd != remoteAnd) {
+                            match = false;
+                            break;
+                        }
+                    } else if (!(localIPAddress[i] == remoteAddressBytes[i])) {
                         match = false;
                         break;
                     }
+
+                    bits -= 8;
                 }
 
                 if (!match) {
                     continue;
                 }
 
-                return networkInterface;
+                return currentInterface;
             }
         }
 

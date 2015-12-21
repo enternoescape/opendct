@@ -33,3 +33,7 @@
 
 #### 0.3.11-Beta
 > *Fixed a regression in local interface auto-detection due to a GitHub commit failure.
+
+#### 0.3.12-Beta
+> *Fixed local interface auto-detection and tested under several conditions. It should now work in
+> all normal situations.

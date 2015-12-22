@@ -64,8 +64,12 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected AtomicLong recordingStartTime = new AtomicLong(0);
     protected AtomicLong lastRecordedBytes = new AtomicLong(0);
     protected int encoderMerit = 0;
+
+    // Generic device preferences
     protected String encoderPoolName = "";
     protected String encoderLineup = "unknown";
+    protected boolean encoderForceExternalUnlock = false;
+    protected boolean encoderOfflineScan = false;
 
     // Pre-pend this value for saving and getting properties related to just this tuner.
     protected final String propertiesDeviceRoot;
@@ -161,6 +165,21 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         lastChannel = Config.getString(propertiesDeviceRoot + "last_channel", "-1");
         encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
+
+        // We don't want to actually set the property. That way other devices can detect if the user
+        // actually set this property or if it should automatically create a new lineup.
+        encoderLineup = Config.getString(propertiesDeviceRoot + "lineup");
+        if (encoderLineup == null) {
+            encoderLineup = "default";
+        }
+
+        encoderOfflineScan = Config.getBoolean(propertiesDeviceRoot + "offline_scan", false);
+        if (encoderOfflineScan) {
+            ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
+        }
+
+        encoderForceExternalUnlock =
+                Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
 
         logger.exit();
     }
@@ -344,6 +363,15 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName);
     }
 
+    public void setAlwaysForceExternalUnlock(boolean forceLock) {
+        encoderForceExternalUnlock = forceLock;
+        Config.setBoolean(propertiesDeviceRoot + "always_force_external_unlock", forceLock);
+    }
+
+    public boolean setAlwaysForceExternalUnlock() {
+        return encoderForceExternalUnlock;
+    }
+
     /**
      * Get the time in milliseconds since this recording started.
      *
@@ -425,6 +453,23 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return recordEncodingQuality;
     }
 
+
+    public synchronized void setOfflineScan(boolean enabled) {
+        encoderOfflineScan = enabled;
+        Config.setBoolean(propertiesDeviceRoot + "offline_scan", enabled);
+
+        if (encoderOfflineScan) {
+            ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
+        } else {
+            ChannelManager.removeDeviceFromOfflineScan(encoderLineup, encoderName);
+        }
+    }
+
+
+    public boolean isOfflineScanEnabled() {
+        return encoderOfflineScan;
+    }
+
     public boolean autoScanChannel(String channel) {
         return autoTuneChannel(channel);
     }
@@ -469,8 +514,14 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return encoderLineup;
     }
 
-    public void setChannelLineup(String lineup) {
+    public synchronized void setChannelLineup(String lineup) {
+        if (encoderOfflineScan) {
+            ChannelManager.removeDeviceFromOfflineScan(encoderLineup, encoderName);
+            ChannelManager.addDeviceToOfflineScan(lineup, encoderName);
+        }
+
         encoderLineup = lineup;
+        Config.setString(propertiesDeviceRoot + "lineup", lineup);
     }
 
     /**

@@ -304,6 +304,20 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public boolean setExternalLock(boolean locked);
 
     /**
+     * Change the setting for forced locking.
+     *
+     * @param forceLock <i>true</i> to enable forcing the lock always.
+     */
+    public void setAlwaysForceExternalUnlock(boolean forceLock);
+
+    /**
+     * Get the current forced locking setting.
+     *
+     * @return <i>true</i> if forced locking is enabled.
+     */
+    public boolean setAlwaysForceExternalUnlock();
+
+    /**
      * Tunes a channel outside of any requests from the SageTV server and updates information about
      * the channel.
      * <p/>
@@ -600,5 +614,23 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @return The current level of copy protection on the currently tuned channel.
      */
     public CopyProtection getCopyProtection();
+
+    /**
+     * Set <i>true</i> to enable offline scanning.
+     * <p/>
+     * If an offline scan is currently in progress including this device, it will continue to use
+     * this device until completion. The next scan will exclude this device.
+     *
+     * @param enabled <i>true</i> to enable offline scanning for this device.
+     */
+    public void setOfflineScan(boolean enabled);
+
+    /**
+     * Get if this device will participate in offline scanning.
+     *
+     * @return <i>true</i> if this device will should be used for offline scanning.
+     */
+    public boolean isOfflineScanEnabled();
+
 
 }

@@ -16,8 +16,89 @@
 
 package opendct.jetty;
 
-public class JettyManager {
+import opendct.power.PowerEventListener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.webapp.WebAppContext;
+
+import java.io.File;
+
+public class JettyManager implements PowerEventListener {
+    private static final Logger logger = LogManager.getLogger(JettyManager.class);
+
     //TODO: [js] Create a simple web server for communicating with and troubleshooting the network encoder.
+
+    private static Server server = new Server();
+    private static int jettyPort = 8090;
+    private static int jettySecurePort = 8093;
+
+    public synchronized static void startJetty(int port, int securePort) {
+        logger.error("Starting Jetty server on ports {} and {}...", port, securePort);
+
+        if (server.isStarting() || server.isStarted()) {
+            return;
+        }
+
+        JettyManager.jettyPort = port;
+        JettyManager.jettySecurePort = securePort;
+
+        server = new Server(port);
+        ServerConnector serverConnector = new ServerConnector(server);
+
+        serverConnector.setPort(jettyPort);
+        serverConnector.setIdleTimeout(30000);
+
+        WebAppContext webapp = new WebAppContext();
+        webapp.setContextPath("/");
+        File file = new File("../../src/main/webapp");
+        webapp.setWar(file.getAbsolutePath());
+
+        server.setHandler(webapp);
+
+        try {
+            server.start();
+        } catch (Exception e) {
+            logger.error("There was a problem while attempting to start Jetty server => ", e);
+        }
+    }
+
+    public synchronized static void stopJetty() throws InterruptedException {
+        if (server.isStopping()) {
+            server.join();
+        } else if  (server.isStopped()) {
+            return;
+        }
+
+        try {
+            logger.error("Stopping Jetty server...");
+            server.stop();
+            server.join();
+        } catch (Exception e) {
+            logger.error("There was a problem while attempting to stop Jetty server => ", e);
+        }
+    }
+
+    @Override
+    public void onSuspendEvent() {
+
+    }
+
+    @Override
+    public void onResumeSuspendEvent() {
+
+    }
+
+    @Override
+    public void onResumeCriticalEvent() {
+
+    }
+
+    @Override
+    public void onResumeAutomaticEvent() {
+
+    }
 
     /*
     Idea #1

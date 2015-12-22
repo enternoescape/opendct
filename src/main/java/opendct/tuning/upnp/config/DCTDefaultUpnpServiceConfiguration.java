@@ -29,7 +29,6 @@ import org.fourthline.cling.transport.spi.SOAPActionProcessor;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.Iterator;
 
 public class DCTDefaultUpnpServiceConfiguration {
     private static final Logger logger = LogManager.getLogger(DCTDefaultUpnpServiceConfiguration.class);

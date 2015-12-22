@@ -20,6 +20,7 @@ import opendct.channel.ChannelManager;
 import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
+import opendct.jetty.JettyManager;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
@@ -179,6 +180,9 @@ public class Main {
 
         int sageTVdefaultDiscoveryPort = Config.getInteger("sagetv.encoder_discovery_port", 8271);
 
+
+        boolean enableJetty = Config.getBoolean("jetty.enabled", true);
+
         // Currently the program doesn't do much without this part, but in the future we might have
         // a capture device that doesn't use UPnP so we would want it disabled if we don't need it.
         boolean useUPnP = Config.getBoolean("upnp.enabled", true);
@@ -192,6 +196,23 @@ public class Main {
 
         if (earlyPortAssignment) {
             SageTVManager.addAndStartSocketServers(Config.getAllSocketServerPorts());
+        }
+
+        if (enableJetty) {
+            int jettyPort = Config.getInteger("jetty.port", 8090);
+            JettyManager.startJetty(jettyPort, 8093);
+
+            Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
+                @Override
+                public void run() {
+                    logger.info("Stopping Jetty server...");
+                    try {
+                        JettyManager.stopJetty();
+                    } catch (InterruptedException e) {
+
+                    }
+                }
+            });
         }
 
         if (useUPnP) {

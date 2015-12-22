@@ -107,9 +107,9 @@ public class SageTVManager implements PowerEventListener {
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
 
-            if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
+            /*if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
                 SageTVPoolManager.addPoolCaptureDevice(captureDevice.getEncoderPoolName(), captureDevice.getEncoderName());
-            }
+            }*/
 
             logger.info("The capture device '{}' is ready.", captureDevice.getEncoderName());
 
@@ -583,7 +583,7 @@ public class SageTVManager implements PowerEventListener {
     public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices(CaptureDeviceType captureDeviceType) {
         logger.entry();
 
-        portToSocketServerLock.readLock().lock();
+        captureDeviceNameToCaptureDeviceLock.readLock().lock();
         ArrayList<CaptureDevice> captureDevices = new ArrayList<CaptureDevice>();
 
         try {
@@ -596,7 +596,7 @@ public class SageTVManager implements PowerEventListener {
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            portToSocketServerLock.readLock().unlock();
+            captureDeviceNameToCaptureDeviceLock.readLock().unlock();
         }
 
         return logger.exit(captureDevices);

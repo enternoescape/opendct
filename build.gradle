@@ -212,6 +212,11 @@ ospackage {
         filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
     }
 
+    from('src/webapps') {
+        into 'webapps'
+        filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
+    }
+
     from('distribution') {
         include 'LICENSE'
         include 'licenses/*'
@@ -315,6 +320,10 @@ def sourceWin() {
         from 'src/main/resources'
         include 'log4j2.xml'
         into "${winWixSource}/lib"
+    }
+
+    from('src/webapps') {
+        into '${winWixSource}/webapps'
     }
 
     copy {

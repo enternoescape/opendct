@@ -220,13 +220,27 @@ public class DummyCaptureDevice implements CaptureDevice {
         return CopyProtection.UNKNOWN;
     }
 
-    @Override
     public void setOfflineScan(boolean enabled) {
 
     }
 
-    @Override
     public boolean isOfflineScanEnabled() {
         return false;
+    }
+
+    public boolean isNetworkDevice() {
+        return false;
+    }
+
+    public InetAddress getRemoteAddress() {
+        return null;
+    }
+
+    public InetAddress getLocalAddress() {
+        return null;
+    }
+
+    public void setLocalAddress(InetAddress localAddress) {
+
     }
 }

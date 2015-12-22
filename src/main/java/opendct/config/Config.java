@@ -808,12 +808,10 @@ public class Config {
      * The value of encoder_listen_port is generated.
      *
      * @param uniqueID This is the unique id of the capture device.
-     * @param encoderLevel Provide an encoder level for this server socket. This is used to
-     *                     determine if the socket can be shared or not.
      * @return Returns an available socket server port.
      */
-    public static int getSocketServerPort(int uniqueID, String encoderLevel) {
-        logger.entry(uniqueID, encoderLevel);
+    public static int getSocketServerPort(int uniqueID) {
+        logger.entry(uniqueID);
 
         int returnValue;
 
@@ -821,20 +819,11 @@ public class Config {
         synchronized (getSocketServerPort) {
             returnValue = getInteger("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port", 0);
 
-            // This will set the value in the properties file and allow you to change it if you see fit.
-            encoderLevel = getString("sagetv.device." + String.valueOf(uniqueID) + ".encoder_level", encoderLevel);
-
             if (returnValue != 0) {
                 return logger.exit(returnValue);
             }
 
             boolean newDeviceIncrement = Config.getBoolean("sagetv.new.device.increment_port", false);
-            if (encoderLevel.startsWith("1")) {
-                logger.debug("Encoder does not implement network encoder version 3.0. sagetv.new.device.increment_port is being ignored since lower protocols can't share a port.");
-
-                // Encoders lower than 2.0 must have their own ports.
-                newDeviceIncrement = true;
-            }
 
             // 99 ports, plus 1 port dedicated to sharing should be plenty.
             int sharedPort = Config.getInteger("sagetv.new.device.socket_server_shared_port", 9000);
@@ -863,14 +852,6 @@ public class Config {
                     if (getValue != 0) {
                         portArray.add(getValue);
                     }
-
-                    /*String getEncoderLevel = getString(currentKey.substring(0, currentKey.length() - "encoder_listen_port".length() - 1) + ".encoder_level", encoderLevel);
-
-                    if (getEncoderLevel.equals("3.0") && getValue != 0) {
-
-                        // Take the first port that can be shared if we are allowing this.
-                        return logger.exit(getValue);
-                    }*/
                 }
             }
 

@@ -203,24 +203,6 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public int getEncoderUniqueHash();
 
     /**
-     * Returns the network encoder implementation version for this device.
-     * <p/>
-     * The 3.0 part of the network encoder is one part how SageTVRequestHandler talks to SageTV and
-     * the other part is support for uploadID (which is optional even if you say you are 3.0). This
-     * is here only in the event that a tuner really needs to function in a "legacy" mode for it to
-     * work correctly. The values are not validated, but it is not recommended to stray from the
-     * list below.
-     * <p/>
-     * Currently valid values:<p/>
-     * 1.0<p/>
-     * 2.0<p/>
-     * 3.0
-     *
-     * @return Network encoder version.
-     */
-    public String getEncoderVersion();
-
-    /**
      * Is the encoder is currently locked?
      * <p/>
      * This value should be set and cleared by SageTVManager. When this is set, the tuner is not to

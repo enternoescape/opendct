@@ -220,7 +220,6 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
         return logger.exit(returnValue);
     }
 
-    @Override
     public void stopEncoding() {
         logger.entry();
 
@@ -228,6 +227,14 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
         super.stopEncoding();
 
         logger.exit();
+    }
+
+    public boolean isNetworkDevice() {
+        return true;
+    }
+
+    public InetAddress getRemoteAddress() {
+        return rtpStreamRemoteIP;
     }
 
     // Stop the capture device from streaming and stop the encoder threads.

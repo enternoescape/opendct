@@ -24,13 +24,7 @@ public class GetSetSageTVManager extends HttpServlet {
         response.setContentType("text/html");
         response.setStatus(HttpServletResponse.SC_OK);
 
-        for (CaptureDevice captureDevice : SageTVManager.getAllLoadedCaptureDevicesSorted()) {
-            response.getWriter().println(WebObjectBuilders.getCaptureDeviceDetails(captureDevice.getEncoderName()));
-        }
-
-        for (SageTVUnloadedDevice unloadedDevice : SageTVManager.getAllUnloadedDevicesSorted()) {
-            response.getWriter().println("Unloaded: " + unloadedDevice.ENCODER_NAME + "<p/>");
-        }
+        WebDivBuilders.getMainPage(response.getWriter());
 
         // Get the capture devices.
         String captureDeviceName[] = request.getParameterValues("capdev");

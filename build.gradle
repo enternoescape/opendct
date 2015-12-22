@@ -322,8 +322,9 @@ def sourceWin() {
         into "${winWixSource}/lib"
     }
 
-    from('src/webapps') {
-        into '${winWixSource}/webapps'
+    copy {
+        from 'src/main/webapps'
+        into "${winWixSource}/webapps"
     }
 
     copy {

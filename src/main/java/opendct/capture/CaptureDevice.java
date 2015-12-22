@@ -22,7 +22,7 @@ import opendct.channel.TVChannel;
 
 import java.net.InetAddress;
 
-public interface CaptureDevice {
+public interface CaptureDevice extends Comparable<CaptureDevice> {
 /*
 Capture Device Flow
   *based on DCT network encoder, the first two steps could be

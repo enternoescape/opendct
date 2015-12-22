@@ -23,7 +23,7 @@ public class GetSetSageTVManager extends HttpServlet {
         response.setContentType("text/html");
         response.setStatus(HttpServletResponse.SC_OK);
 
-        for (CaptureDevice captureDevice : SageTVManager.getAllSageTVCaptureDevices()) {
+        for (CaptureDevice captureDevice : SageTVManager.getAllLoadedCaptureDevicesSorted()) {
             response.getWriter().println(WebObjectBuilders.getCaptureDeviceDetails(captureDevice.getEncoderName()));
         }
 

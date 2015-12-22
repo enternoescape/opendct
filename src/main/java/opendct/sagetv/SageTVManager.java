@@ -26,10 +26,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -47,12 +44,14 @@ public class SageTVManager implements PowerEventListener {
     private static final ReentrantReadWriteLock portToSocketServerLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock captureDeviceNameToCaptureDeviceLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock captureDeviceToFilesLock = new ReentrantReadWriteLock();
+    private static final ReentrantReadWriteLock unloadedCaptureDeviceToInitLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock fileToUploadIDLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock fileToSocketServerLock = new ReentrantReadWriteLock();
 
     private static final HashMap<Integer, SageTVSocketServer> portToSocketServer = new HashMap<Integer, SageTVSocketServer>();
     private static final HashMap<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<String, CaptureDevice>();
     private static final HashMap<CaptureDevice, String> captureDeviceToFiles = new HashMap<CaptureDevice, String>();
+    private static final HashMap<String, SageTVUnloadedDevice> unloadedCaptureDeviceToInit = new HashMap<>();
     private static final HashMap<String, Integer> fileToUploadID = new HashMap<String, Integer>();
     private static final HashMap<String, SageTVSocketServer> fileToSocketServer = new HashMap<String, SageTVSocketServer>();
 
@@ -148,6 +147,106 @@ public class SageTVManager implements PowerEventListener {
         }
 
         logger.exit();
+    }
+
+    /**
+     * Add an unloaded device to the unloaded devices map.
+     *
+     * @param sageTVUnloadedDevice The unloaded capture device.
+     */
+    public static void addUnloadedDevice(SageTVUnloadedDevice sageTVUnloadedDevice) {
+        unloadedCaptureDeviceToInitLock.writeLock().lock();
+
+        try {
+            unloadedCaptureDeviceToInit.put(sageTVUnloadedDevice.ENCODER_NAME, sageTVUnloadedDevice);
+        } catch (Exception e) {
+            logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            unloadedCaptureDeviceToInitLock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Get an unloaded device from the unloaded devices map.
+     * <p/>
+     * Do not use the method getCaptureDevice() since it will initialize the device and that's only
+     * to be done by SageTVManager.
+     *
+     * @param deviceName The name of the device to get. If it doesn't exist <i>null</i> will be
+     *                   returned.
+     */
+    public static SageTVUnloadedDevice getUnloadedDevice(String deviceName) {
+
+        SageTVUnloadedDevice sageTVUnloadedDevice = null;
+
+        unloadedCaptureDeviceToInitLock.readLock().lock();
+
+        try {
+            sageTVUnloadedDevice = unloadedCaptureDeviceToInit.get(deviceName);
+        } catch (Exception e) {
+            logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            unloadedCaptureDeviceToInitLock.readLock().unlock();
+        }
+
+        return sageTVUnloadedDevice;
+    }
+
+    /**
+     * Get all devices listed as unloaded.
+     * <p/>
+     * Do not use the method getCaptureDevice() since it will initialize the device and that's only
+     * to be done by SageTVManager.
+     *
+     * @return An array of all unloaded devices.
+     */
+    public static ArrayList<SageTVUnloadedDevice> getAllUnloadedDevices() {
+        ArrayList<SageTVUnloadedDevice> unloadedDevices = new ArrayList<>();
+
+        unloadedCaptureDeviceToInitLock.readLock().lock();
+
+        try {
+            for (Map.Entry<String, SageTVUnloadedDevice> unloadedDeviceEntry : unloadedCaptureDeviceToInit.entrySet()) {
+                if (unloadedDeviceEntry.getValue() != null) {
+                    unloadedDevices.add(unloadedDeviceEntry.getValue());
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            unloadedCaptureDeviceToInitLock.readLock().unlock();
+        }
+
+        return unloadedDevices;
+    }
+
+    /**
+     * Get all devices listed as unloaded pre-sorted.
+     * <p/>
+     * Do not use the method getCaptureDevice() since it will initialize the device and that's only
+     * to be done by SageTVManager.
+     *
+     * @return A sorted array of all unloaded devices.
+     */
+    public static ArrayList<SageTVUnloadedDevice> getAllUnloadedDevicesSorted() {
+        ArrayList<SageTVUnloadedDevice> unloadedDevices = getAllUnloadedDevices();
+
+        Collections.sort(unloadedDevices);
+
+        return unloadedDevices;
+    }
+
+    /**
+     * Returns a sorted array of all loaded capture devices.
+     *
+     * @return A sorted array of all loaded devices.
+     */
+    public static ArrayList<CaptureDevice> getAllLoadedCaptureDevicesSorted() {
+        ArrayList<CaptureDevice> captureDevices = getAllSageTVCaptureDevices();
+
+        Collections.sort(captureDevices);
+
+        return captureDevices;
     }
 
     /**

@@ -761,6 +761,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
     @Override
     public int compareTo(CaptureDevice o) {
-        return o.getEncoderName().compareTo(encoderName);
+        return -o.getEncoderName().compareTo(encoderName);
     }
 }

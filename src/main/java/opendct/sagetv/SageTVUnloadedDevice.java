@@ -74,6 +74,6 @@ public class SageTVUnloadedDevice implements Comparable<SageTVUnloadedDevice> {
 
     @Override
     public int compareTo(SageTVUnloadedDevice o) {
-        return o.ENCODER_NAME.compareTo(ENCODER_NAME);
+        return -o.ENCODER_NAME.compareTo(ENCODER_NAME);
     }
 }

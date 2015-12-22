@@ -68,3 +68,11 @@
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 
 
+#### 1.0.0-Beta (compile only; not released)
+> *Added web interface on port 8090.
+
+> *Added support to load and unload capture devices at runtime via the web interface. This starts 
+> the framework to be able to start the service for the first time and then select what you want to
+> use instead of OpenDCT just loading everything it can find.
+
+> *

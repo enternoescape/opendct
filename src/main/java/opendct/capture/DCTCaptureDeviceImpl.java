@@ -59,7 +59,6 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDevice {
     private final Logger logger = LogManager.getLogger(DCTCaptureDeviceImpl.class);

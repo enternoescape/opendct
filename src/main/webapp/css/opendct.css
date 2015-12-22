@@ -1,0 +1,32 @@
+/*
+I borrowed this from the original SageTV web interface since it will be very familiar. I could not
+find the source and I have no idea who to attribute this to.
+*/
+
+/* ---------------------------------------------------- */
+/* Global settings */
+body {
+	font-family:  Arial, Tahoma, "lucida console", sans-serif;
+	font-size: 10pt;
+	background-color: #333;
+	color:#FFFFFF;
+}
+img {
+	border-style: none;
+}
+a {
+	color: #FFFFFF;
+	text-decoration:none;
+}
+a:visited {
+	color: #FFFFFF;
+	text-decoration:none;
+}
+a:hover {
+	color: #ffd800;
+	text-decoration:underline;
+}
+
+h1 {
+	text-align: center;
+}

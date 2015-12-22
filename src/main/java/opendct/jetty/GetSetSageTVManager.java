@@ -4,6 +4,7 @@ import opendct.capture.CaptureDevice;
 import opendct.config.Config;
 import opendct.config.options.DeviceOptionException;
 import opendct.sagetv.SageTVManager;
+import opendct.sagetv.SageTVUnloadedDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,20 +28,38 @@ public class GetSetSageTVManager extends HttpServlet {
             response.getWriter().println(WebObjectBuilders.getCaptureDeviceDetails(captureDevice.getEncoderName()));
         }
 
+        for (SageTVUnloadedDevice unloadedDevice : SageTVManager.getAllUnloadedDevicesSorted()) {
+            response.getWriter().println("Unloaded: " + unloadedDevice.ENCODER_NAME + "<p/>");
+        }
+
         // Get the capture devices.
         String captureDeviceName[] = request.getParameterValues("capdev");
+        if (captureDeviceName == null) {
+            captureDeviceName = new String[0];
+        }
 
         // Get the capture device parents.
         String captureDeviceParents[] = request.getParameterValues("cappar");
+        if (captureDeviceParents == null) {
+            captureDeviceParents = new String[0];
+        }
 
         // Get the property. The current value is always returned even if we are setting the value.
         String properties[] = request.getParameterValues("p");
+        if (properties == null) {
+            properties = new String[0];
+        }
+
         if (properties.length == 0) {
             return;
         }
 
         // Get the value to set. If there are no values to set, the request becomes strictly a get.
         String values[] = request.getParameterValues("v");
+        if (values == null) {
+            values = new String[0];
+        }
+
         boolean setValue = !(values.length == 0);
 
         if (setValue && !(values.length == properties.length)) {

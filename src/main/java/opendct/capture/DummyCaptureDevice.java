@@ -27,17 +27,27 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public final String parentName;
     public final String encoderName;
-    public final String encoderVersion;
     public String lineup;
     public int merit;
     public String poolName;
+    public boolean networkDevice;
+    InetAddress remoteAddress;
+    InetAddress localAddress;
 
-    public DummyCaptureDevice(String parentName, String encoderName, String encoderVersion, String lineup, String tunerPool) {
+
+    public DummyCaptureDevice(String parentName, String encoderName, String lineup, String tunerPool) {
+        this(parentName, encoderName, lineup, tunerPool, false, null, null);
+    }
+
+    public DummyCaptureDevice(String parentName, String encoderName, String lineup, String tunerPool, boolean networkDevice, InetAddress remoteAddress, InetAddress localAddress) {
         this.parentName = parentName;
         this.encoderName = encoderName;
-        this.encoderVersion = encoderVersion;
         this.lineup = lineup;
         this.poolName = tunerPool;
+        this.networkDevice = networkDevice;
+        this.remoteAddress = remoteAddress;
+        this.localAddress = localAddress;
+
         merit = 0;
     }
 
@@ -63,10 +73,6 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public int getEncoderUniqueHash() {
         return encoderName.hashCode();
-    }
-
-    public String getEncoderVersion() {
-        return encoderVersion;
     }
 
     private AtomicBoolean locked = new AtomicBoolean(false);
@@ -233,14 +239,19 @@ public class DummyCaptureDevice implements CaptureDevice {
     }
 
     public InetAddress getRemoteAddress() {
-        return null;
+        return remoteAddress;
     }
 
     public InetAddress getLocalAddress() {
-        return null;
+        return localAddress;
     }
 
     public void setLocalAddress(InetAddress localAddress) {
+        this.localAddress = localAddress;
+    }
 
+    @Override
+    public int compareTo(CaptureDevice o) {
+        return o.getEncoderName().compareTo(encoderName);
     }
 }

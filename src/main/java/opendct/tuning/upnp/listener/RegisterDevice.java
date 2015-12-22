@@ -16,14 +16,17 @@
 
 package opendct.tuning.upnp.listener;
 
+import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.capture.DCTCaptureDeviceImpl;
 import opendct.config.Config;
 import opendct.power.NetworkPowerEventManger;
 import opendct.sagetv.SageTVManager;
+import opendct.sagetv.SageTVUnloadedDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fourthline.cling.UpnpService;
+import org.fourthline.cling.binding.xml.Descriptor;
 import org.fourthline.cling.model.meta.Device;
 import org.fourthline.cling.model.meta.RemoteDevice;
 import org.fourthline.cling.registry.Registry;
@@ -87,10 +90,21 @@ public class RegisterDevice {
                             logger.debug("There was a problem initializing the capture device => ", e);
                             failedAdds += 1;
                         } catch (CaptureDeviceIgnoredException e) {
+
+                            // This provided SageTVManager with an object to initialize later if requested.
+                            final SageTVUnloadedDevice sageTVUnloadedDevice = new SageTVUnloadedDevice(
+                                    "DCT-" + embeddedDevice.getDetails().getFriendlyName(),
+                                    DCTCaptureDeviceImpl.class,
+                                    new Object[]{embeddedDevice},
+                                    new Class[]{Device.class},
+                                    false);
+
+                            SageTVManager.addUnloadedDevice(sageTVUnloadedDevice);
+
                             logger.debug("The capture device was was not permitted to initialize => {}", e.toString());
                             ignoredAdds += 1;
                         } catch (Exception e) {
-                            logger.error("There was a problem creating network encoders from the embedded devices on '{}' with the schema '{}' => {}", deviceName, deviceSchema, e);
+                            logger.error("There was a problem creating network encoders from the embedded devices on '{}' with the schema '{}' => ", deviceName, deviceSchema, e);
                             failedAdds += 1;
                         }
                     }

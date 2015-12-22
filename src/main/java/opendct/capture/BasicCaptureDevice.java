@@ -113,7 +113,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         // If there are any entries on this list, only devices and parents on this list will be
         // loaded. All other discovered devices will be discarded.
-        String[] onlyDevices = Config.getStringArray(propertiesDevicesGlobal + "only_devices_csv", new String[0]);
+        String[] onlyDevices = Config.getStringArray(propertiesDevicesGlobal + "only_devices_csv");
 
         if (onlyDevices.length > 0) {
             boolean deviceListed = false;
@@ -741,5 +741,26 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         stopConsuming(false);
 
         logger.exit();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        BasicCaptureDevice that = (BasicCaptureDevice) o;
+
+        return encoderName.equals(that.encoderName);
+
+    }
+
+    @Override
+    public int hashCode() {
+        return encoderName.hashCode();
+    }
+
+    @Override
+    public int compareTo(CaptureDevice o) {
+        return o.getEncoderName().compareTo(encoderName);
     }
 }

@@ -16,6 +16,7 @@
 
 package opendct.jetty;
 
+import opendct.config.CommandLine;
 import opendct.power.PowerEventListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,7 +37,7 @@ public class JettyManager implements PowerEventListener {
     private static int jettySecurePort = 8093;
 
     public synchronized static void startJetty(int port, int securePort) {
-        logger.error("Starting Jetty server on ports {} and {}...", port, securePort);
+        logger.info("Starting Jetty server on port {}...", port);
 
         if (server.isStarting() || server.isStarted()) {
             return;
@@ -53,11 +54,12 @@ public class JettyManager implements PowerEventListener {
 
         WebAppContext webapp = new WebAppContext();
         webapp.setContextPath("/");
-        File file = new File("../../src/main/webapp");
+        File file = new File(CommandLine.getJettyDir());
         webapp.setWar(file.getAbsolutePath());
 
         server.setHandler(webapp);
 
+        logger.info("Using WebApp directory '{}'.", file.getAbsolutePath());
         try {
             server.start();
         } catch (Exception e) {

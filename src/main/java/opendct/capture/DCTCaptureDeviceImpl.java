@@ -97,8 +97,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private long offlineDetectionMinBytes =
             Config.getLong("upnp.dct.offline_detection_min_bytes", 18800);
 
-    private boolean offlineScan = false;
-
     private int encoderNumber = -1;
     private boolean cableCardPresent = false;
     private String encoderIPAddress = null;
@@ -113,8 +111,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private boolean autoMapTuning =
             Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
     private HDHomeRunTuner hdhrTuner = null;
-    private boolean forceExternalUnlock =
-            Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
 
     private Thread monitorThread = null;
     private volatile Thread tuningThread = null;
@@ -264,18 +260,13 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
             }
 
-            encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
-            offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
+            setChannelLineup(Config.getString(propertiesDeviceRoot + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
                 ChannelLineup newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.INFINITV, encoderIPAddress);
                 ChannelManager.updateChannelLineup(newChannelLineup);
                 ChannelManager.addChannelLineup(newChannelLineup, true);
                 ChannelManager.saveChannelLineup(encoderLineup);
-            }
-
-            if (offlineScan) {
-                ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
             }
 
             if (isHttpTune()) {
@@ -293,18 +284,13 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
             }
 
-            setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
-            offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
+            setChannelLineup(Config.getString(propertiesDeviceRoot + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
                 ChannelLineup newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.PRIME, encoderIPAddress);
                 ChannelManager.updateChannelLineup(newChannelLineup);
                 ChannelManager.addChannelLineup(newChannelLineup, true);
                 ChannelManager.saveChannelLineup(encoderLineup);
-            }
-
-            if (offlineScan) {
-                ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
             }
 
             if (isHDHRTune()) {
@@ -335,7 +321,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 localIPAddress,
                 cableCardPresent,
                 encoderLineup,
-                offlineScan,
+                isOfflineScanEnabled(),
                 rtpLocalPort);
 
         logger.exit();
@@ -406,7 +392,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         if (isHDHRTune()) {
             if (hdhrLock && locked) {
                 try {
-                    if (forceExternalUnlock) {
+                    if (encoderForceExternalUnlock) {
                         hdhrTuner.forceClearLockkey();
                     }
 
@@ -421,7 +407,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 }
             } else if (hdhrLock) {
                 try {
-                    if (forceExternalUnlock) {
+                    if (encoderForceExternalUnlock) {
                         hdhrTuner.forceClearLockkey();
                     } else {
                         hdhrTuner.clearLockkey();

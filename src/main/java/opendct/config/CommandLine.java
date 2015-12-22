@@ -37,12 +37,15 @@ public class CommandLine {
     private static String logUpnpLogLevel = "severe";
     private static boolean logUpnpToConsole = false;
     private static boolean suspendTest = false;
+    private static String jettyDir = null;
 
     private static Options generateCommandLineOptions() {
         Options newOptions = new Options();
         newOptions.addOption("h", "help", false, "Display this help screen.");
         newOptions.addOption("c", "config-dir", true, "Specify directory to use for the" +
-                " configuration files. (default: current jar directory.");
+                " configuration files. (default: current jar directory.)");
+        newOptions.addOption("j", "jetty-dir", true, "Specify directory to use for the" +
+                " configuration files. (default: <current_directory>/webapps/opendct.)");
 
         newOptions.addOption("C", "config-only", false, "This will run a discovery, then save the" +
                 " generated configuration. (requires --run-seconds to specify the length of the" +
@@ -99,6 +102,8 @@ public class CommandLine {
         //Assign values
         try {
             configDir = CommandLine.getOption("config-dir", System.getProperty("user.dir"));
+            jettyDir = CommandLine.getOption("jetty-dir", System.getProperty("user.dir") + "/webapps/opendct");
+
             configOnly = hasOption("config-only");
             if (hasOption("run-seconds")) {
                 runSeconds = Long.getLong(commandLine.getOptionValue("run-seconds"));
@@ -161,6 +166,10 @@ public class CommandLine {
 
     public static String getConfigDir() {
         return configDir;
+    }
+
+    public static String getJettyDir() {
+        return jettyDir;
     }
 
     public static boolean isConfigOnly() {

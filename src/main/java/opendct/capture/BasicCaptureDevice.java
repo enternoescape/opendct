@@ -331,7 +331,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
         encoderPoolName = poolName;
 
-        SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName);
+        if (SageTVPoolManager.isUsePools()) {
+            SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName);
+        }
     }
 
     public void setAlwaysForceExternalUnlock(boolean forceLock) {

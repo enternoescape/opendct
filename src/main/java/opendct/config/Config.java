@@ -48,6 +48,7 @@ public class Config {
     private static Properties properties = new Properties();
     private static volatile boolean isConfigOnly = false;
     private static volatile boolean isShutdown = false;
+    private static volatile boolean isRestartPending = false;
     private static final HashMap<Integer, String> rtspPortMap = new HashMap<>();
 
     public static final OSVersion OS_VERSION = getOsVersion();
@@ -901,5 +902,13 @@ public class Config {
 
     public static boolean isShutdown() {
         return isShutdown;
+    }
+
+    public static void setRestartPending() {
+        isRestartPending = true;
+    }
+
+    public static boolean isRestartPending() {
+        return isRestartPending;
     }
 }

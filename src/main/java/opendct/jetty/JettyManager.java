@@ -27,6 +27,7 @@ import java.io.File;
 
 public class JettyManager implements PowerEventListener {
     private static final Logger logger = LogManager.getLogger(JettyManager.class);
+    public static PowerEventListener POWER_EVENT_LISTENER = new JettyManager();
 
     //TODO: [js] Create a simple web server for communicating with and troubleshooting the network encoder.
 

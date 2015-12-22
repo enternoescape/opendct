@@ -202,6 +202,8 @@ public class Main {
             int jettyPort = Config.getInteger("jetty.port", 8090);
             JettyManager.startJetty(jettyPort, 8093);
 
+            PowerMessageManager.EVENTS.addListener(JettyManager.POWER_EVENT_LISTENER);
+
             Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
                 @Override
                 public void run() {

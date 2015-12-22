@@ -107,6 +107,14 @@ public class DummyCaptureDevice implements CaptureDevice {
         return true;
     }
 
+    public void setAlwaysForceExternalUnlock(boolean forceLock) {
+
+    }
+
+    public boolean setAlwaysForceExternalUnlock() {
+        return false;
+    }
+
     public boolean getChannelInfoOffline(TVChannel tvChannel) {
         return false;
     }
@@ -210,5 +218,15 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public CopyProtection getCopyProtection() {
         return CopyProtection.UNKNOWN;
+    }
+
+    @Override
+    public void setOfflineScan(boolean enabled) {
+
+    }
+
+    @Override
+    public boolean isOfflineScanEnabled() {
+        return false;
     }
 }

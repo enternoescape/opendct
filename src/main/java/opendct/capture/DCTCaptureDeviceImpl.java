@@ -1677,6 +1677,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         return logger.exit(returnValue);
     }
 
+    public InetAddress getLocalAddress() {
+        return localIPAddress;
+    }
+
+    public void setLocalAddress(InetAddress localAddress) {
+        localIPAddress = localAddress;
+    }
+
 
     private void subscriptionCleanup() {
         logger.entry();

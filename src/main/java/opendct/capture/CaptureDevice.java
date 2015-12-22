@@ -632,5 +632,18 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      */
     public boolean isOfflineScanEnabled();
 
+    /**
+     * Is this a network device?
+     * <p/>
+     * If this is a network device, the network address getters should return actual values.
+     *
+     * @return <i>true</i> if this is a network device.
+     */
+    public boolean isNetworkDevice();
 
+    public InetAddress getRemoteAddress();
+
+    public InetAddress getLocalAddress();
+
+    public void setLocalAddress(InetAddress localAddress);
 }

@@ -73,9 +73,8 @@ public class JettyManager implements PowerEventListener {
         }
 
         try {
-            logger.error("Stopping Jetty server...");
+            logger.info("Stopping Jetty server...");
             server.stop();
-            server.join();
         } catch (Exception e) {
             logger.error("There was a problem while attempting to stop Jetty server => ", e);
         }

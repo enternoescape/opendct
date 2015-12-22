@@ -12,6 +12,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 
 public class GetSetSageTVManager extends HttpServlet {
     private static final Logger logger = LogManager.getLogger(GetSetSageTVManager.class);
@@ -74,12 +77,11 @@ public class GetSetSageTVManager extends HttpServlet {
             }
 
             // We check each value individually to try to control what can be changed and also
-            // because many of them need to be handled in different ways otherwise more restarts
-            // would be needed.
+            // because many of them need to be handled in very different ways.
             switch (property) {
                 case "device_name":
                     if (captureDevices.length > 1) {
-                        throw new DeviceOptionException("Attempted to rename multiple capture devices to the same name. This is not allowed.", null);
+                        throw new DeviceOptionException("Not allowed to rename multiple capture devices to the same name.", null);
                     }
                     if (property.contains(",")) {
                         throw new DeviceOptionException("Device names cannot contain commas.", null);
@@ -87,7 +89,7 @@ public class GetSetSageTVManager extends HttpServlet {
 
                     Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + "." + property, value);
 
-                    //TODO: [js] Rename devices without needing to reboot for changes to take effect.
+                    //TODO: [js] Rename devices without needing to restart for changes to take effect.
                     Config.setRestartPending();
 
                     break;
@@ -167,5 +169,46 @@ public class GetSetSageTVManager extends HttpServlet {
         logger.info("Set the property '{}' to the value '{}' for {}.{}", property, value, captureDevices, Config.isRestartPending() ? " Restart is pending." : "");
 
         logger.exit();
+    }
+
+    public static void applyToCaptureDeviceParents(String captureDeviceParents[], String property, String value) throws DeviceOptionException {
+        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+
+        for (String captureDeviceParentName : captureDeviceParents) {
+            for (CaptureDevice captureDevice : captureDevices) {
+                if (!captureDevice.getEncoderParentName().equals(captureDeviceParentName)) {
+                    continue;
+                }
+
+                // We check each value individually to try to control what can be changed and also
+                // because many of them need to be handled in very different ways.
+                switch (property) {
+                    case "device_name":
+                        if (captureDeviceParents.length > 1) {
+                            throw new DeviceOptionException("Not allowed to rename multiple capture device parents to the same name.", null);
+                        }
+                        if (property.contains(",")) {
+                            throw new DeviceOptionException("Device parent names cannot contain commas.", null);
+                        }
+
+                        Config.setString("sagetv.device.parent." + captureDevice.getEncoderUniqueHash() + "." + property, value);
+
+                        //TODO: [js] Rename devices without needing to restart for changes to take effect.
+                        Config.setRestartPending();
+
+                        break;
+                    case "local_ip_override":
+                        // This will change the local IP address used the next time the capture
+                        // device starts an encoding.
+                        try {
+                            captureDevice.setLocalAddress(InetAddress.getByName(value));
+                        } catch (UnknownHostException e) {
+                            throw new DeviceOptionException(e, null);
+                        }
+                    default:
+                        throw new DeviceOptionException("The property '" + property + "' cannot be set.", null);
+                }
+            }
+        }
     }
 }

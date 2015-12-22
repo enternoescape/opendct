@@ -45,7 +45,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected final int encoderParentUniqueHash;
     protected final String encoderName;
     protected final int encoderUniqueHash;
-    protected final String encoderVersion;
 
     // Capabilities
     protected final boolean canSwitch;
@@ -91,23 +90,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *                                       not be loaded, this exception will be thrown.
      */
     public BasicCaptureDevice(String deviceParentName, String deviceName) throws CaptureDeviceIgnoredException {
-        this(deviceParentName, deviceName, "3.0");
-    }
-
-    /**
-     * Create a new basic capture device.
-     *
-     * @param deviceParentName This is the name of the device containing this capture device. This
-     *                         is used for identifying groupings of devices.
-     * @param deviceName       This name is used to uniquely identify this capture device.
-     * @param encoderVersion   Specify the encoder version that this capture device can implement.
-     *                         Valid values are 1.0, 2.0 and 3.0. This determines what features
-     *                         SageTV will expect this device to be able to support.
-     * @throws CaptureDeviceIgnoredException If the configuration indicates that this device should
-     *                                       not be loaded, this exception will be thrown.
-     */
-    public BasicCaptureDevice(String deviceParentName, String deviceName, String encoderVersion) throws CaptureDeviceIgnoredException {
-        logger.entry(deviceParentName, deviceName, encoderVersion);
+        logger.entry(deviceParentName, deviceName);
 
         encoderDeviceType = CaptureDeviceType.UNKNOWN;
 
@@ -158,7 +141,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         }
 
         sageTVConsumerRunnable = getNewSageTVConsumer();
-        this.encoderVersion = encoderVersion;
         canSwitch = Config.getBoolean(propertiesDeviceRoot + "fast_network_encoder_switch", sageTVConsumerRunnable.canSwitch());
         canEncodeFilename = sageTVConsumerRunnable.acceptsFilename();
         canEncodeUploadID = sageTVConsumerRunnable.acceptsUploadID();
@@ -254,17 +236,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      */
     public int getEncoderUniqueHash() {
         return encoderUniqueHash;
-    }
-
-    /**
-     * Get the version of this encoder.
-     * <p/>
-     * The default is 3.0, but it can been overridden at initialization.
-     *
-     * @return The version of this encoder.
-     */
-    public String getEncoderVersion() {
-        return encoderVersion;
     }
 
     /**

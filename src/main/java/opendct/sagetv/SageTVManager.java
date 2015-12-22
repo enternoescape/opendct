@@ -78,9 +78,7 @@ public class SageTVManager implements PowerEventListener {
         // Returns either the saved port for this capture device if it is already in properties or a
         // unused(V1.0,V2.0)/shared(V3.0) port. This static method is thread-safe and designed to
         // guarantee that two socket servers will not unintentionally use the same port.
-        int newPort = Config.getSocketServerPort(
-                captureDevice.getEncoderUniqueHash(),
-                captureDevice.getEncoderVersion());
+        int newPort = Config.getSocketServerPort(captureDevice.getEncoderUniqueHash());
 
         if (newPort == 0) {
             throw new SocketException("There are no available ports within the provided range. The tuner cannot start.");
@@ -542,8 +540,7 @@ public class SageTVManager implements PowerEventListener {
                         "sagetv.device." + captureDevice.getEncoderUniqueHash() +
                                 ".encoder_listen_port",
                         Config.getSocketServerPort(
-                                captureDevice.getEncoderUniqueHash(),
-                                captureDevice.getEncoderVersion()
+                                captureDevice.getEncoderUniqueHash()
                         )
                 );
 

@@ -18,6 +18,8 @@ package opendct.capture;
 
 import opendct.channel.*;
 import opendct.config.Config;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.RTPProducer;
 import opendct.sagetv.SageTVManager;
@@ -60,7 +62,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDevice {
+public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
     private final Logger logger = LogManager.getLogger(DCTCaptureDeviceImpl.class);
 
     // Direct access to the capture device via UPnP services.
@@ -147,8 +149,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
         GetProtocolInfo getProtocolInfo = connectionManagerAction.getGetProtocolInfo();
 
-        if (getProtocolInfo != null && getProtocolInfo.getSource().equals("rtsp-rtp-udp:*:dri-mp2t:*")) {
-            connectionManagerSourceProtocol = "rtsp-rtp-udp:*:dri-mp2t:*";
+        if (getProtocolInfo != null && getProtocolInfo.getSource().toLowerCase().equals("rtsp-rtp-udp:*:dri-mp2t:*")) {
+            connectionManagerSourceProtocol = getProtocolInfo.getSource();
             connectionManagerAVTransportID = "0";
         } else if (getProtocolInfo == null || getProtocolInfo.getSource() == null) {
             logger.warn("The source protocol could not be determined. Using the default 'rtsp-rtp-udp:*:dri-mp2t:*'");
@@ -1705,5 +1707,15 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         logger.exit();
+    }
+
+    @Override
+    public DeviceOption[] getOptions() {
+        return new DeviceOption[0];
+    }
+
+    @Override
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+
     }
 }

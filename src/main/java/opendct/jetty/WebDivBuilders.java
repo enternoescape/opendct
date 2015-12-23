@@ -3,12 +3,16 @@ package opendct.jetty;
 import opendct.capture.CaptureDevice;
 import opendct.channel.ChannelLineup;
 import opendct.channel.ChannelManager;
+import opendct.config.Config;
 import opendct.sagetv.SageTVManager;
 import opendct.sagetv.SageTVPoolManager;
 import opendct.sagetv.SageTVUnloadedDevice;
 
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class WebDivBuilders {
 
@@ -25,11 +29,15 @@ public class WebDivBuilders {
     }
 
     public static void printFooter(PrintWriter out) {
-        out.println("</body>");
+        out.println("<div class=\"footer\">\n" +
+                "   <p>Page Generated " + (new Date()).toString() + "</p>\n" +
+                "   <p>SageTV OpenDCT Version " + Config.VERSION + "</p>\n" +
+                "</div>\n" +
+                "</body>");
     }
 
     public static void printLoadedCaptureDeviceTable(PrintWriter out) {
-        out.println("<div class=\"content\"><table class=\"loaded_devices\">");
+        out.println("<div class=\"loaded_devices_table\"><table class=\"loaded_devices\">");
 
         for (CaptureDevice captureDevice : SageTVManager.getAllLoadedCaptureDevicesSorted()) {
             printCaptureDeviceCell(captureDevice.getEncoderName(), out);
@@ -111,7 +119,7 @@ public class WebDivBuilders {
         out.println("</table>");
     }
 
-    public static void printUnloadedCaptureDeviceTable(PrintWriter out) {
+    public static void printUnloadedCaptureDeviceTable(PrintWriter out, String returnUrl) {
 
         ArrayList<SageTVUnloadedDevice> unloadedDevices = SageTVManager.getAllUnloadedDevicesSorted();
 
@@ -126,13 +134,13 @@ public class WebDivBuilders {
         out.println("<div class=\"content\"><table class=\"unloaded_devices\">");
 
         for (SageTVUnloadedDevice unloadedDevice : SageTVManager.getAllUnloadedDevicesSorted()) {
-            printUnloadedDeviceCell(unloadedDevice, out);
+            printUnloadedDeviceCell(unloadedDevice, out, returnUrl);
         }
         out.println("</table></div>");
         out.println("<hr/>");
     }
 
-    public static void printUnloadedDeviceCell(SageTVUnloadedDevice unloadedDevice, PrintWriter out) {
+    public static void printUnloadedDeviceCell(SageTVUnloadedDevice unloadedDevice, PrintWriter out, String returnUrl) {
         if (unloadedDevice == null || out == null) {
             return;
         }
@@ -143,7 +151,11 @@ public class WebDivBuilders {
         out.println("<td class=\"title_cell\">");
         out.println(unloadedDevice.ENCODER_NAME + "<br/>");
         out.println(unloadedDevice.DESCRIPTION + "<br/>");
-        out.print("<a href=\"\">");
+        try {
+            out.print("<a href=\"opendct/sagetvmanager?unldev=" + URLEncoder.encode(unloadedDevice.ENCODER_NAME, Config.STD_BYTE) + "&p=load_device&v=true&return=" + URLEncoder.encode(returnUrl, Config.STD_BYTE) +"\">");
+        } catch (UnsupportedEncodingException e) {
+
+        }
         if (unloadedDevice.isPersistent()) {
             out.print("Create New Capture Device");
         } else {

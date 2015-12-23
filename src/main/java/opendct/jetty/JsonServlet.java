@@ -1,10 +1,7 @@
 package opendct.jetty;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import opendct.sagetv.QueuedPoolDevice;
+import com.fasterxml.jackson.databind.ObjectReader;
 import opendct.sagetv.SageTVManager;
 
 import javax.servlet.ServletException;
@@ -21,7 +18,8 @@ public class JsonServlet extends HttpServlet {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonRequest jsonRequest[] = objectMapper.readValue(request.getReader(), JsonRequest[].class);
 
-
+        ObjectReader objectReader = objectMapper.readerForUpdating(SageTVManager.class.getDeclaredClasses());
+        objectReader.readValue(request.getReader());
     }
 
     private static void sageTVManager(BufferedReader reader, PrintWriter writer, String requestName, String parameters[]) {

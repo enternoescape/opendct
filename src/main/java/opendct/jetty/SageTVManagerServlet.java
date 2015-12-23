@@ -108,11 +108,24 @@ public class SageTVManagerServlet extends HttpServlet {
                     response.sendError(404, e.toString());
                 }
             } else if (unloadedDeviceNames.length > 0) {
+                try {
+                    if (setValue) {
+                        setToUnloadedDevices(unloadedDeviceNames, property, value);
+                    }
 
+
+                } catch (DeviceOptionException e) {
+                    response.sendError(404, e.toString());
+                }
             } else {
                 // When no device groups are specified it's treated as a general request.
 
             }
+        }
+
+        String returnUrl = request.getParameter("return");
+        if (returnUrl != null) {
+            response.sendRedirect(returnUrl);
         }
     }
 
@@ -410,7 +423,7 @@ public class SageTVManagerServlet extends HttpServlet {
 
             switch (property) {
                 case "load_device":
-                    SageTVManager.addCaptureDevice(value);
+                    SageTVManager.addCaptureDevice(unloadedDeviceName);
 
                     break;
                 default:

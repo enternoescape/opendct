@@ -37,11 +37,22 @@ public class WebDivBuilders {
     }
 
     public static void printLoadedCaptureDeviceTable(PrintWriter out) {
+        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllLoadedCaptureDevicesSorted();
+
+        if (captureDevices.size() == 0) {
+            out.println("<p/>");
+            out.println("<div class=\"notification\">No capture devices currently available.</div>");
+            out.println("<p/>");
+            out.println("<hr/>");
+            return;
+        }
+
         out.println("<div class=\"loaded_devices_table\"><table class=\"loaded_devices\">");
 
-        for (CaptureDevice captureDevice : SageTVManager.getAllLoadedCaptureDevicesSorted()) {
+        for (CaptureDevice captureDevice : captureDevices) {
             printCaptureDeviceCell(captureDevice.getEncoderName(), out);
         }
+
         out.println("</table></div>");
         out.println("<hr/>");
     }
@@ -54,6 +65,12 @@ public class WebDivBuilders {
         }
         out.println("<table class=\"loaded_device\">");
         out.println("<tr>");
+
+        try {
+            out.println("<td class=\"checkbox\"><input type='checkbox' name=\"capdev[]\" value=\"" + URLEncoder.encode(captureDevice.getEncoderName(), Config.STD_BYTE) + "\"/></td>");
+        } catch (UnsupportedEncodingException e) {
+
+        }
 
         out.println("<td class=\"title_cell\">");
         out.println(captureDevice.getEncoderName());
@@ -125,7 +142,7 @@ public class WebDivBuilders {
 
         if (unloadedDevices.size() == 0) {
             out.println("<p/>");
-            out.println("<div class=\"notification\">No unloaded devices available.</div>");
+            out.println("<div class=\"notification\">No unloaded capture devices currently available.</div>");
             out.println("<p/>");
             out.println("<hr/>");
             return;
@@ -147,6 +164,12 @@ public class WebDivBuilders {
 
         out.println("<table class=\"loaded_device\">");
         out.println("<tr>");
+
+        try {
+            out.println("<td class=\"checkbox\"><input type='checkbox' name=\"unldev[]\" value=\"" + URLEncoder.encode(unloadedDevice.ENCODER_NAME, Config.STD_BYTE) + "\"/></td>");
+        } catch (UnsupportedEncodingException e) {
+
+        }
 
         out.println("<td class=\"title_cell\">");
         out.println(unloadedDevice.ENCODER_NAME + "<br/>");

@@ -89,8 +89,11 @@ dependencies {
     compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
     compile "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
     compile "org.eclipse.jetty:jetty-runner:${jettyVersion}"
+    compile 'com.fasterxml.jackson.core:jackson-core:2.6.4'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.6.4'
 
-	windows_x86 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86"
+
+    windows_x86 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86"
 	windows_x86 configurations.compile
 
 	windows_x86_64 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64"

@@ -6,10 +6,26 @@
         version="2.5">
     <servlet>
         <servlet-name>Main</servlet-name>
-        <servlet-class>opendct.jetty.Main</servlet-class>
+        <servlet-class>opendct.jetty.MainServlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>Main</servlet-name>
         <url-pattern>/opendct</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>Json</servlet-name>
+        <servlet-class>opendct.jetty.JsonServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>Json</servlet-name>
+        <url-pattern>/opendct/json</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>SageTVManager</servlet-name>
+        <servlet-class>opendct.jetty.SageTVManagerServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SageTVManager</servlet-name>
+        <url-pattern>/opendct/sagetvmanager</url-pattern>
     </servlet-mapping>
 </web-app>

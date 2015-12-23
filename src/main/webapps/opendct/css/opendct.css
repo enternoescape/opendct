@@ -42,6 +42,11 @@ table {
 /* ---------------------------------------------------- */
 /* Loaded Capture Devices */
 
+div.notification {
+    text-align: center;
+    font-style: italic;
+}
+
 div.content {
 
 }

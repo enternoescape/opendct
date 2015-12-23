@@ -51,7 +51,7 @@ public class SageTVUnloadedDevice implements Comparable<SageTVUnloadedDevice> {
     }
 
     // This needs to be able to handle the largest possible constructor to work correctly.
-    public CaptureDevice getCaptureDevice() throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
+    public CaptureDevice initCaptureDevice() throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
 
         if (!(parameters.length == parameterTypes.length)) {
             logger.error("The number of the parameter types and parameters don't match.");

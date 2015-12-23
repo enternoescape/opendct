@@ -19,10 +19,11 @@ package opendct.capture;
 import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
+import opendct.config.options.DeviceOptions;
 
 import java.net.InetAddress;
 
-public interface CaptureDevice extends Comparable<CaptureDevice> {
+public interface CaptureDevice extends Comparable<CaptureDevice>, DeviceOptions {
 /*
 Capture Device Flow
   *based on DCT network encoder, the first two steps could be
@@ -628,4 +629,6 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public InetAddress getLocalAddress();
 
     public void setLocalAddress(InetAddress localAddress);
+
+
 }

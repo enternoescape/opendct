@@ -1,14 +1,11 @@
 package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
-import opendct.capture.DCTCaptureDeviceImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
-import java.util.Comparator;
 
 public class SageTVUnloadedDevice implements Comparable<SageTVUnloadedDevice> {
     private final Logger logger = LogManager.getLogger(SageTVUnloadedDevice.class);

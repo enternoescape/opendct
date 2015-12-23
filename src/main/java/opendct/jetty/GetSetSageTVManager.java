@@ -4,7 +4,6 @@ import opendct.capture.CaptureDevice;
 import opendct.config.Config;
 import opendct.config.options.DeviceOptionException;
 import opendct.sagetv.SageTVManager;
-import opendct.sagetv.SageTVUnloadedDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,8 +22,6 @@ public class GetSetSageTVManager extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("text/html");
         response.setStatus(HttpServletResponse.SC_OK);
-
-        WebDivBuilders.getMainPage(response.getWriter());
 
         // Get the capture devices.
         String captureDeviceName[] = request.getParameterValues("capdev");
@@ -68,6 +65,127 @@ public class GetSetSageTVManager extends HttpServlet {
 
             }
         }
+    }
+
+    public static String[] getFromCaptureDevices(String captureDevices[], String property) throws DeviceOptionException {
+        logger.entry(captureDevices, property);
+        String returnValues[] = new String[captureDevices.length];
+
+
+        for (int i = 0; i < returnValues.length; i++) {
+            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(captureDevices[i], false);
+
+            if (captureDevice == null) {
+                continue;
+            }
+
+            switch (property) {
+                case "device_name":
+                    returnValues[i] = captureDevice.getEncoderName();
+
+                    break;
+                case "always_force_external_unlock":
+                    returnValues[i] = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".always_force_external_unlock");
+
+                    break;
+                case "encoder_listen_port":
+                    returnValues[i] = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".encoder_listen_port");
+
+                    break;
+                case "encoder_merit":
+                    returnValues[i] = String.valueOf(captureDevice.getMerit());
+
+                    break;
+                case "encoder_pool":
+                    returnValues[i] = captureDevice.getEncoderPoolName();
+
+                    break;
+                case "fast_network_encoder_switch":
+                    returnValues[i] = String.valueOf(captureDevice.canSwitch());
+
+                    break;
+                case "lineup":
+                    returnValues[i] = captureDevice.getChannelLineup();
+
+                    break;
+                case "offline_scan":
+                    returnValues[i] = String.valueOf(captureDevice.isOfflineScanEnabled());
+
+                    break;
+                case "external_locked":
+                    returnValues[i] = String.valueOf(captureDevice.isExternalLocked());
+
+                    break;
+                case "internal_locked":
+                    returnValues[i] = String.valueOf(captureDevice.isLocked());
+
+                    break;
+                case "last_channel":
+                    returnValues[i] = captureDevice.getLastChannel();
+
+                    break;
+                case "record_filename":
+                    returnValues[i] = captureDevice.getRecordFilename();
+
+                    break;
+                case "record_quality":
+                    returnValues[i] = captureDevice.getRecordQuality();
+
+                    break;
+                case "broadcast_standard":
+                    returnValues[i] = captureDevice.getBroadcastStandard().toString();
+
+                    break;
+                case "encode_filename":
+                    returnValues[i] = String.valueOf(captureDevice.canEncodeFilename());
+
+                    break;
+                case "encode_uploadid":
+                    returnValues[i] = String.valueOf(captureDevice.canEncodeUploadID());
+
+                    break;
+                case "copy_protection":
+                    returnValues[i] = captureDevice.getCopyProtection().toString();
+
+                    break;
+                case "encoder_type":
+                    returnValues[i] = captureDevice.getEncoderDeviceType().toString();
+
+                    break;
+                case "local_ip":
+                    returnValues[i] = captureDevice.getLocalAddress().getHostAddress();
+
+                    break;
+                case "remote_ip":
+                    returnValues[i] = captureDevice.getRemoteAddress().getHostAddress();
+
+                    break;
+                case "record_bytes":
+                    returnValues[i] = String.valueOf(captureDevice.getRecordedBytes());
+
+                    break;
+                case "record_start":
+                    returnValues[i] = String.valueOf(captureDevice.getRecordStart());
+
+                    break;
+                case "record_uploadid":
+                    returnValues[i] = String.valueOf(captureDevice.getRecordUploadID());
+
+                    break;
+                case "signal_strength":
+                    returnValues[i] = String.valueOf(captureDevice.getSignalStrength());
+
+                    break;
+                case "network_device":
+                    returnValues[i] = String.valueOf(captureDevice.isNetworkDevice());
+
+                    break;
+                default:
+                    throw new DeviceOptionException("The property '" + property + "' is not a valid get.", null);
+            }
+        }
+
+        return logger.exit(returnValues);
     }
 
     /**

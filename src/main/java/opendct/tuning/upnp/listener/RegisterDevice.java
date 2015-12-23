@@ -16,7 +16,6 @@
 
 package opendct.tuning.upnp.listener;
 
-import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.capture.DCTCaptureDeviceImpl;
 import opendct.config.Config;
@@ -26,7 +25,6 @@ import opendct.sagetv.SageTVUnloadedDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fourthline.cling.UpnpService;
-import org.fourthline.cling.binding.xml.Descriptor;
 import org.fourthline.cling.model.meta.Device;
 import org.fourthline.cling.model.meta.RemoteDevice;
 import org.fourthline.cling.registry.Registry;

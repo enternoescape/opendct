@@ -6,10 +6,10 @@
         version="2.5">
     <servlet>
         <servlet-name>Main</servlet-name>
-        <servlet-class>opendct.jetty.GetSetSageTVManager</servlet-class>
+        <servlet-class>opendct.jetty.Main</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>Main</servlet-name>
-        <url-pattern>/sagetvmanager/*</url-pattern>
+        <url-pattern>/opendct</url-pattern>
     </servlet-mapping>
 </web-app>

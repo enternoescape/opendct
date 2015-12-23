@@ -63,3 +63,7 @@ td.pool_cell {
 td.details_cell {
     width: 350px
 }
+
+td.checkbox {
+    width: 20px
+}

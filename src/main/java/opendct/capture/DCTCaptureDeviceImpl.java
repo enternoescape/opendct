@@ -265,7 +265,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
             }
 
-            encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
+            setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
             offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {

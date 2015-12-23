@@ -152,8 +152,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
         GetProtocolInfo getProtocolInfo = connectionManagerAction.getGetProtocolInfo();
 
-        if (getProtocolInfo != null && getProtocolInfo.getSource().equals("rtsp-rtp-udp:*:dri-mp2t:*")) {
-            connectionManagerSourceProtocol = "rtsp-rtp-udp:*:dri-mp2t:*";
+        if (getProtocolInfo != null && getProtocolInfo.getSource().toLowerCase().equals("rtsp-rtp-udp:*:dri-mp2t:*")) {
+            connectionManagerSourceProtocol = getProtocolInfo.getSource();
             connectionManagerAVTransportID = "0";
         } else if (getProtocolInfo == null || getProtocolInfo.getSource() == null) {
             logger.warn("The source protocol could not be determined. Using the default 'rtsp-rtp-udp:*:dri-mp2t:*'");

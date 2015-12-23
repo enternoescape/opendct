@@ -11,13 +11,29 @@ public class SageTVUnloadedDevice implements Comparable<SageTVUnloadedDevice> {
     private final Logger logger = LogManager.getLogger(SageTVUnloadedDevice.class);
 
     public final String ENCODER_NAME;
+    public final String DESCRIPTION;
     private final Class<CaptureDevice> captureDeviceImpl;
     private final Object[] parameters;
     private final Class[] parameterTypes;
     private final boolean persist;
 
-    public SageTVUnloadedDevice(String encoderName, Class captureDeviceImpl, Object parameters[], Class parameterTypes[], boolean persist) {
-        ENCODER_NAME = encoderName;
+    /**
+     * Creates a new unloaded device.
+     *
+     * @param encoderName This is the default name the capture device would have. For persistent
+     *                    devices, this must have a number appended to it if the device is added.
+     * @param captureDeviceImpl This is the capture device implementation to be used to create this
+     *                          capture device.
+     * @param parameters These are the initialization parameters to be used.
+     * @param parameterTypes There are the initialization parameters types to be used.
+     * @param persist If <i>true</i> this device will never be removed from the unloaded devices
+     *                even when added.
+     * @param description This is a description of the device. This should contain enough detail to
+     *                    give you an idea of what you would be loading.
+     */
+    public SageTVUnloadedDevice(String encoderName, Class captureDeviceImpl, Object parameters[], Class parameterTypes[], boolean persist, String description) {
+        this.ENCODER_NAME = encoderName;
+        this.DESCRIPTION = description;
         this.captureDeviceImpl = captureDeviceImpl;
         this.parameters = parameters;
         this.parameterTypes = parameterTypes;

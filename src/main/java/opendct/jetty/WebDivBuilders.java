@@ -10,18 +10,13 @@ import java.io.PrintWriter;
 
 public class WebDivBuilders {
 
-    public static void getMainPage(PrintWriter out) {
-        printHeader(out);
-        printLoadedCaptureDeviceTable(out);
-        printFooter(out);
-    }
-
     public static void printHeader(PrintWriter out) {
         out.println("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n" +
                 "<html>\n" +
                 "<head>\n" +
-                "    <link rel=\"stylesheet\" type=\"text/css\" href=\"css/opendct.css\"/>\n" +
-                "    <title>OpenDCT Web Interface</title>\n" +
+                "   <script src=\"https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js\"></script>" +
+                "   <link rel=\"stylesheet\" type=\"text/css\" href=\"css/opendct.css\"/>\n" +
+                "   <title>OpenDCT Web Interface</title>\n" +
                 "</head>\n" +
                 "<body>\n" +
                 "<h1>OpenDCT Web Interface</h1>");

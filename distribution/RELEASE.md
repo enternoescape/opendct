@@ -37,3 +37,6 @@
 #### 0.3.12-Beta
 > *Fixed local interface auto-detection and tested under several conditions. It should now work in
 > all normal situations.
+
+#### 0.3.13-Beta
+> *Fixed some error handling issues in RTSP configuration.

@@ -38,6 +38,9 @@
 > *Fixed local interface auto-detection and tested under several conditions. It should now work in
 > all normal situations.
 
+#### 0.3.13-Beta
+> *Fixed some error handling issues in RTSP configuration.
+
 #### 0.4.0-Beta (compile only; not released)
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,

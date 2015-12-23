@@ -5,8 +5,10 @@ import opendct.channel.ChannelLineup;
 import opendct.channel.ChannelManager;
 import opendct.sagetv.SageTVManager;
 import opendct.sagetv.SageTVPoolManager;
+import opendct.sagetv.SageTVUnloadedDevice;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 
 public class WebDivBuilders {
 
@@ -105,7 +107,52 @@ public class WebDivBuilders {
         out.println("<br/>");
 
         out.println("</td>");
+        out.println("</tr>");
+        out.println("</table>");
+    }
 
+    public static void printUnloadedCaptureDeviceTable(PrintWriter out) {
+
+        ArrayList<SageTVUnloadedDevice> unloadedDevices = SageTVManager.getAllUnloadedDevicesSorted();
+
+        if (unloadedDevices.size() == 0) {
+            out.println("<p/>");
+            out.println("<div class=\"notification\">No unloaded devices available.</div>");
+            out.println("<p/>");
+            out.println("<hr/>");
+            return;
+        }
+
+        out.println("<div class=\"content\"><table class=\"unloaded_devices\">");
+
+        for (SageTVUnloadedDevice unloadedDevice : SageTVManager.getAllUnloadedDevicesSorted()) {
+            printUnloadedDeviceCell(unloadedDevice, out);
+        }
+        out.println("</table></div>");
+        out.println("<hr/>");
+    }
+
+    public static void printUnloadedDeviceCell(SageTVUnloadedDevice unloadedDevice, PrintWriter out) {
+        if (unloadedDevice == null || out == null) {
+            return;
+        }
+
+        out.println("<table class=\"loaded_device\">");
+        out.println("<tr>");
+
+        out.println("<td class=\"title_cell\">");
+        out.println(unloadedDevice.ENCODER_NAME + "<br/>");
+        out.println(unloadedDevice.DESCRIPTION + "<br/>");
+        out.print("<a href=\"\">");
+        if (unloadedDevice.isPersistent()) {
+            out.print("Create New Capture Device");
+        } else {
+            out.print("Enable Capture Device");
+        }
+        out.println("</a>");
+
+
+        out.println("</td>");
         out.println("</tr>");
         out.println("</table>");
     }

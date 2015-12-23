@@ -109,7 +109,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         }
 
         // Check if this device is to be ignored.
-        String[] ignoreDevices = Config.getStringArray(propertiesDevicesGlobal + "ignore_devices_csv", new String[0]);
+        String[] ignoreDevices = Config.getStringArray(propertiesDevicesGlobal + "ignore_devices_csv");
 
         // If there are any entries on this list, only devices and parents on this list will be
         // loaded. All other discovered devices will be discarded.

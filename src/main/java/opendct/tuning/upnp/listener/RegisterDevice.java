@@ -95,7 +95,8 @@ public class RegisterDevice {
                                     DCTCaptureDeviceImpl.class,
                                     new Object[]{embeddedDevice},
                                     new Class[]{Device.class},
-                                    false);
+                                    false,
+                                    "UPnP detected Digital Cable Tuner.");
 
                             SageTVManager.addUnloadedDevice(sageTVUnloadedDevice);
 

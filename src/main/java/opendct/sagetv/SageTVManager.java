@@ -39,6 +39,7 @@ public class SageTVManager implements PowerEventListener {
 
     public static final int MPEG_PURE_CAPTURE_MASK = 0x2000;
     public static final int MPEG_LIVE_PREVIEW_MASK = 0x1000;
+    public static final String propertiesDevicesGlobal = "sagetv.device.global.";
 
     private static final ReentrantReadWriteLock portToSocketServerLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock captureDeviceNameToCaptureDeviceLock = new ReentrantReadWriteLock();
@@ -146,6 +147,72 @@ public class SageTVManager implements PowerEventListener {
         }
 
         logger.exit();
+    }
+
+    public static void addCaptureDevice(String unloadedDeviceName) throws SocketException {
+        CaptureDevice newCaptureDevice = null;
+
+        unloadedCaptureDeviceToInitLock.writeLock().lock();
+
+        try {
+            SageTVUnloadedDevice unloadedDevice = unloadedCaptureDeviceToInit.get(unloadedDeviceName);
+
+            if (unloadedDevice == null) {
+                return;
+            }
+
+            // Check if this device is to be ignored.
+            String[] ignoreDevices = Config.getStringArray(propertiesDevicesGlobal + "ignore_devices_csv");
+
+            // If there are any entries on this list, only devices and parents on this list will be
+            // loaded. All other discovered devices will be discarded.
+            String[] onlyDevices = Config.getStringArray(propertiesDevicesGlobal + "only_devices_csv");
+
+            if (ignoreDevices.length > 0) {
+                ArrayList<String> newIgnoreDevices = new ArrayList<>();
+
+                for (String ignoreDevice : ignoreDevices) {
+                    if (!ignoreDevice.equals(unloadedDeviceName)) {
+                        newIgnoreDevices.add(ignoreDevice);
+                    }
+                }
+
+                if (!(newIgnoreDevices.size() == ignoreDevices.length)) {
+                    Config.setStringArray(propertiesDevicesGlobal + "ignore_devices_csv", newIgnoreDevices.toArray(new String[newIgnoreDevices.size()]));
+                }
+            }
+
+            // Only add the device to this list if it's being used. Otherwise on the next restart,
+            // this will be the only device loaded.
+            if (onlyDevices.length > 0) {
+                ArrayList<String> newOnlyDevices = new ArrayList<>();
+
+                newOnlyDevices.addAll(Arrays.asList(onlyDevices));
+                newOnlyDevices.add(unloadedDeviceName);
+                Config.setStringArray(propertiesDevicesGlobal + "only_devices_csv", newOnlyDevices.toArray(new String[newOnlyDevices.size()]));
+            }
+
+            // Now that we have removed anything that could block this device from initializing,
+            // lets attempt to create it.
+            try {
+                newCaptureDevice = unloadedDevice.initCaptureDevice();
+
+                if (!unloadedDevice.isPersistent()) {
+                    unloadedCaptureDeviceToInit.remove(unloadedDeviceName);
+                }
+            } catch (Exception e) {
+                logger.error("Unable to create new capture device => ", e);
+            }
+
+        } catch (Exception e) {
+            logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            unloadedCaptureDeviceToInitLock.writeLock().unlock();
+        }
+
+        if (newCaptureDevice != null) {
+            addCaptureDevice(newCaptureDevice);
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import opendct.capture.CaptureDevice;
 import opendct.config.Config;
 import opendct.config.options.DeviceOptionException;
 import opendct.sagetv.SageTVManager;
+import opendct.sagetv.SageTVUnloadedDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -13,26 +14,40 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 
-public class GetSetSageTVManager extends HttpServlet {
-    private static final Logger logger = LogManager.getLogger(GetSetSageTVManager.class);
+public class SageTVManagerServlet extends HttpServlet {
+    private static final Logger logger = LogManager.getLogger(SageTVManagerServlet.class);
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("text/html");
         response.setStatus(HttpServletResponse.SC_OK);
 
         // Get the capture devices.
-        String captureDeviceName[] = request.getParameterValues("capdev");
-        if (captureDeviceName == null) {
-            captureDeviceName = new String[0];
+        String captureDeviceNames[] = request.getParameterValues("capdev");
+        if (captureDeviceNames == null) {
+            captureDeviceNames = new String[0];
         }
 
         // Get the capture device parents.
-        String captureDeviceParents[] = request.getParameterValues("cappar");
-        if (captureDeviceParents == null) {
-            captureDeviceParents = new String[0];
+        String captureDeviceParentNames[] = request.getParameterValues("cappar");
+        if (captureDeviceParentNames == null) {
+            captureDeviceParentNames = new String[0];
+        }
+
+        String unloadedDeviceNames[] = request.getParameterValues("unldev");
+        if (unloadedDeviceNames == null) {
+            unloadedDeviceNames = new String[0];
+        }
+
+        if (captureDeviceNames.length > 0 && captureDeviceParentNames.length > 0) {
+            throw new ServletException("You cannot get or update the properties for more than one device grouping at a time.");
+        } else if (captureDeviceNames.length > 0 && unloadedDeviceNames.length > 0) {
+            throw new ServletException("You cannot get or update the properties for more than one device grouping at a time.");
+        } else if (captureDeviceParentNames.length > 0 && unloadedDeviceNames.length > 0) {
+            throw new ServletException("You cannot get or update the properties for more than one device grouping at a time.");
         }
 
         // Get the property. The current value is always returned even if we are setting the value.
@@ -42,6 +57,7 @@ public class GetSetSageTVManager extends HttpServlet {
         }
 
         if (properties.length == 0) {
+            response.sendError(404, "There are no properties to query.");
             return;
         }
 
@@ -54,19 +70,60 @@ public class GetSetSageTVManager extends HttpServlet {
         boolean setValue = !(values.length == 0);
 
         if (setValue && !(values.length == properties.length)) {
+            response.sendError(404, "There needs to be a value for every property.");
             return;
         }
 
         for (int i = 0; i < properties.length; i++) {
             String property = properties[i];
-            String value = values[i];
+            String value;
+            if (setValue) {
+                value = values[i];
+            } else {
+                value = null;
+            }
 
-            if (property.equals("")) {
+            if (captureDeviceNames.length > 0) {
+                try {
+                    if (setValue) {
+                        setToCaptureDevices(captureDeviceNames, property, value);
+                    }
+
+                    final String[] fromCaptureDevices = getFromCaptureDevices(captureDeviceNames, property);
+
+                    for (String line: fromCaptureDevices) {
+                        response.getWriter().println(line);
+                    }
+                } catch (DeviceOptionException e) {
+                    response.sendError(404, e.toString());
+                }
+            } else if (captureDeviceParentNames.length > 0) {
+                try {
+                    if (setValue) {
+                        setToCaptureDeviceParents(captureDeviceParentNames, property, value);
+                    }
+
+
+                } catch (DeviceOptionException e) {
+                    response.sendError(404, e.toString());
+                }
+            } else if (unloadedDeviceNames.length > 0) {
+
+            } else {
+                // When no device groups are specified it's treated as a general request.
 
             }
         }
     }
 
+    /**
+     * Gets a property or result of a method by property name.
+     *
+     * @param captureDevices The capture devices to query.
+     * @param property The property to return from each capture device.
+     * @return An array of values.
+     * @throws DeviceOptionException
+     */
     public static String[] getFromCaptureDevices(String captureDevices[], String property) throws DeviceOptionException {
         logger.entry(captureDevices, property);
         String returnValues[] = new String[captureDevices.length];
@@ -197,7 +254,7 @@ public class GetSetSageTVManager extends HttpServlet {
      * @param property       The property name to update.
      * @param value          The value to set the property.
      */
-    public static void applyToCaptureDevices(String captureDevices[], String property, String value) throws DeviceOptionException {
+    public static void setToCaptureDevices(String captureDevices[], String property, String value) throws DeviceOptionException {
         logger.entry(captureDevices, property, value);
 
         for (String captureDeviceName : captureDevices) {
@@ -302,7 +359,7 @@ public class GetSetSageTVManager extends HttpServlet {
         logger.exit();
     }
 
-    public static void applyToCaptureDeviceParents(String captureDeviceParents[], String property, String value) throws DeviceOptionException {
+    public static void setToCaptureDeviceParents(String captureDeviceParents[], String property, String value) throws DeviceOptionException {
         ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
 
         for (String captureDeviceParentName : captureDeviceParents) {
@@ -340,6 +397,26 @@ public class GetSetSageTVManager extends HttpServlet {
                         throw new DeviceOptionException("The property '" + property + "' cannot be set.", null);
                 }
             }
+        }
+    }
+
+    public static void setToUnloadedDevices(String unloadedDeviceNames[], String property, String value) throws SocketException, DeviceOptionException {
+        for (String unloadedDeviceName : unloadedDeviceNames) {
+            SageTVUnloadedDevice unloadedDevice = SageTVManager.getUnloadedDevice(unloadedDeviceName);
+
+            if (unloadedDevice == null) {
+                continue;
+            }
+
+            switch (property) {
+                case "load_device":
+                    SageTVManager.addCaptureDevice(value);
+
+                    break;
+                default:
+                    throw new DeviceOptionException("The property '" + property + "' cannot be set.", null);
+            }
+
         }
     }
 }

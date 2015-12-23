@@ -19,7 +19,7 @@ public class MainServlet extends HttpServlet {
         WebDivBuilders.printHeader(out);
         WebDivBuilders.printLoadedCaptureDeviceTable(out);
         out.println("<h1>Unloaded Capture Devices</h1>");
-        WebDivBuilders.printUnloadedCaptureDeviceTable(out);
+        WebDivBuilders.printUnloadedCaptureDeviceTable(out, request.getRequestURL().toString());
         WebDivBuilders.printFooter(out);
     }
 }

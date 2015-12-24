@@ -128,12 +128,12 @@ public class DCTRTSPClientImpl implements RTSPClient {
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         } catch (IOException e) {
-            logger.error("There was a problem connecting to {} => {}", streamRemoteURI.toString(), e);
+            logger.error("There was a problem connecting to {} => ", streamRemoteURI.toString(), e);
             return logger.exit(null);
         }
 
 
-        logger.debug("Sending RTSP request: \n{}", content);
+        logger.debug("Sending RTSP request: {}", content);
         try {
             out.print(content);
             out.flush();

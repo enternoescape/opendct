@@ -1,0 +1,180 @@
+/*
+ * Copyright 2015 The OpenDCT Authors. All Rights Reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package opendct.jetty.json;
+
+import opendct.capture.CaptureDevice;
+import opendct.config.Config;
+import opendct.sagetv.SageTVManager;
+
+public class JsonCaptureDeviceDetails {
+    private String[] childCaptureDevices;
+    private String encoderDeviceType;
+    private String encoderParentName;
+    private String encoderName;
+    private boolean locked;
+    private int merit;
+    private String encoderPoolName;
+    private boolean alwaysForceExternalUnlock;
+    private String lastChannel;
+    private boolean canEncodeFilename;
+    private boolean canEncodeUploadID;
+    private boolean canSwitch;
+    private long recordStart;
+    private long recordedBytes;
+    private String channelLineup;
+    private String recordFilename;
+    private String recordQuality;
+    private boolean offlineScanEnabled;
+    private boolean networkDevice;
+    private String remoteAddress;
+    private String localAddress;
+
+    /**
+     * Sets the details of the object to reflect the current details of this capture device.
+     *
+     * @param captureDeviceName The name of the capture device to get details.
+     * @return <i>true</i> if the capture device was found and everything is populated.
+     * @throws JsonGetException Thrown if there was a problem populating details.
+     */
+    public boolean setCaptureDeviceDetails(String captureDeviceName) throws JsonGetException {
+        CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(captureDeviceName, false);
+
+        if (captureDevice == null) {
+            return false;
+        }
+
+        try {
+            // We are only returning the String values since the referenced devices might be sent twice.
+            CaptureDevice captureDevices[] = captureDevice.getChildCaptureDevices();
+            String captureDeviceNames[] = new String[captureDevices.length];
+
+            for (int i = 0; i < captureDeviceNames.length; i++) {
+                captureDeviceNames[i] = captureDevices[i].getEncoderName();
+            }
+
+            childCaptureDevices = captureDeviceNames;
+
+            encoderDeviceType = captureDevice.getEncoderDeviceType().toString();
+            encoderParentName = captureDevice.getEncoderParentName();
+            encoderName = captureDevice.getEncoderName();
+            locked = captureDevice.isLocked();
+            merit = captureDevice.getMerit();
+            encoderPoolName = captureDevice.getEncoderPoolName();
+            alwaysForceExternalUnlock = Config.getBoolean("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".always_force_external_unlock", false);
+            lastChannel = captureDevice.getLastChannel();
+            canEncodeFilename = captureDevice.canEncodeFilename();
+            canEncodeUploadID = captureDevice.canEncodeUploadID();
+            canSwitch = captureDevice.canSwitch();
+            recordStart = captureDevice.getRecordStart();
+            recordedBytes = captureDevice.getRecordedBytes();
+            channelLineup = captureDevice.getChannelLineup();
+            recordFilename = captureDevice.getRecordFilename();
+            recordQuality = captureDevice.getRecordQuality();
+            offlineScanEnabled = captureDevice.isOfflineScanEnabled();
+            networkDevice = captureDevice.isNetworkDevice();
+            remoteAddress = captureDevice.getRemoteAddress().getHostAddress();
+            localAddress = captureDevice.getLocalAddress().getHostAddress();
+        } catch (Exception e) {
+            throw new JsonGetException(e);
+        }
+        return true;
+    }
+
+    public String[] getChildCaptureDevices() {
+        return childCaptureDevices;
+    }
+
+    public String getEncoderDeviceType() {
+        return encoderDeviceType;
+    }
+
+    public String getEncoderParentName() {
+        return encoderParentName;
+    }
+
+    public String getEncoderName() {
+        return encoderName;
+    }
+
+    public boolean isLocked() {
+        return locked;
+    }
+
+    public int getMerit() {
+        return merit;
+    }
+
+    public String getEncoderPoolName() {
+        return encoderPoolName;
+    }
+
+    public boolean isAlwaysForceExternalUnlock() {
+        return alwaysForceExternalUnlock;
+    }
+
+    public String getLastChannel() {
+        return lastChannel;
+    }
+
+    public boolean isCanEncodeFilename() {
+        return canEncodeFilename;
+    }
+
+    public boolean isCanEncodeUploadID() {
+        return canEncodeUploadID;
+    }
+
+    public boolean isCanSwitch() {
+        return canSwitch;
+    }
+
+    public long getRecordStart() {
+        return recordStart;
+    }
+
+    public long getRecordedBytes() {
+        return recordedBytes;
+    }
+
+    public String getChannelLineup() {
+        return channelLineup;
+    }
+
+    public String getRecordFilename() {
+        return recordFilename;
+    }
+
+    public String getRecordQuality() {
+        return recordQuality;
+    }
+
+    public boolean isOfflineScanEnabled() {
+        return offlineScanEnabled;
+    }
+
+    public boolean isNetworkDevice() {
+        return networkDevice;
+    }
+
+    public String getRemoteAddress() {
+        return remoteAddress;
+    }
+
+    public String getLocalAddress() {
+        return localAddress;
+    }
+}

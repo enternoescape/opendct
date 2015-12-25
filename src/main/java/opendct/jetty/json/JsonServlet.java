@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package opendct.jetty;
+package opendct.jetty.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;

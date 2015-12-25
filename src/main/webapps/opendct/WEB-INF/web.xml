@@ -14,7 +14,7 @@
     </servlet-mapping>
     <servlet>
         <servlet-name>Json</servlet-name>
-        <servlet-class>opendct.jetty.JsonServlet</servlet-class>
+        <servlet-class>opendct.jetty.json.JsonServlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>Json</servlet-name>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package opendct.jetty;
+package opendct.jetty.json;
 
 public class JsonError {
     private int code;

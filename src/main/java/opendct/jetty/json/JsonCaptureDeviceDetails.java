@@ -21,6 +21,7 @@ import opendct.capture.HTTPCaptureDevice;
 import opendct.capture.RTPCaptureDevice;
 import opendct.config.Config;
 import opendct.sagetv.SageTVManager;
+import opendct.util.Util;
 
 public class JsonCaptureDeviceDetails {
     private String[] childCaptureDevices;
@@ -48,6 +49,7 @@ public class JsonCaptureDeviceDetails {
     private String producerBaseImpl;
     private String consumer;
     private String offlineConsumer;
+    private int encoderPort;
 
     /**
      * Sets the details of the object to reflect the current details of this capture device.
@@ -96,6 +98,17 @@ public class JsonCaptureDeviceDetails {
             localAddress = captureDevice.getLocalAddress().getHostAddress();
             consumer = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".consumer");
             offlineConsumer = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".channel_scan_consumer");
+
+            String encoderPortString = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".encoder_listen_port");
+            if (!Util.isNullOrEmpty(encoderPortString)) {
+                try {
+                    encoderPort = Integer.valueOf(encoderPortString);
+                } catch (NumberFormatException e) {
+                    encoderPort = -1;
+                }
+            } else {
+                encoderPort = -1;
+            }
 
             if (captureDevice instanceof RTPCaptureDevice) {
                 producerBaseImpl = RTPCaptureDevice.class.getName();
@@ -211,5 +224,9 @@ public class JsonCaptureDeviceDetails {
 
     public String getOfflineConsumer() {
         return offlineConsumer;
+    }
+
+    public int getEncoderPort() {
+        return encoderPort;
     }
 }

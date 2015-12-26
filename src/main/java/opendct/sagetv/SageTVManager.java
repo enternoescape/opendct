@@ -496,16 +496,19 @@ public class SageTVManager implements PowerEventListener {
             captureDeviceToFilesLock.writeLock().lock();
             fileToUploadIDLock.writeLock().lock();
             fileToSocketServerLock.writeLock().lock();
+            unloadedCaptureDeviceToInitLock.writeLock().lock();
 
             try {
                 captureDeviceNameToCaptureDevice.clear();
                 captureDeviceToFiles.clear();
                 fileToUploadID.clear();
                 fileToSocketServer.clear();
+                unloadedCaptureDeviceToInit.clear();
             } finally {
                 captureDeviceToFilesLock.writeLock().unlock();
                 fileToUploadIDLock.writeLock().unlock();
                 fileToSocketServerLock.writeLock().unlock();
+                unloadedCaptureDeviceToInitLock.writeLock().unlock();
             }
 
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();

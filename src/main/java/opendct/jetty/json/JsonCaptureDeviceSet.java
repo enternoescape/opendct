@@ -42,6 +42,7 @@ public class JsonCaptureDeviceSet {
     private String producer;
     private String consumer;
     private String offlineConsumer;
+    private int encoderPort;
 
     public JsonCaptureDeviceSet(CaptureDevice captureDevice) {
         this.captureDevice = captureDevice;
@@ -168,5 +169,14 @@ public class JsonCaptureDeviceSet {
         this.offlineConsumer = offlineConsumer;
 
         Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".channel_scan_consumer", offlineConsumer);
+    }
+
+    public void setEncoderPort(int encoderPort) {
+        this.encoderPort = encoderPort;
+
+        // The old port will be closed the next time the program is restarted if no
+        // other devices are using it.
+        SageTVManager.addAndStartSocketServers(new int[]{encoderPort});
+        Config.setInteger("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".encoder_listen_port", encoderPort);
     }
 }

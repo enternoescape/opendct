@@ -22,7 +22,6 @@ import opendct.sagetv.SageTVManager;
 import opendct.sagetv.SageTVUnloadedDevice;
 
 import java.net.SocketException;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class JsonManagerGetSet {
     private String managerName;
@@ -143,6 +142,26 @@ public class JsonManagerGetSet {
                 if (returnValue.length() > 0) {
                     returnValue = returnValue.substring(0, returnValue.length() - 1);
                 }
+
+                break;
+            case "get_capture_device_by_filename":
+                returnValue = "";
+
+                for (String parameter : parameters) {
+                    CaptureDevice captureDevice = SageTVManager.getCaptureDeviceByFilename(parameter);
+
+                    if (captureDevice == null) {
+                        returnValue += "Failure,";
+                    } else {
+                        returnValue += captureDevice.getEncoderName() + ",";
+                    }
+                }
+
+                if (returnValue.length() > 0) {
+                    returnValue = returnValue.substring(0, returnValue.length() - 1);
+                }
+
+                break;
         }
 
         return returnValue;

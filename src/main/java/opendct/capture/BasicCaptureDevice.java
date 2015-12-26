@@ -633,7 +633,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      */
     protected SageTVConsumer getNewSageTVConsumer() {
         return Config.getSageTVConsumer(
-                propertiesDeviceParent + "consumer",
+                propertiesDeviceRoot + "consumer",
                 Config.getString("sagetv.new.default_consumer_impl",
                         FFmpegSageTVConsumerImpl.class.getName()));
     }
@@ -645,7 +645,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      */
     protected SageTVConsumer getNewChannelScanSageTVConsumer() {
         return Config.getSageTVConsumer(
-                propertiesDeviceParent + "channel_scan_consumer",
+                propertiesDeviceRoot + "channel_scan_consumer",
                 Config.getString("sagetv.new.default_channel_scan_consumer_impl",
                         FFmpegSageTVConsumerImpl.class.getName()));
     }

@@ -139,14 +139,14 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
     // properties file.
     protected RTSPClient getNewRTSPClient() {
         return Config.getRTSPClient(
-                propertiesDeviceParent + "rtsp",
+                propertiesDeviceRoot + "rtsp",
                 Config.getString("rtsp.new.default_impl",
                         DCTRTSPClientImpl.class.getName()));
     }
 
     protected RTPProducer getNewRTPProducer() {
         return Config.getRTProducer(
-                propertiesDeviceParent + "rtp.producer",
+                propertiesDeviceRoot + "rtp.producer",
                 Config.getString("rtp.new.default_producer_impl",
                         NIORTPProducerImpl.class.getName()));
     }

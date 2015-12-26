@@ -23,6 +23,7 @@ import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.RTPProducer;
 import opendct.sagetv.SageTVManager;
+import opendct.sagetv.SageTVUnloadedDevice;
 import opendct.tuning.hdhomerun.GetSetException;
 import opendct.tuning.hdhomerun.HDHomeRunDevice;
 import opendct.tuning.hdhomerun.HDHomeRunTuner;
@@ -66,7 +67,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
     private final Logger logger = LogManager.getLogger(DCTCaptureDeviceImpl.class);
 
     // Direct access to the capture device via UPnP services.
-    //private Device dctDevice;
+    private Device dctDevice;
 
     //Device services.
     private final Service connectionManagerService;
@@ -135,7 +136,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
         super(dctDevice.getRoot().getDetails().getFriendlyName(), "DCT-" + dctDevice.getDetails().getFriendlyName());
         logger.entry(dctDevice);
 
-        //this.dctDevice = dctDevice;
+        this.dctDevice = dctDevice;
         UpnpService upnpService = UpnpManager.getUpnpService();
 
         // Connection to ConnectionManager service.
@@ -1685,6 +1686,17 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
 
     public void setLocalAddress(InetAddress localAddress) {
         localIPAddress = localAddress;
+    }
+
+    public SageTVUnloadedDevice getUnloadedDevice() {
+        // This provides SageTVManager with an object to initialize later if requested.
+        return new SageTVUnloadedDevice(
+                "DCT-" + dctDevice.getDetails().getFriendlyName(),
+                DCTCaptureDeviceImpl.class,
+                new Object[]{dctDevice},
+                new Class[]{Device.class},
+                false,
+                "UPnP detected Digital Cable Tuner.");
     }
 
 

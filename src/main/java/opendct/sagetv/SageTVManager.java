@@ -149,7 +149,7 @@ public class SageTVManager implements PowerEventListener {
         logger.exit();
     }
 
-    public static void addCaptureDevice(String unloadedDeviceName) throws SocketException {
+    public static CaptureDevice addCaptureDevice(String unloadedDeviceName) throws SocketException {
         CaptureDevice newCaptureDevice = null;
 
         unloadedCaptureDeviceToInitLock.writeLock().lock();
@@ -158,7 +158,7 @@ public class SageTVManager implements PowerEventListener {
             SageTVUnloadedDevice unloadedDevice = unloadedCaptureDeviceToInit.get(unloadedDeviceName);
 
             if (unloadedDevice == null) {
-                return;
+                return null;
             }
 
             // Check if this device is to be ignored.
@@ -213,6 +213,8 @@ public class SageTVManager implements PowerEventListener {
         if (newCaptureDevice != null) {
             addCaptureDevice(newCaptureDevice);
         }
+
+        return newCaptureDevice;
     }
 
     /**
@@ -393,6 +395,56 @@ public class SageTVManager implements PowerEventListener {
         }
 
         logger.exit();
+    }
+
+    /**
+     * Remove a capture device that has already been loaded.
+     *
+     * @param captureDeviceName The name of the capture device to remove.
+     * @return <i>null</i> if the capture device was not found or an SageTVUnloadedDevice object so
+     * the device can be recreated.
+     */
+    public static SageTVUnloadedDevice removeCaptureDevice(String captureDeviceName) {
+
+        CaptureDevice captureDevice = getSageTVCaptureDevice(captureDeviceName, false);
+        SageTVUnloadedDevice unloadedDevice = null;
+
+        if (captureDevice == null) {
+            return unloadedDevice;
+        }
+
+        // This will prevent the SageTV Socket Server from looking up capture devices until we are
+        // done. That basically means the SageTV Socket Server will not be able to locate this
+        // capture devices once this method completes which is what we want.
+        captureDeviceNameToCaptureDeviceLock.writeLock().lock();
+        captureDeviceToFilesLock.writeLock().lock();
+
+        try {
+            if (captureDevice != null) {
+                try {
+                    logger.info("The capture device '{}' is being unloaded.", captureDevice.getEncoderName());
+                    // This should cease all offline activities.
+                    captureDevice.setLocked(true);
+                    captureDevice.stopDevice();
+
+                    captureDeviceNameToCaptureDevice.remove(captureDeviceName);
+                    captureDeviceToFiles.remove(captureDevice);
+
+                    unloadedDevice = captureDevice.getUnloadedDevice();
+                    addUnloadedDevice(unloadedDevice);
+                } catch (Exception e) {
+                    logger.error("The capture device '{}' did not stop gracefully.",
+                            captureDevice.getEncoderName());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("An unexpected error occurred while stopping and clearing all of the capture devices => ", e);
+        } finally {
+            captureDeviceToFilesLock.writeLock().unlock();
+            captureDeviceNameToCaptureDeviceLock.writeLock().unlock();
+        }
+
+        return unloadedDevice;
     }
 
     /**

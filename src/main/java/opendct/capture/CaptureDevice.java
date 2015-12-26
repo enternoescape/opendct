@@ -20,6 +20,7 @@ import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOptions;
+import opendct.sagetv.SageTVUnloadedDevice;
 
 import java.net.InetAddress;
 
@@ -630,5 +631,11 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
 
     public void setLocalAddress(InetAddress localAddress);
 
-
+    /**
+     * This returns an object that can re-create this object. This is used remove a device while
+     * retaining the ability to bring it back.
+     *
+     * @return An unloaded device object.
+     */
+    public SageTVUnloadedDevice getUnloadedDevice();
 }

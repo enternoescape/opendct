@@ -89,7 +89,7 @@ public class RegisterDevice {
                             failedAdds += 1;
                         } catch (CaptureDeviceIgnoredException e) {
 
-                            // This provided SageTVManager with an object to initialize later if requested.
+                            // This provides SageTVManager with an object to initialize later if requested.
                             final SageTVUnloadedDevice sageTVUnloadedDevice = new SageTVUnloadedDevice(
                                     "DCT-" + embeddedDevice.getDetails().getFriendlyName(),
                                     DCTCaptureDeviceImpl.class,

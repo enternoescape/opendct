@@ -121,8 +121,8 @@ public abstract class HTTPCaptureDevice extends BasicCaptureDevice implements Ca
     // properties file.
     protected HTTPProducer getNewHTTPProducer() {
         return Config.getHTTProducer(
-                propertiesDeviceParent + "http.producer",
-                Config.getString("rtp.new.default_producer_impl",
+                propertiesDeviceRoot + "http.producer",
+                Config.getString("http.new.default_producer_impl",
                         HTTPProducerImpl.class.getName()));
     }
 

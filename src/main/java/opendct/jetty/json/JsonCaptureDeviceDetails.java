@@ -17,6 +17,8 @@
 package opendct.jetty.json;
 
 import opendct.capture.CaptureDevice;
+import opendct.capture.HTTPCaptureDevice;
+import opendct.capture.RTPCaptureDevice;
 import opendct.config.Config;
 import opendct.sagetv.SageTVManager;
 
@@ -42,6 +44,10 @@ public class JsonCaptureDeviceDetails {
     private boolean networkDevice;
     private String remoteAddress;
     private String localAddress;
+    private String producer;
+    private String producerBaseImpl;
+    private String consumer;
+    private String offlineConsumer;
 
     /**
      * Sets the details of the object to reflect the current details of this capture device.
@@ -88,6 +94,19 @@ public class JsonCaptureDeviceDetails {
             networkDevice = captureDevice.isNetworkDevice();
             remoteAddress = captureDevice.getRemoteAddress().getHostAddress();
             localAddress = captureDevice.getLocalAddress().getHostAddress();
+            consumer = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".consumer");
+            offlineConsumer = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".channel_scan_consumer");
+
+            if (captureDevice instanceof RTPCaptureDevice) {
+                producerBaseImpl = RTPCaptureDevice.class.getName();
+                producer = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".rtp.producer");
+            } else if (captureDevice instanceof HTTPCaptureDevice) {
+                producerBaseImpl = HTTPCaptureDevice.class.getName();
+                producer = Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".http.producer");
+            } else {
+                // If this happens, we have a new capture device that needs to be added to this list.
+                producerBaseImpl = "Unknown";
+            }
         } catch (Exception e) {
             throw new JsonGetException(e);
         }
@@ -176,5 +195,21 @@ public class JsonCaptureDeviceDetails {
 
     public String getLocalAddress() {
         return localAddress;
+    }
+
+    public String getProducer() {
+        return producer;
+    }
+
+    public String getProducerBaseImpl() {
+        return producerBaseImpl;
+    }
+
+    public String getConsumer() {
+        return consumer;
+    }
+
+    public String getOfflineConsumer() {
+        return offlineConsumer;
     }
 }

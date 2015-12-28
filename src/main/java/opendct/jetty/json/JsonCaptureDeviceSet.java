@@ -20,163 +20,236 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.HTTPCaptureDevice;
 import opendct.capture.RTPCaptureDevice;
 import opendct.config.Config;
+import opendct.jetty.JettyManager;
 import opendct.sagetv.SageTVManager;
 import opendct.sagetv.SageTVUnloadedDevice;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.core.Response;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 public class JsonCaptureDeviceSet {
-    private final CaptureDevice captureDevice;
+    private static final Logger logger = LogManager.getLogger(JsonCaptureDeviceSet.class);
 
     private String encoderParentName;
     private String encoderName;
-    private int merit;
+    private Integer merit;
     private String encoderPoolName;
-    private boolean alwaysForceExternalUnlock;
+    private Boolean alwaysForceExternalUnlock;
     private String channelLineup;
-    private boolean offlineScanEnabled;
+    private Boolean offlineScanEnabled;
     private String localAddress;
     private String producer;
     private String consumer;
     private String offlineConsumer;
-    private int encoderPort;
+    private Integer encoderPort;
 
-    public JsonCaptureDeviceSet(CaptureDevice captureDevice) {
-        this.captureDevice = captureDevice;
+    public JsonCaptureDeviceSet() {
+        encoderParentName = null;
+        encoderName = null;
+        merit = null;
+        encoderPoolName = null;
+        alwaysForceExternalUnlock = null;
+        channelLineup = null;
+        offlineScanEnabled = null;
+        localAddress = null;
+        producer = null;
+        offlineConsumer = null;
+        encoderPort = null;
     }
 
-    public void setEncoderParentName(String encoderParentName) throws JsonGetException {
-        this.encoderParentName = encoderParentName;
+    public Response applyUpdates(CaptureDevice captureDevice) {
+        if (encoderParentName != null && !captureDevice.getEncoderParentName().equals(encoderParentName)) {
+            if (captureDevice.isLocked()) {
+                JsonError jsonError = new JsonError(
+                        JettyManager.ERROR,
+                        "Unable to change the parent name of this device" +
+                                " because it is currently in use.",
+                        captureDevice.getEncoderName(),
+                        ""
+                );
 
-        if (captureDevice.getEncoderParentName().equals(encoderParentName)) {
-            return;
-        }
+                logger.error("{}", jsonError);
 
-        if (captureDevice.isLocked()) {
-            throw new JsonGetException("Unable to change the parent name of this device because" +
-                    " it is currently in use.");
-        }
+                return Response.status(JettyManager.ERROR).entity(jsonError).build();
+            }
 
-        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+            ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
 
-        Config.setString("sagetv.device." + captureDevice.getEncoderParentUniqueHash() + ".device_name", encoderParentName);
+            Config.setString("sagetv.device." + captureDevice.getEncoderParentUniqueHash() + ".device_name", encoderParentName);
 
-        for (CaptureDevice captureDeviceMod : captureDevices) {
-            if (captureDeviceMod.getEncoderParentName().equals(captureDevice.getEncoderParentName())) {
-                SageTVUnloadedDevice unloadedDevice = SageTVManager.removeCaptureDevice(captureDeviceMod.getEncoderName());
+            for (CaptureDevice captureDeviceMod : captureDevices) {
+                if (captureDeviceMod.getEncoderParentName().equals(captureDevice.getEncoderParentName())) {
+                    SageTVUnloadedDevice unloadedDevice = SageTVManager.removeCaptureDevice(captureDeviceMod.getEncoderName());
 
-                try {
-                    SageTVManager.addCaptureDevice(unloadedDevice.ENCODER_NAME);
-                } catch (SocketException e) {
-                    throw new JsonGetException(e);
+                    try {
+                        SageTVManager.addCaptureDevice(unloadedDevice.ENCODER_NAME);
+                    } catch (SocketException e) {
+                        JsonError jsonError = new JsonError(
+                                JettyManager.ERROR,
+                                "An unexpected error happened while setting the parent name property for this capture device.",
+                                captureDevice.getEncoderName(),
+                                e.toString()
+                        );
+
+                        logger.error("{}", jsonError, e);
+
+                        return Response.status(JettyManager.ERROR).entity(jsonError).build();
+                    }
                 }
             }
         }
-    }
 
-    public void setEncoderName(String encoderName) throws JsonGetException {
-        this.encoderName = encoderName;
+        if (encoderName != null && !captureDevice.getEncoderName().equals(encoderName)) {
+            if (captureDevice.isLocked()) {
+                JsonError jsonError = new JsonError(
+                        JettyManager.ERROR,
+                        "Unable to change the name of this device" +
+                                " because it is currently in use.",
+                        captureDevice.getEncoderName(),
+                        ""
+                );
 
-        if (captureDevice.getEncoderName().equals(encoderName)) {
-            return;
+                logger.error("{}", jsonError);
+
+                return Response.status(JettyManager.ERROR).entity(jsonError).build();
+            }
+
+            SageTVUnloadedDevice unloadedDevice = SageTVManager.removeCaptureDevice(captureDevice.getEncoderName());
+
+            Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".device_name", encoderName);
+
+            try {
+                SageTVManager.addCaptureDevice(unloadedDevice.ENCODER_NAME);
+            } catch (SocketException e) {
+                JsonError jsonError = new JsonError(
+                        JettyManager.ERROR,
+                        "An unexpected error happened while setting the name property for this capture device.",
+                        captureDevice.getEncoderName(),
+                        e.toString()
+                );
+
+                logger.error("{}", jsonError, e);
+
+                return Response.status(JettyManager.ERROR).entity(jsonError).build();
+            }
         }
 
-        if (captureDevice.isLocked()) {
-            throw new JsonGetException("Unable to change the name of this device because it is" +
-                    " currently in use.");
-        }
-
-        SageTVUnloadedDevice unloadedDevice = SageTVManager.removeCaptureDevice(captureDevice.getEncoderName());
-
-        Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".device_name", encoderName);
-
-        try {
-            SageTVManager.addCaptureDevice(unloadedDevice.ENCODER_NAME);
-        } catch (SocketException e) {
-            throw new JsonGetException(e);
-        }
-    }
-
-    public void setMerit(int merit) {
-        this.merit = merit;
-
-        if (!(captureDevice.getMerit() == merit)) {
+        if (merit != null && !(captureDevice.getMerit() == merit)) {
             captureDevice.setMerit(merit);
         }
-    }
 
-    public void setEncoderPoolName(String encoderPoolName) {
-        this.encoderPoolName = encoderPoolName;
-
-        if (!captureDevice.getEncoderPoolName().equals(encoderPoolName)) {
+        if (encoderPoolName != null && !captureDevice.getEncoderPoolName().equals(encoderPoolName)) {
             captureDevice.setEncoderPoolName(encoderPoolName);
         }
-    }
 
-    public void setAlwaysForceExternalUnlock(boolean alwaysForceExternalUnlock) {
-        this.alwaysForceExternalUnlock = alwaysForceExternalUnlock;
+        if (alwaysForceExternalUnlock != null) {
+            captureDevice.setAlwaysForceExternalUnlock(alwaysForceExternalUnlock);
+        }
 
-        captureDevice.setAlwaysForceExternalUnlock(alwaysForceExternalUnlock);
-    }
-
-    public void setChannelLineup(String channelLineup) {
-        this.channelLineup = channelLineup;
-
-        if (!captureDevice.getChannelLineup().equals(channelLineup)) {
+        if (channelLineup != null && !captureDevice.getChannelLineup().equals(channelLineup)) {
             captureDevice.setChannelLineup(channelLineup);
         }
-    }
-
-    public void setOfflineScanEnabled(boolean offlineScanEnabled) {
-        this.offlineScanEnabled = offlineScanEnabled;
 
         if (!(captureDevice.isOfflineScanEnabled() == offlineScanEnabled)) {
             captureDevice.setOfflineScan(offlineScanEnabled);
         }
-    }
-
-    public void setLocalAddress(String localAddress) throws UnknownHostException {
-        this.localAddress = localAddress;
 
         if (localAddress != null && !localAddress.equals("")) {
-            captureDevice.setLocalAddress(InetAddress.getByName(localAddress));
+            try {
+                captureDevice.setLocalAddress(InetAddress.getByName(localAddress));
+            } catch (Exception e) {
+                JsonError jsonError = new JsonError(
+                        JettyManager.ERROR,
+                        "An unexpected error happened while setting the local address property for this capture device.",
+                        captureDevice.getEncoderName(),
+                        e.toString()
+                );
+
+                logger.error("{}", jsonError, e);
+
+                return Response.status(JettyManager.ERROR).entity(jsonError).build();
+            }
         }
+
+        if (producer != null) {
+            if (captureDevice instanceof RTPCaptureDevice) {
+                Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".rtp.producer", producer);
+            } else if (captureDevice instanceof HTTPCaptureDevice) {
+                Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".http.producer", producer);
+            } else {
+                // If this happens, we have a new capture device that needs to be added to this list.
+                Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".producer", producer);
+            }
+        }
+
+        if (consumer != null) {
+            Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".consumer", consumer);
+        }
+
+        if (offlineConsumer != null) {
+            Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".channel_scan_consumer", offlineConsumer);
+        }
+
+        if (encoderPort != null) {
+            // The old port will be closed the next time the program is restarted if no
+            // other devices are using it.
+            SageTVManager.addAndStartSocketServers(new int[]{encoderPort});
+            Config.setInteger("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".encoder_listen_port", encoderPort);
+        }
+
+        return Response.status(JettyManager.OK).build();
+    }
+
+    public void setEncoderParentName(String encoderParentName) {
+        this.encoderParentName = encoderParentName;
+    }
+
+    public void setEncoderName(String encoderName) {
+        this.encoderName = encoderName;
+    }
+
+    public void setMerit(int merit) {
+        this.merit = merit;
+    }
+
+    public void setEncoderPoolName(String encoderPoolName) {
+        this.encoderPoolName = encoderPoolName;
+    }
+
+    public void setAlwaysForceExternalUnlock(boolean alwaysForceExternalUnlock) {
+        this.alwaysForceExternalUnlock = alwaysForceExternalUnlock;
+    }
+
+    public void setChannelLineup(String channelLineup) {
+        this.channelLineup = channelLineup;
+    }
+
+    public void setOfflineScanEnabled(boolean offlineScanEnabled) {
+        this.offlineScanEnabled = offlineScanEnabled;
+    }
+
+    public void setLocalAddress(String localAddress) {
+        this.localAddress = localAddress;
     }
 
     public void setProducer(String producer) {
         this.producer = producer;
-
-        if (captureDevice instanceof RTPCaptureDevice) {
-            Config.getString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".rtp.producer", producer);
-        } else if (captureDevice instanceof HTTPCaptureDevice) {
-            Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".http.producer", producer);
-        } else {
-            // If this happens, we have a new capture device that needs to be added to this list.
-            Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".producer", producer);
-        }
     }
 
     public void setConsumer(String consumer) {
         this.consumer = consumer;
-
-        Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".consumer", consumer);
     }
 
     public void setOfflineConsumer(String offlineConsumer) {
         this.offlineConsumer = offlineConsumer;
-
-        Config.setString("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".channel_scan_consumer", offlineConsumer);
     }
 
     public void setEncoderPort(int encoderPort) {
         this.encoderPort = encoderPort;
-
-        // The old port will be closed the next time the program is restarted if no
-        // other devices are using it.
-        SageTVManager.addAndStartSocketServers(new int[]{encoderPort});
-        Config.setInteger("sagetv.device." + captureDevice.getEncoderUniqueHash() + ".encoder_listen_port", encoderPort);
     }
 }

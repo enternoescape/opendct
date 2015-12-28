@@ -66,7 +66,7 @@ public class RestCaptureDevice {
     }
 
     @GET
-    @Path("{name}/detail/{method}")
+    @Path("{name}/method/{method}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCaptureDeviceDetail(@PathParam("name") String deviceName, @PathParam("method") String methodName) {
         CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(deviceName, false);
@@ -96,14 +96,14 @@ public class RestCaptureDevice {
 
             logger.error("{}", jsonError, e);
 
-            return Response.status(JettyManager.NOT_FOUND).entity(jsonError).build();
+            return Response.status(JettyManager.ERROR).entity(jsonError).build();
         }
 
 
     }
 
     @POST
-    @Path("{name}/details")
+    @Path("{name}/set")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response putCaptureDeviceDetails(@PathParam("name") String deviceName, JsonCaptureDeviceSet deviceSet) {
         CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(deviceName, false);
@@ -120,7 +120,7 @@ public class RestCaptureDevice {
             return Response.status(JettyManager.NOT_FOUND).entity(jsonError).build();
         }
 
-        JsonCaptureDeviceSet setDeviceDetails = new JsonCaptureDeviceSet(captureDevice);
+        deviceSet.applyUpdates(captureDevice);
 
         return Response.status(JettyManager.OK).build();
     }

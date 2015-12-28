@@ -20,8 +20,11 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.HTTPCaptureDevice;
 import opendct.capture.RTPCaptureDevice;
 import opendct.config.Config;
+import opendct.jetty.JettyManager;
 import opendct.sagetv.SageTVManager;
 import opendct.util.Util;
+
+import javax.ws.rs.core.Response;
 
 public class JsonCaptureDeviceDetails {
     private String[] childCaptureDevices;
@@ -56,13 +59,19 @@ public class JsonCaptureDeviceDetails {
      *
      * @param captureDeviceName The name of the capture device to get details.
      * @return <i>true</i> if the capture device was found and everything is populated.
-     * @throws JsonGetException Thrown if there was a problem populating details.
      */
-    public boolean setCaptureDeviceDetails(String captureDeviceName) throws JsonGetException {
+    public Response setCaptureDeviceDetails(String captureDeviceName) {
         CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(captureDeviceName, false);
 
         if (captureDevice == null) {
-            return false;
+            return Response.status(JettyManager.NOT_FOUND).entity(
+                    new JsonError(
+                            JettyManager.NOT_FOUND,
+                            "The capture device requested does not exist.",
+                            captureDeviceName,
+                            ""
+                    )
+            ).build();
         }
 
         try {
@@ -121,9 +130,17 @@ public class JsonCaptureDeviceDetails {
                 producerBaseImpl = "Unknown";
             }
         } catch (Exception e) {
-            throw new JsonGetException(e);
+            return Response.status(JettyManager.NOT_FOUND).entity(
+                    new JsonError(
+                            JettyManager.ERROR,
+                            "An unexpected error happened while getting details about this capture device.",
+                            captureDeviceName,
+                            e.toString()
+                    )
+            ).build();
         }
-        return true;
+
+        return Response.status(JettyManager.OK).entity(this).build();
     }
 
     public String[] getChildCaptureDevices() {

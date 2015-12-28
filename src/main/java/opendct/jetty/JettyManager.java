@@ -30,6 +30,11 @@ public class JettyManager implements PowerEventListener {
     private static final Logger logger = LogManager.getLogger(JettyManager.class);
     public static PowerEventListener POWER_EVENT_LISTENER = new JettyManager();
 
+    public static final int OK = 200;
+    public static final int NOT_FOUND = 404;
+    public static final int ERROR = 500;
+
+
     //TODO: [js] Create a simple web server for communicating with and troubleshooting the network encoder.
 
     private static Server server = new Server();

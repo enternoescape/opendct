@@ -127,4 +127,14 @@ public class JsonError {
     public void setException(String exception) {
         this.exception = exception;
     }
+
+    @Override
+    public String toString() {
+        return "JsonError{" +
+                "code=" + code +
+                ", message='" + message + '\'' +
+                ", url='" + url + '\'' +
+                ", exception='" + exception + '\'' +
+                '}';
+    }
 }

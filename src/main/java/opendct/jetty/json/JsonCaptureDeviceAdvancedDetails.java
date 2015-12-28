@@ -17,7 +17,10 @@
 package opendct.jetty.json;
 
 import opendct.capture.CaptureDevice;
+import opendct.jetty.JettyManager;
 import opendct.sagetv.SageTVManager;
+
+import javax.ws.rs.core.Response;
 
 public class JsonCaptureDeviceAdvancedDetails {
     private boolean isExternalLocked;
@@ -33,11 +36,18 @@ public class JsonCaptureDeviceAdvancedDetails {
      * @return <i>true</i> if the capture device was found and everything is populated.
      * @throws JsonGetException Thrown if there was a problem populating details.
      */
-    public boolean setCaptureDeviceDetails(String captureDeviceName) throws JsonGetException {
+    public Response setCaptureDeviceDetails(String captureDeviceName) {
         CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(captureDeviceName, false);
 
         if (captureDevice == null) {
-            return false;
+            return Response.status(JettyManager.NOT_FOUND).entity(
+                    new JsonError(
+                            JettyManager.NOT_FOUND,
+                            "The capture device requested does not exist.",
+                            captureDeviceName,
+                            ""
+                    )
+            ).build();
         }
 
         try {
@@ -47,10 +57,17 @@ public class JsonCaptureDeviceAdvancedDetails {
             signalStrength = captureDevice.getSignalStrength();
             copyProtection = captureDevice.getCopyProtection().toString();
         } catch (Exception e) {
-            throw new JsonGetException(e);
+            return Response.status(JettyManager.NOT_FOUND).entity(
+                    new JsonError(
+                            JettyManager.ERROR,
+                            "An unexpected error happened while getting advanced details about this capture device.",
+                            captureDeviceName,
+                            e.toString()
+                    )
+            ).build();
         }
 
-        return true;
+        return Response.status(JettyManager.OK).entity(this).build();
     }
 
     public boolean isExternalLocked() {

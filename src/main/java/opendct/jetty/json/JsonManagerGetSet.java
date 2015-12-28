@@ -101,7 +101,7 @@ public class JsonManagerGetSet {
     }
 
     public static String sageTVManager(String command, String parameters[]) {
-        String returnValue = "Error";
+        String returnValue;
 
         switch (command.toLowerCase()) {
             case "add_capture_device":
@@ -162,6 +162,8 @@ public class JsonManagerGetSet {
                 }
 
                 break;
+            default:
+                returnValue = "Error";
         }
 
         return returnValue;

@@ -21,6 +21,7 @@ import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.sagetv.SageTVUnloadedDevice;
 
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,11 +42,11 @@ public class DummyCaptureDevice implements CaptureDevice {
         this(parentName, encoderName, lineup, tunerPool, false, null, null);
     }
 
-    public DummyCaptureDevice(String parentName, String encoderName, String lineup, String tunerPool, boolean networkDevice, InetAddress remoteAddress, InetAddress localAddress) {
+    public DummyCaptureDevice(String parentName, String encoderName, String lineup, String poolName, boolean networkDevice, InetAddress remoteAddress, InetAddress localAddress) {
         this.parentName = parentName;
         this.encoderName = encoderName;
         this.lineup = lineup;
-        this.poolName = tunerPool;
+        this.poolName = poolName;
         this.networkDevice = networkDevice;
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
@@ -250,6 +251,31 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public void setLocalAddress(InetAddress localAddress) {
         this.localAddress = localAddress;
+    }
+
+    @Override
+    public SageTVUnloadedDevice getUnloadedDevice() {
+        return new SageTVUnloadedDevice(
+                encoderName,
+                this.getClass(),
+                new Object[] {
+                        parentName,
+                        encoderName,
+                        lineup,
+                        poolName,
+                        networkDevice,
+                        remoteAddress,
+                        localAddress },
+                new Class[] {
+                        String.class,
+                        String.class,
+                        String.class,
+                        String.class,
+                        boolean.class,
+                        InetAddress.class,
+                        InetAddress.class },
+                false,
+                "Dummy capture device.");
     }
 
     @Override

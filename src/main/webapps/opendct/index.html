@@ -42,11 +42,19 @@
 
 <div class="container">
     <div id="dashboard-page" class="content-page">
-        <h1>Capture Devices</h1>
+        <h1 class="header">Capture Devices</h1>
         <div id="dashboard-content">
             <div class="table-responsive">
-                <table id="dashboard-capture-devices" class="table table-striped table-bordered">
-
+                <table id="dashboard-capture-devices" class="table table-striped tablesorter">
+                    <thead>
+                        <tr>
+                            <th class="dashboard-device-name-header">Capture Device</th>
+                            <th class="dashboard-status-header">SageTV Status</th>
+                            <th class="dashboard-locked-header">Device Lock</th>
+                            <th class="dashboard-lineup-header">Lineup</th>
+                            <th class="dashboard-pool-header">Pool</th>
+                        </tr>
+                    </thead>
                 </table>
             </div>
         </div>
@@ -86,6 +94,6 @@
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
-<script src="js/moment.min.js"></script>
+<script src="js/jquery.tablesorter.min.js"></script>
 <script src="js/common.js"></script>
 </body>

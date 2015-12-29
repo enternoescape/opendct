@@ -360,7 +360,7 @@ public class SageTVPoolManager  {
      * @param poolName The name of the pool.
      * @param captureDevice The name of the pool capture device.
      */
-    public static void addPoolCaptureDevice(String poolName, String captureDevice) {
+    public static void addPoolCaptureDevice(String poolName, final String captureDevice) {
         if (!isUsePools()) {
             return;
         }
@@ -406,33 +406,6 @@ public class SageTVPoolManager  {
             }
 
             poolCaptureDevices.add(captureDevice);
-
-            Collections.sort(poolCaptureDevices, new Comparator<String>() {
-                @Override
-                public int compare(String o1, String o2) {
-                    CaptureDevice c1 = SageTVManager.getSageTVCaptureDevice(o1, false);
-                    CaptureDevice c2 = SageTVManager.getSageTVCaptureDevice(o2, false);
-
-                    if (c1 == null && c2 == null) {
-                        logger.warn("'{}' and '{}' don't exist.", o1, o2);
-                        return 0;
-                    } else if (c1 == null) {
-                        logger.warn("'{}' doesn't exist.", o1);
-                        return -1;
-                    } else if (c2 == null) {
-                        logger.warn("'{}' doesn't exist.", o2);
-                        return 1;
-                    }
-
-                    if (c1.getMerit() > c2.getMerit()) {
-                        return -1;
-                    } else if (c1.getMerit() < c2.getMerit()) {
-                        return 1;
-                    }
-
-                    return 0;
-                }
-            });
 
             logger.info("The capture device '{}' has been added to the '{}' pool.", captureDevice, poolName);
         } catch (Exception e) {

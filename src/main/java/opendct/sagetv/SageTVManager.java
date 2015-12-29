@@ -149,6 +149,10 @@ public class SageTVManager implements PowerEventListener {
             }
         }
 
+        if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
+            SageTVPoolManager.resortMerits(captureDevice.getEncoderPoolName());
+        }
+
         logger.exit();
     }
 

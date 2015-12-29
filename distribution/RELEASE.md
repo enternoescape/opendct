@@ -40,3 +40,6 @@
 
 #### 0.3.13-Beta
 > *Fixed some error handling issues in RTSP configuration.
+
+#### 0.3.14-Beta
+> *Fixed error handling issues with corrupt lineups.

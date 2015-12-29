@@ -36,7 +36,7 @@ public class RestCaptureDevice {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCaptureDevices() {
-        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllLoadedCaptureDevicesSorted();
 
         String captureDeviceNames[] = new String[captureDevices.size()];
 

@@ -16,6 +16,9 @@
 
 package opendct.channel;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
@@ -25,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChannelLineup {
+    private static final Logger logger = LogManager.getLogger(ChannelLineup.class);
     final static public long DEFAULT_UPDATE_INTERVAL = 28800000; // 8 hours
     final static public long DEFAULT_OFFLINE_UPDATE_INTERVAL = 604800000; // 7 days
 
@@ -230,7 +234,12 @@ public class ChannelLineup {
             }
         }
 
-        addChannel(new TVChannelImpl(oldProperties));
+        try {
+            addChannel(new TVChannelImpl(oldProperties));
+        } catch (Exception e) {
+            logger.error("Unable to add new channel => ", e);
+            return false;
+        }
 
         return updated;
     }
@@ -380,7 +389,11 @@ public class ChannelLineup {
 
             if (!tvChannel.isIgnore() || (includeIgnored && tvChannel.isIgnore())) {
                 if (tvChannel.isTunable() || (includeNonTunable && !tvChannel.isTunable())) {
-                    channels.add(new TVChannelImpl(tvChannel.getProperties()));
+                    try {
+                        channels.add(new TVChannelImpl(tvChannel.getProperties()));
+                    } catch (Exception e) {
+                        logger.error("Unable to create a new channel => ", e);
+                    }
                 }
             }
         }

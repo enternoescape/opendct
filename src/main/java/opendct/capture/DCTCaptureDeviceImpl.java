@@ -152,8 +152,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
         GetProtocolInfo getProtocolInfo = connectionManagerAction.getGetProtocolInfo();
 
-        if (getProtocolInfo != null && getProtocolInfo.getSource().equals("rtsp-rtp-udp:*:dri-mp2t:*")) {
-            connectionManagerSourceProtocol = "rtsp-rtp-udp:*:dri-mp2t:*";
+        if (getProtocolInfo != null && getProtocolInfo.getSource().toLowerCase().equals("rtsp-rtp-udp:*:dri-mp2t:*")) {
+            connectionManagerSourceProtocol = getProtocolInfo.getSource();
             connectionManagerAVTransportID = "0";
         } else if (getProtocolInfo == null || getProtocolInfo.getSource() == null) {
             logger.warn("The source protocol could not be determined. Using the default 'rtsp-rtp-udp:*:dri-mp2t:*'");
@@ -265,7 +265,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
             }
 
-            encoderLineup = Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase());
+            setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
             offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {

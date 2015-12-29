@@ -347,7 +347,11 @@ public class ChannelManager implements PowerEventListener {
         TVChannel returnChannels[] = new TVChannel[sourceChannels.size()];
 
         for (int i = 0; i < returnChannels.length; i++) {
-            returnChannels[i] = new TVChannelImpl(sourceChannels.get(i).getProperties());
+            try {
+                returnChannels[i] = new TVChannelImpl(sourceChannels.get(i).getProperties());
+            } catch (Exception e) {
+                logger.error("Unable to create a new channel => ", e);
+            }
         }
 
         return returnChannels;
@@ -545,7 +549,11 @@ public class ChannelManager implements PowerEventListener {
             for (Map.Entry<String, String> channelMapPair : loadedChannels.entrySet()) {
                 final String properties = channelMapPair.getValue();
 
-                lineup.addChannel(new TVChannelImpl(Util.getStringArrayFromCSV(properties)));
+                try {
+                    lineup.addChannel(new TVChannelImpl(Util.getStringArrayFromCSV(properties)));
+                } catch (Exception e) {
+                    logger.error("Unable to create a new channel => ", e);
+                }
             }
 
             if (lineup.SOURCE != ChannelSourceType.STATIC && !lineup.hasChannels()) {

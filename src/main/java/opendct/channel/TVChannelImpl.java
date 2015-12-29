@@ -16,7 +16,12 @@
 
 package opendct.channel;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class TVChannelImpl implements TVChannel {
+    private static final Logger logger = LogManager.getLogger(TVChannelImpl.class);
+
     private boolean tunable = false;
     private boolean ignore = false;
     private CopyProtection cci = CopyProtection.UNKNOWN;
@@ -49,9 +54,9 @@ public class TVChannelImpl implements TVChannel {
         this.name = name;
     }
 
-    public TVChannelImpl(String properties[]) throws IllegalArgumentException {
+    public TVChannelImpl(String properties[]) throws Exception {
         if (properties.length < 11) {
-            throw new IllegalArgumentException("The provided array does not contain all parameters required for a channel.");
+            throw new Exception("The provided array does not contain all parameters required for a channel.");
         }
 
         channel = properties[0];
@@ -63,8 +68,20 @@ public class TVChannelImpl implements TVChannel {
         frequency = properties[6];
         program = properties[7];
         eia = properties[8];
-        signalStrength = Integer.valueOf(properties[9]);
-        cci = CopyProtection.valueOf(properties[10]);
+
+        try {
+            signalStrength = Integer.valueOf(properties[9]);
+        } catch (NumberFormatException e) {
+            logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for signalStrength.", properties[9]);
+            signalStrength = 0;
+        }
+
+        try {
+            cci = CopyProtection.valueOf(properties[10]);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Expected an copy protection enum, but '{}' was provided. Using the default UNKNOWN for cci.", properties[10]);
+            cci = CopyProtection.UNKNOWN;
+        }
 
         if (properties.length == 12) {
             ignore = Boolean.valueOf(properties[11]);

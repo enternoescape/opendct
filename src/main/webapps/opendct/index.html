@@ -43,40 +43,60 @@
 <div class="container">
     <div id="dashboard-page" class="content-page">
         <div id="dashboard-content">
-            <div class="table-responsive">
-                <table id="dashboard-capture-devices-table" class="table table-striped tablesorter">
-                    <thead id="dashboard-capture-devices-header">
-                        <tr>
-                            <th class="dashboard-device-name-header">Capture Device</th>
-                            <th class="dashboard-status-header">SageTV Status</th>
-                            <th class="dashboard-locked-header">Device Lock</th>
-                            <th class="dashboard-lineup-header">Lineup</th>
-                            <th class="dashboard-pool-header">Pool</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dashboard-capture-devices-body">
-                        <!-- The automatically populated capture devices go here. -->
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th class="dashboard-device-footer">&nbsp;</th>
-                            <th class="dashboard-status-footer">&nbsp;</th>
-                            <th class="dashboard-locked-footer">&nbsp;</th>
-                            <th class="dashboard-lineup-footer">&nbsp;</th>
-                            <th class="dashboard-pool-footer">&nbsp;</th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            <table id="dashboard-capture-devices-table" class="table table-striped">
+                <thead id="dashboard-capture-devices-header">
+                    <tr>
+                        <th id="dashboard-device-name-header">Capture Device</th>
+                        <th id="dashboard-status-header">SageTV Status</th>
+                        <th id="dashboard-locked-header">Device Lock</th>
+                        <th id="dashboard-lineup-header">Lineup</th>
+                        <th id="dashboard-pool-header">Pool</th>
+                    </tr>
+                </thead>
+                <tbody id="dashboard-capture-devices-body">
+                    <!-- The automatically populated capture devices go here. -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th id="dashboard-device-footer">&nbsp;</th>
+                        <th id="dashboard-status-footer">&nbsp;</th>
+                        <th id="dashboard-locked-footer">&nbsp;</th>
+                        <th id="dashboard-lineup-footer">&nbsp;</th>
+                        <th id="dashboard-pool-footer">&nbsp;</th>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 
     <div id="manage-page" class="content-page">
         <div id="manage-content">
             <div class="">
-                <button type="button" class="btn btn-primary">
+
+                <h1>Unloaded Capture Devices</h1>
+                <button id="manage-add-unloaded-device" type="button" class="btn btn-primary">
                     Add Capture Device
-                </button>
+                </button><p/>
+
+                <table id="manage-unloaded-capture-devices-table" class="table table-striped">
+                    <thead id="manage-unloaded-capture-devices-header">
+                    <tr>
+                        <th id="manage-unloaded-check-header">Check Box</th>
+                        <th id="manage-unloaded-name-header">Unloaded Capture Device</th>
+                        <th id="manage-unloaded-description-header">Description</th>
+                    </tr>
+                    </thead>
+                    <tbody id="manager-unloaded-capture-devices-body">
+                    <!-- The automatically populated capture devices go here. -->
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <th id="manage-unloaded-check-footer">&nbsp;</th>
+                        <th id="manage-unloaded-name-footer">&nbsp;</th>
+                        <th id="manage-unloaded-description-footer">&nbsp;</th>
+                    </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>
@@ -109,6 +129,5 @@
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
-<script src="js/jquery.tablesorter.min.js"></script>
 <script src="js/common.js"></script>
 </body>

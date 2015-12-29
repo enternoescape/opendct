@@ -3,11 +3,11 @@ $(document).ready(function() {
     if (window.location.hash != '') {
         $(window.location.hash + "-nav").addClass("active");
         $(window.location.hash + "-page").show();
-        createDashboardRows();
+        loadPage( window.location.hash );
     } else {
         $("#dashboard-nav").addClass("active");
         $("#dashboard-page").show();
-        createDashboardRows();
+        loadPage( "#dashboard" );
     }
 });
 
@@ -28,7 +28,8 @@ $(".navbar-header a").on("click", function(){
 $(".change-page").on("click", function() {
     $(".content-page").hide();
     $($(this).attr('href') + "-page").show();
-    console.log (this);
+
+    loadPage( $(this).attr('href') );
 });
 
 function changePage( page ) {
@@ -39,7 +40,35 @@ function changePage( page ) {
     $(".navbar").find(".nav").find(".active").removeClass('active');
     $(page + "-nav").addClass("active");
 
-    console.log (page);
+    loadPage( page );
+}
+
+function loadPage( page ) {
+    if (page == "#manage") {
+        createManageUnloadedRows();
+    } else if (page == "#lineups") {
+
+    } else if (page == "#pools") {
+
+    } else if (page == "#config") {
+
+    } else {
+        createDashboardRows();
+    }
+}
+
+function updatePage( page ) {
+    if (page == "#manage") {
+
+    } else if (page == "#lineups") {
+
+    } else if (page == "#pools") {
+
+    } else if (page == "#config") {
+
+    } else {
+        updateDashboard();
+    }
 }
 
 /*
@@ -49,10 +78,11 @@ Dashboard content
 
 var dashContent = $("#dashboard-content");
 var deviceTable = $("#dashboard-capture-devices-body");
+var poolEnabled = false;
 
 function createDashboardRows() {
     $.get("rest/capturedevice", "", function(data, status, xhr) {
-        if (data.length > 0) {
+        if (data.length == 0) {
             $("#dashboard-capture-devices-header").hide();
             deviceTable.empty();
             deviceTable.append('<tr><td><button class="btn btn-primary" onclick="changePage(\'#manage\');">Add Capture Devices</button></td>' +
@@ -76,6 +106,8 @@ function createDashboardRows() {
         }
 
         $.get("rest/pool", "", function(data, status, xhr) {
+            poolEnabled = data;
+
             if (data) {
                 $(".dashboard-pool").show();
                 $(".dashboard-pool-header").show();
@@ -85,12 +117,6 @@ function createDashboardRows() {
                 $(".dashboard-pool-header").hide();
                 $(".dashboard-pool-footer").hide();
             }
-        });
-
-        // call the tablesorter plugin
-        $("table#dashboard-capture-devices").tablesorter({
-            // sort on the first column, order asc
-            sortList: [[0,0]]
         });
 
         updateDashboard();
@@ -105,21 +131,42 @@ function updateDashboard() {
 
             var deviceDiv = $(deviceName).parent().parent().find(".dashboard-collapse");
             if (data.locked == true) {
-                deviceDiv.html('<p/>Assigned Capture Device: "Unknown"');
-                deviceDiv.append('<p/>Recording "' + data.lastChannel + '" to "' + data.recordFilename + '"');
+                deviceDiv.html('<br/>Recording: ' + data.recordFilename);
+                deviceDiv.append('<br/>Channel: ' + data.lastChannel);
             } else {
                 deviceDiv.html('<p/>There is no activity on this capture device.');
             }
 
             var statusDiv = $(deviceName).parent().parent().parent().find(".dashboard-status");
             statusDiv.html('<a href="#" title="Click to expand/collapse." data-toggle="collapse" data-target="#dashboard-status-' + i + '">' + (data.locked ? "Active" : "Idle") + '</a>');
-            statusDiv.append('<div class="dashboard-collapse collapse" id="dashboard-status-' + i + '"><p/>No Data</div>');
+            if (data.locked == true) {
+                statusDiv.append('<div class="dashboard-collapse collapse" id="dashboard-status-' + i + '"><br/><span class="signal"></span><br/><span class="cci"></span></div>');
+
+                $.get("rest/capturedevice/" + $(deviceName).text() + "/method/getSignalStrength", "", function(data, status, xhr) {
+                    statusDiv.find(".signal").html("Signal: " + data);
+                });
+
+                $.get("rest/capturedevice/" + $(deviceName).text() + "/method/getCopyProtection", "", function(data, status, xhr) {
+                    statusDiv.find(".cci").html("CCI: " + data);
+                });
+            } else {
+                statusDiv.append('<div class="dashboard-collapse collapse" id="dashboard-status-' + i + '"><p/></div>');
+            }
 
             $(deviceName).parent().parent().parent().find(".dashboard-lineup").html(data.channelLineup);
 
-            $(deviceName).parent().parent().parent().find(".dashboard-pool").html(data.encoderPoolName);
-
-            $("table#dashboard-capture-devices").trigger("update");
+            if (poolEnabled == true) {
+                $(deviceName).parent().parent().parent().find(".dashboard-pool").html(data.encoderPoolName);
+                if (data.locked == true) {
+                    $.get("rest/pool/" + $(deviceName).text() + "/tovirtualdevice", "", function(data, status, xhr) {
+                        if (status == "success") {
+                            deviceDiv.append('<br/>SageTV Virtual Device: ' + data);
+                        } else {
+                            deviceDiv.append('<br/>SageTV Virtual Device: Not Mapped');
+                        }
+                    });
+                }
+            }
         });
 
         // We are trying to avoid directly accessing the devices as much as possible, but there is
@@ -130,8 +177,35 @@ function updateDashboard() {
             } else {
                 $(deviceName).parent().parent().parent().find(".dashboard-locked").html(data.locked ? "Locked" : "Available");
             }
-
-            $("table#dashboard-capture-devices").trigger("update");
         });
+    });
+}
+
+/*
+Manage content
+=====================================
+*/
+
+var manageUnloadedTable = $("#manager-unloaded-capture-devices-body");
+
+function createManageUnloadedRows() {
+    $.get("rest/unloadeddevices", "", function(data, status, xhr) {
+        if (data.length > 0) {
+            manageUnloadedTable.empty()
+            $("#manage-unloaded-capture-devices-header").hide();
+            $("#manage-add-unloaded-device").hide();
+            manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\">&nbsp;</td>" +
+                                           "<td class=\"manage-unloaded-name\">There are no capture devices available to be loaded.</td>" +
+                                           "<td class=\"manage-unloaded-description\">&nbsp;</td></tr>");
+        } else {
+            manageUnloadedTable.empty();
+            $("#manage-unloaded-capture-devices-header").show();
+            $("#manage-add-unloaded-device").show();
+            $.each(data, function(i, deviceName) {
+                manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\">&nbsp;</td>" +
+                                               "<td class=\"manage-unloaded-name\">&nbsp;</td>" +
+                                               "<td class=\"manage-unloaded-description\">&nbsp;</td></tr>");
+            });
+        }
     });
 }

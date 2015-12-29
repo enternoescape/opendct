@@ -44,7 +44,7 @@ public class RestCaptureDevice {
             captureDeviceNames[i] = captureDevices.get(i).getEncoderName();
         }
 
-        return Response.status(200).entity(captureDeviceNames).build();
+        return Response.status(JettyManager.OK).entity(captureDeviceNames).build();
     }
 
     @GET

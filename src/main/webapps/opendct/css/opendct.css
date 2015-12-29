@@ -38,34 +38,13 @@ a:hover {
      border-top-color: #222 !important;
 }
 
-/* Table sorter */
-table.tablesorter thead tr .header {
-	background-image: url(bg.gif);
-	background-repeat: no-repeat;
-	background-position: center right;
-	cursor: pointer;
+table.table thead tr th {
+	background-color: #666;
+	color: #FFFFFF;
 	border-bottom-color: #222 !important;
 }
 
-table.tablesorter thead tr .headerSortUp {
-	background-image: url(asc.gif);
-}
-
-table.tablesorter thead tr .headerSortDown {
-	background-image: url(desc.gif);
-}
-
-table.tablesorter thead tr th {
-	background-color: #666;
-	color: #FFFFFF;
-}
-
-table.tablesorter tfoot tr th {
+table.table tfoot tr th {
     background-color: #333;
 	color: #FFFFFF;
-}
-
-table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSortUp {
-    background-color: #777;
-    color: #FFFFFF;
 }

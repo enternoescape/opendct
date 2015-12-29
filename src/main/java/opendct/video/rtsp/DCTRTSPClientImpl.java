@@ -30,7 +30,6 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.StringTokenizer;
 
 public class DCTRTSPClientImpl implements RTSPClient {
@@ -81,9 +80,13 @@ public class DCTRTSPClientImpl implements RTSPClient {
 
             sessionString = null;
 
-            if (!sendDescribe()) continue;
-            if (!sendSetup()) continue;
-            if (!sendPlay()) continue;
+            try {
+                if (!sendDescribe()) continue;
+                if (!sendSetup()) continue;
+                if (!sendPlay()) continue;
+            } catch (Exception e) {
+                logger.error("Unexpected exception while configuring RTSP => ", e);
+            }
             break;
         }
 
@@ -165,7 +168,7 @@ public class DCTRTSPClientImpl implements RTSPClient {
                 line = in.readLine();
             }
 
-            logger.trace("Received RTSP response: \r\n{}", response);
+            logger.debug("Received RTSP response: {}", response);
 
             //We will try to clean up the correct way, but it may not always be successful.
             try {
@@ -182,9 +185,9 @@ public class DCTRTSPClientImpl implements RTSPClient {
             }
 
         } catch (Exception e) {
-            logger.error("There was a problem communicating with {} => ", streamRemoteURI.toString(), e);
+            logger.error("There was a problem communicating with {} => {}", streamRemoteURI.toString(), e);
             if (response.size() > 0) {
-                logger.debug("Received partial RTSP response: \r\n{}", response);
+                logger.debug("Received partial RTSP response: ", response);
             }
             return logger.exit(null);
         }

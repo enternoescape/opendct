@@ -26,7 +26,7 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="#dashboard">OpenDCT</a>
+            <a class="navbar-brand change-page" href="#dashboard">OpenDCT</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
             <ul class="nav navbar-nav">
@@ -42,11 +42,10 @@
 
 <div class="container">
     <div id="dashboard-page" class="content-page">
-        <h1 class="header">Capture Devices</h1>
         <div id="dashboard-content">
             <div class="table-responsive">
-                <table id="dashboard-capture-devices" class="table table-striped tablesorter">
-                    <thead>
+                <table id="dashboard-capture-devices-table" class="table table-striped tablesorter">
+                    <thead id="dashboard-capture-devices-header">
                         <tr>
                             <th class="dashboard-device-name-header">Capture Device</th>
                             <th class="dashboard-status-header">SageTV Status</th>
@@ -55,6 +54,18 @@
                             <th class="dashboard-pool-header">Pool</th>
                         </tr>
                     </thead>
+                    <tbody id="dashboard-capture-devices-body">
+                        <!-- The automatically populated capture devices go here. -->
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th class="dashboard-device-footer">&nbsp;</th>
+                            <th class="dashboard-status-footer">&nbsp;</th>
+                            <th class="dashboard-locked-footer">&nbsp;</th>
+                            <th class="dashboard-lineup-footer">&nbsp;</th>
+                            <th class="dashboard-pool-footer">&nbsp;</th>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -62,7 +73,11 @@
 
     <div id="manage-page" class="content-page">
         <div id="manage-content">
-
+            <div class="">
+                <button type="button" class="btn btn-primary">
+                    Add Capture Device
+                </button>
+            </div>
         </div>
     </div>
 

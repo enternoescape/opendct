@@ -1,22 +1,41 @@
 /* Move down content because we have a fixed navbar that is 50px tall */
 body {
-  padding-top: 50px;
-  background-color: #333;
-  color: #FFFFFF;
+    padding-top: 75px;
+    background-color: #333;
+    color: #FFFFFF;
 }
 
 .content-page {
     display: none;
 }
 
-/* Table formating */
+/* Global defaults to match the SageTV web interface. */
+a {
+	color: #FFFFFF;
+	text-decoration:none;
+}
+a:visited {
+	color: #FFFFFF;
+	text-decoration:none;
+}
+a:hover {
+	color: #ffd800;
+	text-decoration:none;
+}
+
+/* Table formatting */
 .table-striped > tbody > tr:nth-child(2n+1) > td, .table-striped > tbody > tr:nth-child(2n+1) > th {
-   background-color: #414141;
-   color: #FFFFFF;
+    background-color: #333;
+    color: #FFFFFF;
 }
 
 .table-striped > tbody > tr:nth-child(2n) > td, .table-striped > tbody > tr:nth-child(2n) > th {
-   color: #FFFFFF;
+    background-color: #414141;
+    color: #FFFFFF;
+}
+
+.table th, .table td {
+     border-top-color: #222 !important;
 }
 
 /* Table sorter */
@@ -25,6 +44,7 @@ table.tablesorter thead tr .header {
 	background-repeat: no-repeat;
 	background-position: center right;
 	cursor: pointer;
+	border-bottom-color: #222 !important;
 }
 
 table.tablesorter thead tr .headerSortUp {
@@ -35,8 +55,13 @@ table.tablesorter thead tr .headerSortDown {
 	background-image: url(desc.gif);
 }
 
-table.tablesorter thead tr th, table.tablesorter tfoot tr th {
+table.tablesorter thead tr th {
 	background-color: #666;
+	color: #FFFFFF;
+}
+
+table.tablesorter tfoot tr th {
+    background-color: #333;
 	color: #FFFFFF;
 }
 

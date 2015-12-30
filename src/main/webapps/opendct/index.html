@@ -74,12 +74,16 @@
             <div class="">
 
                 <h1>Parent Capture Devices</h1>
-                <button id="manage-apply-parent-device-changes" type="button" class="btn btn-primary disabled">
+                <button id="manage-apply-parent-device-changes" type="button" class="btn btn-primary disabled hidden">
                     Apply Changes
+                </button>
+				
+				<button id="manage-undo-parent-device-changes" type="button" class="btn btn-primary hidden">
+                    Undo Changes
                 </button><p/>
 
                 <table id="manage-loaded-parent-devices-table" class="table table-striped">
-                    <thead id="manage-loaded-parent-devices-header">
+                    <thead id="manage-loaded-parent-devices-header" class="hidden">
                     <tr>
                         <th id="manage-parent-name-header">Capture Device Parent</th>
                         <th id="manage-is-network-header">Network Device</th>
@@ -103,14 +107,18 @@
                 </table>
 
                 <h1>Loaded Capture Devices</h1>
-                <button id="manage-apply-loaded-device-changes" type="button" class="btn btn-primary disabled">
+                <button title="Apply all changes for all modified loaded capture devices. This includes all modifications, not just rows with checkmarks." id="manage-apply-loaded-device-changes" type="button" class="btn btn-primary disabled hidden">
                     Apply Changes
+                </button>
+				
+				<button id="manage-undo-loaded-device-changes" type="button" class="btn btn-primary hidden">
+                    Undo Changes
                 </button><p/>
 
                 <table id="manage-loaded-devices-table" class="table table-striped">
-                    <thead id="manage-loaded-devices-header">
+                    <thead id="manage-loaded-devices-header" class="hidden">
                     <tr>
-                        <th id="manage-check-header"><input class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
+                        <th id="manage-check-header"><input title="Select the rows to change and edit any one of them to modify all of them." class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
                         <th id="manage-name-header">Capture Device</th>
                         <th id="manage-merit-header">Merit</th>
                         <th id="manage-force-unlock-header">Force Unlock</th>
@@ -132,12 +140,12 @@
                 </table>
 
                 <h1>Unloaded Capture Devices</h1>
-                <button id="manage-add-unloaded-device" type="button" class="btn btn-primary disabled">
+                <button id="manage-add-unloaded-device" type="button" class="btn btn-primary disabled hidden">
                     Load Capture Device
                 </button><p/>
-
+				
                 <table id="manage-unloaded-capture-devices-table" class="table table-striped">
-                    <thead id="manage-unloaded-capture-devices-header">
+                    <thead id="manage-unloaded-capture-devices-header" class="hidden">
                     <tr>
                         <th id="manage-unloaded-check-header"><input class="manage-unloaded-checkbox-all" type="checkbox" value="CheckAllUnloadedDevices"></th>
                         <th id="manage-unloaded-name-header">Capture Device</th>

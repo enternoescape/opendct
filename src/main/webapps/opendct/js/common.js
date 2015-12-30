@@ -62,6 +62,7 @@ function loadPage( page ) {
 function updatePage( page ) {
     if (page == "#manage") {
         updateManageParentRows();
+        updateManageLoadedRows();
     } else if (page == "#lineups") {
 
     } else if (page == "#pools") {
@@ -97,7 +98,7 @@ function createDashboardRows() {
             deviceTable.empty();
             $.each(data, function(i, deviceName) {
                 deviceTable.append('<tr><td class="dashboard-device-name">' +
-                                       '<a href="javascript:void(0);" title="Click to expand/collapse." data-toggle="collapse" data-target="#dashboard-device-collapse-' + i + '">' +
+                                       '<a href="javascript:undefined" title="Click to expand/collapse details." data-toggle="collapse" data-target="#dashboard-device-collapse-' + i + '">' +
                                        '<div class="dashboard-device-lookup">' + deviceName + '</div></a>' +
                                        '<div class="dashboard-collapse collapse" id="dashboard-device-collapse-' + i + '">Updating...</div></td>' +
                                        "<td class=\"dashboard-status\"></td>" +
@@ -138,7 +139,7 @@ function updateDashboard() {
             }
 
             var statusDiv = $(deviceName).parent().parent().parent().find(".dashboard-status");
-            statusDiv.html('<a href="javascript:void(0);" title="Click to expand/collapse." data-toggle="collapse" data-target="#dashboard-status-' + i + '">' + (data.locked ? "Active" : "Idle") + '</a>');
+            statusDiv.html('<a href="javascript:undefined" title="Click to expand/collapse." data-toggle="collapse" data-target="#dashboard-status-' + i + '">' + (data.locked ? "Active" : "Idle") + '</a>');
             if (data.locked == true) {
                 statusDiv.append('<div class="dashboard-collapse collapse" id="dashboard-status-' + i + '"><br/><span class="signal"></span><br/><span class="cci"></span></div>');
 
@@ -196,7 +197,9 @@ function createManageParentRows() {
     $.get("rest/capturedeviceparent", "", function(data, status, xhr) {
 
     if (data.length == 0) {
-        $("#manage-capture-devices-header").hide();
+        $("#manage-loaded-parent-devices-header").addClass("hidden");
+        $("#manage-apply-parent-device-changes").addClass("hidden");
+        $("#manage-undo-parent-device-changes").addClass("hidden");
         manageLoadedParentTable.empty();
         manageLoadedParentTable.append(
             '<tr><td class=\"manage-parent-name\">There are no capture devices currently loaded.</td>' +
@@ -205,12 +208,14 @@ function createManageParentRows() {
             "<td class=\"manage-local-ip\"></td>" +
             "<td class=\"manage-cablecard-present\"></td></tr>");
         } else {
-            $("#dashboard-capture-devices-header").show();
+            $("#manage-loaded-parent-devices-header").removeClass("hidden");
+            $("#manage-apply-parent-device-changes").removeClass("hidden");
+            $("#manage-undo-parent-device-changes").removeClass("hidden");
             manageLoadedParentTable.empty();
             $.each(data, function(i, parentName) {
                 manageLoadedParentTable.append(
                     '<tr><td class="manage-parent-name">' +
-                    '<a href="javascript:void(0);" title="Click to show loaded child capture device names." data-toggle="collapse" data-target="#manage-parent-name-collapse-' + i + '">' +
+                    '<a href="javascript:undefined" title="Click to show loaded child capture device names." data-toggle="collapse" data-target="#manage-parent-name-collapse-' + i + '">' +
                     '<div class="manage-parent-lookup">' + parentName + '</div></a>' +
                     '<div class="manage-parent-collapse collapse" id="manage-parent-name-collapse-' + i + '">Updating...</div></td>' +
                     "<td class=\"manage-is-network\"></td>" +
@@ -253,27 +258,37 @@ function updateManageParentRows() {
     });
 }
 
+$("#manage-undo-parent-device-changes").on("click", function() {
+    createManageParentRows();
+});
+
 function createManageLoadedRows() {
     $.get("rest/capturedevice", "", function(data, status, xhr) {
         if (data.length == 0) {
-            $("#manage-capture-devices-header").hide();
+            $("#manage-loaded-devices-header").addClass("hidden");
+            $("#manage-apply-loaded-device-changes").addClass("hidden");
+            $("#manage-undo-loaded-device-changes").addClass("hidden");
             manageLoadedTable.empty();
-            manageLoadedTable.append('<tr><td class=\"manage-loaded-checked\">&nbsp;</td>' +
-                                   "<td class=\"manage-loaded-name\">There are no capture devices currently loaded.</td>" +
-                                   "<td class=\"manage-loaded-merit\"></td>" +
-                                   "<td class=\"manage-loaded-force-unlock\"></td>" +
-                                   "<td class=\"manage-loaded-consumer\"></td>" +
-                                   "<td class=\"manage-loaded-lineup\"></td>" +
-                                   "<td class=\"manage-loaded-pool\"></td></tr>");
+            manageLoadedTable.append('<tr><td class=\"manage-loaded-checked\">There are no capture devices currently loaded.</td>' +
+                                   "<td class=\"manage-name\"></td>" +
+                                   "<td class=\"manage-merit\"></td>" +
+                                   "<td class=\"manage-force-unlock\"></td>" +
+                                   "<td class=\"manage-consumer\"></td>" +
+                                   "<td class=\"manage-lineup\"></td>" +
+                                   "<td class=\"manage-encoder-pool\"></td></tr>");
         } else {
-            $("#dashboard-capture-devices-header").show();
+            $("#manage-loaded-devices-header").removeClass("hidden");
+            $("#manage-apply-loaded-device-changes").removeClass("hidden");
+            $("#manage-undo-loaded-device-changes").removeClass("hidden");
             manageLoadedTable.empty();
             $.each(data, function(i, deviceName) {
                 manageLoadedTable.append('<tr><td class="manage-loaded-checked"><input class="manage-loaded-checkbox" type="checkbox" value="' + deviceName + '"></td>' +
-                                       '<td class="dashboard-device-name">' +
-                                       '<a href="javascript:void(0);" title="Click to expand/collapse." data-toggle="collapse" data-target="#manage-loaded-device-collapse-' + i + '">' +
-                                       '<div class="manage-loaded-device-lookup">' + deviceName + '</div></a>' +
-                                       '<div class="manage-loaded-collapse collapse" id="manage-loaded-device-collapse-' + i + '">Updating...</div></td>' +
+                                       '<td class="manage-device-name">' +
+                                       '<a href="javascript:$(\'#manage-loaded-device-lookup-' + i + '\').hide()" title="Click to rename this capture device." data-toggle="collapse" data-target="#manage-loaded-device-collapse-' + i + '">' +
+                                       '<div class="manage-loaded-device-lookup" id="manage-loaded-device-lookup-' + i + '">' + deviceName + '</div></a>' +
+                                       '<div class="manage-loaded-collapse collapse" id="manage-loaded-device-collapse-' + i + '">' +
+                                       '<input type="text" class="form-control manage-rename-device" value="' + deviceName + '"></div></td>' +
+
                                        "<td class=\"manage-merit\"></td>" +
                                        "<td class=\"manage-force-unlock\"></td>" +
                                        "<td class=\"manage-consumer\"></td>" +
@@ -300,9 +315,29 @@ function createManageLoadedRows() {
             manageLoadedDevicesApplyChangesButton();
         });
 
-        updateDashboard();
+        updateManageLoadedRows();
     }, "json");
 }
+
+function updateManageLoadedRows() {
+    console.log("UPDATE");
+
+    $.each(manageLoadedTable.find("div.manage-loaded-device-lookup"), function(i, deviceName) {
+        $.get("rest/capturedevice/" + $(deviceName).text() + "/details", "", function(data, status, xhr) {
+            console.log(data);
+
+            var meritDiv = $(deviceName).parent().parent().parent().find(".manage-merit");
+            meritDiv.html('<input type="number" class="form-control manage-merit-value" min="0" max="2147483647" value="' + data.merit + '" />');
+            //meritDiv.html((data.merit ? "Yes" : "No"));
+
+
+        });
+    });
+}
+
+$("#manage-undo-loaded-device-changes").on("click", function() {
+    createManageLoadedRows();
+});
 
 $(".manage-loaded-checkbox-all").change(function() {
     $(".manage-loaded-checkbox").prop('checked', this.checked);
@@ -324,15 +359,15 @@ function createManageUnloadedRows() {
     $.get("rest/unloadeddevices", "", function(data, status, xhr) {
         if (data.length == 0) {
             manageUnloadedTable.empty();
-            $("#manage-unloaded-capture-devices-header").hide();
-            $("#manage-add-unloaded-device").hide();
-            manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\">&nbsp;</td>" +
-                                           "<td class=\"manage-unloaded-name\">There are no capture devices available to be loaded.</td>" +
+            $("#manage-unloaded-capture-devices-header").addClass("hidden");
+            $("#manage-add-unloaded-device").addClass("hidden");
+            manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\">There are no capture devices available to be loaded.</td>" +
+                                           "<td class=\"manage-unloaded-name\"></td>" +
                                            "<td class=\"manage-unloaded-description\">&nbsp;</td></tr>");
         } else {
             manageUnloadedTable.empty();
-            $("#manage-unloaded-capture-devices-header").show();
-            $("#manage-add-unloaded-device").show();
+            $("#manage-unloaded-capture-devices-header").removeClass("hidden");
+            $("#manage-add-unloaded-device").removeClass("hidden");
             $.each(data, function(i, unloadedDevice) {
                 console.log( unloadedDevice );
                 manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\"><input class=\"manage-unloaded-checkbox\" type=\"checkbox\" value=\"" + unloadedDevice.ENCODER_NAME + "\"></td>" +
@@ -356,13 +391,13 @@ function manageUnloadedDevicesUpdateAddButton() {
     var checkedBoxes = $(".manage-unloaded-checkbox:checked").length;
 
     if (checkedBoxes > 1) {
-        $("#manage-add-unloaded-device").html("Load Capture Devices");
+        $("#manage-add-unloaded-device").html("Load Selected Capture Devices");
         $("#manage-add-unloaded-device").removeClass("disabled");
     } else if (checkedBoxes == 0) {
-        $("#manage-add-unloaded-device").html("Load Capture Device");
+        $("#manage-add-unloaded-device").html("Load Selected Capture Device");
         $("#manage-add-unloaded-device").addClass("disabled");
     } else {
-        $("#manage-add-unloaded-device").html("Load Capture Device");
+        $("#manage-add-unloaded-device").html("Load Selected Capture Device");
         $("#manage-add-unloaded-device").removeClass("disabled");
     }
 }
@@ -375,6 +410,9 @@ $("#manage-add-unloaded-device").on("click", function() {
     if (!confirm('Are you sure you want to load ' + $(".manage-unloaded-checkbox:checked").length + ' capture devices?')) {
         return;
     }
+
+    $("#manage-add-unloaded-device").html("Load Selected Capture Device");
+    $("#manage-add-unloaded-device").addClass("disabled");
 
     $.each($(".manage-unloaded-checkbox:checked"), function(i, unloadedDeviceCheck) {
         var unloadedDeviceName = $(unloadedDeviceCheck).attr("value");

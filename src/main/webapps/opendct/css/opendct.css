@@ -14,12 +14,19 @@ a {
 	color: #FFFFFF;
 	text-decoration:none;
 }
+
 a:visited {
 	color: #FFFFFF;
 	text-decoration:none;
 }
+
 a:hover {
 	color: #ffd800;
+	text-decoration:none;
+}
+
+a:focus {
+	color: #FFFFFF;
 	text-decoration:none;
 }
 

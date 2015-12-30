@@ -85,7 +85,7 @@ function createDashboardRows() {
         if (data.length == 0) {
             $("#dashboard-capture-devices-header").hide();
             deviceTable.empty();
-            deviceTable.append('<tr><td><button class="btn btn-primary" onclick="changePage(\'#manage\');">Add Capture Devices</button></td>' +
+            deviceTable.append('<tr><td><button class="btn btn-primary" onclick="changePage(\'#manage\');">Load Capture Devices</button></td>' +
                                                    "<td class=\"dashboard-status\"></td>" +
                                                    "<td class=\"dashboard-locked\"></td>" +
                                                    "<td class=\"dashboard-lineup\"></td>" +
@@ -190,7 +190,7 @@ var manageUnloadedTable = $("#manager-unloaded-capture-devices-body");
 
 function createManageUnloadedRows() {
     $.get("rest/unloadeddevices", "", function(data, status, xhr) {
-        if (data.length > 0) {
+        if (data.length == 0) {
             manageUnloadedTable.empty()
             $("#manage-unloaded-capture-devices-header").hide();
             $("#manage-add-unloaded-device").hide();
@@ -201,11 +201,59 @@ function createManageUnloadedRows() {
             manageUnloadedTable.empty();
             $("#manage-unloaded-capture-devices-header").show();
             $("#manage-add-unloaded-device").show();
-            $.each(data, function(i, deviceName) {
-                manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\">&nbsp;</td>" +
-                                               "<td class=\"manage-unloaded-name\">&nbsp;</td>" +
-                                               "<td class=\"manage-unloaded-description\">&nbsp;</td></tr>");
+            $.each(data, function(i, unloadedDevice) {
+                console.log( unloadedDevice );
+                manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\"><input class=\"manage-unloaded-checkbox\" type=\"checkbox\" value=\"" + unloadedDevice.ENCODER_NAME + "\"></td>" +
+                                               "<td class=\"manage-unloaded-name\">" + unloadedDevice.ENCODER_NAME + "</td>" +
+                                               "<td class=\"manage-unloaded-description\">" + unloadedDevice.DESCRIPTION + "</td></tr>");
             });
         }
+
+        $(".manage-unloaded-checkbox").change(function() {
+            manageUnloadedDevicesUpdateAddButton();
+        });
     });
 }
+
+$(".manage-unloaded-checkbox-all").change(function() {
+    $(".manage-unloaded-checkbox").prop('checked', this.checked);
+    manageUnloadedDevicesUpdateAddButton();
+});
+
+function manageUnloadedDevicesUpdateAddButton() {
+    var checkedBoxes = $(".manage-unloaded-checkbox:checked").length
+
+    if (checkedBoxes > 1) {
+        $("#manage-add-unloaded-device").html("Load Capture Devices");
+        $("#manage-add-unloaded-device").removeClass("disabled");
+    } else if (checkedBoxes == 0) {
+        $("#manage-add-unloaded-device").html("Load Capture Device");
+        $("#manage-add-unloaded-device").addClass("disabled");
+    } else {
+        $("#manage-add-unloaded-device").html("Load Capture Device");
+        $("#manage-add-unloaded-device").removeClass("disabled");
+    }
+}
+
+$("#manage-add-unloaded-device").on("click", function() {
+    if ($(this).hasClass("disabled")) {
+        return;
+    }
+
+    if (!confirm('Are you sure you want to load ' + $(".manage-unloaded-checkbox:checked").length + ' capture devices?')) {
+        return;
+    }
+
+    $.each($(".manage-unloaded-checkbox:checked"), function(i, unloadedDeviceCheck) {
+        var unloadedDeviceName = $(unloadedDeviceCheck).attr("value");
+        console.log("Loading: " + unloadedDeviceName);
+
+        $.get("rest/unloadeddevices/" + unloadedDeviceName + "/load", "", function(data, status, xhr) {
+            if (status == "success") {
+                console.log("Loaded: " + data);
+            } else {
+                alert("Error '" + status + "'. Unable to load the '" + unloadedDeviceName + "' capture device. See logs for details.");
+            }
+        });
+    });
+});

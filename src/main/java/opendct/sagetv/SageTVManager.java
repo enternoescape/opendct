@@ -680,6 +680,38 @@ public class SageTVManager implements PowerEventListener {
         return logger.exit(captureDevice);
     }
 
+    public static String[] getAllCaptureDeviceParentsSorted() {
+        String parentDevices[] = getAllCaptureDeviceParents();
+
+        Arrays.sort(parentDevices);
+
+        return parentDevices;
+    }
+
+    public static String[] getAllCaptureDeviceParents() {
+        ArrayList<CaptureDevice> captureDevices = getAllSageTVCaptureDevices();
+        HashSet<String> parentDevices = new HashSet<>();
+
+        for (CaptureDevice captureDevice : captureDevices) {
+            parentDevices.add(captureDevice.getEncoderParentName());
+        }
+
+        return parentDevices.toArray(new String[parentDevices.size()]);
+    }
+
+    public static ArrayList<CaptureDevice> getAllCaptureDevicesForParent(String parentDevice) {
+        ArrayList<CaptureDevice> captureDevices = getAllSageTVCaptureDevices();
+        ArrayList<CaptureDevice> parentCaptureDevices = new ArrayList<>();
+
+        for (CaptureDevice captureDevice : captureDevices) {
+            if (captureDevice.getEncoderParentName().equals(parentDevice)) {
+                parentCaptureDevices.add(captureDevice);
+            }
+        }
+
+        return parentCaptureDevices;
+    }
+
     /**
      * Returns an array containing all currently available capture devices.
      * <p/>

@@ -199,7 +199,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      * @return The displayable encoder parent name.
      */
     public String getEncoderParentName() {
-        return encoderName;
+        return encoderParentName;
     }
 
     /**

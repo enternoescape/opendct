@@ -45,6 +45,7 @@ function changePage( page ) {
 
 function loadPage( page ) {
     if (page == "#manage") {
+        createManageParentRows();
         createManageUnloadedRows();
     } else if (page == "#lineups") {
 
@@ -59,7 +60,7 @@ function loadPage( page ) {
 
 function updatePage( page ) {
     if (page == "#manage") {
-
+        updateManageParentRows();
     } else if (page == "#lineups") {
 
     } else if (page == "#pools") {
@@ -186,7 +187,117 @@ Manage content
 =====================================
 */
 
+var manageLoadedParentTable = $("#manager-loaded-parent-devices-body");
+var manageLoadedTable = $("#manager-loaded-devices-body");
 var manageUnloadedTable = $("#manager-unloaded-capture-devices-body");
+
+
+function createManageParentRows() {
+    $.get("rest/capturedeviceparent", "", function(data, status, xhr) {
+
+    if (data.length == 0) {
+        $("#manage-capture-devices-header").hide();
+        manageLoadedParentTable.empty();
+        manageLoadedParentTable.append(
+            '<tr><td class=\"manage-parent-name\">There are no capture devices currently loaded.</td>' +
+            "<td class=\"manage-is-network\"></td>" +
+            "<td class=\"manage-remote-ip\"></td>" +
+            "<td class=\"manage-local-ip\"></td>" +
+            "<td class=\"manage-cablecard-present\"></td></tr>");
+        } else {
+            $("#dashboard-capture-devices-header").show();
+            manageLoadedParentTable.empty();
+            $.each(data, function(i, parentName) {
+                manageLoadedParentTable.append(
+                    '<tr><td class="manage-parent-name">' +
+                    '<a href="#" title="Click to show loaded child capture device names." data-toggle="collapse" data-target="#manage-parent-name-collapse-' + i + '">' +
+                    '<div class="manage-parent-lookup">' + parentName + '</div></a>' +
+                    '<div class="manage-parent-collapse collapse" id="manage-parent-name-collapse-' + i + '">Updating...</div></td>' +
+                    "<td class=\"manage-is-network\"></td>" +
+                    "<td class=\"manage-remote-ip\"></td>" +
+                    "<td class=\"manage-local-ip\"></td>" +
+                    "<td class=\"manage-cablecard-present\"></td></tr>");
+            });
+        }
+
+        updateManageParentRows();
+    }, "json");
+}
+
+function updateManageParentRows() {
+    $.each(manageLoadedParentTable.find("div.manage-parent-lookup"), function(i, parentName) {
+        $.get("rest/capturedeviceparent/" + $(parentName).text() + "/details", "", function(data, status, xhr) {
+            console.log ( data );
+
+            var parentDiv = $(parentName).parent().parent().find(".manage-parent-collapse");
+            parentDiv.empty();
+
+            $.each(data.encoderNames, function(i, childName) {
+                parentDiv.append(childName + "<br/>");
+            });
+
+            var isNetworkDiv = $(parentName).parent().parent().parent().find(".manage-is-network");
+            isNetworkDiv.html((data.networkDevice ? "Yes" : "No"));
+
+            var remoteAddressDiv = $(parentName).parent().parent().parent().find(".manage-remote-ip");
+            var localAddressDiv = $(parentName).parent().parent().parent().find(".manage-local-ip");
+            if (data.networkDevice == true) {
+                remoteAddressDiv.html(data.remoteAddress);
+                localAddressDiv.html(data.localAddress);
+            } else {
+                remoteAddressDiv.html("N/A");
+                localAddressDiv.html("N/A");
+            }
+
+            var isCablecardDiv = $(parentName).parent().parent().parent().find(".manage-cablecard-present");
+            isCablecardDiv.html((data.cableCardPresent ? "Yes" : "No"));
+        });
+    });
+}
+
+function createManageLoadedRows() {
+    $.get("rest/capturedeviceparent", "", function(data, status, xhr) {
+        if (data.length == 0) {
+            $("#manage-capture-devices-header").hide();
+            deviceTable.empty();
+            deviceTable.append('<tr><td class=\"manage-loaded-checked\">&nbsp;</td>' +
+                                   "<td class=\"manage-loaded-name\">There are no capture devices currently loaded.</td>" +
+                                   "<td class=\"dashboard-status\"></td>" +
+                                   "<td class=\"dashboard-locked\"></td>" +
+                                   "<td class=\"dashboard-lineup\"></td>" +
+                                   "<td class=\"dashboard-pool\"></td></tr>");
+        } else {
+            $("#dashboard-capture-devices-header").show();
+            deviceTable.empty();
+            $.each(data, function(i, deviceName) {
+                deviceTable.append('<tr><td class="dashboard-device-name">' +
+                                       '<a href="#" title="Click to expand/collapse." data-toggle="collapse" data-target="#dashboard-device-collapse-' + i + '">' +
+                                       '<div class="dashboard-device-lookup">' + deviceName + '</div></a>' +
+                                       '<div class="dashboard-collapse collapse" id="dashboard-device-collapse-' + i + '">Updating...</div></td>' +
+                                       "<td class=\"dashboard-status\"></td>" +
+                                       "<td class=\"dashboard-locked\"></td>" +
+                                       "<td class=\"dashboard-lineup\"></td>" +
+                                       "<td class=\"dashboard-pool\"></td></tr>");
+            });
+        }
+
+        $.get("rest/pool", "", function(data, status, xhr) {
+            poolEnabled = data;
+
+            if (data) {
+                $(".dashboard-pool").show();
+                $(".dashboard-pool-header").show();
+                $(".dashboard-pool-footer").show();
+            } else {
+                $(".dashboard-pool").hide();
+                $(".dashboard-pool-header").hide();
+                $(".dashboard-pool-footer").hide();
+            }
+        });
+
+        updateDashboard();
+    }, "json");
+}
 
 function createManageUnloadedRows() {
     $.get("rest/unloadeddevices", "", function(data, status, xhr) {
@@ -246,11 +357,10 @@ $("#manage-add-unloaded-device").on("click", function() {
 
     $.each($(".manage-unloaded-checkbox:checked"), function(i, unloadedDeviceCheck) {
         var unloadedDeviceName = $(unloadedDeviceCheck).attr("value");
-        console.log("Loading: " + unloadedDeviceName);
 
         $.get("rest/unloadeddevices/" + unloadedDeviceName + "/load", "", function(data, status, xhr) {
             if (status == "success") {
-                console.log("Loaded: " + data);
+                $(unloadedDeviceCheck).parent().parent().remove();
             } else {
                 alert("Error '" + status + "'. Unable to load the '" + unloadedDeviceName + "' capture device. See logs for details.");
             }

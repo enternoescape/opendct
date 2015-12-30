@@ -74,3 +74,5 @@
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 
 
+#### 0.4.1-Beta  (compile only; not released)
+> *Added handling for Prime urls with copy protection so they don't get enabled in the lineup.

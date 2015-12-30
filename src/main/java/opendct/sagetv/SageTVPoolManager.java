@@ -360,7 +360,7 @@ public class SageTVPoolManager  {
      * @param poolName The name of the pool.
      * @param captureDevice The name of the pool capture device.
      */
-    public static void addPoolCaptureDevice(String poolName, String captureDevice) {
+    public static void addPoolCaptureDevice(String poolName, final String captureDevice) {
         if (!isUsePools()) {
             return;
         }

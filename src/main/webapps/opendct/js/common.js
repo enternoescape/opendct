@@ -128,8 +128,6 @@ function createDashboardRows() {
 function updateDashboard() {
     $.each(deviceTable.find("div.dashboard-device-lookup"), function(i, deviceName) {
         $.get("rest/capturedevice/" + $(deviceName).text() + "/details", "", function(data, status, xhr) {
-            console.log ( data );
-
             var deviceDiv = $(deviceName).parent().parent().find(".dashboard-collapse");
             if (data.locked == true) {
                 deviceDiv.html('<br/>Recording: ' + data.recordFilename);
@@ -182,6 +180,7 @@ function updateDashboard() {
     });
 }
 
+
 /*
 Manage content
 =====================================
@@ -227,8 +226,6 @@ function createManageParentRows() {
 function updateManageParentRows() {
     $.each(manageLoadedParentTable.find("div.manage-parent-lookup"), function(i, parentName) {
         $.get("rest/capturedeviceparent/" + $(parentName).text() + "/details", "", function(data, status, xhr) {
-            console.log ( data );
-
             var parentDiv = $(parentName).parent().parent().find(".manage-parent-collapse");
             parentDiv.empty();
 

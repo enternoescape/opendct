@@ -246,7 +246,14 @@ function updateManageParentRows() {
             var localAddressDiv = $(parentName).parent().parent().parent().find(".manage-local-ip");
             if (data.networkDevice == true) {
                 remoteAddressDiv.html(data.remoteAddress);
-                localAddressDiv.html(data.localAddress);
+                localAddressDiv.html('<a href="javascript:$(\'#manage-parent-device-local-ip-' + i + '\').hide()" title="Click to change the local IP address." data-toggle="collapse" data-target="#manage-parent-device-collapse-' + i + '">' +
+                                     '<div class="manage-parent-device-local-ip-lookup" id="manage-parent-device-local-ip-' + i + '">' + data.localAddress + '</div></a>' +
+                                     '<div class="manage-parent-device-collapse collapse" id="manage-parent-device-collapse-' + i + '">' +
+                                     '<input type="text" class="form-control manage-parent-device-local-ip-value" value="' + data.localAddress + '"></div>');
+
+                $(".manage-parent-device-local-ip-value").on("change keyup", function() {
+                    managerLoadedParentCanApply();
+                })
             } else {
                 remoteAddressDiv.html("N/A");
                 localAddressDiv.html("N/A");
@@ -261,6 +268,19 @@ function updateManageParentRows() {
 $("#manage-undo-parent-device-changes").on("click", function() {
     createManageParentRows();
 });
+
+function managerLoadedParentCanApply() {
+
+    $("#manage-apply-parent-device-changes").removeClass("disabled");
+
+    $.each($(".manage-parent-device-local-ip-value"), function(i, property) {
+        var isNetworkDiv = $(property).parent().parent().parent().find(".manage-is-network");
+
+        if (property.value == "" && isNetworkDiv.text() == "Yes") {
+            $("#manage-apply-parent-device-changes").addClass("disabled");
+        }
+    });
+}
 
 function createManageLoadedRows() {
     var loadedChangesButton = $("#manage-apply-loaded-device-changes");
@@ -359,7 +379,7 @@ function updateManageLoadedRows() {
             var forceDiv = $(deviceName).parent().parent().parent().find(".manage-force-unlock");
             forceDiv.html('<div class="centerBlock"><input type="checkbox" class="manage-force-unlock-value" ' + (data.alwaysForceExternalUnlock ? "checked" : "") + '"/></div>');
 
-            $(".manage-force-unlock-value").on("keyup change", function() {
+            $(".manage-force-unlock-value").on("change", function() {
                 managerLoadedCanApply();
             });
 
@@ -369,6 +389,10 @@ function updateManageLoadedRows() {
                                 '<option value="opendct.consumer.RawSageTVConsumerImpl">Raw</option>' +
                              '</select>');
 
+             $(".manage-consumer-value").on("change", function() {
+                 managerLoadedCanApply();
+             });
+
             var lineupDiv = $(deviceName).parent().parent().parent().find(".manage-lineup");
             var lineupExists = false;
 
@@ -376,6 +400,12 @@ function updateManageLoadedRows() {
                 if (this.value == data.channelLineup) {
                     lineupExists = true;
                     this.selected = true;
+
+                    // We don't want to add this trigger until the value is already set or we might
+                    // end up with the apply button always enabled even when there are no changes.
+                    $(lineupDiv).on("change", function() {
+                        managerLoadedCanApply();
+                    });
                 }
             });
 
@@ -390,6 +420,12 @@ function updateManageLoadedRows() {
                         if (this.value == (data.channelLineup)) {
                             lineupExists = true;
                             this.selected = true;
+
+                            // We don't want to add this trigger until the value is already set or we might
+                            // end up with the apply button always enabled even when there are no changes.
+                            $(lineupDiv).on("change", function() {
+                                managerLoadedCanApply();
+                            });
                         }
                     });
 
@@ -401,6 +437,10 @@ function updateManageLoadedRows() {
 
             var poolDiv = $(deviceName).parent().parent().parent().find(".manage-encoder-pool");
             poolDiv.html('<input type="text" class="form-control manage-encoder-pool-value" value="' + (data.encoderPoolName) + '">');
+
+            $(".manage-encoder-pool-value").on("keyup change", function() {
+                managerLoadedCanApply();
+            });
         });
     });
 }
@@ -429,7 +469,6 @@ function managerLoadedCanApply() {
             $("#manage-apply-loaded-device-changes").addClass("disabled");
         }
     });
-
 }
 
 function manageLoadedDevicesApplyChangesButton() {

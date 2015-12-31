@@ -33,8 +33,7 @@
                 <li id="dashboard-nav"><a class="change-page" href="#dashboard">Dashboard</a></li>
                 <li id="manage-nav"><a class="change-page" href="#manage">Manage</a></li>
                 <li id="lineups-nav"><a class="change-page" href="#lineups">Lineups</a></li>
-                <li id="pools-nav"><a class="change-page" href="#pools">Pools</a></li>
-                <li id="config-nav"><a class="change-page" href="#config">Config</a></li>
+                <li id="config-nav"><a class="change-page" href="#config">Configuration</a></li>
             </ul>
         </div><!--/.nav-collapse -->
     </div>
@@ -81,14 +80,16 @@
 				<button id="manage-undo-parent-device-changes" type="button" class="btn btn-primary hidden">
                     Undo Changes
                 </button><p/>
-
+				
+				<span id="manage-parent-device-warning" class="text-danger"></span>
+								
                 <table id="manage-loaded-parent-devices-table" class="table table-striped">
                     <thead id="manage-loaded-parent-devices-header" class="hidden">
                     <tr>
                         <th class="col-md-3" id="manage-parent-name-header">Capture Device Parent</th>
                         <th class="col-md-2 col-sm-1" id="manage-is-network-header">Network Device</th>
-                        <th class="col-md-2" id="manage-remote-ip-header">Remote IP Address</th>
-                        <th class="col-md-2" id="manage-local-ip-header">Local IP Address</th>
+                        <th class="col-md-2" id="manage-remote-ip-header">Remote Address</th>
+                        <th class="col-md-2" id="manage-local-ip-header">Local Address</th>
                         <th class="col-md-2 col-sm-1" id="manage-cablecard-present-header">CableCARD Present</th>
                     </tr>
                     </thead>
@@ -114,22 +115,24 @@
 				<button id="manage-undo-loaded-device-changes" type="button" class="btn btn-primary hidden">
                     Undo Changes
                 </button>
-
+				
                 <button id="manage-remove-loaded-device" type="button" class="btn btn-danger pull-right disabled hidden">
                     Unload Selected Capture Device
                 </button><p/>
+				
+				<span id="manage-loaded-device-warning" class="text-danger"></span>
 
                 <table id="manage-loaded-devices-table" class="table table-striped">
                     <thead id="manage-loaded-devices-header" class="hidden">
                     <tr>
                         <th id="manage-check-header"><input title="Select the rows to change and edit any one of them to modify all of them." class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
                         <th class="col-md-4" id="manage-name-header">Capture Device</th>
-                        <th class="col-md-1" id="manage-merit-header">Merit</th>
-                        <th class="col-md-1" id="manage-force-unlock-header">Force Unlock</th>
-                        <th class="col-md-2" id="manage-consumer-header">Consumer</th>
+                        <th class="col-md-1" id="manage-merit-header" title="This value is sent to SageTV in PROPERTIES and is used for prioritizing capture devices in virtual device pools. A higher number means a higher preference.">Merit</th>
+                        <th class="col-md-1" id="manage-force-unlock-header" title="Always force the capture device to unlock if it is locked by an outside program.">Unlock</th>
+                        <th class="col-md-2" id="manage-consumer-header" title="This is the post processing method to be used before the content is streamed to SageTV.">Consumer</th>
                         <th class="col-md-3" id="manage-lineup-header">Lineup</th>
                         <th class="col-md-2" id="manage-encoder-pool-header">Pool</th>
-                        <th class="col-md-1" id="manage-advanced-header">More</th>
+                        <th class="col-md-1" id="manage-advanced-header" title="Use checkboxes to edit multiple capture device advanced properties. Properties that are not shared between the selected capture devices will not be displayed. Conflicting properties will be blank or default and highlighted.">More</th>
                     </tr>
                     </thead>
                     <tbody id="manager-loaded-devices-body">
@@ -179,12 +182,6 @@
 
     <div id="lineups-page" class="content-page">
         <div id="lineups-content">
-
-        </div>
-    </div>
-
-    <div id="pools-page" class="content-page">
-        <div id="pools-content">
 
         </div>
     </div>

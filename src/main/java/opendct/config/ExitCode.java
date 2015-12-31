@@ -45,7 +45,10 @@ public enum ExitCode {
     SAGETV_DISCOVERY(20, "SageTVDiscovery was unable to open a required listening port."),
     SAGETV_SOCKET(21, "SageTVManager was unable to open a required socket server listening port."),
     SAGETV_NO_DEVICES(22, "SageTVManager did not load all of the expected capture devices within the allowed time."),
-    SAGETV_DUPLICATE(23, "SageTVManager attempted to load a device with a duplicate name.");
+    SAGETV_DUPLICATE(23, "SageTVManager attempted to load a device with a duplicate name."),
+
+    JETTY_START_FAILURE(30, "Jetty failed to start."),
+    JETTY_JAVA_VERSION_FAILURE(31, "Jetty requires Java version 1.8 or higher.");
 
     private final Logger logger = LogManager.getLogger(ExitCode.class);
     public final int CODE;
@@ -103,11 +106,11 @@ public enum ExitCode {
 
         Config.setExitCode(CODE);
         logger.fatal(toString());
-        System.err.print(toString());
+        System.err.println(toString());
 
         if (help != null && !help.equals("")) {
             logger.info(help);
-            System.err.print(help);
+            System.err.println(help);
         }
 
         if (this != SUCCESS && this != RESTART) {

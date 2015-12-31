@@ -17,6 +17,7 @@
 package opendct.jetty;
 
 import opendct.config.CommandLine;
+import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,11 +35,8 @@ public class JettyManager implements PowerEventListener {
     public static final int NOT_FOUND = 404;
     public static final int ERROR = 500;
 
-
-    //TODO: [js] Create a simple web server for communicating with and troubleshooting the network encoder.
-
     private static Server server = new Server();
-    private static int jettyPort = 8090;
+    private static int jettyPort;
     private static int jettySecurePort = 8093;
 
     public synchronized static void startJetty(int port, int securePort) {
@@ -69,6 +67,9 @@ public class JettyManager implements PowerEventListener {
             server.start();
         } catch (Exception e) {
             logger.error("There was a problem while attempting to start Jetty server => ", e);
+            ExitCode.JETTY_START_FAILURE.terminateJVM("If you do not want to use the web" +
+                    " interface, you can disable it by setting jetty.enabled=false in" +
+                    " opendct.properties.");
         }
     }
 

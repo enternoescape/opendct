@@ -200,21 +200,6 @@ public class Main {
         }
 
         if (enableJetty) {
-            // This attempts to catch the problem before it happens.
-            try {
-                String version = System.getProperty("java.version");
-                version = version.substring(0, version.lastIndexOf("."));
-                float majorMinor = Float.valueOf(version);
-
-                if (majorMinor < 1.8) {
-                    ExitCode.JETTY_JAVA_VERSION_FAILURE.terminateJVM("If you do not want to use the web" +
-                            " interface, you can disable it by setting jetty.enabled=false in" +
-                            " opendct.properties.");
-                }
-            } catch (Exception e) {
-                logger.warn("Unable to parse Java version => ", e);
-            }
-
             try {
                 int jettyPort = Config.getInteger("jetty.port", 8090);
                 JettyManager.startJetty(jettyPort, 8093);

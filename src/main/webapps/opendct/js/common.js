@@ -424,7 +424,8 @@ function updateManageLoadedRows() {
             });
 
             var forceDiv = $(deviceName).parent().parent().parent().find(".manage-force-unlock");
-            forceDiv.html('<div class="centerCell"><input type="checkbox" class="manage-force-unlock-value" ' + (data.alwaysForceExternalUnlock ? "checked" : "") + '"/></div>');
+            forceDiv.html('<div class="centerCell"><input type="checkbox" class="manage-force-unlock-value"/></div>');
+            forceDiv.find(".manage-force-unlock-value").prop("checked", data.alwaysForceExternalUnlock)
 
             $(".manage-force-unlock-value").on("change", function() {
                 manageLoadedCanApply();
@@ -629,7 +630,7 @@ $("#manage-apply-loaded-device-changes").on("click", function() {
             data: jsonResponse,
             contentType: "application/json",
             success: function(data, status, xhr) {
-                console.log("Updated: " + deviceName);
+                createManageLoadedRows();
             },
             error : function(xhr, status, error) {
                 alert("Error " + status + ". There was a problem while updating " + deviceName + ". Check log for details.");

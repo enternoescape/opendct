@@ -435,7 +435,6 @@ public class SageTVManager implements PowerEventListener {
                 captureDeviceToFiles.remove(captureDevice);
 
                 unloadedDevice = captureDevice.getUnloadedDevice();
-                addUnloadedDevice(unloadedDevice);
             } catch (Exception e) {
                 logger.error("The capture device '{}' did not stop gracefully.",
                         captureDevice.getEncoderName());
@@ -443,11 +442,13 @@ public class SageTVManager implements PowerEventListener {
         } catch (Exception e) {
             logger.error("An unexpected error occurred while stopping and clearing all of the capture devices => ", e);
         } finally {
-            captureDeviceToFilesLock.writeLock().unlock();
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();
+            captureDeviceToFilesLock.writeLock().unlock();
         }
 
-        if (unloadedDevice == null) {
+        if (unloadedDevice != null) {
+            addUnloadedDevice(unloadedDevice);
+        } else {
             return null;
         }
 
@@ -548,9 +549,10 @@ public class SageTVManager implements PowerEventListener {
             // way to say this lock is more important than all of the other ones since this is
             // likely to be called when entering standby.
             captureDeviceToFilesLock.writeLock().lock();
+            unloadedCaptureDeviceToInitLock.writeLock().lock();
             fileToUploadIDLock.writeLock().lock();
             fileToSocketServerLock.writeLock().lock();
-            unloadedCaptureDeviceToInitLock.writeLock().lock();
+
 
             try {
                 captureDeviceNameToCaptureDevice.clear();
@@ -560,9 +562,9 @@ public class SageTVManager implements PowerEventListener {
                 unloadedCaptureDeviceToInit.clear();
             } finally {
                 captureDeviceToFilesLock.writeLock().unlock();
+                unloadedCaptureDeviceToInitLock.writeLock().unlock();
                 fileToUploadIDLock.writeLock().unlock();
                 fileToSocketServerLock.writeLock().unlock();
-                unloadedCaptureDeviceToInitLock.writeLock().unlock();
             }
 
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();

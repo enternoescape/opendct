@@ -47,6 +47,7 @@ public class SageTVManager implements PowerEventListener {
     private static final ReentrantReadWriteLock unloadedCaptureDeviceToInitLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock fileToUploadIDLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock fileToSocketServerLock = new ReentrantReadWriteLock();
+    private static final Object loadUnloadLock = new Object();
 
     private static final HashMap<Integer, SageTVSocketServer> portToSocketServer = new HashMap<Integer, SageTVSocketServer>();
     private static final HashMap<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<String, CaptureDevice>();
@@ -161,35 +162,39 @@ public class SageTVManager implements PowerEventListener {
                 return null;
             }
 
-            // Check if this device is to be ignored.
-            String[] ignoreDevices = Config.getStringArray(propertiesDevicesGlobal + "ignore_devices_csv");
+            // This must be forced to be done one at a time or it could get ugly.
+            synchronized (loadUnloadLock) {
+                // Check if this device is to be ignored.
+                String[] ignoreDevices = Config.getStringArray(propertiesDevicesGlobal + "ignore_devices_csv");
 
-            // If there are any entries on this list, only devices and parents on this list will be
-            // loaded. All other discovered devices will be discarded.
-            String[] onlyDevices = Config.getStringArray(propertiesDevicesGlobal + "only_devices_csv");
+                // If there are any entries on this list, only devices and parents on this list will be
+                // loaded. All other discovered devices will be discarded.
+                String[] onlyDevices = Config.getStringArray(propertiesDevicesGlobal + "only_devices_csv");
 
-            if (ignoreDevices.length > 0) {
-                ArrayList<String> newIgnoreDevices = new ArrayList<>();
+                // If this is true, we will only load devices listed explicitly on only_devices_csv.
+                boolean alwaysOnlyDevices = Config.getBoolean("sagetv.device.global.always_use_only_devices", true);
 
-                for (String ignoreDevice : ignoreDevices) {
-                    if (!ignoreDevice.equals(unloadedDeviceName)) {
-                        newIgnoreDevices.add(ignoreDevice);
+                if (ignoreDevices.length > 0) {
+                    ArrayList<String> newIgnoreDevices = new ArrayList<>();
+
+                    for (String ignoreDevice : ignoreDevices) {
+                        if (!ignoreDevice.equals(unloadedDeviceName)) {
+                            newIgnoreDevices.add(ignoreDevice);
+                        }
+                    }
+
+                    if (!(newIgnoreDevices.size() == ignoreDevices.length)) {
+                        Config.setStringArray(propertiesDevicesGlobal + "ignore_devices_csv", newIgnoreDevices.toArray(new String[newIgnoreDevices.size()]));
                     }
                 }
 
-                if (!(newIgnoreDevices.size() == ignoreDevices.length)) {
-                    Config.setStringArray(propertiesDevicesGlobal + "ignore_devices_csv", newIgnoreDevices.toArray(new String[newIgnoreDevices.size()]));
+                if (onlyDevices.length > 0 || alwaysOnlyDevices) {
+                    ArrayList<String> newOnlyDevices = new ArrayList<>();
+
+                    newOnlyDevices.addAll(Arrays.asList(onlyDevices));
+                    newOnlyDevices.add(unloadedDeviceName);
+                    Config.setStringArray(propertiesDevicesGlobal + "only_devices_csv", newOnlyDevices.toArray(new String[newOnlyDevices.size()]));
                 }
-            }
-
-            // Only add the device to this list if it's being used. Otherwise on the next restart,
-            // this will be the only device loaded.
-            if (onlyDevices.length > 0) {
-                ArrayList<String> newOnlyDevices = new ArrayList<>();
-
-                newOnlyDevices.addAll(Arrays.asList(onlyDevices));
-                newOnlyDevices.add(unloadedDeviceName);
-                Config.setStringArray(propertiesDevicesGlobal + "only_devices_csv", newOnlyDevices.toArray(new String[newOnlyDevices.size()]));
             }
 
             // Now that we have removed anything that could block this device from initializing,
@@ -420,28 +425,77 @@ public class SageTVManager implements PowerEventListener {
         captureDeviceToFilesLock.writeLock().lock();
 
         try {
-            if (captureDevice != null) {
-                try {
-                    logger.info("The capture device '{}' is being unloaded.", captureDevice.getEncoderName());
-                    // This should cease all offline activities.
-                    captureDevice.setLocked(true);
-                    captureDevice.stopDevice();
+            try {
+                logger.info("The capture device '{}' is being unloaded.", captureDevice.getEncoderName());
+                // This should cease all offline activities.
+                captureDevice.setLocked(true);
+                captureDevice.stopDevice();
 
-                    captureDeviceNameToCaptureDevice.remove(captureDeviceName);
-                    captureDeviceToFiles.remove(captureDevice);
+                captureDeviceNameToCaptureDevice.remove(captureDeviceName);
+                captureDeviceToFiles.remove(captureDevice);
 
-                    unloadedDevice = captureDevice.getUnloadedDevice();
-                    addUnloadedDevice(unloadedDevice);
-                } catch (Exception e) {
-                    logger.error("The capture device '{}' did not stop gracefully.",
-                            captureDevice.getEncoderName());
-                }
+                unloadedDevice = captureDevice.getUnloadedDevice();
+                addUnloadedDevice(unloadedDevice);
+            } catch (Exception e) {
+                logger.error("The capture device '{}' did not stop gracefully.",
+                        captureDevice.getEncoderName());
             }
         } catch (Exception e) {
             logger.error("An unexpected error occurred while stopping and clearing all of the capture devices => ", e);
         } finally {
             captureDeviceToFilesLock.writeLock().unlock();
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();
+        }
+
+        if (unloadedDevice == null) {
+            return null;
+        }
+
+        // This must be forced to be done one at a time or it could get ugly.
+        synchronized (loadUnloadLock) {
+            // Check if this device is to be ignored.
+            String[] ignoreDevices = Config.getStringArray(propertiesDevicesGlobal + "ignore_devices_csv");
+
+            // If there are any entries on this list, only devices and parents on this list will be
+            // loaded. All other discovered devices will be discarded.
+            String[] onlyDevices = Config.getStringArray(propertiesDevicesGlobal + "only_devices_csv");
+
+            // If this is true, we will only load devices listed explicitly on only_devices_csv.
+            boolean alwaysOnlyDevices = Config.getBoolean("sagetv.device.global.always_use_only_devices", true);
+
+            if (ignoreDevices.length > 0 || !alwaysOnlyDevices) {
+                ArrayList<String> newIgnoreDevices = new ArrayList<>();
+
+                boolean contains = false;
+                for (String ignoreDevice : ignoreDevices) {
+                    if (ignoreDevice.equals(unloadedDevice.ENCODER_NAME)) {
+                        contains = true;
+                    }
+                    newIgnoreDevices.add(ignoreDevice);
+                }
+
+                if (!contains) {
+                    newIgnoreDevices.add(unloadedDevice.ENCODER_NAME);
+                }
+
+                if (!(newIgnoreDevices.size() == ignoreDevices.length)) {
+                    Config.setStringArray(propertiesDevicesGlobal + "ignore_devices_csv", newIgnoreDevices.toArray(new String[newIgnoreDevices.size()]));
+                }
+            }
+
+            if (onlyDevices.length > 0 || alwaysOnlyDevices) {
+                ArrayList<String> newOnlyDevices = new ArrayList<>();
+
+                for (String onlyDevice : onlyDevices) {
+                    if (!onlyDevice.equals(unloadedDevice.ENCODER_NAME)) {
+                        newOnlyDevices.add(onlyDevice);
+                    }
+                }
+
+                if (!(newOnlyDevices.size() == onlyDevices.length)) {
+                    Config.setStringArray(propertiesDevicesGlobal + "only_devices_csv", newOnlyDevices.toArray(new String[newOnlyDevices.size()]));
+                }
+            }
         }
 
         return unloadedDevice;

@@ -115,7 +115,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         // loaded. All other discovered devices will be discarded.
         String[] onlyDevices = Config.getStringArray(propertiesDevicesGlobal + "only_devices_csv");
 
-        if (onlyDevices.length > 0) {
+        // If this is true, we will only load devices listed explicitly on only_devices_csv.
+        boolean alwaysOnlyDevices = Config.getBoolean(propertiesDevicesGlobal + "always_use_only_devices", false);
+
+        if (onlyDevices.length > 0 || alwaysOnlyDevices) {
             boolean deviceListed = false;
             for (String dctIgnoreDevice : onlyDevices) {
                 if (deviceName.equals(dctIgnoreDevice) || deviceParentName.equals(dctIgnoreDevice)) {

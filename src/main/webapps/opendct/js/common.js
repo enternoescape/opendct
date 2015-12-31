@@ -277,7 +277,10 @@ function managerLoadedParentCanApply() {
         var isNetworkDiv = $(property).parent().parent().parent().find(".manage-is-network");
 
         if (property.value == "" && isNetworkDiv.text() == "Yes") {
+            $(property).parent().parent().addClass("background-error");
             $("#manage-apply-parent-device-changes").addClass("disabled");
+        } else {
+            $(property).parent().parent().removeClass("background-error");
         }
     });
 }
@@ -460,13 +463,19 @@ function managerLoadedCanApply() {
 
     $.each($(".manage-rename-device"), function(i, property) {
         if (property.value == "") {
+            $(property).parent().parent().addClass("background-error");
             $("#manage-apply-loaded-device-changes").addClass("disabled");
+        } else {
+            $(property).parent().parent().removeClass("background-error");
         }
     });
 
     $.each($(".manage-merit-value"), function(i, property) {
         if (property.value < 0) {
+            $(property).parent().addClass("background-error");
             $("#manage-apply-loaded-device-changes").addClass("disabled");
+        } else {
+            $("#manage-apply-loaded-device-changes").removeClass("disabled");
         }
     });
 }

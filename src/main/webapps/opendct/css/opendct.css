@@ -13,6 +13,10 @@ h1 {
     display: none;
 }
 
+.background-error {
+    background-color: #d9534f !important;
+}
+
 /* Global defaults to match the SageTV web interface. */
 a {
 	color: #FFFFFF;

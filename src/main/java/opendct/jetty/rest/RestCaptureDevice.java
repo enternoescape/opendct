@@ -18,7 +18,10 @@ package opendct.jetty.rest;
 
 import opendct.capture.CaptureDevice;
 import opendct.jetty.JettyManager;
-import opendct.jetty.json.*;
+import opendct.jetty.json.JsonCaptureDeviceAdvancedDetails;
+import opendct.jetty.json.JsonCaptureDeviceDetails;
+import opendct.jetty.json.JsonCaptureDeviceSet;
+import opendct.jetty.json.JsonError;
 import opendct.sagetv.SageTVManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

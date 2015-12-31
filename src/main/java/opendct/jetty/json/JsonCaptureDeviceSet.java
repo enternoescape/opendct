@@ -27,10 +27,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.ws.rs.core.Response;
-import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
 
 public class JsonCaptureDeviceSet {
     private static final Logger logger = LogManager.getLogger(JsonCaptureDeviceSet.class);

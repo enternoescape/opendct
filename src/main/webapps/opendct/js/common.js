@@ -285,6 +285,39 @@ function managerLoadedParentCanApply() {
     });
 }
 
+$("#manage-apply-parent-device-changes").on("click", function() {
+    if ($(this).hasClass("disabled")) {
+        return;
+    }
+
+    if (!confirm('Are you sure you want to apply these changes?')) {
+        return;
+    }
+
+    $.each(manageLoadedParentTable.find("tr"), function(i, row) {
+        var parentName = $(row).find(".manage-parent-lookup").text();
+        var submit = new Object();
+
+        submit.localAddress = $(row).find(".manage-parent-device-local-ip-value").val();
+
+        var jsonResponse = JSON.stringify(submit);
+        console.log(jsonResponse);
+
+        $.ajax({
+            type: "POST",
+            url: "rest/capturedeviceparent/" + parentName + "/set",
+            data: jsonResponse,
+            contentType: "application/json",
+            success: function(data, status, xhr) {
+                createManageLoadedRows();
+            },
+            error : function(xhr, status, error) {
+                alert("Error " + status + ". There was a problem while updating " + parentName + ". Check log for details.");
+            }
+        });
+    });
+});
+
 function createManageLoadedRows() {
     var loadedChangesButton = $("#manage-apply-loaded-device-changes");
     loadedChangesButton.addClass("disabled");
@@ -636,10 +669,6 @@ $("#manage-apply-loaded-device-changes").on("click", function() {
                 alert("Error " + status + ". There was a problem while updating " + deviceName + ". Check log for details.");
             }
         });
-
-       /* $.post("rest/capturedevice/" + deviceName + "/set", jsonResponse, function(data, status, xhr) {
-            console.log("Updated " + deviceName);
-        }, "json");*/
     });
 });
 

@@ -17,16 +17,13 @@
 package opendct.jetty.rest;
 
 import opendct.jetty.JettyManager;
-import opendct.jetty.json.JsonCaptureDeviceDetails;
 import opendct.jetty.json.JsonCaptureDeviceParentDetails;
+import opendct.jetty.json.JsonCaptureDeviceParentSet;
 import opendct.sagetv.SageTVManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -47,5 +44,14 @@ public class RestCaptureDeviceParent {
         JsonCaptureDeviceParentDetails deviceDetails = new JsonCaptureDeviceParentDetails();
 
         return deviceDetails.setCaptureDeviceParentDetails(deviceParentName);
+    }
+
+    @POST
+    @Path("{name}/set")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response putCaptureDeviceDetails(@PathParam("name") String deviceParentName, JsonCaptureDeviceParentSet deviceSet) {
+        deviceSet.applyUpdates(deviceParentName);
+
+        return Response.status(JettyManager.OK).build();
     }
 }

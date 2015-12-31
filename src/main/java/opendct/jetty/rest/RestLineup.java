@@ -20,9 +20,6 @@ import opendct.channel.ChannelLineup;
 import opendct.channel.ChannelManager;
 import opendct.jetty.JettyManager;
 import opendct.jetty.json.JsonChannelLineupDetails;
-import opendct.jetty.json.JsonError;
-import opendct.sagetv.SageTVManager;
-import opendct.sagetv.SageTVPoolManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

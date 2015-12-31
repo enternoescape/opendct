@@ -331,7 +331,7 @@ function createManageLoadedRows() {
             });
 
             $(".manage-rename-device").on("keyup change", function() {
-                managerLoadedCanApply();
+                manageLoadedCanApply();
             });
         }
 
@@ -350,7 +350,7 @@ function createManageLoadedRows() {
         });
 
         $(".manage-loaded-checkbox").change(function() {
-            manageLoadedDevicesApplyChangesButton();
+            manageLoadedDevicesUnloadDevicesButton();
         });
 
         $.get("rest/lineup", "", function(data, status, xhr) {
@@ -376,14 +376,14 @@ function updateManageLoadedRows() {
             meritDiv.html('<input type="number" class="form-control manage-merit-value" min="0" max="2147483647" value="' + data.merit + '" />');
 
             $(".manage-merit-value").on("keyup change", function() {
-                managerLoadedCanApply();
+                manageLoadedCanApply();
             });
 
             var forceDiv = $(deviceName).parent().parent().parent().find(".manage-force-unlock");
             forceDiv.html('<div class="centerBlock"><input type="checkbox" class="manage-force-unlock-value" ' + (data.alwaysForceExternalUnlock ? "checked" : "") + '"/></div>');
 
             $(".manage-force-unlock-value").on("change", function() {
-                managerLoadedCanApply();
+                manageLoadedCanApply();
             });
 
             var consumerDiv = $(deviceName).parent().parent().parent().find(".manage-consumer");
@@ -393,7 +393,7 @@ function updateManageLoadedRows() {
                              '</select>');
 
              $(".manage-consumer-value").on("change", function() {
-                 managerLoadedCanApply();
+                 manageLoadedCanApply();
              });
 
             var lineupDiv = $(deviceName).parent().parent().parent().find(".manage-lineup");
@@ -407,7 +407,7 @@ function updateManageLoadedRows() {
                     // We don't want to add this trigger until the value is already set or we might
                     // end up with the apply button always enabled even when there are no changes.
                     $(lineupDiv).on("change", function() {
-                        managerLoadedCanApply();
+                        manageLoadedCanApply();
                     });
                 }
             });
@@ -427,7 +427,7 @@ function updateManageLoadedRows() {
                             // We don't want to add this trigger until the value is already set or we might
                             // end up with the apply button always enabled even when there are no changes.
                             $(lineupDiv).on("change", function() {
-                                managerLoadedCanApply();
+                                manageLoadedCanApply();
                             });
                         }
                     });
@@ -442,7 +442,7 @@ function updateManageLoadedRows() {
             poolDiv.html('<input type="text" class="form-control manage-encoder-pool-value" value="' + (data.encoderPoolName) + '">');
 
             $(".manage-encoder-pool-value").on("keyup change", function() {
-                managerLoadedCanApply();
+                manageLoadedCanApply();
             });
         });
     });
@@ -454,10 +454,10 @@ $("#manage-undo-loaded-device-changes").on("click", function() {
 
 $(".manage-loaded-checkbox-all").change(function() {
     $(".manage-loaded-checkbox").prop('checked', this.checked);
-    manageLoadedDevicesApplyChangesButton();
+    manageLoadedDevicesUnloadDevicesButton();
 });
 
-function managerLoadedCanApply() {
+function manageLoadedCanApply() {
 
     $("#manage-apply-loaded-device-changes").removeClass("disabled");
 
@@ -480,7 +480,7 @@ function managerLoadedCanApply() {
     });
 }
 
-function manageLoadedDevicesApplyChangesButton() {
+function manageLoadedDevicesUnloadDevicesButton() {
     var checkedBoxes = $(".manage-loaded-checkbox:checked").length;
 
     if (checkedBoxes > 1) {

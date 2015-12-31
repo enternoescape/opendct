@@ -600,6 +600,48 @@ function manageLoadedCanApply() {
     });
 }
 
+$("#manage-apply-loaded-device-changes").on("click", function() {
+    if ($(this).hasClass("disabled")) {
+        return;
+    }
+
+    if (!confirm('Are you sure you want to apply these changes?')) {
+        return;
+    }
+
+    $.each(manageLoadedTable.find("tr"), function(i, row) {
+        var deviceName = $(row).find(".manage-loaded-device-lookup").text();
+        var submit = new Object();
+
+        submit.encoderName = $(row).find(".manage-rename-device").val();
+        submit.merit = $(row).find(".manage-merit-value").val();
+        submit.alwaysForceExternalUnlock = $(row).find(".manage-force-unlock-value").prop("checked");
+        submit.consumer = $(row).find(".manage-consumer-value").val();
+        submit.channelLineup = $(row).find(".manage-lineup-value").val();
+        submit.encoderPoolName = $(row).find(".manage-encoder-pool-value").val();
+
+        var jsonResponse = JSON.stringify(submit);
+        console.log(jsonResponse);
+
+        $.ajax({
+            type: "POST",
+            url: "rest/capturedevice/" + deviceName + "/set",
+            data: jsonResponse,
+            contentType: "application/json",
+            success: function(data, status, xhr) {
+                console.log("Updated: " + deviceName);
+            },
+            error : function(xhr, status, error) {
+                alert("Error " + status + ". There was a problem while updating " + deviceName + ". Check log for details.");
+            }
+        });
+
+       /* $.post("rest/capturedevice/" + deviceName + "/set", jsonResponse, function(data, status, xhr) {
+            console.log("Updated " + deviceName);
+        }, "json");*/
+    });
+});
+
 function manageLoadedDevicesUnloadDevicesButton() {
     var checkedBoxes = $(".manage-loaded-checkbox:checked").length;
 

@@ -475,7 +475,7 @@ function managerLoadedCanApply() {
             $(property).parent().addClass("background-error");
             $("#manage-apply-loaded-device-changes").addClass("disabled");
         } else {
-            $("#manage-apply-loaded-device-changes").removeClass("disabled");
+            $(property).parent().removeClass("background-error");
         }
     });
 }

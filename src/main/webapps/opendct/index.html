@@ -85,11 +85,11 @@
                 <table id="manage-loaded-parent-devices-table" class="table table-striped">
                     <thead id="manage-loaded-parent-devices-header" class="hidden">
                     <tr>
-                        <th id="manage-parent-name-header">Capture Device Parent</th>
-                        <th id="manage-is-network-header">Network Device</th>
-                        <th id="manage-remote-ip-header">Remote IP Address</th>
-                        <th id="manage-local-ip-header">Local IP Address</th>
-                        <th id="manage-cablecard-present-header">CableCARD Present</th>
+                        <th class="col-md-3" id="manage-parent-name-header">Capture Device Parent</th>
+                        <th class="col-md-2 col-sm-1" id="manage-is-network-header">Network Device</th>
+                        <th class="col-md-2" id="manage-remote-ip-header">Remote IP Address</th>
+                        <th class="col-md-2" id="manage-local-ip-header">Local IP Address</th>
+                        <th class="col-md-2 col-sm-1" id="manage-cablecard-present-header">CableCARD Present</th>
                     </tr>
                     </thead>
                     <tbody id="manager-loaded-parent-devices-body">
@@ -113,18 +113,23 @@
 				
 				<button id="manage-undo-loaded-device-changes" type="button" class="btn btn-primary hidden">
                     Undo Changes
+                </button>
+
+                <button id="manage-remove-loaded-device" type="button" class="btn btn-danger pull-right disabled hidden">
+                    Unload Selected Capture Device
                 </button><p/>
 
                 <table id="manage-loaded-devices-table" class="table table-striped">
                     <thead id="manage-loaded-devices-header" class="hidden">
                     <tr>
                         <th id="manage-check-header"><input title="Select the rows to change and edit any one of them to modify all of them." class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
-                        <th id="manage-name-header">Capture Device</th>
-                        <th id="manage-merit-header">Merit</th>
-                        <th id="manage-force-unlock-header">Force Unlock</th>
-                        <th id="manage-consumer-header">Consumer</th>
-                        <th id="manage-lineup-header">Lineup</th>
-                        <th id="manage-encoder-pool-header">Pool</th>
+                        <th class="col-md-4" id="manage-name-header">Capture Device</th>
+                        <th class="col-md-1" id="manage-merit-header">Merit</th>
+                        <th class="col-md-1" id="manage-force-unlock-header">Force Unlock</th>
+                        <th class="col-md-2" id="manage-consumer-header">Consumer</th>
+                        <th class="col-md-3" id="manage-lineup-header">Lineup</th>
+                        <th class="col-md-2" id="manage-encoder-pool-header">Pool</th>
+                        <th class="col-md-1" id="manage-advanced-header">More</th>
                     </tr>
                     </thead>
                     <tbody id="manager-loaded-devices-body">
@@ -134,7 +139,12 @@
                     <tr>
                         <th id="manage-check-footer">&nbsp;</th>
                         <th id="manage-name-footer">&nbsp;</th>
-                        <th id="manage-rename-footer">&nbsp;</th>
+                        <th id="manage-merit-footer">&nbsp;</th>
+						<th id="manage-force-unlock-footer">&nbsp;</th>
+                        <th id="manage-consumer-footer">&nbsp;</th>
+                        <th id="manage-lineup-footer">&nbsp;</th>
+                        <th id="manage-encoder-pool-footer">&nbsp;</th>
+                        <th id="manage-advanced-footer">&nbsp;</th>
                     </tr>
                     </tfoot>
                 </table>
@@ -148,8 +158,8 @@
                     <thead id="manage-unloaded-capture-devices-header" class="hidden">
                     <tr>
                         <th id="manage-unloaded-check-header"><input class="manage-unloaded-checkbox-all" type="checkbox" value="CheckAllUnloadedDevices"></th>
-                        <th id="manage-unloaded-name-header">Capture Device</th>
-                        <th id="manage-unloaded-description-header">Description</th>
+                        <th class="col-md-6" id="manage-unloaded-name-header">Capture Device</th>
+                        <th class="col-md-6" id="manage-unloaded-description-header">Description</th>
                     </tr>
                     </thead>
                     <tbody id="manager-unloaded-capture-devices-body">

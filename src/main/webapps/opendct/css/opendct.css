@@ -61,6 +61,15 @@ table.table tfoot tr th {
 }
 
 /* Form formatting */
-input.manage-merit-value {
-    min-width: 30px;
+.centerBlock {
+    display: table !important;
+    margin: 0 auto !important;
+}
+
+.form-control {
+  outline: none !important;
+  border: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important;
 }

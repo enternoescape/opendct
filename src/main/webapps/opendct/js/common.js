@@ -263,23 +263,31 @@ $("#manage-undo-parent-device-changes").on("click", function() {
 });
 
 function createManageLoadedRows() {
+    var loadedChangesButton = $("#manage-apply-loaded-device-changes");
+    loadedChangesButton.addClass("disabled");
+
+    $(".manage-loaded-checkbox-all").prop('checked', false);
+
     $.get("rest/capturedevice", "", function(data, status, xhr) {
         if (data.length == 0) {
             $("#manage-loaded-devices-header").addClass("hidden");
             $("#manage-apply-loaded-device-changes").addClass("hidden");
             $("#manage-undo-loaded-device-changes").addClass("hidden");
+            $("#manage-remove-loaded-device").addClass("hidden");
             manageLoadedTable.empty();
             manageLoadedTable.append('<tr><td class=\"manage-loaded-checked\">There are no capture devices currently loaded.</td>' +
                                    "<td class=\"manage-name\"></td>" +
                                    "<td class=\"manage-merit\"></td>" +
                                    "<td class=\"manage-force-unlock\"></td>" +
                                    "<td class=\"manage-consumer\"></td>" +
-                                   "<td class=\"manage-lineup\"></td>" +
-                                   "<td class=\"manage-encoder-pool\"></td></tr>");
+                                   "<td class=\"manage-lineup-empty\"></td>" +
+                                   "<td class=\"manage-encoder-pool\"></td>" +
+                                   "<td class=\"manage-advanced\"></td></tr>");
         } else {
             $("#manage-loaded-devices-header").removeClass("hidden");
             $("#manage-apply-loaded-device-changes").removeClass("hidden");
             $("#manage-undo-loaded-device-changes").removeClass("hidden");
+            $("#manage-remove-loaded-device").removeClass("hidden");
             manageLoadedTable.empty();
             $.each(data, function(i, deviceName) {
                 manageLoadedTable.append('<tr><td class="manage-loaded-checked"><input class="manage-loaded-checkbox" type="checkbox" value="' + deviceName + '"></td>' +
@@ -293,7 +301,14 @@ function createManageLoadedRows() {
                                        "<td class=\"manage-force-unlock\"></td>" +
                                        "<td class=\"manage-consumer\"></td>" +
                                        "<td class=\"manage-lineup\"></td>" +
-                                       "<td class=\"manage-encoder-pool\"></td></tr>");
+                                       "<td class=\"manage-encoder-pool\"></td>" +
+                                       '<td class="manage-advanced"><button title="Edit all available properties for this capture device." class="manage-advanced-button btn btn-primary" type="button">...</button></td></tr>');
+
+
+            });
+
+            $(".manage-rename-device").on("keyup change", function() {
+                managerLoadedCanApply();
             });
         }
 
@@ -315,22 +330,77 @@ function createManageLoadedRows() {
             manageLoadedDevicesApplyChangesButton();
         });
 
+        $.get("rest/lineup", "", function(data, status, xhr) {
+            var lineupDropDown = $('<select class="form-control manage-lineup-value">');
+
+            $.each(data, function(i, lineup) {
+                $.get("rest/lineup/" + lineup + "/details", "", function(data, status, xhr) {
+                    lineupDropDown.append('<option class="manage-lineup-values" value="' + lineup + '">' + data.friendlyName + '</option>');
+
+                    $(".manage-lineup").html(lineupDropDown);
+                });
+            });
+        });
+
         updateManageLoadedRows();
     }, "json");
 }
 
 function updateManageLoadedRows() {
-    console.log("UPDATE");
-
     $.each(manageLoadedTable.find("div.manage-loaded-device-lookup"), function(i, deviceName) {
         $.get("rest/capturedevice/" + $(deviceName).text() + "/details", "", function(data, status, xhr) {
-            console.log(data);
-
             var meritDiv = $(deviceName).parent().parent().parent().find(".manage-merit");
             meritDiv.html('<input type="number" class="form-control manage-merit-value" min="0" max="2147483647" value="' + data.merit + '" />');
-            //meritDiv.html((data.merit ? "Yes" : "No"));
 
+            $(".manage-merit-value").on("keyup change", function() {
+                managerLoadedCanApply();
+            });
 
+            var forceDiv = $(deviceName).parent().parent().parent().find(".manage-force-unlock");
+            forceDiv.html('<div class="centerBlock"><input type="checkbox" class="manage-force-unlock-value" ' + (data.alwaysForceExternalUnlock ? "checked" : "") + '"/></div>');
+
+            $(".manage-force-unlock-value").on("keyup change", function() {
+                managerLoadedCanApply();
+            });
+
+            var consumerDiv = $(deviceName).parent().parent().parent().find(".manage-consumer");
+            consumerDiv.html('<select class="form-control manage-consumer-value" name="manage-consumer-value">' +
+                                '<option value="opendct.consumer.FFmpegSageTVConsumerImpl">FFmpeg</option>' +
+                                '<option value="opendct.consumer.RawSageTVConsumerImpl">Raw</option>' +
+                             '</select>');
+
+            var lineupDiv = $(deviceName).parent().parent().parent().find(".manage-lineup");
+            var lineupExists = false;
+
+            $(lineupDiv.find('.manage-lineup-values')).each(function(){
+                if (this.value == data.channelLineup) {
+                    lineupExists = true;
+                    this.selected = true;
+                }
+            });
+
+            if (lineupExists == false) {
+                // The value will be populated asynchronously and we can't guarantee that it will
+                // already be populated before this script, so we wait.
+
+                var checkForLineup = setInterval(function() {
+                    var lineupExists = false;
+
+                    $(lineupDiv.find('.manage-lineup-values')).each(function(){
+                        if (this.value == (data.channelLineup)) {
+                            lineupExists = true;
+                            this.selected = true;
+                        }
+                    });
+
+                    if (lineupExists == true) {
+                        clearInterval(checkForLineup);
+                    }
+                }, 100);
+            }
+
+            var poolDiv = $(deviceName).parent().parent().parent().find(".manage-encoder-pool");
+            poolDiv.html('<input type="text" class="form-control manage-encoder-pool-value" value="' + (data.encoderPoolName) + '">');
         });
     });
 }
@@ -344,18 +414,74 @@ $(".manage-loaded-checkbox-all").change(function() {
     manageLoadedDevicesApplyChangesButton();
 });
 
+function managerLoadedCanApply() {
+
+    $("#manage-apply-loaded-device-changes").removeClass("disabled");
+
+    $.each($(".manage-rename-device"), function(i, property) {
+        if (property.value == "") {
+            $("#manage-apply-loaded-device-changes").addClass("disabled");
+        }
+    });
+
+    $.each($(".manage-merit-value"), function(i, property) {
+        if (property.value < 0) {
+            $("#manage-apply-loaded-device-changes").addClass("disabled");
+        }
+    });
+
+}
+
 function manageLoadedDevicesApplyChangesButton() {
     var checkedBoxes = $(".manage-loaded-checkbox:checked").length;
-    var loadedChangesButton = $("#manage-apply-loaded-device-changes");
 
-    if (checkedBoxes == 0) {
-        loadedChangesButton.addClass("disabled");
+    if (checkedBoxes > 1) {
+        $("#manage-remove-loaded-device").html("Unload Selected Capture Devices");
+        $("#manage-remove-loaded-device").removeClass("disabled");
+    } else if (checkedBoxes == 0) {
+        $("#manage-remove-loaded-device").html("Unload Selected Capture Device");
+        $("#manage-remove-loaded-device").addClass("disabled");
     } else {
-        loadedChangesButton.removeClass("disabled");
+        $("#manage-remove-loaded-device").html("Unload Selected Capture Device");
+        $("#manage-remove-loaded-device").removeClass("disabled");
     }
 }
 
+$("#manage-remove-loaded-device").on("click", function() {
+    if ($(this).hasClass("disabled")) {
+        return;
+    }
+
+    if (!confirm('Are you sure you want to unload ' + $(".manage-loaded-checkbox:checked").length + ' capture devices?')) {
+        return;
+    }
+
+    $("#manage-remove-loaded-device").html("Unload Selected Capture Device");
+    $("#manage-remove-loaded-device").addClass("disabled");
+
+    $.each($(".manage-loaded-checkbox:checked"), function(i, loadedDeviceCheck) {
+        var loadedDeviceName = $(loadedDeviceCheck).attr("value");
+
+        $.get("rest/unloadeddevices/" + loadedDeviceName + "/unload", "", function(data, status, xhr) {
+            if (status == "success") {
+                $(loadedDeviceCheck).parent().parent().remove();
+            } else {
+                alert("Error '" + status + "'. Unable to load the '" + loadedDeviceName + "' capture device. See logs for details.");
+            }
+
+            createManageParentRows();
+            createManageUnloadedRows();
+
+            if ($(".manage-loaded-checkbox:checked").length == 0) {
+                createManageLoadedRows();
+            }
+        });
+    });
+});
+
 function createManageUnloadedRows() {
+    $(".manage-unloaded-checkbox-all").prop('checked', false);
+
     $.get("rest/unloadeddevices", "", function(data, status, xhr) {
         if (data.length == 0) {
             manageUnloadedTable.empty();
@@ -369,7 +495,6 @@ function createManageUnloadedRows() {
             $("#manage-unloaded-capture-devices-header").removeClass("hidden");
             $("#manage-add-unloaded-device").removeClass("hidden");
             $.each(data, function(i, unloadedDevice) {
-                console.log( unloadedDevice );
                 manageUnloadedTable.append("<tr><td class=\"manage-unloaded-checked\"><input class=\"manage-unloaded-checkbox\" type=\"checkbox\" value=\"" + unloadedDevice.ENCODER_NAME + "\"></td>" +
                                                "<td class=\"manage-unloaded-name\">" + unloadedDevice.ENCODER_NAME + "</td>" +
                                                "<td class=\"manage-unloaded-description\">" + unloadedDevice.DESCRIPTION + "</td></tr>");
@@ -422,6 +547,13 @@ $("#manage-add-unloaded-device").on("click", function() {
                 $(unloadedDeviceCheck).parent().parent().remove();
             } else {
                 alert("Error '" + status + "'. Unable to load the '" + unloadedDeviceName + "' capture device. See logs for details.");
+            }
+
+            createManageParentRows();
+            createManageLoadedRows();
+
+            if ($(".manage-unloaded-checkbox:checked").length == 0) {
+                createManageUnloadedRows();
             }
         });
     });

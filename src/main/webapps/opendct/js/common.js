@@ -439,9 +439,25 @@ function updateManageLoadedRows() {
                                 '<option value="opendct.consumer.FFmpegSageTVConsumerImpl">FFmpeg</option>' +
                                 '<option value="opendct.consumer.RawSageTVConsumerImpl">Raw</option>' +
                              '</select>');
+            $(consumerDiv).find(".manage-consumer-value").val(data.consumer);
 
              $(".manage-consumer-value").on("change", function() {
                  manageLoadedCanApply();
+
+                 if ($(this).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
+                     return;
+                 }
+
+                 var applier = this;
+                 var newValue = $(this).val();
+
+                 $.each($(".manage-loaded-checkbox:checked"), function(i, checkBox) {
+                     var updateValue = $(checkBox).parent().parent().find(".manage-consumer-value");
+
+                     if (!($(updateValue)[0] === $(applier)[0])) {
+                         $(updateValue).val(newValue);
+                     }
+                 });
              });
 
             var lineupDiv = $(deviceName).parent().parent().parent().find(".manage-lineup");
@@ -454,8 +470,23 @@ function updateManageLoadedRows() {
 
                     // We don't want to add this trigger until the value is already set or we might
                     // end up with the apply button always enabled even when there are no changes.
-                    $(lineupDiv).on("change", function() {
+                    $(lineupDiv.find('.manage-lineup-value')).on("change", function() {
                         manageLoadedCanApply();
+
+                        if ($(this).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
+                            return;
+                        }
+
+                        var applier = this;
+                        var newValue = $(this).val();
+
+                        $.each($(".manage-loaded-checkbox:checked"), function(i, checkBox) {
+                            var updateValue = $(checkBox).parent().parent().find(".manage-lineup-value");
+
+                            if (!($(updateValue)[0] === $(applier)[0])) {
+                             $(updateValue).val(newValue);
+                            }
+                        });
                     });
                 }
             });
@@ -474,8 +505,23 @@ function updateManageLoadedRows() {
 
                             // We don't want to add this trigger until the value is already set or we might
                             // end up with the apply button always enabled even when there are no changes.
-                            $(lineupDiv).on("change", function() {
+                            $(lineupDiv.find('.manage-lineup-value')).on("change", function() {
                                 manageLoadedCanApply();
+
+                                if ($(this).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
+                                    return;
+                                }
+
+                                var applier = this;
+                                var newValue = $(this).val();
+
+                                $.each($(".manage-loaded-checkbox:checked"), function(i, checkBox) {
+                                    var updateValue = $(checkBox).parent().parent().find(".manage-lineup-value");
+
+                                    if (!($(updateValue)[0] === $(applier)[0])) {
+                                        $(updateValue).val(newValue);
+                                    }
+                                });
                             });
                         }
                     });
@@ -491,6 +537,21 @@ function updateManageLoadedRows() {
 
             $(".manage-encoder-pool-value").on("keyup change", function() {
                 manageLoadedCanApply();
+
+                if ($(this).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
+                    return;
+                }
+
+                var applier = this;
+                var newValue = $(this).val();
+
+                $.each($(".manage-loaded-checkbox:checked"), function(i, checkBox) {
+                    var updateValue = $(checkBox).parent().parent().find(".manage-encoder-pool-value");
+
+                    if (!($(updateValue)[0] === $(applier)[0])) {
+                        $(updateValue).val(newValue);
+                    }
+                });
             });
         });
     });

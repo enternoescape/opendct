@@ -388,8 +388,19 @@ function createManageLoadedRows() {
 }
 
 function updateManageLoadedRows() {
+    $("#manage-loaded-device-warning").empty();
+
     $.each(manageLoadedTable.find("div.manage-loaded-device-lookup"), function(i, deviceName) {
         $.get("rest/capturedevice/" + $(deviceName).text() + "/details", "", function(data, status, xhr) {
+            if (data.locked == true) {
+                $("#manage-loaded-device-warning").html("Warning: One or more capture devices are currently in use. Cells highlighted in dark red cannot be changed until the capture device is no longer in use. Any changes made will be discarded on apply. Capture devices in use cannot be unloaded. Some settings may not take effect until the capture device starts a new recording.");
+                $(deviceName).parent().parent().addClass("background-locked");
+                $(deviceName).parent().parent().parent().find(".manage-encoder-pool").addClass("background-locked");
+            } else {
+                $(deviceName).parent().parent().removeClass("background-locked");
+                $(deviceName).parent().parent().parent().find(".manage-encoder-pool").removeClass("background-locked");
+            }
+
             var meritDiv = $(deviceName).parent().parent().parent().find(".manage-merit");
             meritDiv.html('<input type="number" class="form-control manage-merit-value" min="0" max="2147483647" value="' + data.merit + '" />');
 
@@ -618,6 +629,11 @@ $("#manage-remove-loaded-device").on("click", function() {
 
     $.each($(".manage-loaded-checkbox:checked"), function(i, loadedDeviceCheck) {
         var loadedDeviceName = $(loadedDeviceCheck).attr("value");
+
+        if ($(loadedDeviceCheck).closest("tr").find(".manage-loaded-device-lookup").closest("td").hasClass("background-locked")) {
+            createManageLoadedRows();
+            return true;
+        }
 
         $.get("rest/unloadeddevices/" + loadedDeviceName + "/unload", "", function(data, status, xhr) {
             if (status == "success") {

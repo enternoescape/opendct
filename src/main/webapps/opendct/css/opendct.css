@@ -17,6 +17,10 @@ h1 {
     background-color: #d9534f !important;
 }
 
+.background-locked {
+    background-color: #4d1300 !important;
+}
+
 /* Global defaults to match the SageTV web interface. */
 a {
 	color: #FFFFFF;

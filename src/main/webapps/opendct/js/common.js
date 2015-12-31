@@ -332,6 +332,24 @@ function createManageLoadedRows() {
 
             $(".manage-rename-device").on("keyup change", function() {
                 manageLoadedCanApply();
+
+                if ($(this).parent().parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
+                    return;
+                }
+
+                var applier = this;
+                var newValue = $(this).val();
+
+                $.each($(".manage-loaded-checkbox:checked"), function(i, checkBox) {
+
+                    $(checkBox).parent().parent().find(".manage-loaded-device-lookup").hide();
+                    $(checkBox).parent().parent().find(".manage-loaded-collapse").collapse('show');
+                    var updateValue = $(checkBox).parent().parent().find(".manage-rename-device");
+
+                    if (!($(updateValue)[0] === $(applier)[0])) {
+                        $(updateValue).val(newValue + "-" + (i + 1));
+                    }
+                });
             });
         }
 

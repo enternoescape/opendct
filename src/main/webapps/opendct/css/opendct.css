@@ -65,7 +65,7 @@ table.table tfoot tr th {
 }
 
 /* Form formatting */
-.centerBlock {
+.centerCell {
     display: table !important;
     margin: 0 auto !important;
 }

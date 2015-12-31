@@ -395,13 +395,43 @@ function updateManageLoadedRows() {
 
             $(".manage-merit-value").on("keyup change", function() {
                 manageLoadedCanApply();
+
+                if ($(this).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
+                    return;
+                }
+
+                var applier = this;
+                var newValue = $(this).val();
+
+                $.each($(".manage-loaded-checkbox:checked"), function(i, checkBox) {
+                    var updateValue = $(checkBox).parent().parent().find(".manage-merit-value");
+
+                    if (!($(updateValue)[0] === $(applier)[0])) {
+                        $(updateValue).val(newValue);
+                    }
+                });
             });
 
             var forceDiv = $(deviceName).parent().parent().parent().find(".manage-force-unlock");
-            forceDiv.html('<div class="centerBlock"><input type="checkbox" class="manage-force-unlock-value" ' + (data.alwaysForceExternalUnlock ? "checked" : "") + '"/></div>');
+            forceDiv.html('<div class="centerCell"><input type="checkbox" class="manage-force-unlock-value" ' + (data.alwaysForceExternalUnlock ? "checked" : "") + '"/></div>');
 
             $(".manage-force-unlock-value").on("change", function() {
                 manageLoadedCanApply();
+
+                if ($(this).parent().parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
+                    return;
+                }
+
+                var applier = this;
+                var newValue = $(this).prop("checked");
+
+                $.each($(".manage-loaded-checkbox:checked"), function(i, checkBox) {
+                    var updateValue = $(checkBox).parent().parent().find(".manage-force-unlock-value");
+
+                    if (!($(updateValue)[0] === $(applier)[0])) {
+                        $(updateValue).prop("checked", newValue);
+                    }
+                });
             });
 
             var consumerDiv = $(deviceName).parent().parent().parent().find(".manage-consumer");

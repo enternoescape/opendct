@@ -76,3 +76,5 @@
 
 #### 0.4.1-Beta  (compile only; not released)
 > *Added handling for Prime urls with copy protection so they don't get enabled in the lineup.
+
+> *Fix a problem when tuning the frequency 0 that could potentially cause a device to never unlock.

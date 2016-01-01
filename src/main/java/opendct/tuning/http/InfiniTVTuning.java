@@ -140,8 +140,14 @@ public class InfiniTVTuning {
         }
         String instanceId = "instance_id=" + String.valueOf(tunerNumber - 1);
 
-        // Tuning on the InfiniTV always excludes the last 3 zeros in the frequency.
-        String frequency = "frequency=" + tvChannel.getFrequency().substring(0, tvChannel.getFrequency().length() - 3);
+        String frequency;
+
+        if (tvChannel.getFrequency().length() < 3) {
+            frequency = "frequency=" + tvChannel.getFrequency();
+        } else {
+            // Tuning on the InfiniTV always excludes the last 3 zeros in the frequency.
+            frequency = "frequency=" + tvChannel.getFrequency().substring(0, tvChannel.getFrequency().length() - 3);
+        }
 
         String modulation = null;
         if (tvChannel.getModulation().equals("QAM256")) {

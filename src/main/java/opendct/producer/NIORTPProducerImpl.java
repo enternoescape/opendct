@@ -39,14 +39,12 @@ public class NIORTPProducerImpl implements RTPProducer {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
 
-    private volatile long packetsReceived = 0;
-    private volatile long packetsLastReceived = 0;
+    private long packetsReceived = 0;
     private int localPort = 0;
     private final int udpReceiveBufferSize =
             Config.getInteger("producer.nio.udp_receive_buffer", 1328000);
     private InetAddress remoteIPAddress = null;
     private DatagramChannel datagramChannel = null;
-    private Thread timeoutThread = null;
     private final AtomicBoolean stop = new AtomicBoolean(false);
     private final Object receiveMonitor = new Object();
 
@@ -105,10 +103,6 @@ public class NIORTPProducerImpl implements RTPProducer {
             return;
         }
 
-        if (timeoutThread != null) {
-            timeoutThread.interrupt();
-        }
-
         datagramChannel.socket().close();
     }
 
@@ -133,102 +127,12 @@ public class NIORTPProducerImpl implements RTPProducer {
 
         logger.info("Producer thread is running.");
 
-        timeoutThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                logger.info("Producer packet monitoring thread is running.");
-                boolean firstPacketsReceived = true;
-
-                while(!stop.get() && !Thread.currentThread().isInterrupted()) {
-                    synchronized (receiveMonitor) {
-                        packetsLastReceived = packetsReceived;
-                    }
-
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e) {
-                        logger.debug("The packet monitoring thread has been interrupted.");
-                        break;
-                    }
-
-                    long recentPackets;
-
-                    synchronized (receiveMonitor) {
-                        recentPackets = packetsReceived;
-                        packetsReceived = 0;
-                    }
-
-                    if (recentPackets == packetsLastReceived) {
-                        logger.info("No packets received in over 5 seconds.");
-
-                        if (datagramChannel != null) {
-                            synchronized (receiveMonitor) {
-                                try {
-                                    datagramChannel.close();
-                                    // The datagram channel doesn't seem to close the socket every time.
-                                    datagramChannel.socket().close();
-                                } catch (IOException e) {
-                                    logger.debug("Producer created an exception while closing the datagram channel => ", e);
-                                }
-
-                                datagramChannel = null;
-                            }
-                        }
-
-                        try {
-                            DatagramChannel newChannel = DatagramChannel.open();
-                            newChannel.socket().bind(new InetSocketAddress(localPort));
-                            newChannel.socket().setBroadcast(false);
-                            newChannel.socket().setReceiveBufferSize(udpReceiveBufferSize);
-
-                            synchronized (receiveMonitor) {
-                                datagramChannel = newChannel;
-                                receiveMonitor.notifyAll();
-                            }
-                        } catch (SocketException e) {
-                            logger.error("Producer created an exception while configuring a socket => ", e);
-                        } catch (IOException e) {
-                            logger.error("Producer created an exception while opening a new datagram channel => ", e);
-                        }
-                    }
-
-                    if (recentPackets > 0) {
-                        if (firstPacketsReceived) {
-                            firstPacketsReceived = false;
-                            logger.info("Received first {} datagram packets.", recentPackets);
-                        }
-                    }
-                }
-
-                logger.info("Producer packet monitoring thread has stopped.");
-            }
-        });
-
-        timeoutThread.setName("PacketsMonitor-" + timeoutThread.getId() + ":" + Thread.currentThread().getName());
-        timeoutThread.start();
-
         // We could be doing channel scanning that doesn't need this kind of prioritization.
         if (Thread.currentThread().getPriority() != Thread.MIN_PRIORITY) {
             Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         }
 
         while (!stop.get() && !Thread.currentThread().isInterrupted()) {
-            synchronized (receiveMonitor) {
-                while(datagramChannel == null) {
-                    try {
-                        receiveMonitor.wait(1000);
-                    } catch (InterruptedException e) {
-                        logger.info("Producer was interrupted while waiting for a new datagram channel => ", e);
-                        break;
-                    }
-
-                    if (stop.get()) {
-                        break;
-                    }
-                }
-            }
-
             if (stop.get()) {
                 break;
             }

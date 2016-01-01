@@ -1362,6 +1362,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                 int timeout = 0;
                 long lastValue = 0;
                 long currentValue = 0;
+                long lastBytesRecorded = 0;
+                long currentBytesRecorded = 0;
                 boolean firstPass = true;
 
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
@@ -1369,11 +1371,12 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     // they might never start.
                     timeout = 16000;
                 } else {
-                    timeout = 4000;
+                    timeout = 5000;
                 }
 
                 while (!Thread.currentThread().isInterrupted()) {
                     lastValue = sageTVProducerRunnable.getPackets();
+                    lastBytesRecorded = getRecordedBytes();
 
                     try {
                         Thread.sleep(timeout);
@@ -1382,8 +1385,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     }
 
                     currentValue = sageTVProducerRunnable.getPackets();
+                    currentBytesRecorded = getRecordedBytes();
 
                     if (currentValue == lastValue && !Thread.currentThread().isInterrupted()) {
+
+                        if (!(lastBytesRecorded == currentBytesRecorded)) {
+                            continue;
+                        }
+
                         String filename = originalFilename;
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;

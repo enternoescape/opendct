@@ -310,7 +310,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      * @param merit New merit value.
      */
     public void setMerit(int merit) {
-        Config.setInteger("encoder_merit", merit);
+        Config.setInteger(propertiesDeviceRoot + "encoder_merit", merit);
         encoderMerit = merit;
 
         SageTVPoolManager.resortMerits(encoderPoolName);

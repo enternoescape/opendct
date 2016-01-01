@@ -49,8 +49,8 @@ public class RestCaptureDeviceParent {
     @POST
     @Path("{name}/set")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response putCaptureDeviceDetails(@PathParam("name") String deviceParentName, JsonCaptureDeviceParentSet deviceSet) {
-        deviceSet.applyUpdates(deviceParentName);
+    public Response putCaptureDeviceDetails(@PathParam("name") String deviceParentName, JsonCaptureDeviceParentSet parentSet) {
+        parentSet.applyUpdates(deviceParentName);
 
         return Response.status(JettyManager.OK).build();
     }

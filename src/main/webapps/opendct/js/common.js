@@ -309,7 +309,7 @@ $("#manage-apply-parent-device-changes").on("click", function() {
             data: jsonResponse,
             contentType: "application/json",
             success: function(data, status, xhr) {
-                createManageLoadedRows();
+                createManageParentRows();
             },
             error : function(xhr, status, error) {
                 alert("Error " + status + ". There was a problem while updating " + parentName + ". Check log for details.");

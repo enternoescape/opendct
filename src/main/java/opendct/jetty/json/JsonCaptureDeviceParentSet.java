@@ -134,4 +134,11 @@ public class JsonCaptureDeviceParentSet {
         return Response.status(JettyManager.OK).entity(oldParentName).build();
     }
 
+    public void setEncoderParentName(String encoderParentName) {
+        this.encoderParentName = encoderParentName;
+    }
+
+    public void setLocalAddress(String localAddress) {
+        this.localAddress = localAddress;
+    }
 }

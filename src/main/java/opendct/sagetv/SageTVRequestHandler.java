@@ -154,9 +154,14 @@ public class SageTVRequestHandler implements Runnable {
                             CaptureDevice captureDevice = getVCaptureDeviceToPoolCaptureDevice(deviceName, true);
 
                             if (captureDevice != null) {
-                                setThreadName(deviceName, captureDevice.getEncoderName());
-                                captureDevice.stopEncoding();
-                                unlockEncoder(captureDevice);
+                                try {
+                                    setThreadName(deviceName, captureDevice.getEncoderName());
+                                    captureDevice.stopEncoding();
+                                } catch (Exception e) {
+                                    logger.error("An unexpected error happened while stopping the capture device => ", e);
+                                } finally {
+                                    unlockEncoder(captureDevice);
+                                }
                             } else {
                                 logger.error("SageTV requested the tuner '{}' and it does not exist at this time.", deviceName);
                             }

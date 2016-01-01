@@ -45,6 +45,8 @@ function changePage( page ) {
 
 function loadPage( page ) {
     if (page == "#manage") {
+        $("#manage-basic").show();
+        $("#manage-advanced").hide();
         createManageParentRows();
         createManageLoadedRows();
         createManageUnloadedRows();

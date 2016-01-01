@@ -45,8 +45,7 @@ function changePage( page ) {
 
 function loadPage( page ) {
     if (page == "#manage") {
-        $("#manage-basic").show();
-        $("#manage-advanced").hide();
+        hideManageAdvanced();
         createManageParentRows();
         createManageLoadedRows();
         createManageUnloadedRows();
@@ -184,7 +183,7 @@ function updateDashboard() {
 
 
 /*
-Manage content
+Manage basic content
 =====================================
 */
 
@@ -361,7 +360,9 @@ function createManageLoadedRows() {
                                        "<td class=\"manage-consumer\"></td>" +
                                        "<td class=\"manage-lineup\"></td>" +
                                        "<td class=\"manage-encoder-pool\"></td>" +
-                                       '<td class="manage-advanced"><button title="Edit all available properties for this capture device." class="manage-advanced-button btn btn-primary" type="button">...</button></td></tr>');
+                                       '<td class="manage-advanced">' +
+                                           '<button title="Edit all available properties for this capture device." class="manage-advanced-button btn btn-primary" type="button" onclick="showManageAdvanced(this);">...</button>' +
+                                       '</td></tr>');
 
 
             });

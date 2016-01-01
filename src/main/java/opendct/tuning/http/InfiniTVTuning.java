@@ -130,7 +130,7 @@ public class InfiniTVTuning {
     }
 
     public static boolean tuneFrequency(TVChannel tvChannel, String deviceAddress, int tunerNumber, int retry) throws InterruptedException {
-        logger.entry(tvChannel, deviceAddress, tunerNumber);
+        logger.entry(tvChannel, deviceAddress, tunerNumber, retry);
 
         logger.info("Tuning frequency '{}'.", tvChannel.getFrequency());
 
@@ -141,7 +141,13 @@ public class InfiniTVTuning {
         String instanceId = "instance_id=" + String.valueOf(tunerNumber - 1);
 
         // Tuning on the InfiniTV always excludes the last 3 zeros in the frequency.
-        String frequency = "frequency=" + tvChannel.getFrequency().substring(0, tvChannel.getFrequency().length() - 3);
+        String frequency;
+
+        if (tvChannel.getFrequency().length() < 3) {
+            frequency = "frequency=" + tvChannel.getFrequency();
+        } else {
+            frequency = "frequency=" + tvChannel.getFrequency().substring(0, tvChannel.getFrequency().length() - 3);
+        }
 
         String modulation = null;
         if (tvChannel.getModulation().equals("QAM256")) {

@@ -32,6 +32,10 @@ import java.util.ArrayList;
 public class JsonCaptureDeviceParentSet {
     private static final Logger logger = LogManager.getLogger(JsonCaptureDeviceParentSet.class);
 
+    // This ensures that if more than one browser tries to apply updates at the same time, they
+    // don't do it at the same time since it could cause a race condition.
+    private static final Object updateLock = new Object();
+
     private String encoderParentName;
     private String localAddress;
 
@@ -41,51 +45,72 @@ public class JsonCaptureDeviceParentSet {
     }
 
     public Response applyUpdates(String oldParentName) {
-        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllCaptureDevicesForParent(oldParentName);
+        synchronized (updateLock) {
+            ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllCaptureDevicesForParent(oldParentName);
 
-        if (captureDevices.size() == 0) {
-            JsonError jsonError = new JsonError(
-                    JettyManager.NOT_FOUND,
-                    "No capture devices are loaded and belong to the requested parent.",
-                    oldParentName,
-                    ""
-            );
+            if (captureDevices.size() == 0) {
+                JsonError jsonError = new JsonError(
+                        JettyManager.NOT_FOUND,
+                        "No capture devices are loaded and belong to the requested parent.",
+                        oldParentName,
+                        ""
+                );
 
-            logger.error("{}", jsonError);
+                logger.error("{}", jsonError);
 
-            return Response.status(JettyManager.NOT_FOUND).entity(jsonError).build();
-        }
+                return Response.status(JettyManager.NOT_FOUND).entity(jsonError).build();
+            }
 
-        if (encoderParentName != null && !captureDevices.get(0).getEncoderParentName().equals(encoderParentName)) {
-            for (CaptureDevice captureDevice: captureDevices) {
-                if (captureDevice.isLocked()) {
-                    JsonError jsonError = new JsonError(
-                            JettyManager.ERROR,
-                            "Unable to change the parent name of this device" +
-                                    " because it is currently in use.",
-                            captureDevice.getEncoderName(),
-                            ""
-                    );
+            if (encoderParentName != null && !captureDevices.get(0).getEncoderParentName().equals(encoderParentName)) {
+                for (CaptureDevice captureDevice : captureDevices) {
+                    if (captureDevice.isLocked()) {
+                        JsonError jsonError = new JsonError(
+                                JettyManager.ERROR,
+                                "Unable to change the parent name of this device" +
+                                        " because it is currently in use.",
+                                captureDevice.getEncoderName(),
+                                ""
+                        );
 
-                    logger.error("{}", jsonError);
+                        logger.error("{}", jsonError);
 
-                    return Response.status(JettyManager.ERROR).entity(jsonError).build();
+                        return Response.status(JettyManager.ERROR).entity(jsonError).build();
+                    }
+                }
+
+                // Changes the name so the next time these devices are loaded, they will use this new value.
+                Config.setString("sagetv.device." + captureDevices.get(0).getEncoderParentUniqueHash() + ".device_name", encoderParentName);
+
+                for (CaptureDevice captureDevice : captureDevices) {
+                    if (captureDevice.getEncoderParentName().equals(oldParentName)) {
+                        try {
+                            SageTVUnloadedDevice unloadedDevice = SageTVManager.removeCaptureDevice(captureDevice.getEncoderName());
+                            SageTVManager.addCaptureDevice(unloadedDevice.ENCODER_NAME);
+                        } catch (SocketException e) {
+                            JsonError jsonError = new JsonError(
+                                    JettyManager.ERROR,
+                                    "An unexpected error happened while setting the parent name property for this capture device.",
+                                    oldParentName,
+                                    e.toString()
+                            );
+
+                            logger.error("{}", jsonError, e);
+
+                            return Response.status(JettyManager.ERROR).entity(jsonError).build();
+                        }
+                    }
                 }
             }
 
-            // Changes the name so the next time these devices are loaded, they will use this new value.
-            Config.setString("sagetv.device." + captureDevices.get(0).getEncoderParentUniqueHash() + ".device_name", encoderParentName);
-
-            for (CaptureDevice captureDevice : captureDevices) {
-                if (captureDevice.getEncoderParentName().equals(oldParentName)) {
+            if (localAddress != null && !localAddress.equals("")) {
+                for (CaptureDevice captureDevice : captureDevices) {
                     try {
-                        SageTVUnloadedDevice unloadedDevice = SageTVManager.removeCaptureDevice(captureDevice.getEncoderName());
-                        SageTVManager.addCaptureDevice(unloadedDevice.ENCODER_NAME);
-                    } catch (SocketException e) {
+                        captureDevice.setLocalAddress(InetAddress.getByName(localAddress));
+                    } catch (Exception e) {
                         JsonError jsonError = new JsonError(
                                 JettyManager.ERROR,
-                                "An unexpected error happened while setting the parent name property for this capture device.",
-                                oldParentName,
+                                "An unexpected error happened while setting the local address property for this capture device.",
+                                captureDevice.getEncoderName(),
                                 e.toString()
                         );
 
@@ -95,43 +120,24 @@ public class JsonCaptureDeviceParentSet {
                     }
                 }
             }
-        }
 
-        if (localAddress != null && !localAddress.equals("")) {
-            for (CaptureDevice captureDevice : captureDevices) {
-                try {
-                    captureDevice.setLocalAddress(InetAddress.getByName(localAddress));
-                } catch (Exception e) {
-                    JsonError jsonError = new JsonError(
-                            JettyManager.ERROR,
-                            "An unexpected error happened while setting the local address property for this capture device.",
-                            captureDevice.getEncoderName(),
-                            e.toString()
-                    );
+            try {
+                Config.saveConfig();
+            } catch (Exception e) {
+                JsonError jsonError = new JsonError(
+                        JettyManager.ERROR,
+                        "An unexpected error happened while saving the new properties.",
+                        oldParentName,
+                        e.toString()
+                );
 
-                    logger.error("{}", jsonError, e);
+                logger.error("{}", jsonError, e);
 
-                    return Response.status(JettyManager.ERROR).entity(jsonError).build();
-                }
+                return Response.status(JettyManager.ERROR).entity(jsonError).build();
             }
+
+            return Response.status(JettyManager.OK).entity(oldParentName).build();
         }
-
-        try {
-            Config.saveConfig();
-        } catch (Exception e) {
-            JsonError jsonError = new JsonError(
-                    JettyManager.ERROR,
-                    "An unexpected error happened while saving the new properties.",
-                    oldParentName,
-                    e.toString()
-            );
-
-            logger.error("{}", jsonError, e);
-
-            return Response.status(JettyManager.ERROR).entity(jsonError).build();
-        }
-
-        return Response.status(JettyManager.OK).entity(oldParentName).build();
     }
 
     public void setEncoderParentName(String encoderParentName) {

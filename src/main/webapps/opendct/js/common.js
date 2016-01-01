@@ -194,6 +194,8 @@ var manageUnloadedTable = $("#manager-unloaded-capture-devices-body");
 
 
 function createManageParentRows() {
+    $("#manage-apply-parent-device-changes").addClass("disabled");
+
     $.get("rest/capturedeviceparent", "", function(data, status, xhr) {
 
     if (data.length == 0) {
@@ -270,7 +272,6 @@ $("#manage-undo-parent-device-changes").on("click", function() {
 });
 
 function managerLoadedParentCanApply() {
-
     $("#manage-apply-parent-device-changes").removeClass("disabled");
 
     $.each($(".manage-parent-device-local-ip-value"), function(i, property) {
@@ -293,6 +294,8 @@ $("#manage-apply-parent-device-changes").on("click", function() {
     if (!confirm('Are you sure you want to apply these changes?')) {
         return;
     }
+
+    $("#manage-apply-parent-device-changes").addClass("disabled");
 
     $.each(manageLoadedParentTable.find("tr"), function(i, row) {
         var parentName = $(row).find(".manage-parent-lookup").text();
@@ -319,8 +322,8 @@ $("#manage-apply-parent-device-changes").on("click", function() {
 });
 
 function createManageLoadedRows() {
-    var loadedChangesButton = $("#manage-apply-loaded-device-changes");
-    loadedChangesButton.addClass("disabled");
+    $("#manage-remove-loaded-device").addClass("disabled");
+    $("#manage-apply-loaded-device-changes").addClass("disabled");
 
     $(".manage-loaded-checkbox-all").prop('checked', false);
 

@@ -1393,6 +1393,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                             continue;
                         }
 
+                        logger.info("Stream halt detected. Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
+
                         String filename = originalFilename;
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;
@@ -1420,7 +1422,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                             }
                         }
 
-                        logger.info("Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
+                        logger.info("Stream halt caused re-tune. Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
                     }
 
                     if (getRecordedBytes() != 0 && firstPass) {

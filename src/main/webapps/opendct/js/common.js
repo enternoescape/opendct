@@ -150,7 +150,9 @@ function updateDashboard() {
             var statusDiv = $(deviceName).parent().parent().parent().find(".dashboard-status");
             statusDiv.html((data.locked ? "Active" : "Idle"));
 
-            $(deviceName).parent().parent().parent().find(".dashboard-lineup").html(data.channelLineup);
+            $.get("rest/lineup/" + data.channelLineup + "/details", "", function(data, status, xhr) {
+                $(deviceName).parent().parent().parent().find(".dashboard-lineup").html(data.friendlyName);
+            });
 
             if (poolEnabled == true) {
                 $(deviceName).parent().parent().parent().find(".dashboard-pool").html(data.encoderPoolName);

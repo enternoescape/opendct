@@ -498,6 +498,8 @@ public class SageTVManager implements PowerEventListener {
                 if (!(newOnlyDevices.size() == onlyDevices.length)) {
                     Config.setStringArray(propertiesDevicesGlobal + "only_devices_csv", newOnlyDevices.toArray(new String[newOnlyDevices.size()]));
                 }
+
+                Config.setInteger("sagetv.device.global.required_devices_loaded_count", newOnlyDevices.size());
             }
         }
 

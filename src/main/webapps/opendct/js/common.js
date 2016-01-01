@@ -134,25 +134,21 @@ function updateDashboard() {
             if (data.locked == true) {
                 deviceDiv.html('<br/>Recording: ' + data.recordFilename);
                 deviceDiv.append('<br/>Channel: ' + data.lastChannel);
+                deviceDiv.append(' <span class="signal"></span> <span class="cci"></span>')
+
+                $.get("rest/capturedevice/" + $(deviceName).text() + "/method/getSignalStrength", "", function(data, status, xhr) {
+                    deviceDiv.find(".signal").html("Signal: " + data);
+                });
+
+                $.get("rest/capturedevice/" + $(deviceName).text() + "/method/getCopyProtection", "", function(data, status, xhr) {
+                    deviceDiv.find(".cci").html("CCI: " + data);
+                });
             } else {
                 deviceDiv.html('<p/>There is no activity on this capture device.');
             }
 
             var statusDiv = $(deviceName).parent().parent().parent().find(".dashboard-status");
-            statusDiv.html('<a href="javascript:undefined" title="Click to expand/collapse." data-toggle="collapse" data-target="#dashboard-status-' + i + '">' + (data.locked ? "Active" : "Idle") + '</a>');
-            if (data.locked == true) {
-                statusDiv.append('<div class="dashboard-collapse collapse" id="dashboard-status-' + i + '"><br/><span class="signal"></span><br/><span class="cci"></span></div>');
-
-                $.get("rest/capturedevice/" + $(deviceName).text() + "/method/getSignalStrength", "", function(data, status, xhr) {
-                    statusDiv.find(".signal").html("Signal: " + data);
-                });
-
-                $.get("rest/capturedevice/" + $(deviceName).text() + "/method/getCopyProtection", "", function(data, status, xhr) {
-                    statusDiv.find(".cci").html("CCI: " + data);
-                });
-            } else {
-                statusDiv.append('<div class="dashboard-collapse collapse" id="dashboard-status-' + i + '"><p/></div>');
-            }
+            statusDiv.html((data.locked ? "Active" : "Idle"));
 
             $(deviceName).parent().parent().parent().find(".dashboard-lineup").html(data.channelLineup);
 

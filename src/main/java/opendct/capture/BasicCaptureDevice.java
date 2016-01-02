@@ -143,6 +143,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             }
         }
 
+        getNewChannelScanSageTVConsumer();
         sageTVConsumerRunnable = getNewSageTVConsumer();
         canSwitch = Config.getBoolean(propertiesDeviceRoot + "fast_network_encoder_switch", sageTVConsumerRunnable.canSwitch());
         canEncodeFilename = sageTVConsumerRunnable.acceptsFilename();

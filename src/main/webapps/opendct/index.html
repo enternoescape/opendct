@@ -34,6 +34,7 @@
                 <li id="manage-nav"><a class="change-page" href="#manage">Devices</a></li>
                 <li id="lineups-nav"><a class="change-page" href="#lineups">Lineups</a></li>
                 <li id="config-nav"><a class="change-page" href="#config">Configuration</a></li>
+                <li id="troubleshoot-nav"><a class="change-page" href="#troubleshoot">Troubleshoot</a></li>
             </ul>
         </div><!--/.nav-collapse -->
     </div>
@@ -177,13 +178,47 @@
                 </table>
             </div>
             <div id="manage-advanced">
-                <h1>Advanced Capture Device Properties</h1>
+                <h1>Capture Device Properties</h1>
                 <div id="manage-advanced-devices"></div>
                 <br/>
                 <button id="manage-advanced-apply-changes" type="button" class="btn btn-primary disabled">
                     Apply Settings
+                </button>
+
+                <button id="manage-advanced-undo-changes" type="button" class="btn btn-primary">
+                    Undo Changes
+                </button>
+
+                <button id="manage-advanced-return" type="button" class="btn btn-primary pull-right" onclick="hideManageAdvanced();">
+                    Return
                 </button><p/>
+
+                <table id="manage-advanced-capture-devices-table" class="table table-striped">
+                    <thead id="manage-advanced-capture-devices-header">
+                    <tr>
+                        <th class="col-md-2" id="manage-advanced-name-header">Property</th>
+                        <th class="col-md-4" id="manage-advanced-value-header">Value</th>
+                        <th class="col-md-6" id="manage-advanced-description-header">Description</th>
+                    </tr>
+                    </thead>
+                    <tbody id="manager-advanced-capture-devices-body">
+                    <!-- The automatically populated unloaded capture devices go here. -->
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <th id="manage-advanced-name-footer">&nbsp;</th>
+                        <th id="manage-advanced-value-footer">&nbsp;</th>
+                        <th id="manage-advanced-description-footer">&nbsp;</th>
+                    </tr>
+                    </tfoot>
+                </table>
             </div>
+        </div>
+    </div>
+
+    <div id="troubleshoot-page" class="content-page">
+        <div id="troubleshoot-content">
+
         </div>
     </div>
 

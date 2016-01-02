@@ -51,7 +51,7 @@ function loadPage( page ) {
         createManageUnloadedRows();
     } else if (page == "#lineups") {
 
-    } else if (page == "#pools") {
+    } else if (page == "#troubleshoot") {
 
     } else if (page == "#config") {
 

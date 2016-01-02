@@ -58,6 +58,10 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
      */
     public RTPCaptureDevice(String deviceParentName, String deviceName) throws CaptureDeviceIgnoredException {
         super(deviceParentName, deviceName);
+
+        // This makes sure the properties get set.
+        getNewRTPProducer();
+        getNewRTSPClient();
     }
 
     /**

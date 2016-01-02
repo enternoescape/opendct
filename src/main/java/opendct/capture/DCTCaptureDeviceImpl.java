@@ -1371,7 +1371,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     // they might never start.
                     timeout = 16000;
                 } else {
-                    timeout = 5000;
+                    timeout = 3000;
                 }
 
                 while (!Thread.currentThread().isInterrupted()) {

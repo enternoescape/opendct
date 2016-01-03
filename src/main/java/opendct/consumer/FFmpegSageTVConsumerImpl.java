@@ -222,10 +222,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             long startTime = System.currentTimeMillis();
 
-            // Mark the current read index of the seekable circular buffer so it doesn't go anywhere
-            // until we are ready to stream.
-            seekableBuffer.setMark();
-
             String error = initRemuxer();
 
             if (error == null && logger.isDebugEnabled()) {
@@ -241,9 +237,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     logger.error("FFmpeg remux failed: {}", error);
                 }
             } else {
-                // initRemuxer() returns the read index back to 0 when it completes. We no longer
-                // need to ensure the read data is not overwritten.
-                seekableBuffer.clearMark();
+                // initRemuxer() returns the read index back to 0 when it completes.
 
                 // This will loop until the thread is interrupted.
                 remuxRtpPackets();

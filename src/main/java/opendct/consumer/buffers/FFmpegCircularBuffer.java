@@ -111,18 +111,13 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
 
         long returnValue = -1;
 
-        if (readMarkAvailable() <= 0) {
-            logger.warn("Seek: A mark has not been set or there is no data available to be read.");
-            return logger.exit(returnValue);
-        }
-
-        logger.debug("Seek: wence = {}, readIndex = {}", wence, readIndex);
+        logger.debug("Seek: wence = {}, offset = {}, readIndex = {}", wence, offset, readIndex);
 
         switch (wence) {
             case 0:
                 // Set the read index to a specific index.
                 try {
-                    setReadIndex((int) offset);
+                    setReadIndex(offset);
                     returnValue = offset;
                 } catch (IndexOutOfBoundsException e) {
                     logger.warn("Seek: Requested a read index that is not yet available => ", e);
@@ -131,19 +126,19 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
             case 1:
                 // Seek the read index relative to the current read index.
                 try {
-                    returnValue = incrementReadIndex((int) offset);
+                    returnValue = incrementReadIndex(offset);
                 } catch (IndexOutOfBoundsException e) {
                     logger.warn("Seek: Requested a read index that is not yet available => ", e);
                 }
                 break;
             case 2:
                 // Seek to the last available byte.
-                returnValue = readMarkAvailable() - 1;
-                setReadIndex((int) returnValue);
+                returnValue = totalReadBytes() - 1;
+                setReadIndex(returnValue);
                 break;
             case 65536:
                 // Get total remaining available bytes.
-                returnValue = readMarkAvailable();
+                returnValue = totalReadBytes();
                 break;
             default:
                 logger.warn("Seek: The wence value {} is not being handled.", wence);
@@ -151,7 +146,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
         }
 
 
-        logger.debug("Seek: wence = {}, readIndex = {}, returnValue = {}", wence, readIndex, returnValue);
+        logger.debug("Seek: wence = {}, offset = {}, readIndex = {}, returnValue = {}", wence, offset, readIndex, returnValue);
         return logger.exit(returnValue);
     }
 }

@@ -84,3 +84,7 @@
 > *Added handling for Prime urls with copy protection so they don't get enabled in the lineup.
 
 > *Fix a problem when tuning the frequency 0 that could potentially cause a device to never unlock.
+
+#### 0.4.2-Alpha  (compile only; not released; trace enabled)
+> *Modified circular buffer to accommodate seeking after detection. Testing has been very
+> successful, but watch this release very carefully and report any issues with a log attached.

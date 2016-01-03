@@ -30,14 +30,14 @@
         </RollingFile>
     </Appenders>
     <Loggers>
-        <Root level="DEBUG">
+        <Root level="TRACE">
             <AppenderRef level="INFO" ref="Console"/>
             <AppenderRef level="DEBUG" ref="RollingFile"/>
         </Root>
         <Logger name="opendct.consumer.upload" level="DEBUG" additivity="true">
             <AppenderRef ref="RollingFile"/>
         </Logger>
-        <Logger name="opendct.consumer.buffers" level="DEBUG" additivity="true">
+        <Logger name="opendct.consumer.buffers" level="TRACE" additivity="true">
             <AppenderRef ref="RollingFile"/>
         </Logger>        
     </Loggers>

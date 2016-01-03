@@ -44,6 +44,12 @@
 #### 0.3.14-Beta
 > *Fixed error handling issues with corrupt lineups.
 
+#### 0.3.15-Stable
+> *No changes. This is a final release. I am considering this stable since we have not found any new
+> issues relating to overall program functionality and all major issues have been resolved. There
+> will be no further updates to this version unless something critical is discovered and the current
+> latest version is not yet stable.
+
 #### 0.4.0-Beta (compile only; not released)
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
@@ -76,3 +82,5 @@
 
 #### 0.4.1-Beta  (compile only; not released)
 > *Added handling for Prime urls with copy protection so they don't get enabled in the lineup.
+
+> *Fix a problem when tuning the frequency 0 that could potentially cause a device to never unlock.

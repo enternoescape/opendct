@@ -29,7 +29,8 @@ public class SeekableCircularBuffer {
     protected volatile byte buffer[];
     protected volatile int writeIndex = 0;
     protected volatile int readIndex = 0;
-    protected volatile int markIndex = -1;
+    protected volatile int writePasses = 0;
+    protected volatile int readPasses = 0;
 
     private AtomicInteger bytesOverflow = new AtomicInteger(0);
     private AtomicInteger bytesLost = new AtomicInteger(0);
@@ -61,7 +62,8 @@ public class SeekableCircularBuffer {
             synchronized (readLock) {
                 writeIndex = 0;
                 readIndex = 0;
-                markIndex = -1;
+                writePasses = 0;
+                readPasses = 0;
                 bytesOverflow.set(0);
                 bytesLost.set(0);
                 closed = false;
@@ -146,6 +148,7 @@ public class SeekableCircularBuffer {
                     System.arraycopy(bytes, offset + end, buffer, 0, writeIndex);
                 }
 
+                writePasses += 1;
             } else {
                 System.arraycopy(bytes, offset, buffer, writeIndex, length);
                 writeIndex += length;
@@ -212,6 +215,7 @@ public class SeekableCircularBuffer {
                     System.arraycopy(buffer, 0, bytes, offset + end, readIndex);
                 }
 
+                readPasses += 1;
             } else {
                 System.arraycopy(buffer, readIndex, bytes, offset, returnLength);
                 readIndex += returnLength;
@@ -269,6 +273,7 @@ public class SeekableCircularBuffer {
                     outBuffer.put(buffer, 0, readIndex);
                 }
 
+                readPasses += 1;
             } else {
                 outBuffer.put(buffer, readIndex, returnLength);
                 readIndex += returnLength;
@@ -305,6 +310,7 @@ public class SeekableCircularBuffer {
 
             if (readIndex >= buffer.length) {
                 readIndex = 0;
+                readPasses += 1;
             }
 
         }
@@ -313,27 +319,24 @@ public class SeekableCircularBuffer {
     }
 
     /**
-     * This method does not block. The index is relative to the current mark. If a mark is not set
-     * or the index is beyond the available data, this will return -1. This will return one unsigned
-     * byte at the requested index relative to the mark position and will not increment the current
-     * read index.
+     * This method does not block. The index is relative to the current bytes written. This will
+     * return one unsigned byte at the requested index relative to the mark position and will not
+     * increment the current read index.
      *
-     * @param index Index relative to the current mark. This number cannot be negative.
+     * @param index Index relative to the total bytes written. This number cannot be negative.
      * @return Returns and unsigned byte as an integer or -1 if you tried to read an index that
      * cannot be read.
      */
     public int read(int index) {
         logger.entry(index);
 
-        if (markIndex < 0 || index < 0) {
-            return logger.exit(-1);
-        }
-
         int returnValue = -1;
 
         synchronized (readLock) {
-            if (index <= readMarkAvailable()) {
-                int relativeIndex = markIndex + index;
+            int internalIndex = ((readPasses * buffer.length) + index) % buffer.length;
+
+            if (index <= totalReadBytes()) {
+                int relativeIndex = internalIndex + index;
 
                 if (relativeIndex > buffer.length) {
                     relativeIndex -= buffer.length;
@@ -353,7 +356,7 @@ public class SeekableCircularBuffer {
      * has been read. Do not forget to eventually run <b>clearMark()</b> or move the mark forward
      * with <b>moveMark(int index)</b>. Failure to do so will eventually result in an overflow of
      * the buffer and you will start loosing data.
-     */
+     *//*
     public void setMark() {
         logger.entry();
 
@@ -363,7 +366,7 @@ public class SeekableCircularBuffer {
 
         logger.debug("Set mark to actual index {}.", markIndex);
         logger.exit();
-    }
+    }*/
 
     /**
      * Changes the current mark index relative to the current mark.
@@ -374,11 +377,11 @@ public class SeekableCircularBuffer {
      * @param index Index relative to the current mark index to move the actual mark index.
      * @throws IndexOutOfBoundsException Thrown if the provided index is greater than the buffer
      *                                   size or a negative number was provided for the index.
-     */
+     *//*
     public void setMark(int index) throws IndexOutOfBoundsException {
         logger.entry(index);
 
-        if (markIndex == -1) {
+        *//*if (markIndex == -1) {
             logger.exit();
             return;
         }
@@ -389,14 +392,14 @@ public class SeekableCircularBuffer {
 
         if (index < 0) {
             throw new IndexOutOfBoundsException("You cannot set the mark index to a relative value less than the current mark.");
-        }
+        }*//*
 
         synchronized (writeLock) {
-            markIndex = markIndex + index;
 
-            if (markIndex > buffer.length) {
-                markIndex -= buffer.length;
-            }
+            // Rewind the passes even though this means we are now reading potentially bad data.
+            readPasses -= (int)(buffer.length / index);
+
+            int newReadIndex = ((readPasses * buffer.length) + index) % buffer.length; //readIndex = markIndex + index;
 
             synchronized (readLock) {
                 if (readAvailable() > 0) {
@@ -408,9 +411,9 @@ public class SeekableCircularBuffer {
 
         }
 
-        logger.debug("Relative index {} set mark to actual index {}.", index, markIndex);
+        logger.debug("Relative index {} set read index to actual index {}, read passes {}.", index, readIndex, readPasses);
         logger.exit();
-    }
+    }*/
 
     /**
      * Clears the currently marked index.
@@ -418,7 +421,7 @@ public class SeekableCircularBuffer {
      * This method will allow the writing thread to write all the way to the last byte read. This is
      * the default mode when this class is initialized.
      */
-    public void clearMark() {
+    /*public void clearMark() {
         logger.entry();
 
         // Even though this is technically thread-safe, you do not want the index suddenly having a
@@ -431,46 +434,26 @@ public class SeekableCircularBuffer {
 
         logger.debug("Mark has been cleared.");
         logger.exit();
-    }
+    }*/
 
 
     /**
-     * Changes the current read index without moving the mark index.
+     * Changes the current read index relative to the total written bytes.
      * <p/>
-     * A mark must be set or nothing will be changed.
+     * There are no checks in place to make sure you are not putting the buffer out of sync, so I
+     * wouldn't use this to go too far back.
      *
-     * @param index Relative index to the current marked index.
-     * @throws IndexOutOfBoundsException
+     * @param index Relative index based on the total written bytes in the buffer.
      */
-    public void setReadIndex(int index) throws IndexOutOfBoundsException {
+    public void setReadIndex(long index) {
         logger.entry(index);
 
-        if (markIndex == -1) {
-            logger.exit();
-            return;
-        }
-
-        if (index > buffer.length) {
-            throw new IndexOutOfBoundsException("You cannot set the read index to a value greater than the buffer size.");
-        }
-
-        if (index < 0) {
-            throw new IndexOutOfBoundsException("You cannot set the read index to a relative value less than the current mark.");
-        }
-
         synchronized (readLock) {
-            if (index > readMarkAvailable()) {
-                throw new IndexOutOfBoundsException("You cannot set the read index to a relative value greater than the bytes available to be read.");
-            }
-
-            readIndex = markIndex + index;
-
-            if (readIndex > buffer.length) {
-                readIndex -= buffer.length;
-            }
+            readIndex = (int)(index % buffer.length);
+            readPasses = (int)(index / buffer.length);
         }
 
-        logger.debug("Relative index {} to mark set read index to actual index {}.", index, readIndex);
+        logger.debug("Relative index {} to bytes set read index to actual index {}, read passes {}.", index, readIndex, readPasses);
         logger.exit();
     }
 
@@ -483,43 +466,29 @@ public class SeekableCircularBuffer {
      * @param increment Total number of indexes to increment the read index.
      * @return The actual relative read index that was the result of the increment.
      */
-    public int incrementReadIndex(int increment) throws IndexOutOfBoundsException {
+    public int incrementReadIndex(long increment) throws IndexOutOfBoundsException {
         logger.entry(increment);
 
         int returnValue = -1;
 
-        if (markIndex == -1) {
-            return logger.exit(returnValue);
-        }
-
-        synchronized (writeLock) {
-            synchronized (readLock) {
-                if (readIndex + increment > buffer.length) {
-                    throw new IndexOutOfBoundsException("You cannot increment the read index to a value greater than the buffer size.");
-                }
-
-                if (readIndex + increment < 0) {
-                    throw new IndexOutOfBoundsException("You cannot increment the read index to a relative value less than the current mark.");
-                }
-
-                if (readIndex + increment > readAvailable()) {
-                    throw new IndexOutOfBoundsException("You cannot increment the read index to a relative value greater than the bytes available to be read.");
-                }
-
-                readIndex += increment;
-
-                if (readIndex > buffer.length) {
-                    readIndex -= buffer.length;
-                }
-
-                // This needs to be atomic or the math could be off in the even that a write happens
-                // between the method calls. You will get the same difference even if a write happened
-                // prior to the execution of this code.
-                returnValue = readMarkAvailable() - readAvailable();
+        synchronized (readLock) {
+            if (readIndex + increment > buffer.length) {
+                throw new IndexOutOfBoundsException("You cannot increment the read index to a value greater than the buffer size.");
             }
+
+            if (readIndex + increment > readAvailable()) {
+                throw new IndexOutOfBoundsException("You cannot increment the read index to a relative value greater than the bytes available to be read.");
+            }
+
+            long readBytesIndex = ((long)readPasses * (long)buffer.length) + (long)readIndex + increment;
+
+            readIndex = (int)(readBytesIndex % buffer.length);
+            readPasses = (int)(readBytesIndex / buffer.length);
+
+            returnValue = readAvailable();
         }
 
-        logger.debug("Incremental index {} to read index set read index to actual index {}.", increment, readIndex);
+        logger.debug("Incremental index {} to bytes read index set read index to actual index {}, read passes {}.", increment, readIndex, readPasses);
         return logger.exit(returnValue);
     }
 
@@ -534,11 +503,7 @@ public class SeekableCircularBuffer {
         int available;
         int limitIndex;
 
-        if (markIndex > -1) {
-            limitIndex = markIndex;
-        } else {
-            limitIndex = readIndex;
-        }
+        limitIndex = readIndex;
 
         if (limitIndex > writeIndex) {
             available = limitIndex - (writeIndex - 1);
@@ -571,35 +536,9 @@ public class SeekableCircularBuffer {
         return logger.exit(available);
     }
 
-    /**
-     * Get how many bytes are available to be read from the current mark index.
-     * <p/>
-     * If the mark index is not set, this will always return 0.
-     *
-     * @return Returns the number of bytes available.
-     */
-    public int readMarkAvailable() {
-        logger.entry();
-
-        int available = 0;
-
-        if (markIndex < 0) {
-            return logger.exit(available);
-        }
-
-        if (markIndex <= writeIndex) {
-            available = writeIndex - markIndex;
-        } else {
-            available = buffer.length - (markIndex - writeIndex);
-        }
-
-        if (logger.isDebugEnabled() && available <= 0) {
-            logger.debug("readMarkAvailable() = {}", available);
-        }
-
-        return logger.exit(available);
+    public long totalReadBytes() {
+        return (readPasses * buffer.length) + readAvailable();
     }
-
 }
 
 

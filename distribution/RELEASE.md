@@ -91,3 +91,9 @@
 
 #### 0.4.3-Alpha (compile only; not released)
 > *Added and tested seek error handling to the circular buffer. More testing needed.
+
+#### 0.4.4-Alpha (compile only; not released)
+> *Still alpha due to the circular buffer changes.
+
+> *Internal: Added channel number to consumer so it can change it's behavior optionally based on the
+> currently tuned channel.

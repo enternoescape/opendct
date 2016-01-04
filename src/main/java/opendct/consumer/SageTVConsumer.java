@@ -230,4 +230,19 @@ public interface SageTVConsumer extends Runnable {
      * @return The desired program.
      */
     public int getProgram();
+
+    /**
+     * Sets the currently tuned channel in case the consumer would like to do something with this
+     * information.
+     *
+     * @param channel The tuned channel.
+     */
+    public void setChannel(String channel);
+
+    /**
+     * Gets the currently tuned channel set for the consumer.
+     *
+     * @return The set channel.
+     */
+    public String getChannel();
 }

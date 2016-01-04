@@ -90,4 +90,4 @@
 > successful, but watch this release very carefully and report any issues with a log attached.
 
 #### 0.4.3-Alpha (compile only; not released)
-> *Added seek error handling to the circular buffer. More testing needed.
+> *Added and tested seek error handling to the circular buffer. More testing needed.

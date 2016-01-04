@@ -79,7 +79,7 @@ public class CommandLine {
         try {
             commandLine = commandLineParser.parse(options, args);
         } catch (ParseException e) {
-            logger.fatal("Unable to parse command line arguments => \r\n\r\n", e);
+            logger.fatal("Unable to parse command line arguments => {}{}", Config.NEW_LINE, Config.NEW_LINE, e);
             helpFormatter.printHelp("java -jar opendct-" + Config.VERSION + ".jar", options, true);
             return logger.exit(false);
         }
@@ -122,7 +122,7 @@ public class CommandLine {
 
 
         } catch (Exception e) {
-            logger.fatal("Unable to parse command line argument values => \r\n\r\n", e);
+            logger.fatal("Unable to parse command line argument values => {}{}", Config.NEW_LINE, Config.NEW_LINE, e);
             helpFormatter.printHelp("java -jar yadct.jar", options, true);
             return logger.exit(false);
         }

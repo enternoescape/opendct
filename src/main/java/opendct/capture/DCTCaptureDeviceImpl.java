@@ -872,7 +872,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 newConsumer.consumeToFilename(filename);
             }
 
-            startConsuming(newConsumer, encodingQuality, bufferSize);
+            startConsuming(channel, newConsumer, encodingQuality, bufferSize);
         } else {
             logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
@@ -889,7 +889,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
-        setLastChannel(channel);
         return logger.exit(true);
     }
 
@@ -1046,7 +1045,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 newConsumer.consumeToFilename(filename);
             }
 
-            startConsuming(newConsumer, encodingQuality, bufferSize);
+            startConsuming(channel, newConsumer, encodingQuality, bufferSize);
         } else {
             logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
@@ -1063,7 +1062,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
-        setLastChannel(channel);
         return logger.exit(true);
     }
 
@@ -1338,7 +1336,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     newConsumer.consumeToNull(true);
                 }
 
-                startConsuming(newConsumer, encodingQuality, bufferSize);
+                startConsuming(channel, newConsumer, encodingQuality, bufferSize);
             } else {
                 logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
             }
@@ -1356,7 +1354,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
-        setLastChannel(channel);
         return logger.exit(true);
     }
 

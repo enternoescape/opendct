@@ -113,6 +113,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private String currentRecordingQuality = null;
     private int desiredPids[] = new int[0];
     private int desiredProgram = -1;
+    private String tunedChannel = "";
 
     private AtomicBoolean running = new AtomicBoolean(false);
     private long stvRecordBufferSize = 0;
@@ -1133,4 +1134,11 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         return desiredProgram;
     }
 
+    public String getChannel() {
+        return tunedChannel;
+    }
+
+    public void setChannel(String tunedChannel) {
+        this.tunedChannel = tunedChannel;
+    }
 }

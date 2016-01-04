@@ -95,5 +95,10 @@
 #### 0.4.4-Alpha (compile only; not released)
 > *Still alpha due to the circular buffer changes.
 
+> *Added monitoring and validation for RTCP. Currently no responses are generated. This is just so
+> we know if it's happening.
+
 > *Internal: Added channel number to consumer so it can change it's behavior optionally based on the
 > currently tuned channel.
+
+> *Internal: Logging line ending and space usage improvements.

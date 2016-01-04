@@ -20,6 +20,7 @@ import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
 import opendct.video.rtsp.DCTRTSPClientImpl;
 import opendct.video.rtsp.RTSPClient;
+import opendct.video.rtsp.rtcp.RTCPClient;
 import opendct.video.rtsp.rtp.RTPPacketProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -41,6 +42,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
+    private RTCPClient rtcpClient = new RTCPClient();
 
     private volatile long packetsReceived = 0;
     private volatile long packetsLastReceived = 0;
@@ -72,15 +74,20 @@ public class NIORTPProducerImpl implements RTPProducer {
 
             // In case 0 was used and a port was automatically chosen.
             this.localPort = datagramChannel.socket().getLocalPort();
+
+            rtcpClient.startReceiving(streamRemoteIP, this.localPort + 1);
         } catch (IOException e) {
             if (datagramChannel != null && datagramChannel.isConnected()) {
                 try {
                     datagramChannel.close();
                     datagramChannel.socket().close();
                 } catch (IOException e0) {
-                    logger.debug("Producer created an exception while closing the datagram channel => {}", e0);
+                    logger.debug("Producer created an exception while closing the datagram channel => ", e0);
                 }
             }
+
+            rtcpClient.stopReceiving();
+
             throw e;
         }
 

@@ -101,4 +101,4 @@
 > *Internal: Added channel number to consumer so it can change it's behavior optionally based on the
 > currently tuned channel.
 
-> *Internal: Logging line ending improvements.
+> *Internal: Logging line ending and space usage improvements.

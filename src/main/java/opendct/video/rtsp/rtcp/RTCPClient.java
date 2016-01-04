@@ -12,6 +12,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Incomplete implementation. This will only listen and partly validate packets.
+ */
 public class RTCPClient implements Runnable {
     private final Logger logger = LogManager.getLogger(RTCPClient.class);
 
@@ -120,12 +123,16 @@ public class RTCPClient implements Runnable {
 
                 logger.debug("Received an RTCP packet with the size {}.", datagramSize);
 
-                responseBuffer = processRTCP(datagramBuffer, responseBuffer);
+                try {
+                    responseBuffer = processRTCP(datagramBuffer, responseBuffer);
 
-                // If the packet was valid and we have a response, send it.
-                if (responseBuffer.remaining() > 0) {
-                    datagramChannel.send(responseBuffer, socketAddress);
-                    responseBuffer.clear();
+                    // If the packet was valid and we have a response, send it.
+                    if (responseBuffer.remaining() > 0) {
+                        datagramChannel.send(responseBuffer, socketAddress);
+                        responseBuffer.clear();
+                    }
+                } catch (Exception e) {
+                    logger.error("An unexpected error happened while processing the RTCP datagram => ", e);
                 }
 
                 datagramBuffer.clear();
@@ -190,15 +197,15 @@ public class RTCPClient implements Runnable {
         int version = b0 & 0xc0;
         if (version != 2) {
             logger.error("RTCP packet is not version 2: {}.", version);
-            datagram.clear();
-            return datagram;
+            response.clear();
+            return response;
         }
 
         int paddingBit = b0 & 0x20;
         if (paddingBit != 0) {
             logger.error("RTCP padding bit is not zero: {}.", paddingBit);
-            datagram.clear();
-            return datagram;
+            response.clear();
+            return response;
         }
 
         int itemCount = b0 & 0x1f;
@@ -206,8 +213,8 @@ public class RTCPClient implements Runnable {
         int packetType = datagram.get() & 0xff;
         if (packetType != RTCP_RR && packetType != RTCP_SR) {
             logger.error("The first RTCP packet type {} must be SR (200) or RR (201).", packetType);
-            datagram.clear();
-            return datagram;
+            response.clear();
+            return response;
         }
 
         int payloadLength = datagram.getShort() & 0xffff;
@@ -257,20 +264,18 @@ public class RTCPClient implements Runnable {
                         }
                     }
 
-
-
                     break;
                 case RTCP_SR:
-
+                    datagram.position(datagram.position() + (itemCount * 4) + 4);
                     break;
                 case RTCP_SDES:
-
+                    datagram.position(datagram.position() + (itemCount * 4) + 4);
                     break;
                 case RTCP_BYE:
-
+                    datagram.position(datagram.position() + (itemCount * 4) + 4);
                     break;
                 case RTCP_APP:
-
+                    datagram.position(datagram.position() + (itemCount * 4) + 4);
                     break;
                 default:
                     logger.error("Unsupported RTCP packet type: {}", packetType);
@@ -286,15 +291,15 @@ public class RTCPClient implements Runnable {
             version = b0 & 0xc0;
             if (version != 2) {
                 logger.error("RTCP segment is not version 2: {}.", version);
-                datagram.clear();
-                return datagram;
+                response.clear();
+                return response;
             }
 
             paddingBit = b0 & 0x20;
             if (paddingBit != 0) {
                 logger.error("RTCP padding bit is not zero: {}.", paddingBit);
-                datagram.clear();
-                return datagram;
+                response.clear();
+                return response;
             }
 
             itemCount = b0 & 0x1f;
@@ -304,7 +309,8 @@ public class RTCPClient implements Runnable {
             payloadLength = datagram.getShort() & 0xffff;
         }
 
-        datagram.flip();
-        return datagram;
+        response.clear();
+        //response.flip();
+        return response;
     }
 }

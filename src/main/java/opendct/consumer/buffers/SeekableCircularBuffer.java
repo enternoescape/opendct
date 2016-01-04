@@ -350,107 +350,27 @@ public class SeekableCircularBuffer {
     }
 
     /**
-     * Reserves the current index forward for read-only access.
-     * <p/>
-     * This will prevent all data after the current index from being overwritten even if the data
-     * has been read. Do not forget to eventually run <b>clearMark()</b> or move the mark forward
-     * with <b>moveMark(int index)</b>. Failure to do so will eventually result in an overflow of
-     * the buffer and you will start loosing data.
-     *//*
-    public void setMark() {
-        logger.entry();
-
-        // This should not require anything special to be thread safe since the read index will
-        // never be overtaken by data being written.
-        markIndex = readIndex;
-
-        logger.debug("Set mark to actual index {}.", markIndex);
-        logger.exit();
-    }*/
-
-    /**
-     * Changes the current mark index relative to the current mark.
-     * <p/>
-     * This will not do anything unless a mark is set. The mark can not be a negative number and it
-     * cannot be greater than the total length of the buffer.
-     *
-     * @param index Index relative to the current mark index to move the actual mark index.
-     * @throws IndexOutOfBoundsException Thrown if the provided index is greater than the buffer
-     *                                   size or a negative number was provided for the index.
-     *//*
-    public void setMark(int index) throws IndexOutOfBoundsException {
-        logger.entry(index);
-
-        *//*if (markIndex == -1) {
-            logger.exit();
-            return;
-        }
-
-        if (index > buffer.length) {
-            throw new IndexOutOfBoundsException("You cannot set the mark index to a value greater than the buffer size.");
-        }
-
-        if (index < 0) {
-            throw new IndexOutOfBoundsException("You cannot set the mark index to a relative value less than the current mark.");
-        }*//*
-
-        synchronized (writeLock) {
-
-            // Rewind the passes even though this means we are now reading potentially bad data.
-            readPasses -= (int)(buffer.length / index);
-
-            int newReadIndex = ((readPasses * buffer.length) + index) % buffer.length; //readIndex = markIndex + index;
-
-            synchronized (readLock) {
-                if (readAvailable() > 0) {
-                    synchronized (readMonitor) {
-                        readMonitor.notifyAll();
-                    }
-                }
-            }
-
-        }
-
-        logger.debug("Relative index {} set read index to actual index {}, read passes {}.", index, readIndex, readPasses);
-        logger.exit();
-    }*/
-
-    /**
-     * Clears the currently marked index.
-     * <p/>
-     * This method will allow the writing thread to write all the way to the last byte read. This is
-     * the default mode when this class is initialized.
-     */
-    /*public void clearMark() {
-        logger.entry();
-
-        // Even though this is technically thread-safe, you do not want the index suddenly having a
-        // -1 value when the assumption is that this index is set. This makes sure no methods are
-        // using it when we turn it off. When this was enabled, you were guaranteed that no methods
-        // would be using it, but when it is to be turned off, methods might be using it.
-        synchronized (writeLock) {
-            markIndex = -1;
-        }
-
-        logger.debug("Mark has been cleared.");
-        logger.exit();
-    }*/
-
-
-    /**
      * Changes the current read index relative to the total written bytes.
      * <p/>
-     * There are no checks in place to make sure you are not putting the buffer out of sync, so I
-     * wouldn't use this to go too far back.
+     * This will not allow you to seek further back than the current write index and will not allow
+     * you to seek further forward than the current write index. There is no guarantee that you have
+     * not seeked into invalid data.
      *
      * @param index Relative index based on the total written bytes in the buffer.
      */
-    public void setReadIndex(long index) {
+    public void setReadIndex(long index) throws ArrayIndexOutOfBoundsException {
         logger.entry(index);
 
         synchronized (readLock) {
-            readIndex = (int)(index % buffer.length);
-            readPasses = (int)(index / buffer.length);
+            int newIndex = (int)(index % buffer.length);
+            int newPasses = (int)(index / buffer.length);
+
+            if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
+                throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot move the read index beyond the currently available data."));
+            }
+
+            readIndex = newIndex;
+            readPasses = newPasses;
         }
 
         logger.debug("Relative index {} to bytes set read index to actual index {}, read passes {}.", index, readIndex, readPasses);
@@ -480,10 +400,17 @@ public class SeekableCircularBuffer {
                 throw new IndexOutOfBoundsException("You cannot increment the read index to a relative value greater than the bytes available to be read.");
             }
 
-            long readBytesIndex = ((long)readPasses * (long)buffer.length) + (long)readIndex + increment;
+            long index = ((long)readPasses * (long)buffer.length) + (long)readIndex + increment;
 
-            readIndex = (int)(readBytesIndex % buffer.length);
-            readPasses = (int)(readBytesIndex / buffer.length);
+            int newIndex = (int)(index % buffer.length);
+            int newPasses = (int)(index / buffer.length);
+
+            if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
+                throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot move the read index beyond the currently available data."));
+            }
+
+            readIndex = (int)(index % buffer.length);
+            readPasses = (int)(index / buffer.length);
 
             returnValue = readAvailable();
         }

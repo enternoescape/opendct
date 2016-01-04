@@ -87,6 +87,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
                     bytePtr.position(offset).put(buffer, 0, readIndex);
                 }
 
+                readPasses += 1;
             } else {
                 bytePtr.position(offset).put(buffer, readIndex, returnLength);
                 readIndex += returnLength;

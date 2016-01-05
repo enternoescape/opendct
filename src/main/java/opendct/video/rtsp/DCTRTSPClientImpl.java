@@ -40,12 +40,17 @@ public class DCTRTSPClientImpl implements RTSPClient {
     private volatile int streamLocalPort = 0;
     private String sessionString = null;
 
-    // No checks for the status of anything else currently running are
-    // needed since this should not cause any exceptions, but if set
-    // incorrectly, it will stop the production thread from receiving
-    // any packets. The producer should already be running before you
-    // can use this method. If there is a configuration problem the
-    // method will return false.
+    /**
+     * Performs all of the steps needed to start receiving RTP packets.
+     * <p/>
+     * The producer should already be running before you can use this method. If there is a
+     * configuration problem the method will return false.
+     *
+     * @param streamOutURI The URI to use to configure the RTSP stream.
+     * @param streamInPort The port to receive RTP packets.
+     * @return <i>false</i> if the stream could not bes started.
+     * @throws UnknownHostException Thrown if the URI doesn't contain a valid hostname/IP address.
+     */
     public synchronized boolean configureRTPStream(URI streamOutURI, int streamInPort) throws UnknownHostException {
         logger.entry();
 

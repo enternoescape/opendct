@@ -99,7 +99,7 @@ public class RTCPClient implements Runnable {
             rtcpClientThread.interrupt();
         }
 
-        if (datagramChannel != null && datagramChannel.isConnected()) {
+        if (datagramChannel != null) {
             try {
                 datagramChannel.close();
                 datagramChannel.socket().close();

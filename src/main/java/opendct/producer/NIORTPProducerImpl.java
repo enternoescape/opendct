@@ -24,6 +24,7 @@ import opendct.video.rtsp.rtcp.RTCPClient;
 import opendct.video.rtsp.rtp.RTPPacketProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import sun.org.mozilla.javascript.internal.EcmaError;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -285,6 +286,12 @@ public class NIORTPProducerImpl implements RTPProducer {
         }
 
         if (datagramChannel != null) {
+            try {
+                rtcpClient.stopReceiving();
+            } catch (Exception e) {
+                logger.debug("Producer created an exception while closing the RTCP channel => ", e);
+            }
+
             try {
                 datagramChannel.close();
                 // The datagram channel doesn't seem to close the socket every time.

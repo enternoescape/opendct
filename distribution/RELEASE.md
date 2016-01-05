@@ -105,3 +105,5 @@
 
 #### 0.4.5-Alpha (compile only; not released)
 > *Fixed issue with RTCP port not closing at the right time.
+
+> *Added logging for initial packet losses and less than 12 bytes packet losses.

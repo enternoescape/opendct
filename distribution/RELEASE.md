@@ -104,4 +104,4 @@
 > *Internal: Logging line ending and space usage improvements.
 
 #### 0.4.5-Alpha (compile only; not released)
-> *Fixed issue with RTCP port not closing the right time.
+> *Fixed issue with RTCP port not closing at the right time.

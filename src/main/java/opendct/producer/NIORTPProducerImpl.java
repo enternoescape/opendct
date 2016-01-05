@@ -18,13 +18,10 @@ package opendct.producer;
 
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
-import opendct.video.rtsp.DCTRTSPClientImpl;
-import opendct.video.rtsp.RTSPClient;
 import opendct.video.rtsp.rtcp.RTCPClient;
 import opendct.video.rtsp.rtp.RTPPacketProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import sun.org.mozilla.javascript.internal.EcmaError;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -36,7 +33,6 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class NIORTPProducerImpl implements RTPProducer {
     private final Logger logger = LogManager.getLogger(NIORTPProducerImpl.class);

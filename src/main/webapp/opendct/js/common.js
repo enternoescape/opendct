@@ -461,7 +461,7 @@ function updateManageLoadedRows() {
             });
 
             var forceDiv = $(deviceName).parent().parent().parent().find(".manage-force-unlock");
-            forceDiv.html('<div class="centerCell"><input type="checkbox" class="manage-force-unlock-value"/></div>');
+            forceDiv.html('<input type="checkbox" class="form-control manage-force-unlock-value"/>');
             forceDiv.find(".manage-force-unlock-value").prop("checked", data.alwaysForceExternalUnlock)
 
             $(".manage-force-unlock-value").on("change", function() {
@@ -484,10 +484,7 @@ function updateManageLoadedRows() {
             });
 
             var consumerDiv = $(deviceName).parent().parent().parent().find(".manage-consumer");
-            consumerDiv.html('<select class="form-control manage-consumer-value" name="manage-consumer-value">' +
-                                '<option value="opendct.consumer.FFmpegSageTVConsumerImpl">FFmpeg</option>' +
-                                '<option value="opendct.consumer.RawSageTVConsumerImpl">Raw</option>' +
-                             '</select>');
+            consumerDiv.html(getConsumerOptions( "manage-consumer-value" ));
             $(consumerDiv).find(".manage-consumer-value").val(data.consumer);
 
              $(".manage-consumer-value").on("change", function() {
@@ -621,7 +618,7 @@ function manageLoadedCanApply() {
 
     $.each($(".manage-rename-device"), function(i, property) {
         if (property.value == "") {
-            $(property).parent().parent().addClass("background-error");
+            $(property).parent().parent().addClass("background-locked");
             $("#manage-apply-loaded-device-changes").addClass("disabled");
         } else {
             $(property).parent().parent().removeClass("background-error");

@@ -69,7 +69,7 @@
         </div>
     </div>
 
-    <div id="manage-page" class="content-page">
+    <div id="manage-page" class="content-page col-md-12 col-xs-12">
         <div id="manage-content">
             <div id="manage-basic">
                 <h1>Parent Capture Devices</h1>
@@ -86,11 +86,11 @@
                 <table id="manage-loaded-parent-devices-table" class="table table-striped">
                     <thead id="manage-loaded-parent-devices-header" class="hidden">
                     <tr>
-                        <th class="col-md-3" id="manage-parent-name-header">Capture Device Parent</th>
-                        <th class="col-md-2 col-sm-1" id="manage-is-network-header">Network Device</th>
-                        <th class="col-md-2" id="manage-remote-ip-header">Remote Address</th>
-                        <th class="col-md-2" id="manage-local-ip-header">Local Address</th>
-                        <th class="col-md-2 col-sm-1" id="manage-cablecard-present-header">CableCARD Present</th>
+                        <th class="col-md-4 col-xs-3" id="manage-parent-name-header">Capture Device Parent</th>
+                        <th class="col-md-2 col-xs-1" id="manage-is-network-header">Network Device</th>
+                        <th class="col-md-2 col-xs-2" id="manage-remote-ip-header">Remote Address</th>
+                        <th class="col-md-2 col-xs-3" id="manage-local-ip-header">Local Address</th>
+                        <th class="col-md-2 col-xs-1" id="manage-cablecard-present-header">CableCARD Present</th>
                     </tr>
                     </thead>
                     <tbody id="manager-loaded-parent-devices-body">
@@ -125,14 +125,14 @@
                 <table id="manage-loaded-devices-table" class="table table-striped">
                     <thead id="manage-loaded-devices-header" class="hidden">
                     <tr>
-                        <th id="manage-check-header"><input title="Select the rows to change and edit any one of them to modify all of them." class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
-                        <th class="col-md-4" id="manage-name-header">Capture Device</th>
-                        <th class="col-md-1" id="manage-merit-header" title="This value is sent to SageTV in PROPERTIES and is used for prioritizing capture devices in virtual device pools. A higher number means a higher preference.">Merit</th>
-                        <th class="col-md-1" id="manage-force-unlock-header" title="Always force the capture device to unlock if it is locked by an external program.">Unlock</th>
-                        <th class="col-md-2" id="manage-consumer-header" title="This is the post processing method to be used before the content is streamed to SageTV.">Consumer</th>
-                        <th class="col-md-3" id="manage-lineup-header">Lineup</th>
-                        <th class="col-md-2" id="manage-encoder-pool-header">Pool</th>
-                        <th class="col-md-1" id="manage-advanced-header" title="Use checkboxes to edit multiple capture device advanced properties. Properties that are not shared between the selected capture devices will not be displayed. Conflicting properties will be blank or default and highlighted.">More</th>
+                        <th class="col-md-1 col-xs-1" id="manage-check-header"><input title="Select the rows to change and edit any one of them to modify all of them." class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
+                        <th class="col-md-3 col-xs-3" id="manage-name-header">Capture Device</th>
+                        <th class="col-md-1 col-xs-1" id="manage-merit-header" title="This value is sent to SageTV in PROPERTIES and is used for prioritizing capture devices in virtual device pools. A higher number means a higher preference.">Merit</th>
+                        <th class="col-md-1 col-xs-1" id="manage-force-unlock-header" title="Always force the capture device to unlock if it is locked by an external program.">Unlock</th>
+                        <th class="col-md-2 col-xs-2" id="manage-consumer-header" title="This is the post processing method to be used before the content is streamed to SageTV.">Consumer</th>
+                        <th class="col-md-2 col-xs-2" id="manage-lineup-header">Lineup</th>
+                        <th class="col-md-1 col-xs-2" id="manage-encoder-pool-header">Pool</th>
+                        <th class="col-md-1 col-xs-1" id="manage-advanced-header" title="Use checkboxes to edit multiple capture device advanced properties. Properties that are not shared between the selected capture devices will not be displayed. Conflicting properties will be blank or default and highlighted.">More</th>
                     </tr>
                     </thead>
                     <tbody id="manager-loaded-devices-body">
@@ -177,7 +177,7 @@
                     </tfoot>
                 </table>
             </div>
-            <div id="manage-advanced">
+            <div id="manage-advanced col-md-12 col-xs-12">
                 <h1>Capture Device Properties</h1>
                 <div id="manage-advanced-devices"></div>
                 <br/>
@@ -193,12 +193,14 @@
                     Return
                 </button><p/>
 
+                <span id="manage-advanced-device-warning" class="text-danger"></span>
+
                 <table id="manage-advanced-capture-devices-table" class="table table-striped">
                     <thead id="manage-advanced-capture-devices-header">
                     <tr>
-                        <th class="col-md-2" id="manage-advanced-name-header">Property</th>
-                        <th class="col-md-4" id="manage-advanced-value-header">Value</th>
-                        <th class="col-md-6" id="manage-advanced-description-header">Description</th>
+                        <th class="col-md-2 col-xs-1" id="manage-advanced-name-header">Property</th>
+                        <th class="col-md-4 col-xs-7" id="manage-advanced-value-header">Value</th>
+                        <th class="col-md-6 col-xs-4" id="manage-advanced-description-header">Description</th>
                     </tr>
                     </thead>
                     <tbody id="manager-advanced-capture-devices-body">
@@ -244,6 +246,7 @@
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
+<script src="js/options.js"></script>
 <script src="js/common.js"></script>
 <script src="js/manage-advanced.js"></script>
 </body>

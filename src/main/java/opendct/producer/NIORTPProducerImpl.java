@@ -140,8 +140,9 @@ public class NIORTPProducerImpl implements RTPProducer {
             try {
                 int datagramSize = -1;
 
-                // A standard RTP transmitted datagram payload should not be larger than 1328 bytes.
-                ByteBuffer datagramBuffer = ByteBuffer.allocate(1500);
+                // A standard RTP transmitted datagram payload should not be larger than 1328 bytes,
+                // but the largest possible UDP packet size is 65508.
+                ByteBuffer datagramBuffer = ByteBuffer.allocate(65508);
 
                 while (!Thread.currentThread().isInterrupted()) {
                     datagramBuffer.clear();

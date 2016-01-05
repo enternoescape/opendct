@@ -26,6 +26,7 @@ apply plugin: 'idea'
 apply plugin: 'eclipse'
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin: 'war'
 
 group = 'opendct'
 description = 'Digital Cable Tuner for SageTV.'
@@ -218,8 +219,8 @@ ospackage {
         filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
     }
 
-    from('src/webapps') {
-        into 'webapps'
+    from('src/webapp') {
+        into 'webapps/opendct'
         filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
     }
 

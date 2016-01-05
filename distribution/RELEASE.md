@@ -106,4 +106,7 @@
 #### 0.4.5-Alpha (compile only; not released)
 > *Fixed issue with RTCP port not closing at the right time.
 
-> *Added logging for initial packet losses and less than 12 bytes packet losses.
+> *Added logging for initial packet losses, less than 12 bytes packet losses and packet size limit
+> possibly exceeded warnings.
+
+> *Increased UDP buffer from 1500 to 65508 which is the largest size any UDP packet should ever be.

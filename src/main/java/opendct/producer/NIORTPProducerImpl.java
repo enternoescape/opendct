@@ -244,8 +244,9 @@ public class NIORTPProducerImpl implements RTPProducer {
             try {
                 int datagramSize = -1;
 
-                // A standard RTP transmitted datagram payload should not be larger than 1328 bytes.
-                ByteBuffer datagramBuffer = ByteBuffer.allocate(1500);
+                // A standard RTP transmitted datagram payload should not be larger than 1328 bytes,
+                // but the largest possible UDP packet size is 65508.
+                ByteBuffer datagramBuffer = ByteBuffer.allocate(65508);
 
                 while (!Thread.currentThread().isInterrupted()) {
                     datagramBuffer.clear();
@@ -263,6 +264,10 @@ public class NIORTPProducerImpl implements RTPProducer {
                         packetProcessor.findMissingRTPPackets(datagramBuffer);
 
                         sageTVConsumer.write(datagramBuffer.array(), datagramBuffer.position(), datagramBuffer.remaining());
+
+                        if (datagramSize == datagramBuffer.limit()) {
+                            logger.warn("The datagram buffer is at its limit. Data may have been lost.");
+                        }
                     } else {
                         synchronized (receiveMonitor) {
                             packetsBadReceived += 1;

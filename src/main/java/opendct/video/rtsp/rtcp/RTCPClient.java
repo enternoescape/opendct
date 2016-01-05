@@ -219,13 +219,13 @@ public class RTCPClient implements Runnable {
 
         int payloadLength = datagram.getShort() & 0xffff;
         int packetLoss;
+        int reporterSsrc = 0;
 
         while (true) {
             int itemCounter = itemCount;
 
             switch (packetType) {
                 case RTCP_RR:
-                    int reporterSsrc = 0;
                     int reporteeSsrc = 0;
                     int lossFraction = 0;
                     int numberOfPacketsLost = 0;
@@ -264,9 +264,39 @@ public class RTCPClient implements Runnable {
                         }
                     }
 
+                    logger.debug("itemCount = {}, reporterSsrc = {}, reporteeSsrc = {}, lossFraction = {}, numberOfPacketsLost = {}, highestSequenceNumberReceived = {}, interarrivalJitter = {}, lsr = {}, dlsr = {}",
+                            itemCount, reporterSsrc, reporteeSsrc, lossFraction, numberOfPacketsLost, highestSequenceNumberReceived, interarrivalJitter, lsr, dlsr);
+
                     break;
                 case RTCP_SR:
-                    datagram.position(datagram.position() + (itemCount * 4) + 4);
+                    long ntpTimestamp = 0;
+                    int rtpTimestamp = 0;
+                    int senderPacketCount = 0;
+                    int senderOctetCount = 0;
+
+                    if (itemCounter-- > 0) {
+                        reporterSsrc = datagram.getInt();
+
+                        if (itemCounter-- > 0) {
+                            ntpTimestamp = datagram.getLong();
+                        }
+
+                        if (itemCount-- > 0) {
+                            rtpTimestamp =  datagram.getInt();
+                        }
+
+                        if (itemCount-- > 0) {
+                            senderPacketCount =  datagram.getInt();
+                        }
+
+                        if (itemCount-- > 0) {
+                            senderOctetCount =  datagram.getInt();
+                        }
+                    }
+
+                    logger.debug("itemCount = {}, reporterSsrc = {}, ntpTimestamp = {}, rtpTimestamp = {}, senderPacketCount = {}, senderOctetCount = {}",
+                            itemCount, reporterSsrc, ntpTimestamp, rtpTimestamp, senderPacketCount, senderOctetCount);
+
                     break;
                 case RTCP_SDES:
                     datagram.position(datagram.position() + (itemCount * 4) + 4);
@@ -281,8 +311,9 @@ public class RTCPClient implements Runnable {
                     logger.error("Unsupported RTCP packet type: {}", packetType);
             }
 
-            // We need to at least be able to read 4 bytes to be able to continue without errors.
-            if (datagram.remaining() > 3) {
+            // We need to at least be able to read 8 bytes to be able to continue without errors.
+            if (datagram.remaining() >= 8) {
+                logger.debug("RTCP bytes remaining: {}", datagram.remaining());
                 break;
             }
 

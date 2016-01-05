@@ -46,7 +46,7 @@ public class NIORTPProducerImpl implements RTPProducer {
     private volatile long packetsLastReceived = 0;
     private int localPort = 0;
     private final int udpReceiveBufferSize =
-            Config.getInteger("producer.nio.udp_receive_buffer", 1328000);
+            Config.getInteger("producer.rtp.nio.udp_receive_buffer", 1328000);
     private InetAddress remoteIPAddress = null;
     private DatagramChannel datagramChannel = null;
     private Thread timeoutThread = null;

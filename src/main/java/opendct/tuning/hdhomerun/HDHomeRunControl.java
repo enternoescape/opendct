@@ -28,7 +28,7 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
 public class HDHomeRunControl {
-    private static final Logger logger = LogManager.getLogger(HDHomeRunManager.class);
+    private static final Logger logger = LogManager.getLogger(HDHomeRunControl.class);
 
     public final static int HDHOMERUN_CONTROL_CONNECT_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_SEND_TIMEOUT = 2500;

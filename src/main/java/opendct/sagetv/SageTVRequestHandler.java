@@ -571,7 +571,7 @@ public class SageTVRequestHandler implements Runnable {
 
                         out.write(String.valueOf(properties.size()));
                         for (String property : properties) {
-                            out.write(property);
+                            out.write(property + "\r\n");
                         }
 
                         out.flush();

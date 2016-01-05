@@ -94,7 +94,10 @@ public class RTCPClient implements Runnable {
 
     public void stopReceiving() {
         stop.set(true);
-        rtcpClientThread.interrupt();
+
+        if (rtcpClientThread != null) {
+            rtcpClientThread.interrupt();
+        }
 
         if (datagramChannel != null && datagramChannel.isConnected()) {
             try {

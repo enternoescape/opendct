@@ -41,6 +41,7 @@ public class NIORTPProducerImpl implements RTPProducer {
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
     private RTCPClient rtcpClient = new RTCPClient();
 
+    private volatile int packetsBadReceived = 0;
     private volatile long packetsReceived = 0;
     private volatile long packetsLastReceived = 0;
     private int localPort = 0;
@@ -104,7 +105,7 @@ public class NIORTPProducerImpl implements RTPProducer {
     }
 
     public int getPacketsLost() {
-        return packetProcessor.getMissedRTPPackets();
+        return packetProcessor.getMissedRTPPackets() + packetsBadReceived;
     }
 
     public void stopProducing() {
@@ -203,7 +204,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                     if (recentPackets > 0) {
                         if (firstPacketsReceived) {
                             firstPacketsReceived = false;
-                            logger.info("Received first {} datagram packets.", recentPackets);
+                            logger.info("Received first {} datagram packets. Missed RTP packets {}. Bad RTP packets {}.", recentPackets, packetProcessor.getMissedRTPPackets(), packetsBadReceived);
                         }
                     }
                 }
@@ -262,6 +263,10 @@ public class NIORTPProducerImpl implements RTPProducer {
                         packetProcessor.findMissingRTPPackets(datagramBuffer);
 
                         sageTVConsumer.write(datagramBuffer.array(), datagramBuffer.position(), datagramBuffer.remaining());
+                    } else {
+                        synchronized (receiveMonitor) {
+                            packetsBadReceived += 1;
+                        }
                     }
 
                     synchronized (receiveMonitor) {

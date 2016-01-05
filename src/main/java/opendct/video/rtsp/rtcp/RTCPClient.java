@@ -195,47 +195,44 @@ public class RTCPClient implements Runnable {
      * @return RTCP response.
      */
     public ByteBuffer processRTCP(ByteBuffer datagram, ByteBuffer response) {
-        int b0 = datagram.get() & 0xff;
 
-        int version = b0 & 0xc0;
-        if (version != 2) {
-            logger.error("RTCP packet is not version 2: {}.", version);
-            response.clear();
-            return response;
-        }
+        while (datagram.remaining() >= 8) {
+            int packetLoss;
+            long reporterSsrc = 0;
 
-        int paddingBit = b0 & 0x20;
-        if (paddingBit != 0) {
-            logger.error("RTCP padding bit is not zero: {}.", paddingBit);
-            response.clear();
-            return response;
-        }
+            int b0 = datagram.get() & 0xff;
 
-        int itemCount = b0 & 0x1f;
+            int version = b0 & 0xc0;
+            if (version != 2) {
+                logger.error("RTCP packet is not version 2: {}.", version);
+                response.clear();
+                return response;
+            }
 
-        int packetType = datagram.get() & 0xff;
-        if (packetType != RTCP_RR && packetType != RTCP_SR) {
-            logger.error("The first RTCP packet type {} must be SR (200) or RR (201).", packetType);
-            response.clear();
-            return response;
-        }
+            int paddingBit = b0 & 0x20;
+            if (paddingBit != 0) {
+                logger.error("RTCP padding bit is not zero: {}.", paddingBit);
+                response.clear();
+                return response;
+            }
 
-        int payloadLength = datagram.getShort() & 0xffff;
-        int packetLoss;
-        int reporterSsrc = 0;
+            int itemCount = b0 & 0x1f;
 
-        while (true) {
+            int packetType = datagram.get() & 0xff;
+
+            int payloadLength = datagram.getShort() & 0xffff;
+
             int itemCounter = itemCount;
 
             switch (packetType) {
                 case RTCP_RR:
-                    int reporteeSsrc = 0;
+                    long reporteeSsrc = 0;
                     int lossFraction = 0;
                     int numberOfPacketsLost = 0;
-                    int highestSequenceNumberReceived = 0;
-                    int interarrivalJitter = 0;
-                    int lsr = 0;
-                    int dlsr = 0;
+                    long highestSequenceNumberReceived = 0;
+                    long interarrivalJitter = 0;
+                    long lsr = 0;
+                    long dlsr = 0;
 
 
                     // This report block always exists in this packet type.
@@ -302,49 +299,34 @@ public class RTCPClient implements Runnable {
 
                     break;
                 case RTCP_SDES:
-                    datagram.position(datagram.position() + (itemCount * 4) + 4);
+                    datagram.position(datagram.position() + payloadLength);
                     break;
                 case RTCP_BYE:
-                    datagram.position(datagram.position() + (itemCount * 4) + 4);
+                    datagram.position(datagram.position() + payloadLength);
                     break;
                 case RTCP_APP:
-                    datagram.position(datagram.position() + (itemCount * 4) + 4);
+                    datagram.position(datagram.position() + payloadLength);
                     break;
                 default:
                     logger.error("Unsupported RTCP packet type: {}", packetType);
             }
-
-            // We need to at least be able to read 8 bytes to be able to continue without errors.
-            if (datagram.remaining() >= 8) {
-                logger.debug("RTCP bytes remaining: {}", datagram.remaining());
-                break;
-            }
-
-            b0 = datagram.get() & 0xff;
-
-            version = b0 & 0xc0;
-            if (version != 2) {
-                logger.error("RTCP segment is not version 2: {}.", version);
-                response.clear();
-                return response;
-            }
-
-            paddingBit = b0 & 0x20;
-            if (paddingBit != 0) {
-                logger.error("RTCP padding bit is not zero: {}.", paddingBit);
-                response.clear();
-                return response;
-            }
-
-            itemCount = b0 & 0x1f;
-
-            packetType = datagram.get() & 0xff;
-
-            payloadLength = datagram.getShort() & 0xffff;
         }
 
         response.clear();
         //response.flip();
         return response;
+    }
+
+    public static ByteBuffer writeHeader(ByteBuffer buffer, int version, int padding, int itemCount, int packetType, int packetLength) {
+        byte b0 = 0;
+        b0 |= ((version & 0xff) << 6);
+        b0 |= ((padding & 0xff) << 5);
+        b0 |= itemCount & 0xff;
+
+        buffer.put(b0);
+        buffer.put((byte)(packetType & 0xff));
+        buffer.putShort((short)(packetLength & 0xffff));
+
+        return buffer;
     }
 }

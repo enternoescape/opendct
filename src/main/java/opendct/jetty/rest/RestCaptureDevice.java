@@ -20,7 +20,7 @@ import opendct.capture.CaptureDevice;
 import opendct.jetty.JettyManager;
 import opendct.jetty.json.JsonCaptureDeviceAdvancedDetails;
 import opendct.jetty.json.JsonCaptureDeviceDetails;
-import opendct.jetty.json.JsonCaptureDeviceSet;
+import opendct.jetty.json.JsonCaptureDeviceGetSet;
 import opendct.jetty.json.JsonError;
 import opendct.sagetv.SageTVManager;
 import org.apache.logging.log4j.LogManager;
@@ -51,12 +51,44 @@ public class RestCaptureDevice {
     }
 
     @GET
+    @Path("{name}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCaptureDevice(@PathParam("name") String deviceName) {
+        JsonCaptureDeviceGetSet deviceSet = new JsonCaptureDeviceGetSet();
+
+        return deviceSet.get(deviceName);
+    }
+
+    @POST
+    @Path("{name}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response putCaptureDeviceDetails(@PathParam("name") String deviceName, JsonCaptureDeviceGetSet deviceSet) {
+        CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(deviceName, false);
+
+        if (captureDevice == null) {
+            JsonError jsonError = new JsonError(
+                    JettyManager.NOT_FOUND,
+                    "The capture device requested does not exist.",
+                    deviceName,
+                    ""
+            );
+
+            logger.error("{}", jsonError);
+            return Response.status(JettyManager.NOT_FOUND).entity(jsonError).build();
+        }
+
+        deviceSet.post(captureDevice);
+
+        return Response.status(JettyManager.OK).build();
+    }
+
+    @GET
     @Path("{name}/details")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCaptureDeviceDetails(@PathParam("name") String deviceName) {
         JsonCaptureDeviceDetails deviceDetails = new JsonCaptureDeviceDetails();
 
-        return deviceDetails.setCaptureDeviceDetails(deviceName);
+        return deviceDetails.get(deviceName);
     }
 
     @GET
@@ -101,30 +133,5 @@ public class RestCaptureDevice {
 
             return Response.status(JettyManager.ERROR).entity(jsonError).build();
         }
-
-
-    }
-
-    @POST
-    @Path("{name}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response putCaptureDeviceDetails(@PathParam("name") String deviceName, JsonCaptureDeviceSet deviceSet) {
-        CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(deviceName, false);
-
-        if (captureDevice == null) {
-            JsonError jsonError = new JsonError(
-                    JettyManager.NOT_FOUND,
-                    "The capture device requested does not exist.",
-                    deviceName,
-                    ""
-            );
-
-            logger.error("{}", jsonError);
-            return Response.status(JettyManager.NOT_FOUND).entity(jsonError).build();
-        }
-
-        deviceSet.applyUpdates(captureDevice);
-
-        return Response.status(JettyManager.OK).build();
     }
 }

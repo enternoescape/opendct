@@ -29,8 +29,8 @@ import org.apache.logging.log4j.Logger;
 import javax.ws.rs.core.Response;
 import java.net.SocketException;
 
-public class JsonCaptureDeviceSet {
-    private static final Logger logger = LogManager.getLogger(JsonCaptureDeviceSet.class);
+public class JsonCaptureDeviceGetSet {
+    private static final Logger logger = LogManager.getLogger(JsonCaptureDeviceGetSet.class);
 
     // This ensures that if more than one browser tries to apply updates at the same time, they
     // don't do it at the same time since it could cause a race condition.
@@ -47,7 +47,7 @@ public class JsonCaptureDeviceSet {
     private String offlineConsumer;
     private Integer encoderPort;
 
-    public JsonCaptureDeviceSet() {
+    public JsonCaptureDeviceGetSet() {
         encoderName = null;
         merit = null;
         encoderPoolName = null;
@@ -55,11 +55,40 @@ public class JsonCaptureDeviceSet {
         channelLineup = null;
         offlineScanEnabled = null;
         producer = null;
+        consumer = null;
         offlineConsumer = null;
         encoderPort = null;
     }
 
-    public Response applyUpdates(CaptureDevice captureDevice) {
+    /**
+     * This gets only the editable subset of properties for a capture device.
+     *
+     * @param captureDevice The capture device name.
+     * @return The response to be processed and returned to the browser.
+     */
+    public Response get(String captureDevice) {
+        JsonCaptureDeviceDetails details = new JsonCaptureDeviceDetails();
+        Response response = details.get(captureDevice);
+
+        if (!(response.getStatus() == JettyManager.OK)) {
+            return response;
+        }
+
+        encoderName = details.getEncoderName();
+        merit = details.getMerit();
+        encoderPoolName = details.getEncoderPoolName();
+        alwaysForceExternalUnlock = details.isAlwaysForceExternalUnlock();
+        channelLineup = details.getChannelLineup();
+        offlineScanEnabled = details.isOfflineScanEnabled();
+        producer = details.getProducer();
+        consumer = details.getConsumer();
+        offlineConsumer = details.getOfflineConsumer();
+        encoderPort = details.getEncoderPort();
+
+        return Response.status(JettyManager.OK).entity(this).build();
+    }
+
+    public Response post(CaptureDevice captureDevice) {
 
         synchronized (updateLock) {
             if (encoderName != null && !captureDevice.getEncoderName().equals(encoderName)) {

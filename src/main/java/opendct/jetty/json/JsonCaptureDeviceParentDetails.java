@@ -33,7 +33,7 @@ public class JsonCaptureDeviceParentDetails {
     private String localAddress;
     private boolean cableCardPresent;
 
-    public Response setCaptureDeviceParentDetails(String captureDeviceParentName) {
+    public Response get(String captureDeviceParentName) {
         ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllCaptureDevicesForParent(captureDeviceParentName);
 
         if (captureDevices.size() == 0) {

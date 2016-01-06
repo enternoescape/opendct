@@ -43,7 +43,7 @@ public class RestCaptureDeviceParent {
     public Response getCaptureDeviceDetails(@PathParam("name") String deviceParentName) {
         JsonCaptureDeviceParentDetails deviceDetails = new JsonCaptureDeviceParentDetails();
 
-        return deviceDetails.setCaptureDeviceParentDetails(deviceParentName);
+        return deviceDetails.get(deviceParentName);
     }
 
     @POST

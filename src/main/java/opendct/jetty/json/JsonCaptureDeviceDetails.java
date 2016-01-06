@@ -60,7 +60,7 @@ public class JsonCaptureDeviceDetails {
      * @param captureDeviceName The name of the capture device to get details.
      * @return <i>true</i> if the capture device was found and everything is populated.
      */
-    public Response setCaptureDeviceDetails(String captureDeviceName) {
+    public Response get(String captureDeviceName) {
         CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(captureDeviceName, false);
 
         if (captureDevice == null) {

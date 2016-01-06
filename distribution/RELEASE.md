@@ -80,11 +80,7 @@
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 
 
-<<<<<<< HEAD
-#### 0.4.1-Beta  (compile only; not released)
-=======
 #### 0.4.1-Beta (compile only; not released)
->>>>>>> origin/master
 > *Added handling for Prime urls with copy protection so they don't get enabled in the lineup.
 
 > *Fix a problem when tuning the frequency 0 that could potentially cause a device to never unlock.

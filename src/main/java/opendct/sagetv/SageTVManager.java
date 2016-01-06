@@ -21,6 +21,7 @@ import opendct.capture.CaptureDeviceType;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

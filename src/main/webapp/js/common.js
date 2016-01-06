@@ -16,7 +16,7 @@ Navigation Bar
 =====================================
 */
 $(".nav a").on("click", function(){
-   $(this).parent().parent().find(".active").removeClass('active');
+   $(this).parent().parent().find(".active").removeClass("active");
    $(this).parent().addClass("active");
 });
 
@@ -27,9 +27,9 @@ $(".navbar-header a").on("click", function(){
 
 $(".change-page").on("click", function() {
     $(".content-page").hide();
-    $($(this).attr('href') + "-page").show();
+    $($(this).attr("href") + "-page").show();
 
-    loadPage( $(this).attr('href') );
+    loadPage( $(this).attr("href") );
 });
 
 function changePage( page ) {
@@ -37,7 +37,7 @@ function changePage( page ) {
     $(".content-page").hide();
     $(page + "-page").show();
 
-    $(".navbar").find(".nav").find(".active").removeClass('active');
+    $(".navbar").find(".nav").find(".active").removeClass("active");
     $(page + "-nav").addClass("active");
 
     loadPage( page );
@@ -89,7 +89,7 @@ function createDashboardRows() {
         if (data.length == 0) {
             $("#dashboard-capture-devices-header").hide();
             deviceTable.empty();
-            deviceTable.append('<tr><td><button class="btn btn-primary" onclick="changePage(\'#manage\');">Load Capture Devices</button></td>' +
+            deviceTable.append("<tr><td><button class=\"btn btn-primary\" onclick=\"changePage(\"#manage\");\">Load Capture Devices</button></td>" +
                                                    "<td class=\"dashboard-status\"></td>" +
                                                    "<td class=\"dashboard-locked\"></td>" +
                                                    "<td class=\"dashboard-lineup\"></td>" +
@@ -98,10 +98,10 @@ function createDashboardRows() {
             $("#dashboard-capture-devices-header").show();
             deviceTable.empty();
             $.each(data, function(i, deviceName) {
-                deviceTable.append('<tr><td class="dashboard-device-name">' +
-                                       '<a href="javascript:undefined" title="Click to expand/collapse details." data-toggle="collapse" data-target="#dashboard-device-collapse-' + i + '">' +
-                                       '<div class="dashboard-device-lookup">' + deviceName + '</div></a>' +
-                                       '<div class="dashboard-collapse collapse" id="dashboard-device-collapse-' + i + '">Updating...</div></td>' +
+                deviceTable.append("<tr><td class=\"dashboard-device-name\">" +
+                                       "<a href=\"javascript:undefined\" title=\"Click to expand/collapse details.\" data-toggle=\"collapse\" data-target=\"#dashboard-device-collapse-" + i + "\">" +
+                                       "<div class=\"dashboard-device-lookup\">" + deviceName + "</div></a>" +
+                                       "<div class=\"dashboard-collapse collapse\" id=\"dashboard-device-collapse-" + i + "\">Updating...</div></td>" +
                                        "<td class=\"dashboard-status\"></td>" +
                                        "<td class=\"dashboard-locked\"></td>" +
                                        "<td class=\"dashboard-lineup\"></td>" +
@@ -133,9 +133,9 @@ function updateDashboard() {
         $.get("rest/capturedevice/" + $(deviceName).text() + "/details", "", function(data, status, xhr) {
             var deviceDiv = $(deviceName).parent().parent().find(".dashboard-collapse");
             if (data.locked == true) {
-                deviceDiv.html('<br/>Recording: ' + data.recordFilename);
-                deviceDiv.append('<br/>Channel: ' + data.lastChannel);
-                deviceDiv.append(' <span class="signal"></span> <span class="cci"></span>')
+                deviceDiv.html("<br/>Recording: " + data.recordFilename);
+                deviceDiv.append("<br/>Channel: " + data.lastChannel);
+                deviceDiv.append(" <span class=\"signal\"></span> <span class=\"cci\"></span>")
 
                 $.get("rest/capturedevice/" + $(deviceName).text() + "/method/getSignalStrength", "", function(data, status, xhr) {
                     deviceDiv.find(".signal").html("Signal: " + data);
@@ -145,7 +145,7 @@ function updateDashboard() {
                     deviceDiv.find(".cci").html("CCI: " + data);
                 });
             } else {
-                deviceDiv.html('<p/>There is no activity on this capture device.');
+                deviceDiv.html("<p/>There is no activity on this capture device.");
             }
 
             var statusDiv = $(deviceName).parent().parent().parent().find(".dashboard-status");
@@ -160,9 +160,9 @@ function updateDashboard() {
                 if (data.locked == true) {
                     $.get("rest/pool/" + $(deviceName).text() + "/tovirtualdevice", "", function(data, status, xhr) {
                         if (status == "success") {
-                            deviceDiv.append('<br/>SageTV Virtual Device: ' + data);
+                            deviceDiv.append("<br/>SageTV Virtual Device: " + data);
                         } else {
-                            deviceDiv.append('<br/>SageTV Virtual Device: Not Mapped');
+                            deviceDiv.append("<br/>SageTV Virtual Device: Not Mapped");
                         }
                     });
                 }
@@ -203,7 +203,7 @@ function createManageParentRows() {
         $("#manage-undo-parent-device-changes").addClass("hidden");
         manageLoadedParentTable.empty();
         manageLoadedParentTable.append(
-            '<tr><td class=\"manage-parent-name\">There are no capture devices currently loaded.</td>' +
+            "<tr><td class=\"manage-parent-name\">There are no capture devices currently loaded.</td>" +
             "<td class=\"manage-is-network\"></td>" +
             "<td class=\"manage-remote-ip\"></td>" +
             "<td class=\"manage-local-ip\"></td>" +
@@ -215,10 +215,10 @@ function createManageParentRows() {
             manageLoadedParentTable.empty();
             $.each(data, function(i, parentName) {
                 manageLoadedParentTable.append(
-                    '<tr><td class="manage-parent-name">' +
-                    '<a href="javascript:undefined" title="Click to show loaded child capture device names." data-toggle="collapse" data-target="#manage-parent-name-collapse-' + i + '">' +
-                    '<div class="manage-parent-lookup">' + parentName + '</div></a>' +
-                    '<div class="manage-parent-collapse collapse" id="manage-parent-name-collapse-' + i + '">Updating...</div></td>' +
+                    "<tr><td class=\"manage-parent-name\">" +
+                    "<a href=\"javascript:undefined\" title=\"Click to show loaded child capture device names.\" data-toggle=\"collapse\" data-target=\"#manage-parent-name-collapse-" + i + "\">" +
+                    "<div class=\"manage-parent-lookup\">" + parentName + "</div></a>" +
+                    "<div class=\"manage-parent-collapse collapse\" id=\"manage-parent-name-collapse-" + i + "\">Updating...</div></td>" +
                     "<td class=\"manage-is-network\"></td>" +
                     "<td class=\"manage-remote-ip\"></td>" +
                     "<td class=\"manage-local-ip\"></td>" +
@@ -247,10 +247,10 @@ function updateManageParentRows() {
             var localAddressDiv = $(parentName).parent().parent().parent().find(".manage-local-ip");
             if (data.networkDevice == true) {
                 remoteAddressDiv.html(data.remoteAddress);
-                localAddressDiv.html('<a href="javascript:$(\'#manage-parent-device-local-ip-' + i + '\').hide()" title="Click to change the local IP address." data-toggle="collapse" data-target="#manage-parent-device-collapse-' + i + '">' +
-                                     '<div class="manage-parent-device-local-ip-lookup" id="manage-parent-device-local-ip-' + i + '">' + data.localAddress + '</div></a>' +
-                                     '<div class="manage-parent-device-collapse collapse" id="manage-parent-device-collapse-' + i + '">' +
-                                     '<input type="text" class="form-control manage-parent-device-local-ip-value" value="' + data.localAddress + '"></div>');
+                localAddressDiv.html("<a href=\"javascript:$('#manage-parent-device-local-ip-" + i + "').hide()\" title=\"Click to change the local IP address.\" data-toggle=\"collapse\" data-target=\"#manage-parent-device-collapse-" + i + "\">" +
+                                     "<div class=\"manage-parent-device-local-ip-lookup\" id=\"manage-parent-device-local-ip-" + i + "\">" + data.localAddress + "</div></a>" +
+                                     "<div class=\"manage-parent-device-collapse collapse\" id=\"manage-parent-device-collapse-" + i + "\">" +
+                                     "<input type=\"text\" class=\"form-control manage-parent-device-local-ip-value\" value=\"" + data.localAddress + "\"></div>");
 
                 $(".manage-parent-device-local-ip-value").on("change keyup", function() {
                     managerLoadedParentCanApply();
@@ -290,7 +290,7 @@ $("#manage-apply-parent-device-changes").on("click", function() {
         return;
     }
 
-    if (!confirm('Are you sure you want to apply these changes?')) {
+    if (!confirm("Are you sure you want to apply these changes?")) {
         return;
     }
 
@@ -333,7 +333,7 @@ function createManageLoadedRows() {
             $("#manage-undo-loaded-device-changes").addClass("hidden");
             $("#manage-remove-loaded-device").addClass("hidden");
             manageLoadedTable.empty();
-            manageLoadedTable.append('<tr><td class=\"manage-loaded-checked\">There are no capture devices currently loaded.</td>' +
+            manageLoadedTable.append("<tr><td class=\"manage-loaded-checked\">There are no capture devices currently loaded.</td>" +
                                    "<td class=\"manage-name\"></td>" +
                                    "<td class=\"manage-merit\"></td>" +
                                    "<td class=\"manage-force-unlock\"></td>" +
@@ -348,21 +348,21 @@ function createManageLoadedRows() {
             $("#manage-remove-loaded-device").removeClass("hidden");
             manageLoadedTable.empty();
             $.each(data, function(i, deviceName) {
-                manageLoadedTable.append('<tr><td class="manage-loaded-checked"><input class="manage-loaded-checkbox" type="checkbox" value="' + deviceName + '"></td>' +
-                                       '<td class="manage-device-name">' +
-                                       '<a href="javascript:$(\'#manage-loaded-device-lookup-' + i + '\').hide()" title="Click to rename this capture device." data-toggle="collapse" data-target="#manage-loaded-device-collapse-' + i + '">' +
-                                       '<div class="manage-loaded-device-lookup" id="manage-loaded-device-lookup-' + i + '">' + deviceName + '</div></a>' +
-                                       '<div class="manage-loaded-collapse collapse" id="manage-loaded-device-collapse-' + i + '">' +
-                                       '<input type="text" class="form-control manage-rename-device" value="' + deviceName + '"></div></td>' +
+                manageLoadedTable.append("<tr><td class=\"manage-loaded-checked\"><input class=\"manage-loaded-checkbox\" type=\"checkbox\" value=\"" + deviceName + "\"></td>" +
+                                       "<td class=\"manage-device-name\">" +
+                                       "<a href=\"javascript:$('#manage-loaded-device-lookup-" + i + "').hide()\" title=\"Click to rename this capture device.\" data-toggle=\"collapse\" data-target=\"#manage-loaded-device-collapse-" + i + "\">" +
+                                       "<div class=\"manage-loaded-device-lookup\" id=\"manage-loaded-device-lookup-" + i + "\">" + deviceName + "</div></a>" +
+                                       "<div class=\"manage-loaded-collapse collapse\" id=\"manage-loaded-device-collapse-" + i + "\">" +
+                                       "<input type=\"text\" class=\"form-control manage-rename-device\" value=\"" + deviceName + "\"></div></td>" +
 
                                        "<td class=\"manage-merit\"></td>" +
                                        "<td class=\"manage-force-unlock\"></td>" +
                                        "<td class=\"manage-consumer\"></td>" +
                                        "<td class=\"manage-lineup\"></td>" +
                                        "<td class=\"manage-encoder-pool\"></td>" +
-                                       '<td class="manage-advanced">' +
-                                           '<button title="Edit all available properties for this capture device." class="manage-advanced-button btn btn-primary" type="button" onclick="showManageAdvanced(this);">...</button>' +
-                                       '</td></tr>');
+                                       "<td class=\"manage-advanced\">" +
+                                           "<button title=\"Edit all available properties for this capture device.\" class=\"manage-advanced-button btn btn-primary\" type=\"button\" onclick=\"showManageAdvanced(this);\">...</button>" +
+                                       "</td></tr>");
 
 
             });
@@ -409,11 +409,11 @@ function createManageLoadedRows() {
         });
 
         $.get("rest/lineup", "", function(data, status, xhr) {
-            var lineupDropDown = $('<select class="form-control manage-lineup-value">');
+            var lineupDropDown = $("<select class=\"form-control manage-lineup-value\">");
 
             $.each(data, function(i, lineup) {
                 $.get("rest/lineup/" + lineup + "/details", "", function(data, status, xhr) {
-                    lineupDropDown.append('<option class="manage-lineup-values" value="' + lineup + '">' + data.friendlyName + '</option>');
+                    lineupDropDown.append("<option class=\"manage-lineup-values\" value=\"" + lineup + "\">" + data.friendlyName + "</option>");
 
                     $(".manage-lineup").html(lineupDropDown);
                 });
@@ -439,7 +439,7 @@ function updateManageLoadedRows() {
             }
 
             var meritDiv = $(deviceName).parent().parent().parent().find(".manage-merit");
-            meritDiv.html('<input type="number" class="form-control manage-merit-value" min="0" max="2147483647" value="' + data.merit + '" />');
+            meritDiv.html("<input type=\"number\" class=\"form-control manage-merit-value\" min=\"0\" max=\"2147483647\" value=\"" + data.merit + "\" />");
 
             $(".manage-merit-value").on("keyup change", function() {
                 manageLoadedCanApply();
@@ -461,8 +461,8 @@ function updateManageLoadedRows() {
             });
 
             var forceDiv = $(deviceName).parent().parent().parent().find(".manage-force-unlock");
-            forceDiv.html('<input type="checkbox" class="form-control manage-force-unlock-value"/>');
-            forceDiv.find(".manage-force-unlock-value").prop("checked", data.alwaysForceExternalUnlock)
+            forceDiv.html("<input type=\"checkbox\" class=\"form-control manage-force-unlock-value\"/>");
+            forceDiv.find(".manage-force-unlock-value").prop("checked", data.alwaysForceExternalUnlock);
 
             $(".manage-force-unlock-value").on("change", function() {
                 manageLoadedCanApply();
@@ -509,14 +509,14 @@ function updateManageLoadedRows() {
             var lineupDiv = $(deviceName).parent().parent().parent().find(".manage-lineup");
             var lineupExists = false;
 
-            $(lineupDiv.find('.manage-lineup-values')).each(function(){
+            $(lineupDiv.find(".manage-lineup-values")).each(function(){
                 if (this.value == data.channelLineup) {
                     lineupExists = true;
                     this.selected = true;
 
                     // We don't want to add this trigger until the value is already set or we might
                     // end up with the apply button always enabled even when there are no changes.
-                    $(lineupDiv.find('.manage-lineup-value')).on("change", function() {
+                    $(lineupDiv.find(".manage-lineup-value")).on("change", function() {
                         manageLoadedCanApply();
 
                         if ($(this).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
@@ -544,14 +544,14 @@ function updateManageLoadedRows() {
                 var checkForLineup = setInterval(function() {
                     var lineupExists = false;
 
-                    $(lineupDiv.find('.manage-lineup-values')).each(function(){
+                    $(lineupDiv.find(".manage-lineup-values")).each(function(){
                         if (this.value == (data.channelLineup)) {
                             lineupExists = true;
                             this.selected = true;
 
                             // We don't want to add this trigger until the value is already set or we might
                             // end up with the apply button always enabled even when there are no changes.
-                            $(lineupDiv.find('.manage-lineup-value')).on("change", function() {
+                            $(lineupDiv.find(".manage-lineup-value")).on("change", function() {
                                 manageLoadedCanApply();
 
                                 if ($(this).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
@@ -579,7 +579,7 @@ function updateManageLoadedRows() {
             }
 
             var poolDiv = $(deviceName).parent().parent().parent().find(".manage-encoder-pool");
-            poolDiv.html('<input type="text" class="form-control manage-encoder-pool-value" value="' + (data.encoderPoolName) + '">');
+            poolDiv.html("<input type=\"text\" class=\"form-control manage-encoder-pool-value\" value=\"" + (data.encoderPoolName) + "\">");
 
             $(".manage-encoder-pool-value").on("keyup change", function() {
                 manageLoadedCanApply();
@@ -608,7 +608,7 @@ $("#manage-undo-loaded-device-changes").on("click", function() {
 });
 
 $(".manage-loaded-checkbox-all").change(function() {
-    $(".manage-loaded-checkbox").prop('checked', this.checked);
+    $(".manage-loaded-checkbox").prop("checked", this.checked);
     manageLoadedDevicesUnloadDevicesButton();
 });
 
@@ -640,7 +640,7 @@ $("#manage-apply-loaded-device-changes").on("click", function() {
         return;
     }
 
-    if (!confirm('Are you sure you want to apply these changes?')) {
+    if (!confirm("Are you sure you want to apply these changes?")) {
         return;
     }
 
@@ -693,7 +693,7 @@ $("#manage-remove-loaded-device").on("click", function() {
         return;
     }
 
-    if (!confirm('Are you sure you want to unload ' + $(".manage-loaded-checkbox:checked").length + ' capture devices?')) {
+    if (!confirm("Are you sure you want to unload " + $(".manage-loaded-checkbox:checked").length + " capture devices?")) {
         return;
     }
 
@@ -778,7 +778,7 @@ $("#manage-add-unloaded-device").on("click", function() {
         return;
     }
 
-    if (!confirm('Are you sure you want to load ' + $(".manage-unloaded-checkbox:checked").length + ' capture devices?')) {
+    if (!confirm("Are you sure you want to load " + $(".manage-unloaded-checkbox:checked").length + " capture devices?")) {
         return;
     }
 

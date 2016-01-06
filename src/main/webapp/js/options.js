@@ -12,20 +12,20 @@ function getProducer( name, impl ) {
 }
 
 function getRTPProducerOptions( name ) {
-    return '<select class="form-control manage-producer-value manage-advanced-value" name="' + name + '">' +
-               '<option value="opendct.producer.NIORTPProducerImpl">NIO RTP</option>' +
-            '</select>';
+    return "<select class=\"form-control manage-producer-value manage-advanced-value\" name=\"" + name + "\">" +
+              "<option value=\"opendct.producer.NIORTPProducerImpl\">NIO RTP</option>" +
+           "</select>";
 }
 
 function getHTTPProducerOptions( name ) {
-    return '<select class="form-control manage-producer-value manage-advanced-value" name="' + name + '">' +
-               '<option value="opendct.producer.HTTPProducerImpl">HTTP</option>' +
-            '</select>';
+    return "<select class=\"form-control manage-producer-value manage-advanced-value\" name=\"" + name + "\">" +
+              "<option value=\"opendct.producer.HTTPProducerImpl\">HTTP</option>" +
+           "</select>";
 }
 
 function getConsumerOptions( name ) {
-    return '<select class="form-control manage-consumer-value manage-advanced-value" name="' + name + '">' +
-               '<option value="opendct.consumer.FFmpegSageTVConsumerImpl">FFmpeg</option>' +
-               '<option value="opendct.consumer.RawSageTVConsumerImpl">Raw</option>' +
-            '</select>';
+    return "<select class=\"form-control manage-consumer-value manage-advanced-value\" name=\"" + name + "\">" +
+              "<option value=\"opendct.consumer.FFmpegSageTVConsumerImpl\">FFmpeg</option>" +
+              "<option value=\"opendct.consumer.RawSageTVConsumerImpl\">Raw</option>" +
+           "</select>";
 }

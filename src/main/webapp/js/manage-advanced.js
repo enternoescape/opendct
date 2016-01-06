@@ -57,7 +57,7 @@ function displayManageAdvancedProperties() {
                 displayManageAdvancedProperty(deviceName, data);
             },
             error : function(xhr, status, error) {
-                alert("Error " + status + ". There was a problem while getting properties for " + deviceName + ". Check log for details.");
+                alert("Error '" + status + "'. There was a problem while getting properties for '" + deviceName + "'. Check log for details.");
             }
         });
     });
@@ -88,13 +88,13 @@ function displayManageAdvancedProperty( deviceName, data) {
             case "producerBaseImpl":
                 if (manageAdvancedCreateIfNotExist("Producer", "", "producer")) {
                     console.log("Pre");
-                    $('#manage-advanced-prop-producer').find(".manage-advanced-object").html( getProducer( key, data[key] ) );
+                    $("#manage-advanced-prop-producer").find(".manage-advanced-object").html( getProducer( key, data[key] ) );
                 } else if ($("#manager-advanced-capture-devices-body").find(".manage-producer-value").length == 0) {
                     console.log("Aft");
                     // If the producer has already populated itself as a text box, this will convert it to a dropdown.
-                    var originalValue = $('#manage-advanced-prop-producer').find(".manage-advanced-value").val();
-                    $('#manage-advanced-prop-producer').find(".manage-advanced-object").html( getProducer( key, data[key] ) );
-                    $('#manage-advanced-prop-producer').find(".manage-advanced-value").val(originalValue);
+                    var originalValue = $("#manage-advanced-prop-producer").find(".manage-advanced-value").val();
+                    $("#manage-advanced-prop-producer").find(".manage-advanced-object").html( getProducer( key, data[key] ) );
+                    $("#manage-advanced-prop-producer").find(".manage-advanced-value").val(originalValue);
                 }
                 break;
             case "merit":
@@ -155,30 +155,30 @@ function manageAdvancedCreateIfNotExist( label, description, property ) {
 
 function manageAdvancedAutoCreateInput( label, description, property, value ) {
     if (manageAdvancedCreateIfNotExist( label, description, property)) {
-        if (typeof value === 'number') {
-            $('#manage-advanced-prop-' + property).find(".manage-advanced-object").html('<input type="number" min="0" max="2147483647" class="form-control manage-advanced-value" value="' + value + '">');
-        } else if (typeof value === 'boolean') {
-            $('#manage-advanced-prop-' + property).find(".manage-advanced-object").html('<input type="checkbox" class="checkbox form-control manage-advanced-value">');
-            $('#manage-advanced-prop-' + property).find(".manage-advanced-value").prop("checked", value);
+        if (typeof value === "number") {
+            $("#manage-advanced-prop-" + property).find(".manage-advanced-object").html("<input type=\"number\" min=\"0\" max=\"2147483647\" class=\"form-control manage-advanced-value\" value=\"" + value + "\">");
+        } else if (typeof value === "boolean") {
+            $("#manage-advanced-prop-" + property).find(".manage-advanced-object").html("<input type=\"checkbox\" class=\"checkbox form-control manage-advanced-value\">");
+            $("#manage-advanced-prop-" + property).find(".manage-advanced-value").prop("checked", value);
         } else {
-            $('#manage-advanced-prop-' + property).find(".manage-advanced-object").html('<input type="text" class="form-control manage-advanced-value" value="' + value + '">');
+            $("#manage-advanced-prop-" + property).find(".manage-advanced-object").html("<input type=\"text\" class=\"form-control manage-advanced-value\" value=\"" + value + "\">");
         }
     } else {
-        var domProperty = $('#manage-advanced-prop-' + property).find(".manage-advanced-value");
+        var domProperty = $("#manage-advanced-prop-" + property).find(".manage-advanced-value");
 
         if (domProperty.attr("type") == "checkbox") {
-            var currentValue = $('#manage-advanced-prop-' + property).find(".manage-advanced-value").prop("checked");
+            var currentValue = $("#manage-advanced-prop-" + property).find(".manage-advanced-value").prop("checked");
 
             if (currentValue != value) {
                 manageDisplayAdvancedConflictMessage( property );
-                $('#manage-advanced-prop-' + property).find(".manage-advanced-value").prop("checked", false);
+                $("#manage-advanced-prop-" + property).find(".manage-advanced-value").prop("checked", false);
             }
         } else {
-            var currentValue = $('#manage-advanced-prop-' + property).find(".manage-advanced-value").val();
+            var currentValue = $("#manage-advanced-prop-" + property).find(".manage-advanced-value").val();
 
             if (currentValue != value) {
                 manageDisplayAdvancedConflictMessage( property );
-                $('#manage-advanced-prop-' + property).find(".manage-advanced-value").val("");
+                $("#manage-advanced-prop-" + property).find(".manage-advanced-value").val("");
             }
         }
     }
@@ -186,22 +186,22 @@ function manageAdvancedAutoCreateInput( label, description, property, value ) {
 
 function manageAdvancedCreateOption( label, description, property, value, object ) {
     if (manageAdvancedCreateIfNotExist( label, description, property)) {
-        $('#manage-advanced-prop-' + property).find(".manage-advanced-object").html(object);
-        $('#manage-advanced-prop-' + property).find(".manage-advanced-value").val(value);
+        $("#manage-advanced-prop-" + property).find(".manage-advanced-object").html(object);
+        $("#manage-advanced-prop-" + property).find(".manage-advanced-value").val(value);
     } else {
-        var currentValue = $('#manage-advanced-prop-' + property).find(".manage-advanced-value").val();
+        var currentValue = $("#manage-advanced-prop-" + property).find(".manage-advanced-value").val();
 
         if (currentValue != value) {
             manageDisplayAdvancedConflictMessage( property );
-            $('#manage-advanced-prop-' + property).find(".manage-advanced-value").val("");
+            $("#manage-advanced-prop-" + property).find(".manage-advanced-value").val("");
         }
     }
 }
 
 function manageDisplayAdvancedConflictMessage( value ) {
     $("#manage-advanced-device-warning").html("Multiple capture devices have been selected that have conflicting properties. The conflicts have been highlighted in yellow. By changing any highlighted properties, the new value for that property will be applied to all currently selected capture devices that are listed above.");
-    $('#manage-advanced-prop-' + value).find(".manage-advanced-object").addClass("has-warning");
-    $('#manage-advanced-prop-' + value).find(".manage-advanced-label").addClass("text-conflict");
+    $("#manage-advanced-prop-" + value).find(".manage-advanced-object").addClass("has-warning");
+    $("#manage-advanced-prop-" + value).find(".manage-advanced-label").addClass("text-conflict");
     //text-conflict
     console.log(value);
 }
@@ -216,7 +216,7 @@ $("#manage-advanced-apply-changes").on("click", function() {
         return;
     }
 
-    if (!confirm('Are you sure you want to apply these changes?')) {
+    if (!confirm("Are you sure you want to apply these changes?")) {
         return;
     }
 

@@ -110,3 +110,7 @@
 > possibly exceeded warnings.
 
 > *Increased UDP buffer from 1500 to 65508 which is the largest size any UDP packet should ever be.
+
+#### 0.4.6-Alpha (compile only; not released)
+> *Changed UDP buffer to start at 1500 and dynamically resize to fit the current situation. It saves 
+> the final size and uses it the next time so detection only needs to happen once.

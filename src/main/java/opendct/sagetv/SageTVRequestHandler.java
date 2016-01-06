@@ -144,7 +144,7 @@ public class SageTVRequestHandler implements Runnable {
                     if (lastRequest.equals("VERSION")) {
                         // We are all version 3.0 capture devices. There doesn't appear to be any
                         // value in distinguishing.
-                        sendResponse("3.0\r\n");
+                        sendResponse("3.0");
                     } else if (lastRequest.startsWith("STOP")) {
                         if (lastRequest.contains(" ")) {
                             //It appears we can have more than one tuner on the same port.
@@ -170,7 +170,7 @@ public class SageTVRequestHandler implements Runnable {
 
                             setThreadName(deviceName, deviceName);
 
-                            sendResponse("OK\r\n");
+                            sendResponse("OK");
                         } else {
                             if (captureDevice != null) {
                                 captureDevice.stopEncoding();
@@ -231,17 +231,17 @@ public class SageTVRequestHandler implements Runnable {
                                     }
 
                                     postRecording();
-                                    sendResponse("OK\r\n");
+                                    sendResponse("OK");
                                 } else {
-                                    sendResponse("ERROR Device Start Failed\r\n");
+                                    sendResponse("ERROR Device Start Failed");
                                     logger.error("Encoder device is unable to start.");
                                 }
                             } else {
-                                sendResponse("ERROR Device Not Ready\r\n");
+                                sendResponse("ERROR Device Not Ready");
                                 logger.error("Encoder device is not ready.");
                             }
                         } else {
-                            sendResponse("ERROR Invalid Input\r\n");
+                            sendResponse("ERROR Invalid Input");
                             logger.error("Encoder device does not exist.");
                         }
                         //=============================================================================================
@@ -294,17 +294,17 @@ public class SageTVRequestHandler implements Runnable {
                                     }
 
                                     postRecording();
-                                    sendResponse("OK\r\n");
+                                    sendResponse("OK");
                                 } else {
-                                    sendResponse("ERROR Device Start Failed\r\n");
+                                    sendResponse("ERROR Device Start Failed");
                                     logger.error("Encoder device is unable to start.");
                                 }
                             } else {
-                                sendResponse("ERROR Device Not Ready\r\n");
+                                sendResponse("ERROR Device Not Ready");
                                 logger.error("Encoder device is not ready.");
                             }
                         } else {
-                            sendResponse("ERROR Invalid Input\r\n");
+                            sendResponse("ERROR Invalid Input");
                             logger.error("Encoder device does not exist.");
                         }
                         //=============================================================================================
@@ -351,13 +351,13 @@ public class SageTVRequestHandler implements Runnable {
                                     SageTVManager.setUploadIDByFilename(currentRecordFile, uploadID);
                                 }
 
-                                sendResponse("OK\r\n");
+                                sendResponse("OK");
                             } else {
-                                sendResponse("ERROR Device Switch Failed\r\n");
+                                sendResponse("ERROR Device Switch Failed");
                                 logger.error("Encoder device is unable to switch.");
                             }
                         } else {
-                            sendResponse("ERROR Invalid Input\r\n");
+                            sendResponse("ERROR Invalid Input");
                             logger.error("Encoder device does not exist.");
                         }
                         //=============================================================================================
@@ -402,13 +402,13 @@ public class SageTVRequestHandler implements Runnable {
                                     SageTVManager.setUploadIDByFilename(currentRecordFile, uploadID);
                                 }
 
-                                sendResponse("OK\r\n");
+                                sendResponse("OK");
                             } else {
-                                sendResponse("ERROR Device Switch Failed\r\n");
+                                sendResponse("ERROR Device Switch Failed");
                                 logger.error("Encoder device is unable to switch.");
                             }
                         } else {
-                            sendResponse("ERROR Invalid Input\r\n");
+                            sendResponse("ERROR Invalid Input");
                             logger.error("Encoder device does not exist.");
                         }
                         //=============================================================================================
@@ -442,7 +442,7 @@ public class SageTVRequestHandler implements Runnable {
 
                         if (captureDevice != null) {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
-                            sendResponse(captureDevice.getRecordedBytes() + "\r\n");
+                            sendResponse(String.valueOf(captureDevice.getRecordedBytes()));
                         }
 
                         //=============================================================================================
@@ -457,13 +457,13 @@ public class SageTVRequestHandler implements Runnable {
                         if (captureDevice != null) {
                             setThreadName(null, captureDevice.getEncoderName());
 
-                            sendTraceResponse(captureDevice.getRecordedBytes() + "\r\n");
+                            sendTraceResponse(String.valueOf(captureDevice.getRecordedBytes()));
                         } else {
                             try {
-                                sendTraceResponse(new java.io.File(getFilename).length() + "\r\n");
+                                sendTraceResponse(String.valueOf(new java.io.File(getFilename).length()));
                             } catch (Exception e) {
                                 logger.error("Unable to get the file size of '{}'.", getFilename);
-                                sendTraceResponse("0\r\n");
+                                sendTraceResponse("0");
                             }
                         }
 
@@ -471,7 +471,7 @@ public class SageTVRequestHandler implements Runnable {
                         // NOOP
                         //=============================================================================================
                     } else if (lastRequest.equals("NOOP")) {
-                        sendTraceResponse("OK\r\n");
+                        sendTraceResponse("OK");
 
                         //=============================================================================================
                         // TUNE (tunes a channel)
@@ -494,7 +494,7 @@ public class SageTVRequestHandler implements Runnable {
                             captureDevice.tuneToChannel(chanString);
                         }
 
-                        sendResponse("OK\r\n");
+                        sendResponse("OK");
 
                         //=============================================================================================
                         // AUTOTUNE (checks if channel is tunable or not)
@@ -518,7 +518,7 @@ public class SageTVRequestHandler implements Runnable {
                             returnValue = captureDevice.autoTuneChannel(chanString);
                         }
 
-                        sendResponse((returnValue ? "OK\r\n" : "NO_SIGNAL\r\n"));
+                        sendResponse((returnValue ? "OK" : "NO_SIGNAL"));
 
                         //=============================================================================================
                         // AUTOSCAN (checks if channel is tunable or not)
@@ -542,7 +542,7 @@ public class SageTVRequestHandler implements Runnable {
                             returnValue = captureDevice.autoScanChannel(chanString);
                         }
 
-                        sendResponse((returnValue ? "OK\r\n" : "NO_SIGNAL\r\n"));
+                        sendResponse((returnValue ? "OK" : "NO_SIGNAL"));
 
                         //=============================================================================================
                         // AUTOINFOSCAN
@@ -565,7 +565,7 @@ public class SageTVRequestHandler implements Runnable {
                             returnValue = captureDevice.scanChannelInfo(chanString);
                         }
 
-                        sendResponse((returnValue + "\r\n"));
+                        sendResponse(returnValue);
 
                         //=============================================================================================
                         // PROPERTIES
@@ -574,7 +574,7 @@ public class SageTVRequestHandler implements Runnable {
 
                         ArrayList<String> properties = SageTVManager.getAllTunerProperties(this);
 
-                        out.write(properties.size() + "\r\n");
+                        out.write(String.valueOf(properties.size()));
                         for (String property : properties) {
                             out.write(property + "\r\n");
                         }
@@ -647,6 +647,10 @@ public class SageTVRequestHandler implements Runnable {
             } else if (Util.isNullOrEmpty(poolDevice)) {
                 poolDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(virtualDevice);
             }
+        }
+
+        if (virtualDevice != null && virtualDevice.endsWith(" Digital TV Tuner")) {
+            virtualDevice = virtualDevice.substring(0, virtualDevice.length() - " Digital TV Tuner".length());
         }
 
         String newThreadName;
@@ -735,7 +739,7 @@ public class SageTVRequestHandler implements Runnable {
      * @throws IOException Thrown if there is an I/O error.
      */
     private void sendTraceResponse(String response) throws IOException {
-        out.write(response);
+        out.write(response + "\r\n");
         out.flush();
 
         if (LOG_TRACE) {
@@ -750,7 +754,7 @@ public class SageTVRequestHandler implements Runnable {
      * @throws IOException Thrown if there is an I/O error.
      */
     private void sendResponse(String response) throws IOException {
-        out.write(response);
+        out.write(response + "\r\n");
         out.flush();
 
         if (response.startsWith("ERROR ")) {

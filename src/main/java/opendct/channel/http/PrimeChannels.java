@@ -166,7 +166,7 @@ public class PrimeChannels {
                             if (oldChannel == null) {
                                 TVChannelImpl primeChannel = new TVChannelImpl(channel, name, channelUrl, ignore);
 
-                                if (enableAllChannels) {
+                                if (enableAllChannels && !channelUrl.contains("?CONTENTPROTECTIONTYPE")) {
                                     primeChannel.setTunable(true);
                                 }
 
@@ -174,7 +174,7 @@ public class PrimeChannels {
                             } else {
                                 oldChannel.setUrl(channelUrl);
 
-                                if (enableAllChannels) {
+                                if (enableAllChannels && !channelUrl.contains("?CONTENTPROTECTIONTYPE")) {
                                     oldChannel.setTunable(true);
                                 }
 

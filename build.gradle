@@ -59,7 +59,7 @@ ext {
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
     minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
     buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
-    buildType = "Beta"
+    buildType = "Alpha"
 
     javaVersion = '1.7'
     buildVersion = "${majorVersion}.${minorVersion}.${buildVersion}"
@@ -553,7 +553,7 @@ bintray {
     dryRun = false //Whether to run this as dry-run, without deploying
     publish = true //If version should be auto published after an upload
     pkg {
-        repo = 'Releases'
+        repo = 'Testing'
         name = 'OpenDCT'
         userOrg = 'opendct'
         desc = "OpenDCT Release"

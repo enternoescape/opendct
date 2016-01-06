@@ -28,7 +28,7 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
 public class HDHomeRunControl {
-    private static final Logger logger = LogManager.getLogger(HDHomeRunManager.class);
+    private static final Logger logger = LogManager.getLogger(HDHomeRunControl.class);
 
     public final static int HDHOMERUN_CONTROL_CONNECT_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_SEND_TIMEOUT = 2500;
@@ -127,7 +127,7 @@ public class HDHomeRunControl {
         rxPacket.BUFFER.clear();
         returnedBytes = 0;
         Thread receiveThread = new Thread(new ReceiveThread());
-        receiveThread.setName("HDHomeRunControlRecieve-" + receiveThread.getId());
+        receiveThread.setName("HDHomeRunControlReceive-" + receiveThread.getId());
         receiveThread.start();
 
         try {
@@ -157,7 +157,7 @@ public class HDHomeRunControl {
                     if (rxPacket.BUFFER.position() + length > rxPacket.BUFFER.limit()) {
                         if (logger.isDebugEnabled()) {
                             String returnValue = rxPacket.getTLVString(rxPacket.BUFFER.limit() - rxPacket.BUFFER.position());
-                            logger.debug("HDHomerun device returned a length ({}) larger than the data returned. UTF-8: '{}'", length, returnValue);
+                            logger.debug("HDHomeRun device returned a length ({}) larger than the data returned. UTF-8: '{}'", length, returnValue);
                         }
 
                         return logger.exit(null);
@@ -165,7 +165,7 @@ public class HDHomeRunControl {
 
                     if (tag == null) {
                         // Silicondust says to just ignore these.
-                        logger.debug("HDHomerun device returned an unknown tag with the length {}", length);
+                        logger.debug("HDHomeRun device returned an unknown tag with the length {}", length);
                         rxPacket.BUFFER.position(rxPacket.BUFFER.position() + length);
                         continue;
                     }
@@ -185,7 +185,7 @@ public class HDHomeRunControl {
 
                         default:
                             // Silicondust says to just ignore these.
-                            logger.debug("HDHomerun device returned an unexpected tag {} with the length {}", tag, length);
+                            logger.debug("HDHomeRun device returned an unexpected tag {} with the length {}", tag, length);
 
                             rxPacket.BUFFER.position(rxPacket.BUFFER.position() + length);
                             break;

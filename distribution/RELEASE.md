@@ -80,7 +80,11 @@
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 
 
+<<<<<<< HEAD
 #### 0.4.1-Beta  (compile only; not released)
+=======
+#### 0.4.1-Beta (compile only; not released)
+>>>>>>> origin/master
 > *Added handling for Prime urls with copy protection so they don't get enabled in the lineup.
 
 > *Fix a problem when tuning the frequency 0 that could potentially cause a device to never unlock.
@@ -91,6 +95,29 @@
 
 #### 0.4.3-Alpha (compile only; not released)
 > *Added and tested seek error handling to the circular buffer. More testing needed.
+
+#### 0.4.4-Alpha (compile only; not released)
+> *Still alpha due to the circular buffer changes.
+
+> *Added monitoring and validation for RTCP. Currently no responses are generated. This is just so
+> we know if it's happening.
+
+> *Internal: Added channel number to consumer so it can change it's behavior optionally based on the
+> currently tuned channel.
+
+> *Internal: Logging line ending and space usage improvements.
+
+#### 0.4.5-Alpha (compile only; not released)
+> *Fixed issue with RTCP port not closing at the right time.
+
+> *Added logging for initial packet losses, less than 12 bytes packet losses and packet size limit
+> possibly exceeded warnings.
+
+> *Increased UDP buffer from 1500 to 65508 which is the largest size any UDP packet should ever be.
+
+#### 0.4.6-Alpha (compile only; not released)
+> *Changed UDP buffer to start at 1500 and dynamically resize to fit the current situation. It saves 
+> the final size and uses it the next time so detection only needs to happen once.
 
 #### 1.0.0-Beta (compile only; not released)
 > *Added web interface on port 8090.

@@ -40,12 +40,17 @@ public class DCTRTSPClientImpl implements RTSPClient {
     private volatile int streamLocalPort = 0;
     private String sessionString = null;
 
-    // No checks for the status of anything else currently running are
-    // needed since this should not cause any exceptions, but if set
-    // incorrectly, it will stop the production thread from receiving
-    // any packets. The producer should already be running before you
-    // can use this method. If there is a configuration problem the
-    // method will return false.
+    /**
+     * Performs all of the steps needed to start receiving RTP packets.
+     * <p/>
+     * The producer should already be running before you can use this method. If there is a
+     * configuration problem the method will return false.
+     *
+     * @param streamOutURI The URI to use to configure the RTSP stream.
+     * @param streamInPort The port to receive RTP packets.
+     * @return <i>false</i> if the stream could not bes started.
+     * @throws UnknownHostException Thrown if the URI doesn't contain a valid hostname/IP address.
+     */
     public synchronized boolean configureRTPStream(URI streamOutURI, int streamInPort) throws UnknownHostException {
         logger.entry();
 
@@ -96,6 +101,11 @@ public class DCTRTSPClientImpl implements RTSPClient {
     public synchronized void stopRTPStream(URI streamOutURI) throws UnknownHostException {
         logger.entry();
 
+        if (streamOutURI == null) {
+            logger.warn("No URI was provided to stop the stream.");
+            return;
+        }
+
         this.streamRemoteURI = streamOutURI;
         this.streamRemoteIP = InetAddress.getByName(streamOutURI.getHost());
 
@@ -115,7 +125,7 @@ public class DCTRTSPClientImpl implements RTSPClient {
         return streamLocalPort;
     }
 
-    private String[] sendContent(String content) {
+    private String[] sendContent(String... contents) {
         logger.entry();
         ArrayList<String> response = new ArrayList<String>();
 
@@ -133,9 +143,12 @@ public class DCTRTSPClientImpl implements RTSPClient {
         }
 
 
-        logger.debug("Sending RTSP request: \n{}", content);
+        logger.debug("Sending RTSP request: {}", contents);
         try {
-            out.print(content);
+
+            for (String content : contents) {
+                out.print(content + "\r\n");
+            }
             out.flush();
 
             Integer contentLength = -1;
@@ -193,7 +206,7 @@ public class DCTRTSPClientImpl implements RTSPClient {
         }
 
         String acceptCodes[];
-        if (content.startsWith("TEARDOWN")) {
+        if (contents[0].startsWith("TEARDOWN")) {
             acceptCodes = new String[]{"2", "454"};
         } else {
             acceptCodes = new String[]{"2"};
@@ -231,13 +244,15 @@ public class DCTRTSPClientImpl implements RTSPClient {
 
     private Boolean sendDescribe() {
         logger.entry();
-        String content = "DESCRIBE " + streamRemoteURI + " RTSP/1.0\r\n" +
-                "CSeq: " + cSeq++ + "\r\n" +
-                "User-Agent: networkencoder-dct\r\n" +
-                "Accept: application/sdp\r\n\r\n";
 
         String[] response;
-        response = sendContent(content);
+        response = sendContent(
+                "DESCRIBE " + streamRemoteURI + " RTSP/1.0",
+                "CSeq: " + cSeq++,
+                "User-Agent: networkencoder-dct",
+                "Accept: application/sdp",
+                ""
+                );
 
         if (response == null || response.length < 6) {
             logger.error("Unable to get RTSP service description.");
@@ -278,13 +293,14 @@ public class DCTRTSPClientImpl implements RTSPClient {
     private Boolean sendSetup() {
         logger.entry();
 
-        String content = "SETUP " + streamRemoteURI + " RTSP/1.0\r\n" +
-                "CSeq: " + cSeq++ + "\r\n" +
-                "User-Agent: networkencoder-dct\r\n" +
-                "Transport: RTP/AVP;unicast;client_port=" + streamLocalPort + "-" + (streamLocalPort + 1) + ";mode=PLAY\r\n\r\n";
-
         String[] response;
-        response = sendContent(content);
+        response = sendContent(
+                "SETUP " + streamRemoteURI + " RTSP/1.0",
+                "CSeq: " + cSeq++,
+                "User-Agent: networkencoder-dct",
+                "Transport: RTP/AVP;unicast;client_port=" + streamLocalPort + "-" + (streamLocalPort + 1) + ";mode=PLAY",
+                ""
+                );
 
         if (response == null || response.length < 5) {
             logger.error("Unable to setup RTSP.");
@@ -320,13 +336,14 @@ public class DCTRTSPClientImpl implements RTSPClient {
     private Boolean sendPlay() {
         logger.entry();
 
-        String content = "PLAY " + streamRemoteURI + " RTSP/1.0\r\n" +
-                "CSeq: " + cSeq++ + "\r\n" +
-                "User-Agent: networkencoder-dct \r\n" +
-                sessionString + "\r\n\r\n";
-
         String[] response;
-        response = sendContent(content);
+        response = sendContent(
+                "PLAY " + streamRemoteURI + " RTSP/1.0",
+                "CSeq: " + cSeq++,
+                "User-Agent: networkencoder-dct",
+                sessionString,
+                ""
+                );
 
         if (response == null || response.length < 5) {
             logger.error("Unable to play RTSP.");
@@ -352,15 +369,16 @@ public class DCTRTSPClientImpl implements RTSPClient {
         logger.entry();
 
         if (sessionString != null) {
-            String content = "TEARDOWN " + streamRemoteURI + " RTSP/1.0\r\n" +
-                    "CSeq: " + cSeq++ + "\r\n" +
-                    "User-Agent: networkencoder-dct\r\n" +
-                    sessionString + "\r\n\r\n";
-
             // We don't really care what response we get. It seems to usually be an error.
             // I'm not even sure this is really required for this type of device since
             // ConnectionComplete over UPnP will terminate the connection.
-            sendContent(content);
+            sendContent(
+                    "TEARDOWN " + streamRemoteURI + " RTSP/1.0",
+                    "CSeq: " + cSeq++,
+                    "User-Agent: networkencoder-dct",
+                    sessionString,
+                    ""
+                    );
 
             /*
             RTSP/1.0 454 Session Not Found

@@ -16,6 +16,7 @@
 
 package opendct.consumer.upload;
 
+import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -75,7 +76,7 @@ public class NIOSageTVUploadID {
             this.uploadID = uploadID;
             autoOffset = 0;
 
-            sendMessage("WRITEOPEN " + uploadFilename + " " + uploadID + "\r\n");
+            sendMessage("WRITEOPEN " + uploadFilename + " " + uploadID);
 
             // The expected responses are OK or NON_MEDIA.
             try {
@@ -100,7 +101,7 @@ public class NIOSageTVUploadID {
     public void reset() {
         if (currentServerSocket != null) {
             try {
-                sendMessage("CLOSE\r\n");
+                sendMessage("CLOSE");
             } catch (IOException e) {
                 currentServerSocket = null;
             }
@@ -212,7 +213,7 @@ public class NIOSageTVUploadID {
 
             while (true) {
                 try {
-                    sendMessage("WRITE " + offset + " " + slice.remaining() + "\r\n");
+                    sendMessage("WRITE " + offset + " " + slice.remaining());
                     while (slice.hasRemaining() && !Thread.currentThread().isInterrupted()) {
                         int sentBytes = socketChannel.write(slice);
                         logger.trace("Transferred {} stream bytes to SageTV server. {} bytes remaining.", sentBytes, slice.remaining());
@@ -254,14 +255,14 @@ public class NIOSageTVUploadID {
         String response = null;
 
         synchronized (uploadLock) {
-            sendMessage("CLOSE\r\n");
+            sendMessage("CLOSE");
 
             // The expected responses are OK or NON_MEDIA.
             response = waitForMessage();
         }
 
         if (disconnect) {
-            sendMessage("QUIT\r\n");
+            sendMessage("QUIT");
 
             if (socketChannel != null && socketChannel.isOpen()) {
                 socketChannel.close();
@@ -287,7 +288,7 @@ public class NIOSageTVUploadID {
             }
 
             messageOutBuffer.clear();
-            messageOutBuffer.put(message.getBytes());
+            messageOutBuffer.put((message + "\r\n").getBytes(Config.STD_BYTE));
             messageOutBuffer.flip();
 
             while (messageOutBuffer.hasRemaining()) {

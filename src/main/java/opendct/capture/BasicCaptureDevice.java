@@ -524,7 +524,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         try {
             if (sageTVConsumerRunnable != null) {
-                lastChannel = channel;
+                setLastChannel(channel);
+                sageTVConsumerRunnable.setChannel(channel);
                 sageTVConsumerRunnable.switchStreamToFilename(filename, recordBufferSize);
                 recordingStartTime.getAndSet(System.currentTimeMillis());
                 recordLastFilename = filename;
@@ -567,7 +568,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         try {
             if (sageTVConsumerRunnable != null) {
-                lastChannel = channel;
+                setLastChannel(channel);
+                sageTVConsumerRunnable.setChannel(channel);
                 sageTVConsumerRunnable.switchStreamToUploadID(filename, recordBufferSize, uploadID);
                 recordingStartTime.getAndSet(System.currentTimeMillis());
                 recordLastFilename = filename;
@@ -594,7 +596,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *                        again.
      * @return Returns <i>false</i> if there was a problem starting consumption.
      */
-    protected boolean startConsuming(SageTVConsumer sageTVConsumer, String encodingQuality, long bufferSize) {
+    protected boolean startConsuming(String channel, SageTVConsumer sageTVConsumer, String encodingQuality, long bufferSize) {
         logger.entry();
 
         boolean returnValue = true;
@@ -614,6 +616,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             recordLastUploadID = sageTVConsumer.getEncoderUploadID();
 
             sageTVConsumerRunnable = sageTVConsumer;
+            setLastChannel(channel);
+            sageTVConsumerRunnable.setChannel(channel);
             sageTVConsumerRunnable.setRecordBufferSize(recordBufferSize);
             sageTVConsumerRunnable.setEncodingQuality(recordEncodingQuality);
             sageTVConsumerThread = new Thread(sageTVConsumerRunnable);

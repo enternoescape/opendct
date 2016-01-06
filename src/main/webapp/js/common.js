@@ -307,7 +307,7 @@ $("#manage-apply-parent-device-changes").on("click", function() {
 
         $.ajax({
             type: "POST",
-            url: "rest/capturedeviceparent/" + parentName + "/set",
+            url: "rest/capturedeviceparent/" + parentName,
             data: jsonResponse,
             contentType: "application/json",
             success: function(data, status, xhr) {
@@ -660,7 +660,7 @@ $("#manage-apply-loaded-device-changes").on("click", function() {
 
         $.ajax({
             type: "POST",
-            url: "rest/capturedevice/" + deviceName + "/set",
+            url: "rest/capturedevice/" + deviceName,
             data: jsonResponse,
             contentType: "application/json",
             success: function(data, status, xhr) {

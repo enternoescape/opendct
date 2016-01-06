@@ -106,7 +106,7 @@ public class RestCaptureDevice {
     }
 
     @POST
-    @Path("{name}/set")
+    @Path("{name}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response putCaptureDeviceDetails(@PathParam("name") String deviceName, JsonCaptureDeviceSet deviceSet) {
         CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(deviceName, false);

@@ -47,7 +47,7 @@ public class NIORTPProducerImpl implements RTPProducer {
     private int localPort = 0;
     private final int udpNativeReceiveBufferSize =
             Config.getInteger("producer.rtp.nio.native_udp_receive_buffer", 1328000);
-    private final int udpInternalReceiveBufferSize =
+    private int udpInternalReceiveBufferSize =
             Config.getInteger("producer.rtp.nio.internal_udp_receive_buffer", 1500);
     private final int udpInternalReceiveBufferLimit = 5242880;
     private InetAddress remoteIPAddress = null;
@@ -268,25 +268,28 @@ public class NIORTPProducerImpl implements RTPProducer {
 
                         sageTVConsumer.write(datagramBuffer.array(), datagramBuffer.position(), datagramBuffer.remaining());
 
-                        if (datagramSize == datagramBuffer.limit()) {
-                            if (datagramBuffer.limit() < udpInternalReceiveBufferLimit) {
-                                if (datagramBuffer.limit() < 32767) {
+                        if (datagramSize >= udpInternalReceiveBufferSize) {
+                            if (udpInternalReceiveBufferSize < udpInternalReceiveBufferLimit) {
+                                if (udpInternalReceiveBufferSize < 32767) {
                                     // This will cover 99% of the required adjustments.
-                                    datagramBuffer = ByteBuffer.allocate(32767);
+                                    udpInternalReceiveBufferSize = 32767;
+                                    datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
                                 } else {
-                                    if (datagramBuffer.limit() * 2 > udpInternalReceiveBufferLimit) {
-                                        datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferLimit);
+                                    if (udpInternalReceiveBufferSize * 2 >= udpInternalReceiveBufferLimit) {
+                                        udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit;
+                                        datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
                                     } else {
-                                        datagramBuffer = ByteBuffer.allocate(datagramBuffer.limit() * 2);
+                                        udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit * 2;
+                                        datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
                                     }
                                 }
 
-                                Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", datagramBuffer.limit());
+                                Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", udpInternalReceiveBufferSize);
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Increased buffer capacity to {} bytes.", datagramBuffer.limit());
                             } else {
-                                if (datagramBuffer.limit() != udpInternalReceiveBufferLimit) {
+                                if (!(udpInternalReceiveBufferSize == udpInternalReceiveBufferLimit)) {
                                     datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferLimit);
-                                    Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", datagramBuffer.limit());
+                                    Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", udpInternalReceiveBufferSize);
                                 }
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Buffer increase capacity limit reached at {} bytes.", datagramBuffer.limit());
                             }

@@ -114,3 +114,6 @@
 #### 0.4.6-Alpha (compile only; not released)
 > *Changed UDP buffer to start at 1500 and dynamically resize to fit the current situation. It saves 
 > the final size and uses it the next time so detection only needs to happen once.
+
+#### 0.4.7-Alpha (compile only; not released)
+> *Addresses a null pointer issue when tuning using UPnP.

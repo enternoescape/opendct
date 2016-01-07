@@ -49,3 +49,7 @@
 > issues relating to overall program functionality and all major issues have been resolved. There
 > will be no further updates to this version unless something critical is discovered and the current
 > latest version is not yet stable.
+
+#### 0.3.16-Stable
+> *Backported: Fixed an unreliable timeout issue with the re-tuning monitoring thread under the
+> right conditions.

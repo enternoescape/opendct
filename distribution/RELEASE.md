@@ -125,3 +125,9 @@
 #### 0.4.8-Alpha (compile only; not released)
 > *Fixed an unreliable timeout issue with the re-tuning monitoring thread under the right
 > conditions.
+
+> *Changed wrapper.conf to not restart on exit conditions that can't possibly be corrected by
+> restarting the program.
+
+> *Fixed an issue with HDHomeRun program detection not returning a value when it had not yet reached
+> the timeout.

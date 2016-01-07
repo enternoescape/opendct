@@ -16,6 +16,8 @@
 
 package opendct.tuning.hdhomerun.returns;
 
+import java.util.Arrays;
+
 public class HDHomeRunStreamInfo {
     private final String programs[];
     public final String TSID;
@@ -49,5 +51,13 @@ public class HDHomeRunStreamInfo {
 
     public String[] getPrograms() {
         return programs;
+    }
+
+    @Override
+    public String toString() {
+        return "HDHomeRunStreamInfo{" +
+                "programs=" + Arrays.toString(programs) +
+                ", TSID='" + TSID + '\'' +
+                '}';
     }
 }

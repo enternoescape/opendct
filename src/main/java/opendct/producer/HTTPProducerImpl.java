@@ -139,6 +139,12 @@ public class HTTPProducerImpl implements HTTPProducer {
         }
     }
 
+    public boolean isStalled() {
+        synchronized (receivedLock) {
+            return false;
+        }
+    }
+
     private boolean isInterrupted() {
         if (Thread.currentThread().isInterrupted()) {
             interrupted = true;

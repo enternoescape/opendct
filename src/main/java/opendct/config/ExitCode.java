@@ -34,6 +34,7 @@ public enum ExitCode {
     CONFIG_ISSUE(3, "OpenDCT was unable to open or create configuration data."),
     UPNP_LOGGER(4, "Cling UPnP is unable to open or create a log file at the provided location."),
     RESTART(5, "OpenDCT is restarting..."),
+    PARAMETER_CONFLICT(6, "OpenDCT had detected a parameter conflict in opendct.properties that must be corrected."),
 
     // Failures from the power message pump.
     PM_INIT(10, "PowerMessageManager was unable to determine what PowerMessagePump to use."),

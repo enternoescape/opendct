@@ -105,6 +105,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
 
+    private int retuneTimeout =
+            Config.getInteger("upnp.retune_poll_s", 1) * 1000;
     private boolean httpTune =
             Config.getBoolean("upnp.dct.http_tuning", true);
     private boolean hdhrTune =
@@ -299,6 +301,16 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
             if (isHDHRTune()) {
                 logger.info("Using HDHomeRun native protocol for this device.");
                 hdhrTuner = new HDHomeRunTuner(new HDHomeRunDevice(rtpStreamRemoteIP), encoderNumber);
+                if (logger.isDebugEnabled()) {
+                    try {
+                        logger.debug("HDHomeRun details: {}, {}, {}, {}", hdhrTuner.DEVICE.getSysHwModel(), hdhrTuner.DEVICE.getSysModel(), hdhrTuner.DEVICE.getSysVersion(), hdhrTuner.DEVICE.getSysFeatures());
+                        logger.debug("HDHomeRun help: {}", hdhrTuner.DEVICE.getHelp());
+                    } catch (IOException e) {
+                        logger.error("Unable to get help from HDHomeRun because the device cannot be reached => ", e);
+                    } catch (GetSetException e) {
+                        logger.error("Unable to get help from the HDHomeRun because the command did not work => ", e);
+                    }
+                }
             } else {
                 logger.info("Using UPnP tuning for this device.");
             }
@@ -692,10 +704,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                 try {
                     hdhrTuner.setVirtualChannel(channel);
                 } catch (IOException e) {
-                    logger.error("Unable to tune into channel '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel because it cannot be reached '{}' => ", channel, e);
                     return logger.exit(false);
                 } catch (GetSetException e) {
-                    logger.error("Unable to tune into channel '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel because the command did not work '{}' => ", channel, e);
                     return logger.exit(false);
                 }
                 break;
@@ -749,10 +761,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                         return logger.exit(false);
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to tune into channel => ", e);
+                    logger.error("HDHomeRun is unable to tune into channel because it cannot be reached => ", e);
                     return logger.exit(false);
                 } catch (GetSetException e) {
-                    logger.error("Unable to tune into channel => ", e);
+                    logger.error("HDHomeRun is unable to tune into channel because the command did not work => ", e);
                     return logger.exit(false);
                 } catch (InterruptedException e) {
                     logger.debug("Interrupted while trying to tune into channel => ", e);
@@ -782,10 +794,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
         try {
             hdhrTuner.setTarget("rtp://" + localIPAddress.getHostAddress() + ":" + rtpLocalPort);
         } catch (IOException e) {
-            logger.error("Unable to start RTP => ", e);
+            logger.error("HDHomeRun is unable to start RTP because the device could not be reached => ", e);
             return logger.exit(false);
         } catch (GetSetException e) {
-            logger.error("Unable to start RTP => ", e);
+            logger.error("HDHomeRun is unable to start RTP because the command did not work => ", e);
             return logger.exit(false);
         }
 
@@ -798,7 +810,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
 
                     int timeout = 50;
 
-                    while (newConsumer.getProgram() == -1) {
+                    while (newConsumer.getProgram() <= 0) {
                         Thread.sleep(100);
                         newConsumer.setProgram(hdhrTuner.getProgram());
 
@@ -814,11 +826,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                         }
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to get program => ", e);
+                    logger.error("HDHomeRun is unable to get program because the device cannot be reached => ", e);
                 } catch (GetSetException e) {
-                    logger.error("Unable to get program => ", e);
+                    logger.error("HDHomRun is unable to get program because the command did not work => ", e);
                 } catch (InterruptedException e) {
-                    logger.debug("Unable to get program => ", e);
+                    logger.debug("HDHomeRun is unable to get program because the thread was interrupted => ", e);
                     return logger.exit(false);
                 }
 
@@ -843,11 +855,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                         }
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to get PIDs => ", e);
+                    logger.error("HDHomeRun is unable to get PIDs because the device cannot be reached => ", e);
                 } catch (GetSetException e) {
-                    logger.error("Unable to get PIDs => ", e);
+                    logger.error("HDHomeRun is unable to get PIDs because the command did not work => ", e);
                 } catch (InterruptedException e) {
-                    logger.debug("Unable to get PIDs => ", e);
+                    logger.debug("HDHomeRun is unable to get PIDs because the thread was interrupted => ", e);
                     return logger.exit(false);
                 }
             }
@@ -1135,8 +1147,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     logger.info("TransportState is not currently PLAYING." +
                             " Fast tuning is not possible this time. Re-tuning...");
                     reTune = true;
+                } else if (rtpStreamRemoteURI == null) {
+                    logger.info("rtpStreamRemoteURI is null." +
+                            " Fast tuning is not possible this time. Re-tuning...");
+                    reTune = true;
                 }
-
             } else {
                 reTune = true;
             }
@@ -1247,24 +1262,29 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
             }
 
             logger.info("Configuring and starting the new RTP producer...");
-            String ipString = rtpStreamRemoteURI.getHost();
+            String ipString = null;
             try {
-                rtpStreamRemoteIP = InetAddress.getByName(ipString);
+                if (rtpStreamRemoteURI == null) {
+                    logger.error("The URI received was null. Will try again in {} seconds.", retuneTimeout /  1000);
+                } else {
+                    ipString = rtpStreamRemoteURI.getHost();
+                    rtpStreamRemoteIP = InetAddress.getByName(ipString);
 
-                int localRTPPort = 0;
-                if (fastTune && rtpLocalPort != -1) {
-                    localRTPPort = rtpLocalPort;
+                    int localRTPPort = 0;
+                    if (fastTune && rtpLocalPort != -1) {
+                        localRTPPort = rtpLocalPort;
+                    }
+
+                    if (!startProducing(newRTPProducer, newConsumer, rtpStreamRemoteIP, localRTPPort)) {
+                        logger.error("The producer thread using the implementation '{}' failed to start.",
+                                newRTPProducer.getClass().getSimpleName());
+
+                        subscriptionCleanup();
+                        return logger.exit(false);
+                    }
+
+                    rtpLocalPort = newRTPProducer.getLocalPort();
                 }
-
-                if (!startProducing(newRTPProducer, newConsumer, rtpStreamRemoteIP, localRTPPort)) {
-                    logger.error("The producer thread using the implementation '{}' failed to start.",
-                            newRTPProducer.getClass().getSimpleName());
-
-                    subscriptionCleanup();
-                    return logger.exit(false);
-                }
-
-                rtpLocalPort = newRTPProducer.getLocalPort();
             } catch (UnknownHostException e) {
                 logger.error("Error parsing an IP address from '{}' => {}", ipString, e);
                 subscriptionCleanup();
@@ -1366,38 +1386,25 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
                     // Music Choice channels take forever to start and with a 4 second timeout,
                     // they might never start.
-                    timeout = 16000;
+                    timeout = retuneTimeout * 4;
                 } else {
-                    timeout = 3000;
+                    timeout = retuneTimeout;
                 }
 
                 while (!Thread.currentThread().isInterrupted()) {
-                    lastValue = sageTVProducerRunnable.getPackets();
-                    lastBytesRecorded = getRecordedBytes();
-
                     try {
                         Thread.sleep(timeout);
                     } catch (InterruptedException e) {
                         return;
                     }
 
-                    currentValue = sageTVProducerRunnable.getPackets();
-                    currentBytesRecorded = getRecordedBytes();
-
-                    if (currentValue == lastValue && !Thread.currentThread().isInterrupted()) {
-
-                        if (!(lastBytesRecorded == currentBytesRecorded)) {
-                            continue;
-                        }
-
-                        logger.info("Stream halt detected. Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
-
+                    if (rtpProducerRunnable.isStalled() && !Thread.currentThread().isInterrupted()) {
                         String filename = originalFilename;
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;
 
-                        // Since it's possible that a SWITCH may have happened since we last started the
-                        // recording, this keeps everything consistent.
+                        // Since it's possible that a SWITCH may have happened since we last started
+                        // the recording, this keeps everything consistent.
                         if (sageTVConsumerRunnable != null) {
                             filename = sageTVConsumerRunnable.getEncoderFilename();
                             encodingQuality = sageTVConsumerRunnable.getEncoderQuality();
@@ -1483,9 +1490,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                         hdhrTuner.clearTarget();
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to stop HDHomeRun Prime capture device => ", e);
+                    logger.error("Unable to stop HDHomeRun Prime capture device because it cannot be reached => ", e);
                 } catch (GetSetException e) {
-                    logger.error("Unable to stop HDHomeRun Prime capture device => ", e);
+                    logger.error("Unable to stop HDHomeRun Prime capture device because the command did not work => ", e);
                 }
 
                 setHDHRLock(false);

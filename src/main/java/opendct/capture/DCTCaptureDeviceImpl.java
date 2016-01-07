@@ -706,10 +706,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 try {
                     hdhrTuner.setVirtualChannel(channel);
                 } catch (IOException e) {
-                    logger.error("Unable to tune into channel '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel because it cannot be reached '{}' => ", channel, e);
                     return logger.exit(false);
                 } catch (GetSetException e) {
-                    logger.error("Unable to tune into channel '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel because the command did not work '{}' => ", channel, e);
                     return logger.exit(false);
                 }
                 break;
@@ -763,10 +763,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         return logger.exit(false);
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to tune into channel => ", e);
+                    logger.error("HDHomeRun is unable to tune into channel because it cannot be reached => ", e);
                     return logger.exit(false);
                 } catch (GetSetException e) {
-                    logger.error("Unable to tune into channel => ", e);
+                    logger.error("HDHomeRun is unable to tune into channel because the command did not work => ", e);
                     return logger.exit(false);
                 } catch (InterruptedException e) {
                     logger.debug("Interrupted while trying to tune into channel => ", e);
@@ -796,10 +796,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         try {
             hdhrTuner.setTarget("rtp://" + localIPAddress.getHostAddress() + ":" + rtpLocalPort);
         } catch (IOException e) {
-            logger.error("Unable to start RTP => ", e);
+            logger.error("HDHomeRun is unable to start RTP because the device could not be reached => ", e);
             return logger.exit(false);
         } catch (GetSetException e) {
-            logger.error("Unable to start RTP => ", e);
+            logger.error("HDHomeRun is unable to start RTP because the command did not work => ", e);
             return logger.exit(false);
         }
 
@@ -812,7 +812,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
                     int timeout = 50;
 
-                    while (newConsumer.getProgram() == -1) {
+                    while (newConsumer.getProgram() <= 0) {
                         Thread.sleep(100);
                         newConsumer.setProgram(hdhrTuner.getProgram());
 
@@ -828,11 +828,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         }
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to get program => ", e);
+                    logger.error("HDHomeRun is unable to get program because the device cannot be reached => ", e);
                 } catch (GetSetException e) {
-                    logger.error("Unable to get program => ", e);
+                    logger.error("HDHomRun is unable to get program because the command did not work => ", e);
                 } catch (InterruptedException e) {
-                    logger.debug("Unable to get program => ", e);
+                    logger.debug("HDHomeRun is unable to get program because the thread was interrupted => ", e);
                     return logger.exit(false);
                 }
 
@@ -857,11 +857,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         }
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to get PIDs => ", e);
+                    logger.error("HDHomeRun is unable to get PIDs because the device cannot be reached => ", e);
                 } catch (GetSetException e) {
-                    logger.error("Unable to get PIDs => ", e);
+                    logger.error("HDHomeRun is unable to get PIDs because the command did not work => ", e);
                 } catch (InterruptedException e) {
-                    logger.debug("Unable to get PIDs => ", e);
+                    logger.debug("HDHomeRun is unable to get PIDs because the thread was interrupted => ", e);
                     return logger.exit(false);
                 }
             }
@@ -1490,9 +1490,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         hdhrTuner.clearTarget();
                     }
                 } catch (IOException e) {
-                    logger.error("Unable to stop HDHomeRun Prime capture device => ", e);
+                    logger.error("Unable to stop HDHomeRun Prime capture device because it cannot be reached => ", e);
                 } catch (GetSetException e) {
-                    logger.error("Unable to stop HDHomeRun Prime capture device => ", e);
+                    logger.error("Unable to stop HDHomeRun Prime capture device because the command did not work => ", e);
                 }
 
                 setHDHRLock(false);

@@ -103,10 +103,16 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private boolean cableCardPresent = false;
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
-    private boolean httpTune = Config.getBoolean("upnp.dct.http_tuning", true);
-    private boolean hdhrTune = Config.getBoolean("upnp.dct.hdhr_tuning", true);
-    private boolean autoMapReference = Config.getBoolean("upnp.qam.automap_reference_lookup", true);
-    private boolean autoMapTuning = Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
+    private int retuneTimeout =
+            Config.getInteger("upnp.retune_poll_s", 5) * 1000;
+    private boolean httpTune =
+            Config.getBoolean("upnp.dct.http_tuning", true);
+    private boolean hdhrTune =
+            Config.getBoolean("upnp.dct.hdhr_tuning", true);
+    private boolean autoMapReference =
+            Config.getBoolean("upnp.qam.automap_reference_lookup", true);
+    private boolean autoMapTuning =
+            Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
     private HDHomeRunTuner hdhrTuner = null;
 
     private Thread monitorThread = null;
@@ -1352,23 +1358,19 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
                     // Music Choice channels take forever to start and with a 4 second timeout,
                     // they might never start.
-                    timeout = 16000;
+                    timeout = retuneTimeout * 4;;
                 } else {
-                    timeout = 4000;
+                    timeout = retuneTimeout;
                 }
 
                 while (!Thread.currentThread().isInterrupted()) {
-                    lastValue = sageTVProducerRunnable.getPackets();
-
                     try {
                         Thread.sleep(timeout);
                     } catch (InterruptedException e) {
                         return;
                     }
 
-                    long currentValue = sageTVProducerRunnable.getPackets();
-
-                    if (currentValue == lastValue && !Thread.currentThread().isInterrupted()) {
+                    if (rtpProducerRunnable.isStalled() && !Thread.currentThread().isInterrupted()) {
                         String filename = originalFilename;
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;

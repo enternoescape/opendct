@@ -131,6 +131,10 @@ public class HTTPProducerImpl implements HTTPProducer {
         }
     }
 
+    public boolean isStalled() {
+        return false;
+    }
+
     public void stopProducing() {
         try {
             httpURLConnection.disconnect();

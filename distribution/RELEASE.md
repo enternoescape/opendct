@@ -131,3 +131,10 @@
 
 > *Fixed an issue with HDHomeRun program detection not returning a value when it had not yet reached
 > the timeout.
+
+#### 0.4.9-Beta (compile only; not released)
+> *Returned to beta now that the new buffer has been in use for about a week without any complaints
+> relating to the buffer. The changes were not intense enough to warrant any further testing. We now
+> have a junit test to help confirm the integrity of the buffer.
+
+> *Fixed speed and line termination issue when returning PROPERTIES.

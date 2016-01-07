@@ -40,7 +40,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 3;
-    public static final int VERSION_BUILD = 15;
+    public static final int VERSION_BUILD = 16;
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();

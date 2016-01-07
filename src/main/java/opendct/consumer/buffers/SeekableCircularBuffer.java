@@ -32,6 +32,7 @@ public class SeekableCircularBuffer {
     protected volatile int writePasses = 0;
     protected volatile int readPasses = 0;
 
+
     private AtomicInteger bytesOverflow = new AtomicInteger(0);
     private AtomicInteger bytesLost = new AtomicInteger(0);
     private boolean overflow = false;
@@ -113,12 +114,13 @@ public class SeekableCircularBuffer {
 
         synchronized (writeLock) {
             int writeAvailable = writeAvailable();
-            if (writeAvailable <= 0) {
+
+            if (writeAvailable - length <= 0) {
                 if (!overflow) {
                     logger.warn("The buffer contains {} bytes, has only {} bytes left for writing and {} bytes cannot be added.", readAvailable(), writeAvailable, length);
                     overflow = true;
                 }
-                bytesOverflow.getAndAdd(length);
+                bytesOverflow.getAndAdd(Math.abs(length));
 
                 synchronized (readMonitor) {
                     readMonitor.notifyAll();

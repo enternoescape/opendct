@@ -106,7 +106,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private InetAddress localIPAddress = null;
 
     private int retuneTimeout =
-            Config.getInteger("upnp.retune_poll_s", 5) * 1000;
+            Config.getInteger("upnp.retune_poll_s", 1) * 1000;
     private boolean httpTune =
             Config.getBoolean("upnp.dct.http_tuning", true);
     private boolean hdhrTune =
@@ -1403,8 +1403,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;
 
-                        // Since it's possible that a SWITCH may have happened since we last started the
-                        // recording, this keeps everything consistent.
+                        // Since it's possible that a SWITCH may have happened since we last started
+                        // the recording, this keeps everything consistent.
                         if (sageTVConsumerRunnable != null) {
                             filename = sageTVConsumerRunnable.getEncoderFilename();
                             encodingQuality = sageTVConsumerRunnable.getEncoderQuality();

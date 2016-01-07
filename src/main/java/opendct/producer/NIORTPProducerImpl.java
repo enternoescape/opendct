@@ -41,10 +41,13 @@ public class NIORTPProducerImpl implements RTPProducer {
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
     private RTCPClient rtcpClient = new RTCPClient();
 
-    private volatile int packetsBadReceived = 0;
-    private volatile long packetsReceived = 0;
-    private volatile long packetsLastReceived = 0;
+    private int packetsBadReceived = 0;
+    private long packetsReceived = 0;
+    private long packetsLastReceived = 0;
+    private boolean stalled = false;
     private int localPort = 0;
+    private final int stalledTimeout =
+            Config.getInteger("producer.rtp.nio.stalled_timeout_s", 6);
     private final int udpNativeReceiveBufferSize =
             Config.getInteger("producer.rtp.nio.native_udp_receive_buffer", 1328000);
     private int udpInternalReceiveBufferSize =
@@ -123,6 +126,12 @@ public class NIORTPProducerImpl implements RTPProducer {
         datagramChannel.socket().close();
     }
 
+    public boolean isStalled() {
+        synchronized (receiveMonitor) {
+            return stalled;
+        }
+    }
+
     public int getLocalPort() {
         return localPort;
     }
@@ -148,6 +157,11 @@ public class NIORTPProducerImpl implements RTPProducer {
             @Override
             public void run() {
 
+                if (stalledTimeout == 0) {
+                    logger.debug("Stall timeout detection is disabled.");
+                    return;
+                }
+
                 logger.info("Producer packet monitoring thread is running.");
                 boolean firstPacketsReceived = true;
 
@@ -156,51 +170,40 @@ public class NIORTPProducerImpl implements RTPProducer {
                         packetsLastReceived = packetsReceived;
                     }
 
+                    long recentPackets;
+
                     try {
-                        Thread.sleep(5000);
+                        int timeout = stalledTimeout;
+
+                        while (!Thread.currentThread().isInterrupted() && timeout-- > 0) {
+                            Thread.sleep(1000);
+
+                            synchronized (receiveMonitor) {
+                                recentPackets = packetsReceived;
+
+                                if (!(recentPackets == packetsLastReceived)) {
+                                    stalled = false;
+                                }
+                            }
+                        }
                     } catch (InterruptedException e) {
                         logger.debug("The packet monitoring thread has been interrupted.");
                         break;
                     }
 
-                    long recentPackets;
-
                     synchronized (receiveMonitor) {
                         recentPackets = packetsReceived;
-                        packetsReceived = 0;
                     }
 
                     if (recentPackets == packetsLastReceived) {
-                        logger.info("No packets received in over 5 seconds.");
+                        logger.info("No packets received in over {} seconds.", stalledTimeout);
 
-                        if (datagramChannel != null) {
-                            synchronized (receiveMonitor) {
-                                try {
-                                    datagramChannel.close();
-                                    // The datagram channel doesn't seem to close the socket every time.
-                                    datagramChannel.socket().close();
-                                } catch (IOException e) {
-                                    logger.debug("Producer created an exception while closing the datagram channel => ", e);
-                                }
-
-                                datagramChannel = null;
-                            }
+                        synchronized (receiveMonitor) {
+                            stalled = true;
                         }
-
-                        try {
-                            DatagramChannel newChannel = DatagramChannel.open();
-                            newChannel.socket().bind(new InetSocketAddress(localPort));
-                            newChannel.socket().setBroadcast(false);
-                            newChannel.socket().setReceiveBufferSize(udpNativeReceiveBufferSize);
-
-                            synchronized (receiveMonitor) {
-                                datagramChannel = newChannel;
-                                receiveMonitor.notifyAll();
-                            }
-                        } catch (SocketException e) {
-                            logger.error("Producer created an exception while configuring a socket => ", e);
-                        } catch (IOException e) {
-                            logger.error("Producer created an exception while opening a new datagram channel => ", e);
+                    } else {
+                        synchronized (receiveMonitor) {
+                            stalled = false;
                         }
                     }
 

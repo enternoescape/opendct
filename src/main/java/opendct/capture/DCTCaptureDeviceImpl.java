@@ -105,6 +105,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
 
+    private int retuneTimeout =
+            Config.getInteger("upnp.retune_poll_s", 1) * 1000;
     private boolean httpTune =
             Config.getBoolean("upnp.dct.http_tuning", true);
     private boolean hdhrTune =
@@ -1147,8 +1149,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     logger.info("TransportState is not currently PLAYING." +
                             " Fast tuning is not possible this time. Re-tuning...");
                     reTune = true;
+                } else if (rtpStreamRemoteURI == null) {
+                    logger.info("rtpStreamRemoteURI is null." +
+                            " Fast tuning is not possible this time. Re-tuning...");
+                    reTune = true;
                 }
-
             } else {
                 reTune = true;
             }
@@ -1259,24 +1264,29 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
             logger.info("Configuring and starting the new RTP producer...");
-            String ipString = rtpStreamRemoteURI.getHost();
+            String ipString = null;
             try {
-                rtpStreamRemoteIP = InetAddress.getByName(ipString);
+                if (rtpStreamRemoteURI == null) {
+                    logger.error("The URI received was null. Will try again in {} seconds.", retuneTimeout /  1000);
+                } else {
+                    ipString = rtpStreamRemoteURI.getHost();
+                    rtpStreamRemoteIP = InetAddress.getByName(ipString);
 
-                int localRTPPort = 0;
-                if (fastTune && rtpLocalPort != -1) {
-                    localRTPPort = rtpLocalPort;
+                    int localRTPPort = 0;
+                    if (fastTune && rtpLocalPort != -1) {
+                        localRTPPort = rtpLocalPort;
+                    }
+
+                    if (!startProducing(newRTPProducer, newConsumer, rtpStreamRemoteIP, localRTPPort)) {
+                        logger.error("The producer thread using the implementation '{}' failed to start.",
+                                newRTPProducer.getClass().getSimpleName());
+
+                        subscriptionCleanup();
+                        return logger.exit(false);
+                    }
+
+                    rtpLocalPort = newRTPProducer.getLocalPort();
                 }
-
-                if (!startProducing(newRTPProducer, newConsumer, rtpStreamRemoteIP, localRTPPort)) {
-                    logger.error("The producer thread using the implementation '{}' failed to start.",
-                            newRTPProducer.getClass().getSimpleName());
-
-                    subscriptionCleanup();
-                    return logger.exit(false);
-                }
-
-                rtpLocalPort = newRTPProducer.getLocalPort();
             } catch (UnknownHostException e) {
                 logger.error("Error parsing an IP address from '{}' => {}", ipString, e);
                 subscriptionCleanup();
@@ -1376,29 +1386,25 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
                     // Music Choice channels take forever to start and with a 4 second timeout,
                     // they might never start.
-                    timeout = 16000;
+                    timeout = retuneTimeout * 4;
                 } else {
-                    timeout = 4000;
+                    timeout = retuneTimeout;
                 }
 
                 while (!Thread.currentThread().isInterrupted()) {
-                    lastValue = sageTVProducerRunnable.getPackets();
-
                     try {
                         Thread.sleep(timeout);
                     } catch (InterruptedException e) {
                         return;
                     }
 
-                    currentValue = sageTVProducerRunnable.getPackets();
-
-                    if (currentValue == lastValue && !Thread.currentThread().isInterrupted()) {
+                    if (rtpProducerRunnable.isStalled() && !Thread.currentThread().isInterrupted()) {
                         String filename = originalFilename;
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;
 
-                        // Since it's possible that a SWITCH may have happened since we last started the
-                        // recording, this keeps everything consistent.
+                        // Since it's possible that a SWITCH may have happened since we last started
+                        // the recording, this keeps everything consistent.
                         if (sageTVConsumerRunnable != null) {
                             filename = sageTVConsumerRunnable.getEncoderFilename();
                             encodingQuality = sageTVConsumerRunnable.getEncoderQuality();

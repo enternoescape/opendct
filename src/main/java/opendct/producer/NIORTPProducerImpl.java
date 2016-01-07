@@ -47,7 +47,7 @@ public class NIORTPProducerImpl implements RTPProducer {
     private boolean stalled = false;
     private int localPort = 0;
     private final int stalledTimeout =
-            Config.getInteger("producer.rtp.nio.stalled_timeout_s", 5) * 1000;
+            Config.getInteger("producer.rtp.nio.stalled_timeout_s", 5);
     private final int udpReceiveBufferSize =
             Config.getInteger("producer.nio.udp_receive_buffer", 1328000);
     private InetAddress remoteIPAddress = null;
@@ -162,22 +162,34 @@ public class NIORTPProducerImpl implements RTPProducer {
                         packetsLastReceived = packetsReceived;
                     }
 
+                    long recentPackets;
+
                     try {
-                        Thread.sleep(stalledTimeout);
+                        int timeout = stalledTimeout;
+
+                        while (!Thread.currentThread().isInterrupted() && timeout-- > 0) {
+                            Thread.sleep(1000);
+
+                            synchronized (receiveMonitor) {
+                                recentPackets = packetsReceived;
+
+                                if (!(recentPackets == packetsLastReceived)) {
+                                    stalled = false;
+                                }
+                            }
+                        }
                     } catch (InterruptedException e) {
                         logger.debug("The packet monitoring thread has been interrupted.");
                         break;
                     }
 
-                    long recentPackets;
 
                     synchronized (receiveMonitor) {
                         recentPackets = packetsReceived;
-                        packetsReceived = 0;
                     }
 
                     if (recentPackets == packetsLastReceived) {
-                        logger.info("No packets received in over {} seconds.", stalledTimeout / 1000);
+                        logger.info("No packets received in over {} seconds.", stalledTimeout);
 
                         synchronized (receiveMonitor) {
                             stalled = true;

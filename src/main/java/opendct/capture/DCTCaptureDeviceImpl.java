@@ -104,7 +104,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
     private int retuneTimeout =
-            Config.getInteger("upnp.retune_poll_s", 5) * 1000;
+            Config.getInteger("upnp.retune_poll_s", 1) * 1000;
     private boolean httpTune =
             Config.getBoolean("upnp.dct.http_tuning", true);
     private boolean hdhrTune =

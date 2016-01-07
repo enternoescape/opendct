@@ -124,4 +124,19 @@ public class HDHomeRunVStatus {
         NOT_AVAILABLE = notAvailable;
         COPY_PROTECTED = copyProtected;
     }
+
+    @Override
+    public String toString() {
+        return "HDHomeRunVStatus{" +
+                "VCHANNEL='" + VCHANNEL + '\'' +
+                ", NAME='" + NAME + '\'' +
+                ", AUTH='" + AUTH + '\'' +
+                ", CCI='" + CCI + '\'' +
+                ", COPY_PROTECTION=" + COPY_PROTECTION +
+                ", CGMS='" + CGMS + '\'' +
+                ", NOT_SUBSCRIBED=" + NOT_SUBSCRIBED +
+                ", NOT_AVAILABLE=" + NOT_AVAILABLE +
+                ", COPY_PROTECTED=" + COPY_PROTECTED +
+                '}';
+    }
 }

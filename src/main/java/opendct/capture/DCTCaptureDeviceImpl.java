@@ -313,6 +313,16 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             if (isHDHRTune()) {
                 logger.info("Using HDHomeRun native protocol for this device.");
                 hdhrTuner = new HDHomeRunTuner(new HDHomeRunDevice(rtpStreamRemoteIP), encoderNumber);
+                if (logger.isDebugEnabled()) {
+                    try {
+                        logger.debug("HDHomeRun details: {}, {}, {}, {}", hdhrTuner.DEVICE.getSysHwModel(), hdhrTuner.DEVICE.getSysModel(), hdhrTuner.DEVICE.getSysVersion(), hdhrTuner.DEVICE.getSysFeatures());
+                        logger.debug("HDHomeRun help: {}", hdhrTuner.DEVICE.getHelp());
+                    } catch (IOException e) {
+                        logger.error("Unable to get help from HDHomeRun because the device cannot be reached => ", e);
+                    } catch (GetSetException e) {
+                        logger.error("Unable to get help from the HDHomeRun because the command did not work => ", e);
+                    }
+                }
             } else {
                 logger.info("Using UPnP tuning for this device.");
             }

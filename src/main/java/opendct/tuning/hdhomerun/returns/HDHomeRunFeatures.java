@@ -16,6 +16,8 @@
 
 package opendct.tuning.hdhomerun.returns;
 
+import java.util.Arrays;
+
 public class HDHomeRunFeatures {
     private final String channelmap[];
     private final String modulation[];
@@ -67,5 +69,14 @@ public class HDHomeRunFeatures {
 
     public String[] getAutoModulation() {
         return autoModulation;
+    }
+
+    @Override
+    public String toString() {
+        return "HDHomeRunFeatures{" +
+                "channelmap=" + Arrays.toString(channelmap) +
+                ", modulation=" + Arrays.toString(modulation) +
+                ", autoModulation=" + Arrays.toString(autoModulation) +
+                '}';
     }
 }

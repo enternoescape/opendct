@@ -569,11 +569,14 @@ public class SageTVRequestHandler implements Runnable {
 
                         ArrayList<String> properties = SageTVManager.getAllTunerProperties(this);
 
-                        out.write(String.valueOf(properties.size()));
+                        StringBuilder stringBuilder = new StringBuilder();
+
                         for (String property : properties) {
-                            out.write(property + "\r\n");
+                            stringBuilder.append(property).append("\r\n");
                         }
 
+                        out.write(String.valueOf(properties.size()) + "\r\n");
+                        out.write(stringBuilder.toString());
                         out.flush();
 
                         logger.info("Sent PROPERTIES.");

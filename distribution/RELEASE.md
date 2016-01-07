@@ -50,6 +50,10 @@
 > will be no further updates to this version unless something critical is discovered and the current
 > latest version is not yet stable.
 
+#### 0.3.16-Stable
+> *Backported: Fixed an unreliable timeout issue with the re-tuning monitoring thread under the
+> right conditions.
+
 #### 0.4.0-Beta (compile only; not released)
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
@@ -117,3 +121,7 @@
 
 #### 0.4.7-Alpha (compile only; not released)
 > *Addresses a null pointer issue when tuning using UPnP.
+
+#### 0.4.8-Alpha (compile only; not released)
+> *Fixed an unreliable timeout issue with the re-tuning monitoring thread under the right
+> conditions.

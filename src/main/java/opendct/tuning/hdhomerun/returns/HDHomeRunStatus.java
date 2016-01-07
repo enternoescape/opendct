@@ -105,4 +105,19 @@ public class HDHomeRunStatus {
         RAW_BITS_PER_SECOND = rawBitsPerSecond;
         PACKETS_PER_SECOND = packetsPerSecond;
     }
+
+    @Override
+    public String toString() {
+        return "HDHomeRunStatus{" +
+                "CHANNEL='" + CHANNEL + '\'' +
+                ", LOCK_STR='" + LOCK_STR + '\'' +
+                ", SIGNAL_PRESENT=" + SIGNAL_PRESENT +
+                ", LOCK_SUPPORTED=" + LOCK_SUPPORTED +
+                ", SIGNAL_STRENGTH=" + SIGNAL_STRENGTH +
+                ", SIGNAL_TO_NOISE_QUALITY=" + SIGNAL_TO_NOISE_QUALITY +
+                ", SYMBOL_ERROR_QUALITY=" + SYMBOL_ERROR_QUALITY +
+                ", RAW_BITS_PER_SECOND=" + RAW_BITS_PER_SECOND +
+                ", PACKETS_PER_SECOND=" + PACKETS_PER_SECOND +
+                '}';
+    }
 }

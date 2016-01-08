@@ -40,7 +40,7 @@ The majority of the configuration is done inside opendct.properties. The file is
 * sagetv.device.global.required\_devices\_loaded\_timeout\_ms=30000
  * This is the amount of time allowed in milliseconds to pass while waiting for the required number of devices before the program will exit with a failure.
 * sagetv.device.global.required\_devices\_loaded\_count=0
- * This is the number of devices that need to be detected and loaded before the required timeout.
+ * This is the number of devices that need to be detected and loaded before the required timeout. This must be the total number of devices OpenDCT normally detects and loads for standby support to work correctly. 
 
 > Available as of version 0.4 (compile only; not yet released)
 

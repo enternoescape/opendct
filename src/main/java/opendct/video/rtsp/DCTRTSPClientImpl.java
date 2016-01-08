@@ -143,7 +143,7 @@ public class DCTRTSPClientImpl implements RTSPClient {
         }
 
 
-        logger.debug("Sending RTSP request: {}", contents);
+        logger.debug("Sending RTSP request: {}", Arrays.toString(contents));
         try {
 
             for (String content : contents) {

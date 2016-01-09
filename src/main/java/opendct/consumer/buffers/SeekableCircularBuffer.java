@@ -386,12 +386,12 @@ public class SeekableCircularBuffer {
      * A mark must be set or nothing will be changed.
      *
      * @param increment Total number of indexes to increment the read index.
-     * @return The actual relative read index that was the result of the increment.
+     * @return The actual read index based on the total bytes read that was the result of the increment.
      */
-    public int incrementReadIndex(long increment) throws IndexOutOfBoundsException {
+    public long incrementReadIndex(long increment) throws IndexOutOfBoundsException {
         logger.entry(increment);
 
-        int returnValue = -1;
+        long returnValue = -1;
 
         synchronized (readLock) {
             if (readIndex + increment > buffer.length) {
@@ -414,7 +414,7 @@ public class SeekableCircularBuffer {
             readIndex = (int)(index % buffer.length);
             readPasses = (int)(index / buffer.length);
 
-            returnValue = readAvailable();
+            returnValue = totalReadBytes();
         }
 
         logger.debug("Incremental index {} to bytes read index set read index to actual index {}, read passes {}.", increment, readIndex, readPasses);

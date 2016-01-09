@@ -144,4 +144,6 @@
 > is 1GB. Free space could be a very real issue if logging gets intense for any reason and logging
 > should never be the cause of your server failing. This runs after log files are deleted by date.
 
+> *Increased logging for re-tuning to help determine why it happened.
+
 > *Internal: Changed to TestNG for greater flexibility in testing.

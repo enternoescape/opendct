@@ -60,7 +60,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDevice {
     private final Logger logger = LogManager.getLogger(DCTCaptureDeviceImpl.class);
@@ -991,14 +990,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             // consumer.
             if (monitorThread == null || monitorThread != Thread.currentThread()) {
                 try {
-                    int getProgram = InfiniTVStatus.GetProgram(encoderIPAddress, encoderNumber, 5);
+                    int getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 5);
                     newConsumer.setProgram(getProgram);
 
                     int timeout = 50;
 
                     while (newConsumer.getProgram() == -1) {
                         Thread.sleep(100);
-                        getProgram = InfiniTVStatus.GetProgram(encoderIPAddress, encoderNumber, 5);
+                        getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 5);
                         newConsumer.setProgram(getProgram);
 
                         if (timeout-- < 0) {
@@ -1019,14 +1018,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 }
 
                 try {
-                    int pids[] = InfiniTVStatus.GetPids(encoderIPAddress, encoderNumber, 5);
+                    int pids[] = InfiniTVStatus.getPids(encoderIPAddress, encoderNumber, 5);
                     newConsumer.setPids(pids);
 
                     int timeout = 50;
 
                     while (newConsumer.getPids().length <= 1) {
                         Thread.sleep(100);
-                        pids = InfiniTVStatus.GetPids(encoderIPAddress, encoderNumber, 5);
+                        pids = InfiniTVStatus.getPids(encoderIPAddress, encoderNumber, 5);
                         newConsumer.setPids(pids);
 
                         if (timeout-- < 0) {
@@ -1422,7 +1421,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                             uploadID = sageTVConsumerRunnable.getEncoderUploadID();
                         }
 
-                        logger.error("No data was streamed after {} milliseconds. Re-tuning channel...", timeout);
+
+                        logger.error("No data was streamed after {} milliseconds. Copy protection status is '{}' and signal strength is {}. Re-tuning channel...", timeout, getCopyProtection(), getSignalStrength());
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(getTunerStatusString());
+                        }
 
                         boolean tuned = false;
 
@@ -1437,7 +1440,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                             }
                         }
 
-                        logger.info("Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
+                        logger.info("Stream halt caused re-tune. Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
                     }
 
                     if (getRecordedBytes() != 0 && firstPass) {
@@ -1656,7 +1659,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             // http://x.x.x.x/get_var?i=0&s=diag&v=Signal_Level
             // -8.0 dBmV
             try {
-                signal = InfiniTVStatus.GetSignalStrength(encoderIPAddress, encoderNumber);
+                signal = InfiniTVStatus.getSignalStrength(encoderIPAddress, encoderNumber);
             } catch (Exception e) {
                 logger.debug("Unable to get signal strength from capture device.");
             }
@@ -1686,7 +1689,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             // http://x.x.x.x//get_var?i=0&s=diag&v=CopyProtectionStatus
             // Copy Control Information: "Copy Free" (00)
             try {
-                returnValue = InfiniTVStatus.GetCCIStatus(encoderIPAddress, encoderNumber);
+                returnValue = InfiniTVStatus.getCCIStatus(encoderIPAddress, encoderNumber);
             } catch (Exception e) {
                 logger.debug("Unable to get CCI status from capture device.");
             }
@@ -1704,6 +1707,88 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         return logger.exit(returnValue);
+    }
+
+    public String getTunerStatusString() {
+        logger.entry();
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        if (encoderDeviceType == CaptureDeviceType.DCT_INFINITV ||
+                encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
+
+            try {
+                stringBuilder.append("CarrierLock: ").append(InfiniTVStatus.getCarrierLock(encoderIPAddress, encoderNumber));
+            } catch (Exception e) {
+                logger.debug("Unable to get CarrierLock status from capture device.");
+            }
+
+            try {
+                stringBuilder.append(", PCRLock: ").append(InfiniTVStatus.getPCRLock(encoderIPAddress, encoderNumber));
+            } catch (Exception e) {
+                logger.debug("Unable to get PCRLock status from capture device.");
+            }
+
+            try {
+                stringBuilder.append(", StreamingIP: ").append(InfiniTVStatus.getStreamingIP(encoderIPAddress, encoderNumber));
+            } catch (Exception e) {
+                logger.debug("Unable to get StreamingIP status from capture device.");
+            }
+
+            try {
+                stringBuilder.append(", StreamingPort: ").append(InfiniTVStatus.getStreamingPort(encoderIPAddress, encoderNumber));
+            } catch (Exception e) {
+                logger.debug("Unable to get StreamingPort status from capture device.");
+            }
+
+            try {
+                stringBuilder.append(", Temperature: ").append(InfiniTVStatus.getTemperature(encoderIPAddress, encoderNumber));
+            } catch (Exception e) {
+                logger.debug("Unable to get Temperature status from capture device.");
+            }
+
+            try {
+                stringBuilder.append(", TransportState: ").append(InfiniTVStatus.getTransportState(encoderIPAddress, encoderNumber));
+            } catch (Exception e) {
+                logger.debug("Unable to get TransportState status from capture device.");
+            }
+
+        } else if (encoderDeviceType == CaptureDeviceType.DCT_PRIME ||
+                encoderDeviceType == CaptureDeviceType.QAM_PRIME) {
+
+            try {
+                stringBuilder.append("Target: ").append(hdhrTuner.getTarget());
+            } catch (Exception e) {
+                logger.debug("Unable to get Target status from HDHomeRun.");
+            }
+
+            try {
+                stringBuilder.append(", Lockkey: ").append(hdhrTuner.getLockkey());
+            } catch (Exception e) {
+                logger.debug("Unable to get Lockkey status from HDHomeRun.");
+            }
+
+            try {
+                stringBuilder.append(", HDHomeRunVStatus: ").append(hdhrTuner.getVirtualChannelStatus().toString());
+            } catch (Exception e) {
+                logger.debug("Unable to get HDHomeRunVStatus status from HDHomeRun.");
+            }
+
+            try {
+                stringBuilder.append(", HDHomeRunStreamInfo: ").append(hdhrTuner.getStreamInfo().toString());
+            } catch (Exception e) {
+                logger.debug("Unable to get HDHomeRunStreamInfo status from HDHomeRun.");
+            }
+
+            try {
+                stringBuilder.append(", HDHomeRunStatus: ").append(hdhrTuner.getStatus().toString());
+            } catch (Exception e) {
+                logger.debug("Unable to get HDHomeRunStatus status from HDHomeRun.");
+            }
+
+        }
+
+        return logger.exit(stringBuilder.toString());
     }
 
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="LOG_ROOT">${sys:opendct_log_root}</Property>
+        <Property name="LOG_DIR">${sys:opendct_log_root}/</Property>
+        <Property name="LOG_ARCHIVE">${sys:opendct_log_root}/archive</Property>
+        <Property name="DEF_PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{0} - %msg%ex%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Do NOT remove the Console entry unless you know what you are doing -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${DEF_PATTERN}"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="TRACE">
+            <AppenderRef level="TRACE" ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>

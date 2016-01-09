@@ -75,7 +75,8 @@ configurations {
 }
 
 dependencies {
-    testCompile 'junit:junit:4.12'
+    //testCompile 'junit:junit:4.12'
+    testCompile 'org.testng:testng:6.1.1'
 
     compile fileTree(dir: 'lib', include: ['*.jar'])
     compile 'org.seamless:seamless-http:1.1.0'
@@ -99,6 +100,13 @@ dependencies {
 
 	linux_x86_64 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64"
 	linux_x86_64 configurations.compile
+}
+
+test {
+    useTestNG()
+
+    reports.html.destination = file("$buildDir/reports/testng")
+    systemProperty 'opendct_log_root', 'build/test-log'
 }
 
 idea {

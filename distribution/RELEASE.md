@@ -143,3 +143,5 @@
 > *Added feature to clean up log files based on available free space. The default minimum free space
 > is 1GB. Free space could be a very real issue if logging gets intense for any reason and logging
 > should never be the cause of your server failing. This runs after log files are deleted by date.
+
+> *Internal: Changed to TestNG for greater flexibility in testing.

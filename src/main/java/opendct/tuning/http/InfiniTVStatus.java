@@ -55,7 +55,7 @@ public class InfiniTVStatus {
         int tunerIndex = tunerNumber - 1;
 
         URL url = new URL("http://" + deviceAddress + "/get_var?i=" + tunerIndex + "&s=" + service + "&v=" + value);
-        logger.info("Connecting to InfiniTV tuner using the URL '{}'", url);
+        logger.debug("Connecting to InfiniTV tuner using the URL '{}'", url);
 
         HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
         InputStreamReader inputStreamReader = new InputStreamReader(httpURLConnection.getInputStream());
@@ -70,18 +70,12 @@ public class InfiniTVStatus {
         if (start > 0 && end > start) {
             line = line.substring(start + DATA_START.length(), end);
         }
-        logger.info("The returned value was trimmed to '{}'", line);
-
-        try {
-            //httpURLConnection.disconnect();
-        } catch (Exception e) {
-
-        }
+        logger.debug("The returned value was trimmed to '{}'", line);
 
         return logger.exit(line);
     }
 
-    public static int GetProgram(String deviceAddress, int tunerNumber, int retry) throws IOException, InterruptedException {
+    public static int getProgram(String deviceAddress, int tunerNumber, int retry) throws IOException, InterruptedException {
         logger.entry(deviceAddress, tunerNumber);
 
         String value = getVar(deviceAddress, tunerNumber, "mux", "ProgramNumber", retry);
@@ -95,7 +89,7 @@ public class InfiniTVStatus {
         return -1;
     }
 
-    public static int[] GetPids(String deviceAddress, int tunerNumber, int retry) throws IOException, InterruptedException {
+    public static int[] getPids(String deviceAddress, int tunerNumber, int retry) throws IOException, InterruptedException {
         logger.entry(deviceAddress, tunerNumber);
 
         String value = getVar(deviceAddress, tunerNumber, "mux", "PIDList", retry);
@@ -115,7 +109,7 @@ public class InfiniTVStatus {
         return pids;
     }
 
-    public static CopyProtection GetCCIStatus(String deviceAddress, int tunerNumber) throws IOException {
+    public static CopyProtection getCCIStatus(String deviceAddress, int tunerNumber) throws IOException {
         logger.entry(deviceAddress, tunerNumber);
 
         String value = getVar(deviceAddress, tunerNumber, "diag", "CopyProtectionStatus");
@@ -133,18 +127,102 @@ public class InfiniTVStatus {
         return logger.exit(CopyProtection.UNKNOWN);
     }
 
-    public static int GetSignalStrength(String deviceAddress, int tunerNumber) throws IOException {
+    public static int getSignalStrength(String deviceAddress, int tunerNumber) throws IOException {
         logger.entry(deviceAddress, tunerNumber);
 
         String value = getVar(deviceAddress, tunerNumber, "diag", "Signal_Level");
 
         if (value.contains(" dBmV")) {
             String parseValue = value.substring(0, value.indexOf(" dBmV"));
-            float signalStrength = Float.parseFloat(parseValue);
-            signalStrength = signalStrength * -10;
+            float signalStrength = -1;
+            try {
+                signalStrength = Float.parseFloat(parseValue);
+                signalStrength = signalStrength * -10;
+            } catch (NumberFormatException e) {
+                logger.error("Unable to parse the value '{}' into a float.", parseValue);
+            }
             return logger.exit((int) signalStrength);
-        } else {
-            return logger.exit(0);
         }
+
+        return logger.exit(-1);
+    }
+
+    public static String getStreamingIP(String deviceAddress, int tunerNumber) throws IOException {
+        logger.entry(deviceAddress, tunerNumber);
+
+        String currentIP = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "diag", "Streaming_IP");
+
+        return logger.exit(currentIP);
+    }
+
+    public static int getStreamingPort(String deviceAddress, int tunerNumber) throws IOException {
+        logger.entry(deviceAddress, tunerNumber);
+
+        String currentPort = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "diag", "Streaming_Port");
+        int returnValue = -1;
+
+        try {
+            returnValue = Integer.valueOf(currentPort.trim());
+        } catch (NumberFormatException e) {
+            logger.error("Unable to parse the value '{}' into an integer.", currentPort);
+        }
+
+        return logger.exit(returnValue);
+    }
+
+    public static String getTransportState(String deviceAddress, int tunerNumber) throws IOException {
+        logger.entry(deviceAddress, tunerNumber);
+
+        String playback = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "av", "TransportState");
+
+        return logger.exit(playback);
+    }
+
+    public static float getTemperature(String deviceAddress, int tunerNumber) throws IOException {
+        logger.entry(deviceAddress, tunerNumber);
+
+        String value = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "diag", "Temperature");
+
+        if (value.contains(" C")) {
+            String parseValue = value.substring(0, value.indexOf(" C"));
+            float temperature = -1;
+            try {
+                temperature = Float.parseFloat(parseValue);
+            } catch (NumberFormatException e) {
+                logger.error("Unable to parse the value '{}' into a float.", parseValue);
+            }
+            return logger.exit(temperature);
+        }
+
+        return logger.exit(-1);
+    }
+
+    //tuner&v=PCRLock (Digital Lock)
+    //cas&v=LastResolveStatus
+
+    public static String getCarrierLock(String deviceAddress, int tunerNumber) throws IOException {
+        logger.entry(deviceAddress, tunerNumber);
+
+        String carrierLock = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "CarrierLock");
+
+        return logger.exit(carrierLock);
+    }
+
+    /**
+     * Get the current PCR Lock.
+     * <p/>
+     * This is also known as Digital Lock.
+     *
+     * @param deviceAddress The IP/hostname of the capture device.
+     * @param tunerNumber The tuner number to query.
+     * @return A string representation of the response. In this case, it should be a 0 or 1.
+     * @throws IOException Thrown if the capture device was unreachable.
+     */
+    public static String getPCRLock(String deviceAddress, int tunerNumber) throws IOException {
+        logger.entry(deviceAddress, tunerNumber);
+
+        String carrierLock = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "PCRLock");
+
+        return logger.exit(carrierLock);
     }
 }

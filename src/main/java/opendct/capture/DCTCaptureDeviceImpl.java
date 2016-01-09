@@ -58,6 +58,7 @@ import java.net.SocketException;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -316,7 +317,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 if (logger.isDebugEnabled()) {
                     try {
                         logger.debug("HDHomeRun details: {}, {}, {}, {}", hdhrTuner.DEVICE.getSysHwModel(), hdhrTuner.DEVICE.getSysModel(), hdhrTuner.DEVICE.getSysVersion(), hdhrTuner.DEVICE.getSysFeatures());
-                        logger.debug("HDHomeRun help: {}", hdhrTuner.DEVICE.getHelp());
+                        logger.debug("HDHomeRun help: {}", Arrays.toString(hdhrTuner.DEVICE.getHelp()));
                     } catch (IOException e) {
                         logger.error("Unable to get help from HDHomeRun because the device cannot be reached => ", e);
                     } catch (GetSetException e) {

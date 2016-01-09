@@ -104,7 +104,8 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
      * A defined way of seeking through data used by the JavaCPP library in conjunction with FFmpeg.
      *
      * @param wence  This appears to be an enum returned from JavaCPP to seeking in specific ways.
-     * @param offset This is the offset to be used if <b>wence</b> requires it.
+     * @param offset This is the offset or an absolute position depending on the value of
+     *               <b>wence</b>.
      * @return This returns either the current index or -1 if there was a problem.
      */
     public long seek(int wence, long offset) {

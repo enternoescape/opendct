@@ -32,6 +32,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
@@ -153,66 +154,90 @@ public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
                 if (msg == User32Ex.WM_POWERBROADCAST) {
                     switch (wParam.intValue()) {
                         case User32Ex.PBT_APMSUSPEND:
-                            if (!suspended.getAndSet(true)) {
-                                synchronized (eventLock) {
-                                    for (PowerEventListener eventListener : eventListeners) {
-                                        eventListener.onSuspendEvent();
-                                    }
-                                }
-                            } else {
+                            logger.info("Received PBT_APMSUSPEND.");
+
+                            if (suspended.getAndSet(true)) {
                                 // If we are going into suspend and we didn't do anything since the
                                 // last suspend, things should still be ready, so we don't need to
                                 // do anything.
                                 logger.warn("Received PBT_APMSUSPEND, but it does not appear that we have recovered from the last suspend.");
                             }
 
+                            synchronized (eventLock) {
+                                for (PowerEventListener eventListener : eventListeners) {
+                                    try {
+                                        eventListener.onSuspendEvent();
+                                    } catch (Exception e) {
+                                        logger.error("There was a problem executing onSuspendEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
+                                    }
+                                }
+                            }
+
                             return new LRESULT(1);
 
                         case User32Ex.PBT_APMRESUMESUSPEND:
+                            logger.info("Received PBT_APMRESUMESUSPEND.");
+
                             if (!suspended.getAndSet(false)) {
                                 logger.warn("Received PBT_APMRESUMESUSPEND, but it does not appear the program knows the computer suspended. Cleaning up...");
                                 synchronized (eventLock) {
                                     for (PowerEventListener eventListener : eventListeners) {
-                                        eventListener.onSuspendEvent();
+                                        try {
+                                            eventListener.onSuspendEvent();
+                                        } catch (Exception e) {
+                                            logger.error("There was a problem executing onSuspendEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
+                                        }
                                     }
                                 }
                             }
 
                             synchronized (eventLock) {
                                 for (PowerEventListener eventListener : eventListeners) {
-                                    eventListener.onResumeSuspendEvent();
+                                    try {
+                                        eventListener.onResumeSuspendEvent();
+                                    } catch (Exception e) {
+                                        logger.error("There was a problem executing onResumeSuspendEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
+                                    }
                                 }
                             }
 
                             return new LRESULT(1);
 
                         case User32Ex.PBT_APMRESUMEAUTOMATIC:
-                            //TODO: [js] This should probably be removed completely.
-                            /*synchronized (eventLock) {
-                                for (PowerEventListener eventListener : eventListeners) {
-                                    eventListener.onResumeAutomaticEvent();
-                                }
-                            }*/
+                            logger.info("Received PBT_APMRESUMEAUTOMATIC.");
 
                             return new LRESULT(1);
 
                         case User32Ex.PBT_APMRESUMECRITICAL:
+                            logger.info("Received PBT_APMRESUMECRITICAL.");
+
                             if (!suspended.getAndSet(false)) {
                                 logger.warn("Received PBT_APMRESUMECRITICAL, but it does not appear the program knows the computer suspended. Cleaning up...");
                                 synchronized (eventLock) {
                                     for (PowerEventListener eventListener : eventListeners) {
-                                        eventListener.onSuspendEvent();
+                                        try {
+                                            eventListener.onSuspendEvent();
+                                        } catch (Exception e) {
+                                            logger.error("There was a problem executing onSuspendEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
+                                        }
                                     }
                                 }
                             }
 
                             synchronized (eventLock) {
                                 for (PowerEventListener eventListener : eventListeners) {
-                                    eventListener.onResumeCriticalEvent();
+                                    try {
+                                        eventListener.onResumeCriticalEvent();
+                                    } catch (Exception e) {
+                                        logger.error("There was a problem executing onResumeCriticalEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
+                                    }
                                 }
                             }
 
                             return new LRESULT(1);
+                        default:
+                            //This way we can catch events we are not currently supporting.
+                            logger.debug("wParam.intValue = {}", wParam.intValue());
                     }
                 }
 

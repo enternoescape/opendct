@@ -150,3 +150,5 @@
 
 #### 0.4.11-Beta
 > *Fixed race condition in circular buffer.
+
+> *Added suspend logic to handle unexpected states better.

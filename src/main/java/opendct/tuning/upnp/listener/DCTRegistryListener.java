@@ -18,13 +18,10 @@ package opendct.tuning.upnp.listener;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.fourthline.cling.model.NetworkAddress;
 import org.fourthline.cling.model.meta.LocalDevice;
 import org.fourthline.cling.model.meta.RemoteDevice;
 import org.fourthline.cling.registry.Registry;
 import org.fourthline.cling.registry.RegistryListener;
-
-import java.util.HashSet;
 
 public class DCTRegistryListener implements RegistryListener {
     private static final Logger logger = LogManager.getLogger(DCTRegistryListener.class);

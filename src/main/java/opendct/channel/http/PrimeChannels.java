@@ -16,7 +16,6 @@
 
 package opendct.channel.http;
 
-import opendct.capture.CaptureDeviceType;
 import opendct.channel.ChannelLineup;
 import opendct.channel.TVChannel;
 import opendct.channel.TVChannelImpl;

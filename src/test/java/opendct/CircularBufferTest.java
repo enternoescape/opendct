@@ -4,10 +4,8 @@ import opendct.consumer.buffers.FFmpegCircularBuffer;
 import opendct.consumer.buffers.SeekableCircularBuffer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.testng.annotations.*;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Random;
 
 public final class CircularBufferTest {

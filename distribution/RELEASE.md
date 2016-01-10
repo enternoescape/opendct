@@ -147,3 +147,6 @@
 > *Increased logging for re-tuning to help determine why it happened.
 
 > *Internal: Changed to TestNG for greater flexibility in testing.
+
+#### 0.4.11-Beta
+> *Fixed race condition in circular buffer.

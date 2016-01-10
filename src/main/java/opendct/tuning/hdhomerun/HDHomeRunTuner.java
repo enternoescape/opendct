@@ -16,7 +16,6 @@
 
 package opendct.tuning.hdhomerun;
 
-import opendct.config.Config;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStreamInfo;
 import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;

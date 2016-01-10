@@ -38,9 +38,13 @@ public class SeekableCircularBuffer {
     private boolean overflow = false;
 
     private volatile boolean closed = false;
-    private final Object writeLock = new Object();
+
+    // These are in the order they should always be used if more than one needs to be used.
     private final Object readMonitor = new Object();
+    private final Object writeLock = new Object();
     protected final Object readLock = new Object();
+    protected final Object rwPassLock = new Object();
+
 
     /**
      * Create a new seekable circular buffer.
@@ -144,13 +148,16 @@ public class SeekableCircularBuffer {
                 logger.trace("bytes.length = {}, offset = {}, buffer.length = {}, writeIndex = {}, end = {}", bytes.length, offset, buffer.length, writeIndex, end);
                 System.arraycopy(bytes, offset, buffer, writeIndex, end);
 
-                writeIndex = length - end;
-                if (writeIndex > 0) {
-                    logger.trace("bytes.length = {}, end = {}, buffer.length = {}, writeIndex = {}", bytes.length, end, buffer.length, writeIndex);
-                    System.arraycopy(bytes, offset + end, buffer, 0, writeIndex);
+                int writeRemaining = length - end;
+                if (writeRemaining > 0) {
+                    logger.trace("bytes.length = {}, end = {}, buffer.length = {}, writeRemaining = {}", bytes.length, end, buffer.length, writeRemaining);
+                    System.arraycopy(bytes, offset + end, buffer, 0, writeRemaining);
                 }
 
-                writePasses += 1;
+                synchronized (rwPassLock) {
+                    writeIndex = writeRemaining;
+                    writePasses += 1;
+                }
             } else {
                 System.arraycopy(bytes, offset, buffer, writeIndex, length);
                 writeIndex += length;
@@ -211,13 +218,17 @@ public class SeekableCircularBuffer {
                 logger.trace("buffer.length = {}, readIndex = {}, bytes.length = {}, offset = {}, end = {}", buffer.length, readIndex, bytes.length, offset, end);
                 System.arraycopy(buffer, readIndex, bytes, offset, end);
 
-                readIndex = returnLength - end;
-                if (readIndex > 0) {
-                    logger.trace("buffer.length = {}, bytes.length = {}, offset = {}, end = {}, readIndex = {}", buffer.length, bytes.length, offset, end, readIndex);
-                    System.arraycopy(buffer, 0, bytes, offset + end, readIndex);
+                int readRemaining = returnLength - end;
+
+                if (readRemaining > 0) {
+                    logger.trace("buffer.length = {}, bytes.length = {}, offset = {}, end = {}, readRemaining = {}", buffer.length, bytes.length, offset, end, readRemaining);
+                    System.arraycopy(buffer, 0, bytes, offset + end, readRemaining);
                 }
 
-                readPasses += 1;
+                synchronized (rwPassLock) {
+                    readIndex = readRemaining;
+                    readPasses += 1;
+                }
             } else {
                 System.arraycopy(buffer, readIndex, bytes, offset, returnLength);
                 readIndex += returnLength;
@@ -269,13 +280,17 @@ public class SeekableCircularBuffer {
                 logger.trace("buffer.length = {}, readIndex = {}, outBuffer.remaining = {}, end = {}", buffer.length, readIndex, outBuffer.remaining(), end);
                 outBuffer.put(buffer, readIndex, end);
 
-                readIndex = returnLength - end;
+                int readRemaining = returnLength - end;
+
                 if (readIndex > 0) {
-                    logger.trace("buffer.length = {}, outBuffer.remaining = {}, readIndex = {}", buffer.length, outBuffer.remaining(), readIndex);
-                    outBuffer.put(buffer, 0, readIndex);
+                    logger.trace("buffer.length = {}, outBuffer.remaining = {}, readRemaining = {}", buffer.length, outBuffer.remaining(), readRemaining);
+                    outBuffer.put(buffer, 0, readRemaining);
                 }
 
-                readPasses += 1;
+                synchronized (rwPassLock) {
+                    readIndex = readRemaining;
+                    readPasses += 1;
+                }
             } else {
                 outBuffer.put(buffer, readIndex, returnLength);
                 readIndex += returnLength;
@@ -304,15 +319,17 @@ public class SeekableCircularBuffer {
 
         int returnValue;
 
-        synchronized (readLock) {
+        waitForBytes();
 
-            waitForBytes();
+        synchronized (readLock) {
 
             returnValue = buffer[readIndex++] & 0xff;
 
             if (readIndex >= buffer.length) {
-                readIndex = 0;
-                readPasses += 1;
+                synchronized (rwPassLock) {
+                    readIndex = 0;
+                    readPasses += 1;
+                }
             }
 
         }
@@ -335,16 +352,18 @@ public class SeekableCircularBuffer {
         int returnValue = -1;
 
         synchronized (readLock) {
-            int internalIndex = ((readPasses * buffer.length) + index) % buffer.length;
+            synchronized (rwPassLock) {
+                int internalIndex = ((readPasses * buffer.length) + index) % buffer.length;
 
-            if (index <= totalReadBytes()) {
-                int relativeIndex = internalIndex + index;
+                if (index <= totalReadBytes()) {
+                    int relativeIndex = internalIndex + index;
 
-                if (relativeIndex > buffer.length) {
-                    relativeIndex -= buffer.length;
+                    if (relativeIndex > buffer.length) {
+                        relativeIndex -= buffer.length;
+                    }
+
+                    returnValue = buffer[relativeIndex] & 0xff;
                 }
-
-                returnValue = buffer[relativeIndex] & 0xff;
             }
         }
 
@@ -364,15 +383,17 @@ public class SeekableCircularBuffer {
         logger.entry(index);
 
         synchronized (readLock) {
-            int newIndex = (int)(index % buffer.length);
-            int newPasses = (int)(index / buffer.length);
+            synchronized (rwPassLock) {
+                int newIndex = (int)(index % buffer.length);
+                int newPasses = (int)(index / buffer.length);
 
-            if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
-                throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot move the read index beyond the currently available data."));
+                if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
+                    throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot move the read index beyond the currently available data."));
+                }
+
+                readIndex = newIndex;
+                readPasses = newPasses;
             }
-
-            readIndex = newIndex;
-            readPasses = newPasses;
         }
 
         logger.debug("Relative index {} to bytes set read index to actual index {}, read passes {}.", index, readIndex, readPasses);
@@ -380,12 +401,9 @@ public class SeekableCircularBuffer {
     }
 
     /**
-     * Increments the current read index relative to it's current position without moving the mark
-     * index.
-     * <p/>
-     * A mark must be set or nothing will be changed.
+     * Increments the current read index relative to the total bytes written to the buffer.
      *
-     * @param increment Total number of indexes to increment the read index.
+     * @param increment Total number of bytes to increment the read index.
      * @return The actual read index based on the total bytes read that was the result of the increment.
      */
     public long incrementReadIndex(long increment) throws IndexOutOfBoundsException {
@@ -394,25 +412,27 @@ public class SeekableCircularBuffer {
         long returnValue = -1;
 
         synchronized (readLock) {
-            if (readIndex + increment > buffer.length) {
-                throw new IndexOutOfBoundsException("You cannot increment the read index to a value greater than the buffer size.");
+            synchronized (rwPassLock) {
+                if (readIndex + increment > buffer.length) {
+                    throw new IndexOutOfBoundsException("You cannot increment the read index to a value greater than the buffer size.");
+                }
+
+                if (readIndex + increment > readAvailable()) {
+                    throw new IndexOutOfBoundsException("You cannot increment the read index to a relative value greater than the bytes available to be read.");
+                }
+
+                long index = ((long)readPasses * (long)buffer.length) + (long)readIndex + increment;
+
+                int newIndex = (int)(index % buffer.length);
+                int newPasses = (int)(index / buffer.length);
+
+                if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
+                    throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot move the read index beyond the currently available data."));
+                }
+
+                readIndex = (int) (index % buffer.length);
+                readPasses = (int) (index / buffer.length);
             }
-
-            if (readIndex + increment > readAvailable()) {
-                throw new IndexOutOfBoundsException("You cannot increment the read index to a relative value greater than the bytes available to be read.");
-            }
-
-            long index = ((long)readPasses * (long)buffer.length) + (long)readIndex + increment;
-
-            int newIndex = (int)(index % buffer.length);
-            int newPasses = (int)(index / buffer.length);
-
-            if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
-                throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot move the read index beyond the currently available data."));
-            }
-
-            readIndex = (int)(index % buffer.length);
-            readPasses = (int)(index / buffer.length);
 
             returnValue = totalReadBytes();
         }

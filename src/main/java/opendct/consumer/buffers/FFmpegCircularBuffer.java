@@ -79,15 +79,19 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
                 logger.debug("offset = {}, buffer.length = {}, readIndex = {}, , end = {}", offset, buffer.length, readIndex, end);
 
                 bytePtr.position(offset).put(buffer, readIndex, end);
-                readIndex = returnLength - end;
+
+                int readRemaining = returnLength - end;
 
                 if (readIndex > 0) {
-                    logger.debug("offset = {}, buffer.length = {},  readIndex = {}", offset, buffer.length, readIndex);
+                    logger.debug("offset = {}, buffer.length = {},  readRemaining = {}", offset, buffer.length, readRemaining);
 
-                    bytePtr.position(offset).put(buffer, 0, readIndex);
+                    bytePtr.position(offset).put(buffer, 0, readRemaining);
                 }
 
-                readPasses += 1;
+                synchronized (rwPassLock) {
+                    readIndex = readRemaining;
+                    readPasses += 1;
+                }
             } else {
                 bytePtr.position(offset).put(buffer, readIndex, returnLength);
                 readIndex += returnLength;

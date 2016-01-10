@@ -353,7 +353,7 @@ public class SeekableCircularBuffer {
 
         synchronized (readLock) {
             synchronized (rwPassLock) {
-                int internalIndex = ((readPasses * buffer.length) + index) % buffer.length;
+                int internalIndex = Math.abs(((readPasses * buffer.length) + index) % buffer.length);
 
                 if (index <= totalReadBytes()) {
                     int relativeIndex = internalIndex + index;
@@ -384,7 +384,7 @@ public class SeekableCircularBuffer {
 
         synchronized (readLock) {
             synchronized (rwPassLock) {
-                int newIndex = (int)(index % buffer.length);
+                int newIndex = Math.abs((int)(index % buffer.length));
                 int newPasses = (int)(index / buffer.length);
 
                 if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
@@ -423,8 +423,8 @@ public class SeekableCircularBuffer {
 
                 long index = ((long)readPasses * (long)buffer.length) + (long)readIndex + increment;
 
-                int newIndex = (int)(index % buffer.length);
-                int newPasses = (int)(index / buffer.length);
+                int newIndex = Math.abs((int)(index % buffer.length));
+                int newPasses = Math.abs((int)(index / buffer.length));
 
                 if (newPasses == writePasses && newIndex > writeIndex || newPasses < writePasses && newIndex < writeIndex) {
                     throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot move the read index beyond the currently available data."));

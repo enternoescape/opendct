@@ -139,7 +139,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
                 break;
             case 2:
                 // Seek to the last available byte.
-                returnValue = totalReadBytes() - 1;
+                returnValue = totalReadBytes();
                 setReadIndex(returnValue);
                 break;
             case 65536:

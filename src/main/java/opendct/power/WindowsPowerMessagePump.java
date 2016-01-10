@@ -37,6 +37,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
     private final Logger logger = LogManager.getLogger(WindowsPowerMessagePump.class);
 
+    private AtomicBoolean suspended = new AtomicBoolean(false);
+
     private Thread thread;
     private AtomicBoolean running = new AtomicBoolean(false);
     private WNDCLASSEX wndClass = null;
@@ -151,15 +153,31 @@ public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
                 if (msg == User32Ex.WM_POWERBROADCAST) {
                     switch (wParam.intValue()) {
                         case User32Ex.PBT_APMSUSPEND:
-                            synchronized (eventLock) {
-                                for (PowerEventListener eventListener : eventListeners) {
-                                    eventListener.onSuspendEvent();
+                            if (!suspended.getAndSet(true)) {
+                                synchronized (eventLock) {
+                                    for (PowerEventListener eventListener : eventListeners) {
+                                        eventListener.onSuspendEvent();
+                                    }
                                 }
+                            } else {
+                                // If we are going into suspend and we didn't do anything since the
+                                // last suspend, things should still be ready, so we don't need to
+                                // do anything.
+                                logger.warn("Received PBT_APMSUSPEND, but it does not appear that we have recovered from the last suspend.");
                             }
 
                             return new LRESULT(1);
 
                         case User32Ex.PBT_APMRESUMESUSPEND:
+                            if (!suspended.getAndSet(false)) {
+                                logger.warn("Received PBT_APMRESUMESUSPEND, but it does not appear the program knows the computer suspended. Cleaning up...");
+                                synchronized (eventLock) {
+                                    for (PowerEventListener eventListener : eventListeners) {
+                                        eventListener.onSuspendEvent();
+                                    }
+                                }
+                            }
+
                             synchronized (eventLock) {
                                 for (PowerEventListener eventListener : eventListeners) {
                                     eventListener.onResumeSuspendEvent();
@@ -179,6 +197,15 @@ public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
                             return new LRESULT(1);
 
                         case User32Ex.PBT_APMRESUMECRITICAL:
+                            if (!suspended.getAndSet(false)) {
+                                logger.warn("Received PBT_APMRESUMECRITICAL, but it does not appear the program knows the computer suspended. Cleaning up...");
+                                synchronized (eventLock) {
+                                    for (PowerEventListener eventListener : eventListeners) {
+                                        eventListener.onSuspendEvent();
+                                    }
+                                }
+                            }
+
                             synchronized (eventLock) {
                                 for (PowerEventListener eventListener : eventListeners) {
                                     eventListener.onResumeCriticalEvent();

@@ -156,14 +156,16 @@ public final class CircularBufferTest {
     }
 
     @Test(groups = { "buffer", "byteArray" }, dataProvider = "getBufferPattern", threadPoolSize = 3)
-    public void testArrayBufferFFmpegSeekingWriteBarrierViolation(int bufferSize, int dataSize, int addIncrement) throws InterruptedException {
+    public void testArrayBufferFFmpegSeeking(int bufferSize, int dataSize, int addIncrement) throws InterruptedException {
         FFmpegCircularBuffer seekableCircularBuffer = new FFmpegCircularBuffer(bufferSize);
         byte writeData[] = generateByteData(dataSize);
         byte readData[] = new byte[dataSize];
         int readPosition = 0;
 
-        int dataWritten = 0;
+        System.arraycopy(writeData, 0, readData, 0, writeData.length);
 
+        int dataWritten = 0;
+        int seekAction = 0;
 
         while(true) {
             if (dataWritten + addIncrement < dataSize) {
@@ -174,21 +176,31 @@ public final class CircularBufferTest {
                 break;
             }
 
+            if (seekAction++ == 10) {
+                seekAction = 0;
+            }
+
             // Stop reading about half-way through the buffer.
             if (readPosition < (bufferSize / 2)) {
                 readPosition += seekableCircularBuffer.read(readData, readPosition, bufferSize);
-            } else if (readPosition % 10 == 0) {
-                System.out.print("FFmpeg Seek 0");
-                seekableCircularBuffer.seek(0, 0);
-            } else if (readPosition % 20 == 0) {
-                System.out.print("FFmpeg Seek 1");
-                seekableCircularBuffer.seek(1, 0);
-            } else if (readPosition % 30 == 0) {
-                System.out.print("FFmpeg Seek 2");
-                seekableCircularBuffer.seek(2, 0);
-            } else if (readPosition % 40 == 0) {
-                System.out.print("FFmpeg Seek 65536");
-                seekableCircularBuffer.seek(65536, 0);
+            } else if (seekAction == 0 && readPosition - (addIncrement * 3) > 0) {
+                logger.debug("FFmpeg Seek 0: Set the read index to a specific index.");
+                readPosition = (int)seekableCircularBuffer.seek(0, readPosition - (readPosition * 3));
+                logger.debug("readPosition = {}", readPosition);
+            } else if (seekAction == 2) {
+                logger.debug("FFmpeg Seek 1: Seek the read index relative to the current read index.");
+                readPosition = (int)seekableCircularBuffer.seek(1, -1 * addIncrement);
+                logger.debug("readPosition = {}", readPosition);
+            } else if (seekAction == 4) {
+                logger.debug("FFmpeg Seek 2: Seek to the last available byte.");
+                readPosition = (int)seekableCircularBuffer.seek(2, 0);
+                logger.debug("readPosition = {}", readPosition);
+            } else if (seekAction == 7) {
+                logger.debug("FFmpeg Seek 65536");
+                long maxSeek = seekableCircularBuffer.seek(65536, 0);
+                long totalReadBytes = seekableCircularBuffer.totalReadBytes();
+
+                assert maxSeek == totalReadBytes : "maxSeek: " + maxSeek + " != totalReadBytes: " + totalReadBytes + " at read index " + readPosition;
             }
         }
 

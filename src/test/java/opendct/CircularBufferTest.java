@@ -23,6 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testng.annotations.*;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Random;
 
 public final class CircularBufferTest {
@@ -34,8 +35,8 @@ public final class CircularBufferTest {
 
         for (int i = 0; i < returnObject.length; i++) {
             returnObject[i][0] = (i + 5) * 1024 * 1024;
-            returnObject[i][1] = (int)((int)returnObject[i][0] * 2.2 + i);
-            returnObject[i][2] = (int)((int)returnObject[i][0] / 5.3 + i);
+            returnObject[i][1] = (int)((int)returnObject[i][0] * 3.2 + i);
+            returnObject[i][2] = (int)((int)returnObject[i][0] / 55.3 + i);
         }
 
         return returnObject;
@@ -179,6 +180,8 @@ public final class CircularBufferTest {
         byte readData[] = new byte[dataSize];
         int readPosition = 0;
 
+        int seekActions[] = new int[]{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
         // We need to copy the complete buffer into the read buffer since we are going to be seeking
         // around and could miss a section. We are looking for the reads to not actually change this
         // copy to be considered a success.
@@ -196,44 +199,70 @@ public final class CircularBufferTest {
                 break;
             }
 
-            if (seekAction++ == 10) {
+            if (seekAction++ == 9) {
                 seekAction = 0;
             }
 
             // Stop reading about half-way through the buffer.
-            if (readPosition < (bufferSize / 2)) {
-                readPosition += seekableCircularBuffer.read(readData, readPosition, bufferSize);
-            } else if (seekAction == 0 && readPosition - (addIncrement * 3) > 0) {
-                logger.debug("FFmpeg Seek 0: Set the read index to a specific index relative to the total number bytes ever placed in the buffer.");
-                readPosition = (int)seekableCircularBuffer.seek(0, readPosition - (readPosition * 3));
-                logger.debug("readPosition = {}", readPosition);
-            } else if (seekAction == 2) {
-                logger.debug("FFmpeg Seek 1: Seek the read index relative to the current read index.");
+            if (dataWritten < (addIncrement * 7)) {
+                readPosition += seekableCircularBuffer.read(readData, readPosition, Math.min(readData.length - readPosition, addIncrement));
+            } else if (seekAction == 0 && seekActions[seekAction] <= 3) {
+                logger.trace("FFmpeg Seek 0: Set the read index to a specific index relative to the total number bytes ever placed in the buffer.");
+                readPosition = (int)seekableCircularBuffer.seek(0, readPosition - (addIncrement * 3));
+                logger.trace("readPosition = {}", readPosition);
+                seekActions[seekAction]++;
+            } else if (seekAction == 1 && seekActions[seekAction] <= 3) {
+                logger.trace("FFmpeg Seek 1: Seek the read index relative to the current read index. Seek nowhere.");
+                readPosition = (int)seekableCircularBuffer.seek(1, 0);
+                logger.trace("readPosition = {}", readPosition);
+                seekActions[seekAction]++;
+            } else if (seekAction == 2 && seekActions[seekAction] <= 3) {
+                logger.trace("FFmpeg Seek 1: Seek the read index relative to the current read index.");
                 readPosition = (int)seekableCircularBuffer.seek(1, -1 * addIncrement);
-                logger.debug("readPosition = {}", readPosition);
-            } else if (seekAction == 4) {
-                logger.debug("FFmpeg Seek 2: Seek the read index relative to the total available bytes.");
+                logger.trace("readPosition = {}", readPosition);
+                seekActions[seekAction]++;
+            } else if (seekAction == 3 && seekActions[seekAction] <= 3) {
+                logger.trace("FFmpeg Seek 2: Seek the read index relative to the total available bytes. Seek to end.");
+                readPosition = (int)seekableCircularBuffer.seek(2, 0);
+                logger.trace("readPosition = {}", readPosition);
+                seekActions[seekAction]++;
+            } else if (seekAction == 4 && seekActions[seekAction] <= 3) {
+                logger.trace("FFmpeg Seek 2: Seek the read index relative to the total available bytes.");
                 readPosition = (int)seekableCircularBuffer.seek(2, -2 * addIncrement);
-                logger.debug("readPosition = {}", readPosition);
-            } else if (seekAction == 7) {
-                logger.debug("FFmpeg Seek 65536: Get total available bytes since the start of the buffer.");
+                logger.trace("readPosition = {}", readPosition);
+                seekActions[seekAction]++;
+            } else if (seekAction == 5 && seekActions[seekAction] <= 3) {
+                logger.trace("FFmpeg Seek 65536: Get total available bytes since the start of the buffer.");
                 // This is an index.
                 long totalBytesAvailable = seekableCircularBuffer.seek(65536, 0) - 1;
                 // This is a length.
-                long totalReadBytes = seekableCircularBuffer.totalBytesReadIndex();
+                long totalBytesIndex = seekableCircularBuffer.totalBytesAvailable();
 
-                assert totalBytesAvailable == totalReadBytes : "totalBytesAvailable: " + totalBytesAvailable + " != totalReadBytes: " + totalReadBytes + " at read index " + readPosition;
+                assert totalBytesAvailable == totalBytesIndex : "totalBytesAvailable - 1: " + totalBytesAvailable + " != totalBytesIndex: " + totalBytesIndex + " at read index " + readPosition;
+                seekActions[seekAction]++;
+            } else {
+                seekActions[6]++;
+                readPosition += seekableCircularBuffer.read(readData, readPosition, Math.min(readData.length - readPosition, addIncrement));
+            }
+
+            // Occasionally we will trigger an invalid seek. This re-establishes the current read
+            // position. If the invalid seek causes something else to fail, we will still fail the
+            // test due to the exception.
+            if (readPosition == -1) {
+                readPosition = (int)seekableCircularBuffer.totalBytesReadIndex();
             }
         }
-
-        int filledReadPosition = readPosition;
 
         while (seekableCircularBuffer.readAvailable() > 0) {
             readPosition += seekableCircularBuffer.read(readData, readPosition, bufferSize);
         }
 
-        for (int i = 0; i < readPosition; i++) {
-            assert writeData[i] == readData[i] : "At index " + i + ": " + writeData[i] + " != " + readData[i] + " buffer was filled at index " + filledReadPosition;
+        for (int i = 0; i < 6; i++) {
+            assert seekActions[i] == 4 : "Seek action for index " + i + " did not execute at least 4 times. The test needs to be fixed.";
+        }
+
+        for (int i = 0; i < dataWritten; i++) {
+            assert writeData[i] == readData[i] : "At index " + i + ": " + writeData[i] + " != " + readData[i] + ".";
         }
     }
 

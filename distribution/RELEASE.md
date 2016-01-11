@@ -152,3 +152,8 @@
 > *Fixed race condition in circular buffer.
 
 > *Added suspend logic to handle unexpected states better.
+
+#### 0.4.12-Beta
+>  *Additional fixes for seeking in the circular buffer logic.
+
+> *Added more suspend logic to handle unexpected states.

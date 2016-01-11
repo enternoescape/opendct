@@ -179,6 +179,9 @@ public final class CircularBufferTest {
         byte readData[] = new byte[dataSize];
         int readPosition = 0;
 
+        // We need to copy the complete buffer into the read buffer since we are going to be seeking
+        // around and could miss a section. We are looking for the reads to not actually change this
+        // copy to be considered a success.
         System.arraycopy(writeData, 0, readData, 0, writeData.length);
 
         int dataWritten = 0;
@@ -201,7 +204,7 @@ public final class CircularBufferTest {
             if (readPosition < (bufferSize / 2)) {
                 readPosition += seekableCircularBuffer.read(readData, readPosition, bufferSize);
             } else if (seekAction == 0 && readPosition - (addIncrement * 3) > 0) {
-                logger.debug("FFmpeg Seek 0: Set the read index to a specific index.");
+                logger.debug("FFmpeg Seek 0: Set the read index to a specific index relative to the total number bytes ever placed in the buffer.");
                 readPosition = (int)seekableCircularBuffer.seek(0, readPosition - (readPosition * 3));
                 logger.debug("readPosition = {}", readPosition);
             } else if (seekAction == 2) {
@@ -209,15 +212,17 @@ public final class CircularBufferTest {
                 readPosition = (int)seekableCircularBuffer.seek(1, -1 * addIncrement);
                 logger.debug("readPosition = {}", readPosition);
             } else if (seekAction == 4) {
-                logger.debug("FFmpeg Seek 2: Seek to the last available byte.");
-                readPosition = (int)seekableCircularBuffer.seek(2, 0);
+                logger.debug("FFmpeg Seek 2: Seek the read index relative to the total available bytes.");
+                readPosition = (int)seekableCircularBuffer.seek(2, -2 * addIncrement);
                 logger.debug("readPosition = {}", readPosition);
             } else if (seekAction == 7) {
-                logger.debug("FFmpeg Seek 65536");
-                long maxSeek = seekableCircularBuffer.seek(65536, 0);
-                long totalReadBytes = seekableCircularBuffer.totalReadBytes();
+                logger.debug("FFmpeg Seek 65536: Get total available bytes since the start of the buffer.");
+                // This is an index.
+                long totalBytesAvailable = seekableCircularBuffer.seek(65536, 0) - 1;
+                // This is a length.
+                long totalReadBytes = seekableCircularBuffer.totalBytesReadIndex();
 
-                assert maxSeek == totalReadBytes : "maxSeek: " + maxSeek + " != totalReadBytes: " + totalReadBytes + " at read index " + readPosition;
+                assert totalBytesAvailable == totalReadBytes : "totalBytesAvailable: " + totalBytesAvailable + " != totalReadBytes: " + totalReadBytes + " at read index " + readPosition;
             }
         }
 

@@ -121,7 +121,8 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
 
         switch (wence) {
             case 0:
-                // Set the read index to a specific index.
+                // Set the read index to a specific index relative to the total number bytes ever
+                // placed in the buffer.
                 try {
                     setReadIndex(offset);
                     returnValue = offset;
@@ -132,19 +133,22 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
             case 1:
                 // Seek the read index relative to the current read index.
                 try {
-                    returnValue = incrementReadIndex(offset);
+                    returnValue = incrementReadIndexFromStart(offset);
                 } catch (IndexOutOfBoundsException e) {
                     logger.warn("Seek: Requested a read index that is not yet available => ", e);
                 }
                 break;
             case 2:
-                // Seek to the last available byte.
-                returnValue = totalReadBytes();
-                setReadIndex(returnValue);
+                // Seek the read index relative to the total available bytes.
+                try {
+                    returnValue = incrementReadIndexFromEnd(offset);
+                } catch (IndexOutOfBoundsException e) {
+                    logger.warn("Seek: Requested a read index that is not yet available => ", e);
+                }
                 break;
             case 65536:
-                // Get total remaining available bytes.
-                returnValue = totalReadBytes();
+                // Get total available bytes since the start of the buffer.
+                returnValue = totalBytesReadIndex() + 1;
                 break;
             default:
                 logger.warn("Seek: The wence value {} is not being handled.", wence);

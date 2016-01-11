@@ -178,7 +178,7 @@ public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
                         case User32Ex.PBT_APMRESUMESUSPEND:
                             logger.info("Received PBT_APMRESUMESUSPEND.");
 
-                            if (!suspended.getAndSet(false)) {
+                            /*if (!suspended.getAndSet(false)) {
                                 logger.warn("Received PBT_APMRESUMESUSPEND, but it does not appear the program knows the computer suspended. Cleaning up...");
                                 synchronized (eventLock) {
                                     for (PowerEventListener eventListener : eventListeners) {
@@ -199,19 +199,42 @@ public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
                                         logger.error("There was a problem executing onResumeSuspendEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
                                     }
                                 }
-                            }
+                            }*/
 
                             return new LRESULT(1);
 
                         case User32Ex.PBT_APMRESUMEAUTOMATIC:
                             logger.info("Received PBT_APMRESUMEAUTOMATIC.");
 
+                            if (!suspended.getAndSet(false)) {
+                                logger.warn("Received PBT_APMRESUMEAUTOMATIC, but it does not appear the program knows the computer suspended. Cleaning up...");
+                                synchronized (eventLock) {
+                                    for (PowerEventListener eventListener : eventListeners) {
+                                        try {
+                                            eventListener.onSuspendEvent();
+                                        } catch (Exception e) {
+                                            logger.error("There was a problem executing onResumeAutomaticEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
+                                        }
+                                    }
+                                }
+                            }
+
+                            synchronized (eventLock) {
+                                for (PowerEventListener eventListener : eventListeners) {
+                                    try {
+                                        eventListener.onResumeAutomaticEvent();
+                                    } catch (Exception e) {
+                                        logger.error("There was a problem executing onResumeAutomaticEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
+                                    }
+                                }
+                            }
+
                             return new LRESULT(1);
 
                         case User32Ex.PBT_APMRESUMECRITICAL:
                             logger.info("Received PBT_APMRESUMECRITICAL.");
 
-                            if (!suspended.getAndSet(false)) {
+                            /*if (!suspended.getAndSet(false)) {
                                 logger.warn("Received PBT_APMRESUMECRITICAL, but it does not appear the program knows the computer suspended. Cleaning up...");
                                 synchronized (eventLock) {
                                     for (PowerEventListener eventListener : eventListeners) {
@@ -232,7 +255,7 @@ public class WindowsPowerMessagePump implements Runnable, PowerMessagePump {
                                         logger.error("There was a problem executing onResumeCriticalEvent for the listener '{}' => ", eventListener.getClass().getName(), e);
                                     }
                                 }
-                            }
+                            }*/
 
                             return new LRESULT(1);
                         default:

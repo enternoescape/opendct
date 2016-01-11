@@ -155,3 +155,5 @@
 
 #### 0.4.12-Beta
 >  *Additional fixes for seeking in the circular buffer logic.
+
+> *Added more suspend logic to handle unexpected states.

@@ -224,9 +224,9 @@ $("#manage-apply-parent-device-changes").on("click", function () {
 
     $.each(manageLoadedParentTable.find("tr"), function (i, row) {
         var parentName = $(row).find(".manage-parent-lookup").text();
-        var submit = ({
+        var submit = {
             localAddress: $(row).find(".manage-parent-device-local-ip-value").val()
-        });
+        };
 
         var jsonResponse = JSON.stringify(submit);
         console.log(jsonResponse);
@@ -314,7 +314,7 @@ function updateManageLoadedRows() {
                 $.each($(".manage-loaded-checkbox:checked"), function (i, checkBox) {
                     var updateValue = $(checkBox).parent().parent().find(".manage-merit-value");
 
-                    if (!($(updateValue)[0] === $(applier)[0])) {
+                    if ($(updateValue)[0] !== $(applier)[0]) {
                         $(updateValue).val(newValue);
                     }
                 });
@@ -337,7 +337,7 @@ function updateManageLoadedRows() {
                 $.each($(".manage-loaded-checkbox:checked"), function (i, checkBox) {
                     var updateValue = $(checkBox).parent().parent().find(".manage-force-unlock-value");
 
-                    if (!($(updateValue)[0] === $(applier)[0])) {
+                    if ($(updateValue)[0] !== $(applier)[0]) {
                         $(updateValue).prop("checked", newValue);
                     }
                 });
@@ -360,7 +360,7 @@ function updateManageLoadedRows() {
                 $.each($(".manage-loaded-checkbox:checked"), function (i, checkBox) {
                     var updateValue = $(checkBox).parent().parent().find(".manage-consumer-value");
 
-                    if (!($(updateValue)[0] === $(applier)[0])) {
+                    if ($(updateValue)[0] !== $(applier)[0]) {
                         $(updateValue).val(newValue);
                     }
                 });
@@ -389,7 +389,7 @@ function updateManageLoadedRows() {
                         $.each($(".manage-loaded-checkbox:checked"), function (i, checkBox) {
                             var updateValue = $(checkBox).parent().parent().find(".manage-lineup-value");
 
-                            if (!($(updateValue)[0] === $(applier)[0])) {
+                            if ($(updateValue)[0] !== $(applier)[0]) {
                                 $(updateValue).val(newValue);
                             }
                         });
@@ -424,7 +424,7 @@ function updateManageLoadedRows() {
                                 $.each($(".manage-loaded-checkbox:checked"), function (i, checkBox) {
                                     var updateValue = $(checkBox).parent().parent().find(".manage-lineup-value");
 
-                                    if (!($(updateValue)[0] === $(applier)[0])) {
+                                    if ($(updateValue)[0] !== $(applier)[0]) {
                                         $(updateValue).val(newValue);
                                     }
                                 });
@@ -454,7 +454,7 @@ function updateManageLoadedRows() {
                 $.each($(".manage-loaded-checkbox:checked"), function (i, checkBox) {
                     var updateValue = $(checkBox).parent().parent().find(".manage-encoder-pool-value");
 
-                    if (!($(updateValue)[0] === $(applier)[0])) {
+                    if ($(updateValue)[0] !== $(applier)[0]) {
                         $(updateValue).val(newValue);
                     }
                 });
@@ -526,7 +526,7 @@ function createManageLoadedRows() {
                     $(checkBox).parent().parent().find(".manage-loaded-collapse").collapse('show');
                     var updateValue = $(checkBox).parent().parent().find(".manage-rename-device");
 
-                    if (!($(updateValue)[0] === $(applier)[0])) {
+                    if ($(updateValue)[0] !== $(applier)[0]) {
                         $(updateValue).val(newValue + "-" + (i + 1));
                     }
                 });
@@ -630,14 +630,14 @@ $("#manage-apply-loaded-device-changes").on("click", function () {
 
     $.each(manageLoadedTable.find("tr"), function (i, row) {
         var deviceName = $(row).find(".manage-loaded-device-lookup").text();
-        var submit = ({
+        var submit = {
             encoderName: $(row).find(".manage-rename-device").val(),
             merit: $(row).find(".manage-merit-value").val(),
             alwaysForceExternalUnlock: $(row).find(".manage-force-unlock-value").prop("checked"),
             consumer: $(row).find(".manage-consumer-value").val(),
             channelLineup: $(row).find(".manage-lineup-value").val(),
             encoderPoolName: $(row).find(".manage-encoder-pool-value").val()
-        });
+        };
 
         var jsonResponse = JSON.stringify(submit);
         console.log(jsonResponse);

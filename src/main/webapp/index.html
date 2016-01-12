@@ -42,7 +42,7 @@
 
 <div class="container">
     <div id="dashboard-page" class="content-page">
-        <div id="dashboard-content">
+        <div id="dashboard-content" class="col-md-12 col-xs-12">
             <table id="dashboard-capture-devices-table" class="table table-striped">
                 <thead id="dashboard-capture-devices-header">
                     <tr>
@@ -71,7 +71,7 @@
 
     <div id="manage-page" class="content-page col-md-12 col-xs-12">
         <div id="manage-content">
-            <div id="manage-basic">
+            <div id="manage-basic" class="col-md-12 col-xs-12">
                 <h1>Parent Capture Devices</h1>
                 <button id="manage-apply-parent-device-changes" type="button" class="btn btn-primary disabled hidden">
                     Apply Changes
@@ -125,8 +125,8 @@
                 <table id="manage-loaded-devices-table" class="table table-striped">
                     <thead id="manage-loaded-devices-header" class="hidden">
                     <tr>
-                        <th class="col-md-1 col-xs-1" id="manage-check-header"><input title="Select the rows to change and edit any one of them to modify all of them." class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
-                        <th class="col-md-3 col-xs-3" id="manage-name-header">Capture Device</th>
+                        <th id="manage-check-header"><input title="Select the rows to change and edit any one of them to modify all of them." class="manage-loaded-checkbox-all" type="checkbox" value="CheckAllLoadedDevices"></th>
+                        <th class="col-md-4 col-xs-4" id="manage-name-header">Capture Device</th>
                         <th class="col-md-1 col-xs-1" id="manage-merit-header" title="This value is sent to SageTV in PROPERTIES and is used for prioritizing capture devices in virtual device pools. A higher number means a higher preference.">Merit</th>
                         <th class="col-md-1 col-xs-1" id="manage-force-unlock-header" title="Always force the capture device to unlock if it is locked by an external program.">Unlock</th>
                         <th class="col-md-2 col-xs-2" id="manage-consumer-header" title="This is the post processing method to be used before the content is streamed to SageTV.">Consumer</th>
@@ -161,8 +161,8 @@
                     <thead id="manage-unloaded-capture-devices-header" class="hidden">
                     <tr>
                         <th id="manage-unloaded-check-header"><input class="manage-unloaded-checkbox-all" type="checkbox" value="CheckAllUnloadedDevices"></th>
-                        <th class="col-md-6" id="manage-unloaded-name-header">Capture Device</th>
-                        <th class="col-md-6" id="manage-unloaded-description-header">Description</th>
+                        <th class="col-md-6 col-xs-6" id="manage-unloaded-name-header">Capture Device</th>
+                        <th class="col-md-6 col-xs-6" id="manage-unloaded-description-header">Description</th>
                     </tr>
                     </thead>
                     <tbody id="manager-unloaded-capture-devices-body">

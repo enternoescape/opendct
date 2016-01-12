@@ -1,47 +1,26 @@
-$(document).ready(function() {
-    // Takes us to the dashboard by default page or returns us to the last page.
-    if (window.location.hash != '') {
-        $(window.location.hash + "-nav").addClass("active");
-        $(window.location.hash + "-page").show();
-        loadPage( window.location.hash );
-    } else {
-        $("#dashboard-nav").addClass("active");
-        $("#dashboard-page").show();
-        loadPage( "#dashboard" );
-    }
-});
+/*global $, jQuery, alert, console */
+"use strict";
 
 /*
 Navigation Bar
 =====================================
 */
-$(".nav a").on("click", function(){
-   $(this).parent().parent().find(".active").removeClass("active");
-   $(this).parent().addClass("active");
+$(".nav a").on("click", function () {
+    $(this).parent().parent().find(".active").removeClass("active");
+    $(this).parent().addClass("active");
 });
 
-$(".navbar-header a").on("click", function(){
+$(".navbar-header a").on("click", function () {
     $(".navbar").find(".nav").find(".active").removeClass('active');
     $("#dashboard-nav").addClass("active");
 });
 
-$(".change-page").on("click", function() {
+$(".change-page").on("click", function () {
     $(".content-page").hide();
     $($(this).attr("href") + "-page").show();
 
     loadPage( $(this).attr("href") );
 });
-
-function changePage( page ) {
-    document.location.hash = page
-    $(".content-page").hide();
-    $(page + "-page").show();
-
-    $(".navbar").find(".nav").find(".active").removeClass("active");
-    $(page + "-nav").addClass("active");
-
-    loadPage( page );
-}
 
 function loadPage( page ) {
     if (page == "#manage") {
@@ -60,6 +39,17 @@ function loadPage( page ) {
     }
 }
 
+function changePage( page ) {
+    document.location.hash = page
+    $(".content-page").hide();
+    $(page + "-page").show();
+
+    $(".navbar").find(".nav").find(".active").removeClass("active");
+    $(page + "-nav").addClass("active");
+
+    loadPage( page );
+}
+
 function updatePage( page ) {
     if (page == "#manage") {
         updateManageParentRows();
@@ -74,6 +64,19 @@ function updatePage( page ) {
         updateDashboard();
     }
 }
+
+$(document).ready(function () {
+    // Takes us to the dashboard by default page or returns us to the last page.
+    if (window.location.hash !== "") {
+        $(window.location.hash + "-nav").addClass("active");
+        $(window.location.hash + "-page").show();
+        loadPage( window.location.hash );
+    } else {
+        $("#dashboard-nav").addClass("active");
+        $("#dashboard-page").show();
+        loadPage( "#dashboard" );
+    }
+});
 
 /*
 Dashboard content

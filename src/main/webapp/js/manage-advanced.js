@@ -1,3 +1,5 @@
+/*global $, jQuery, alert, console */
+
 /*
 Manage advanced content
 =====================================
@@ -5,19 +7,19 @@ Manage advanced content
 
 var manageEditDevices = [];
 
-function showManageAdvanced( requester ) {
+function showManageAdvanced(requester) {
     $("#manage-basic").hide();
     $("#manage-advanced-devices").empty();
     $("#manager-advanced-capture-devices-body").empty();
     $("#manage-advanced-apply-changes").addClass("disabled");
 
     // Select create a list of the devices we are going to edit.
-    if ($(requester).parent().parent().find(".manage-loaded-checkbox:checked").length == 0) {
-        manageEditDevices = $(requester).map( function() {
+    if ($(requester).parent().parent().find(".manage-loaded-checkbox:checked").length === 0) {
+        manageEditDevices = $(requester).map(function () {
             return $(this).parent().parent().find(".manage-loaded-device-lookup").text();
         });
     } else {
-        manageEditDevices = $(".manage-loaded-checkbox:checked").map( function() {
+        manageEditDevices = $(".manage-loaded-checkbox:checked").map(function() {
             return $(this).parent().parent().find(".manage-loaded-device-lookup").text();
         });
     }

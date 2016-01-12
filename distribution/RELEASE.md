@@ -129,8 +129,10 @@
 #### 1.0.0-Beta (compile only; not released)
 > *Added web interface on port 8090.
 
-> *Added support to load and unload capture devices at runtime via the web interface. This starts 
-> the framework to be able to start the service for the first time and then select what you want to
-> use instead of OpenDCT just loading everything it can find.
+> *Added support to load and unload capture devices at runtime via the web interface. The default if
+> the web interface is able to load is now to not load any capture devices that are not explicitly
+> asked to be loaded. The devices loaded via the web interface will be reloaded automatically
+> through restarts. This behavior can be reverted to the original behavior by changing
+> sagetv.device.global.always_use_only_devices to false.
 
 > *

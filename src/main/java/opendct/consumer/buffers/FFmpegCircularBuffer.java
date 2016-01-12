@@ -79,15 +79,19 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
                 logger.debug("offset = {}, buffer.length = {}, readIndex = {}, , end = {}", offset, buffer.length, readIndex, end);
 
                 bytePtr.position(offset).put(buffer, readIndex, end);
-                readIndex = returnLength - end;
+
+                int readRemaining = returnLength - end;
 
                 if (readIndex > 0) {
-                    logger.debug("offset = {}, buffer.length = {},  readIndex = {}", offset, buffer.length, readIndex);
+                    logger.debug("offset = {}, buffer.length = {},  readRemaining = {}", offset, buffer.length, readRemaining);
 
-                    bytePtr.position(offset).put(buffer, 0, readIndex);
+                    bytePtr.position(offset).put(buffer, 0, readRemaining);
                 }
 
-                readPasses += 1;
+                synchronized (rwPassLock) {
+                    readIndex = readRemaining;
+                    readPasses += 1;
+                }
             } else {
                 bytePtr.position(offset).put(buffer, readIndex, returnLength);
                 readIndex += returnLength;
@@ -104,7 +108,8 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
      * A defined way of seeking through data used by the JavaCPP library in conjunction with FFmpeg.
      *
      * @param wence  This appears to be an enum returned from JavaCPP to seeking in specific ways.
-     * @param offset This is the offset to be used if <b>wence</b> requires it.
+     * @param offset This is the offset or an absolute position depending on the value of
+     *               <b>wence</b>.
      * @return This returns either the current index or -1 if there was a problem.
      */
     public long seek(int wence, long offset) {
@@ -116,10 +121,13 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
 
         switch (wence) {
             case 0:
-                // Set the read index to a specific index.
+                // Set the read index to a specific index relative to the total number bytes ever
+                // placed in the buffer.
                 try {
-                    setReadIndex(offset);
-                    returnValue = offset;
+                    if (offset >= 0) {
+                        setReadIndex(offset);
+                        returnValue = offset;
+                    }
                 } catch (IndexOutOfBoundsException e) {
                     logger.warn("Seek: Requested a read index that is not yet available => ", e);
                 }
@@ -127,19 +135,22 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
             case 1:
                 // Seek the read index relative to the current read index.
                 try {
-                    returnValue = incrementReadIndex(offset);
+                    returnValue = incrementReadIndexFromStart(offset);
                 } catch (IndexOutOfBoundsException e) {
                     logger.warn("Seek: Requested a read index that is not yet available => ", e);
                 }
                 break;
             case 2:
-                // Seek to the last available byte.
-                returnValue = totalReadBytes() - 1;
-                setReadIndex(returnValue);
+                // Seek the read index relative to the total available bytes.
+                try {
+                    returnValue = incrementReadIndexFromEnd(offset);
+                } catch (IndexOutOfBoundsException e) {
+                    logger.warn("Seek: Requested a read index that is not yet available => ", e);
+                }
                 break;
             case 65536:
-                // Get total remaining available bytes.
-                returnValue = totalReadBytes();
+                // Get total available bytes since the start of writing to the buffer.
+                returnValue = totalBytesAvailable() + 1;
                 break;
             default:
                 logger.warn("Seek: The wence value {} is not being handled.", wence);

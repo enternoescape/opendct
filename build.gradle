@@ -59,7 +59,7 @@ ext {
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
     minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
     buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
-    buildType = "Alpha"
+    buildType = "Beta"
 
     javaVersion = '1.7'
     buildVersion = "${majorVersion}.${minorVersion}.${buildVersion}"
@@ -79,6 +79,9 @@ configurations {
 }
 
 dependencies {
+    //testCompile 'junit:junit:4.12'
+    testCompile 'org.testng:testng:6.1.1'
+
     compile fileTree(dir: 'lib', include: ['*.jar'])
     compile 'org.seamless:seamless-http:1.1.0'
 	compile 'org.seamless:seamless-util:1.1.0'
@@ -108,6 +111,13 @@ dependencies {
 
 	linux_x86_64 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64"
 	linux_x86_64 configurations.compile
+}
+
+test {
+    useTestNG()
+
+    reports.html.destination = file("$buildDir/reports/testng")
+    systemProperty 'opendct_log_root', 'build/test-log'
 }
 
 idea {

@@ -40,7 +40,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 8;
+    public static final int VERSION_BUILD = 12;
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -214,6 +214,7 @@ public class Config {
     }
 
     public static void logCleanup() {
+        long minFreeSpace = Config.getLong("log.min_free_space", 1073741824);
         long days = Config.getLong("log.remove_after_days", 30);
 
         if (days <= 0) {
@@ -239,6 +240,28 @@ public class Config {
                 } else {
                     logger.info("Unable to remove log file '{}' that is over {} {} old.",
                             file.getName(), days, days == 1 ? "day" : "days");
+                }
+            }
+        }
+
+        if (logDir.getFreeSpace() < minFreeSpace) {
+            files = logDir.listFiles();
+
+            if (files == null || files.length == 0) {
+                return;
+            }
+
+            for (File file : files) {
+                if (file.delete()) {
+                    logger.info("Removed log file '{}' because free disk space is below {} bytes.",
+                            file.getName(), minFreeSpace);
+                } else {
+                    logger.info("Unable to remove log file '{}' that is contributing to the free disk space being below {} bytes.",
+                            file.getName(), minFreeSpace);
+                }
+
+                if (logDir.getFreeSpace() < minFreeSpace) {
+                    break;
                 }
             }
         }

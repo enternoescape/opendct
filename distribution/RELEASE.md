@@ -54,7 +54,7 @@
 > *Backported: Fixed an unreliable timeout issue with the re-tuning monitoring thread under the
 > right conditions.
 
-#### 0.4.0-Beta (compile only; not released)
+#### 0.4.0-Beta
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
 > so it will be considered experimental for now. ClearQAM and DCT devices are automatically put in 
@@ -84,19 +84,19 @@
 > *Internal: Fixed the Gradle script so EOL in Linux packages will always be correct regardless of
 > how the files were downloaded. 
 
-#### 0.4.1-Beta (compile only; not released)
+#### 0.4.1-Beta
 > *Added handling for Prime urls with copy protection so they don't get enabled in the lineup.
 
 > *Fix a problem when tuning the frequency 0 that could potentially cause a device to never unlock.
 
-#### 0.4.2-Alpha (compile only; not released; trace enabled)
+#### 0.4.2-Alpha
 > *Modified circular buffer to accommodate seeking after detection. Testing has been very
 > successful, but watch this release very carefully and report any issues with a log attached.
 
-#### 0.4.3-Alpha (compile only; not released)
+#### 0.4.3-Alpha
 > *Added and tested seek error handling to the circular buffer. More testing needed.
 
-#### 0.4.4-Alpha (compile only; not released)
+#### 0.4.4-Alpha
 > *Still alpha due to the circular buffer changes.
 
 > *Added monitoring and validation for RTCP. Currently no responses are generated. This is just so
@@ -107,7 +107,7 @@
 
 > *Internal: Logging line ending and space usage improvements.
 
-#### 0.4.5-Alpha (compile only; not released)
+#### 0.4.5-Alpha
 > *Fixed issue with RTCP port not closing at the right time.
 
 > *Added logging for initial packet losses, less than 12 bytes packet losses and packet size limit
@@ -115,16 +115,48 @@
 
 > *Increased UDP buffer from 1500 to 65508 which is the largest size any UDP packet should ever be.
 
-#### 0.4.6-Alpha (compile only; not released)
+#### 0.4.6-Alpha
 > *Changed UDP buffer to start at 1500 and dynamically resize to fit the current situation. It saves 
 > the final size and uses it the next time so detection only needs to happen once.
 
-#### 0.4.7-Alpha (compile only; not released)
+#### 0.4.7-Alpha
 > *Addresses a null pointer issue when tuning using UPnP.
 
-#### 0.4.8-Alpha (compile only; not released)
+#### 0.4.8-Alpha
 > *Fixed an unreliable timeout issue with the re-tuning monitoring thread under the right
 > conditions.
+
+> *Changed wrapper.conf to not restart on exit conditions that can't possibly be corrected by
+> restarting the program.
+
+> *Fixed an issue with HDHomeRun program detection not returning a value when it had not yet reached
+> the timeout.
+
+#### 0.4.9-Beta
+> *Returned to beta now that the new buffer has been in use for about a week without any complaints
+> relating to the buffer. The changes were not intense enough to warrant any further testing. We now
+> have a junit test to help confirm the integrity of the buffer.
+
+> *Fixed speed and line termination issue when returning PROPERTIES.
+
+#### 0.4.10-Beta
+> *Added feature to clean up log files based on available free space. The default minimum free space
+> is 1GB. Free space could be a very real issue if logging gets intense for any reason and logging
+> should never be the cause of your server failing. This runs after log files are deleted by date.
+
+> *Increased logging for re-tuning to help determine why it happened.
+
+> *Internal: Changed to TestNG for greater flexibility in testing.
+
+#### 0.4.11-Beta
+> *Fixed race condition in circular buffer.
+
+> *Added suspend logic to handle unexpected states better.
+
+#### 0.4.12-Beta
+>  *Additional fixes for seeking in the circular buffer logic.
+
+> *Added more suspend logic to handle unexpected states.
 
 #### 1.0.0-Beta (compile only; not released)
 > *Added web interface on port 8090.

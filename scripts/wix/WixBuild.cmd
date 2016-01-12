@@ -26,8 +26,8 @@ IF ERRORLEVEL 1 exit /B 3
 "%WixPath%\heat.exe" dir "%JswDocPath%" -gg -dr jswDir -cg jswDocComp_DCT -var var.jswSourcePathDoc -out "%CompilePath%\jswDocComp_DCT.wxs"
 IF ERRORLEVEL 1 exit /B 4
 
-"%WixPath%\candle.exe" -out "%CompilePath%\\" -arch %ARCH% -dPlatform="%ARCH%" -dVersionNumber="%VERSION%" -dProjectDir="%FilesPath%" -djswSourcePathDoc="%JswDocPath%" -drootSourcePath="%SourcePath%" "%CompilePath%\Product.wxs" "%CompilePath%\WixUI_DCT.wxs" "%CompilePath%\jswDocComp_DCT.wxs" "%CompilePath%\rootComp_DCT.wxs"
+"%WixPath%\candle.exe" -ext WixFirewallExtension -out "%CompilePath%\\" -arch %ARCH% -dPlatform="%ARCH%" -dVersionNumber="%VERSION%" -dProjectDir="%FilesPath%" -djswSourcePathDoc="%JswDocPath%" -drootSourcePath="%SourcePath%" "%CompilePath%\Product.wxs" "%CompilePath%\WixUI_DCT.wxs" "%CompilePath%\jswDocComp_DCT.wxs" "%CompilePath%\rootComp_DCT.wxs"
 IF ERRORLEVEL 1 exit /B 5
 
-"%WixPath%\light.exe" -sice:ICE61 -out "%DistPath%\OpenDCT_%VERSION%_%ARCH%.msi" -b "%CompilePath%\\" -ext WixFirewallExtension -ext WixUIExtension -ext WiXUtilExtension -cultures:en-us -loc "%CompilePath%\Product_en-us.wxl" "%CompilePath%\Product.wixobj" "%CompilePath%\WixUI_DCT.wixobj" "%CompilePath%\jswDocComp_DCT.wixobj" "%CompilePath%\rootComp_DCT.wixobj"
+"%WixPath%\light.exe" -sice:ICE61 -ext WixFirewallExtension -ext WixUIExtension -ext WiXUtilExtension -out "%DistPath%\OpenDCT_%VERSION%_%ARCH%.msi" -b "%CompilePath%\\" -cultures:en-us -loc "%CompilePath%\Product_en-us.wxl" "%CompilePath%\Product.wixobj" "%CompilePath%\WixUI_DCT.wixobj" "%CompilePath%\jswDocComp_DCT.wixobj" "%CompilePath%\rootComp_DCT.wixobj"
 IF ERRORLEVEL 1 exit /B 6

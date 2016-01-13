@@ -3,7 +3,7 @@
 An open source digital cable tuner network encoder for [SageTV](http://forums.sagetv.com/forums/index.php).
 
 ## Download
-OpenDCT packaged releases are hosted on [Bintray.com](https://bintray.com/opendct/Releases/OpenDCT/view#files/releases/).
+[ ![Download](https://api.bintray.com/packages/opendct/Releases/OpenDCT/images/download.svg) ](https://bintray.com/opendct/Releases/OpenDCT/_latestVersion)
 
 *On Linux platforms it is recommended to only use the architecture of your distribution.*
 

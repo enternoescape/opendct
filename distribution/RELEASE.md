@@ -154,9 +154,16 @@
 > *Added suspend logic to handle unexpected states better.
 
 #### 0.4.12-Beta
->  *Additional fixes for seeking in the circular buffer logic.
+> *Additional fixes for seeking in the circular buffer logic.
 
 > *Added more suspend logic to handle unexpected states.
+
+#### 0.4.13-Beta
+> *Addressed possibility that the RTP stall monitoring thread could continue running even after it
+> should have stopped. This has no serious consequence other than annoying logged warnings.
+
+> *Increased default detection timeout to 60 seconds. UPnP detection doesn't always work very
+> quickly for some setups.
 
 #### 1.0.0-Beta (compile only; not released)
 > *Added web interface on port 8090.

@@ -37,7 +37,7 @@ The majority of the configuration is done inside opendct.properties. The file is
  * This is a comma delimited list of tuners or entire devices to be ignored if they are discovered. The names on this list must perfectly match the name of the tuner or "parent" device as it is named when discovered. When a device is on the list, all tuners on that device will be excluded.
 * sagetv.device.global.only\_devices\_csv=
  * This property if set always supersedes ignore\_devices\_csv. This is a comma delimited list of tuners or entire devices allowed to be initialized if they are discovered. The names on this list must perfectly match the name of the tuner or "parent" device as it is named when discovered.
-* sagetv.device.global.required\_devices\_loaded\_timeout\_ms=30000
+* sagetv.device.global.required\_devices\_loaded\_timeout\_ms=60000
  * This is the amount of time allowed in milliseconds to pass while waiting for the required number of devices before the program will exit with a failure.
 * sagetv.device.global.required\_devices\_loaded\_count=0
  * This is the number of devices that need to be detected and loaded before the required timeout. This must be the total number of devices OpenDCT normally detects and loads for standby support to work correctly. 

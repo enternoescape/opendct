@@ -80,7 +80,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
             rtcpClient.startReceiving(streamRemoteIP, this.localPort + 1);
         } catch (IOException e) {
-            if (datagramChannel != null && datagramChannel.isConnected()) {
+            if (datagramChannel != null) {
                 try {
                     datagramChannel.close();
                     datagramChannel.socket().close();
@@ -336,6 +336,32 @@ public class NIORTPProducerImpl implements RTPProducer {
         }
 
         logger.info("Producer thread has stopped.");
+
+        if (timeoutThread != null) {
+            try {
+                int timeout = 0;
+
+                while (timeoutThread != null && timeoutThread.isAlive()) {
+                    timeoutThread.interrupt();
+                    timeoutThread.join(1000);
+
+                    if (timeout++ > 5) {
+                        logger.warn("Producer has been waiting for packet monitoring thread to stop for over {} seconds.", timeout);
+                    }
+                }
+            } catch (InterruptedException e) {
+                logger.debug("Producer was interrupted while waiting for packet monitoring thread to stop => ", e);
+            }
+        }
+
+        if (rtcpClient != null) {
+            try {
+                rtcpClient.waitForStop();
+            } catch (InterruptedException e) {
+                logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => ", e);
+            }
+        }
+
         running.set(false);
         stop.set(false);
     }

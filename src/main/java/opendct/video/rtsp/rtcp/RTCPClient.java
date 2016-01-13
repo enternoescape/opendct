@@ -109,6 +109,20 @@ public class RTCPClient implements Runnable {
         }
     }
 
+    public void waitForStop() throws InterruptedException {
+
+        int timeout = 0;
+
+        while (rtcpClientThread != null && rtcpClientThread.isAlive()) {
+            rtcpClientThread.interrupt();
+            rtcpClientThread.join(1000);
+
+            if (timeout++ > 5) {
+                logger.warn("RTCP client has been waiting for its thread to stop for over {} seconds.", timeout);
+            }
+        }
+    }
+
     public void run() {
         logger.info("RTCP client thread is running.");
 

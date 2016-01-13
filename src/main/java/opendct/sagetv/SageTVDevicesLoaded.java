@@ -29,7 +29,7 @@ public class SageTVDevicesLoaded extends Thread {
     private static final Logger logger = LogManager.getLogger(SageTVDevicesLoaded.class);
 
     private final long timeout =
-            Config.getLong("sagetv.device.global.required_devices_loaded_timeout_ms", 30000);
+            Config.getLong("sagetv.device.global.required_devices_loaded_timeout_ms", 60000);
     private final int requiredDevices =
             Config.getInteger("sagetv.device.global.required_devices_loaded_count", 0);
 

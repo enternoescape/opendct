@@ -37,15 +37,15 @@ function manageAdvancedAutoCreateInput(label, description, property, value) {
         if (domProperty.attr("type") === "checkbox") {
             var currentValue = $("#manage-advanced-prop-" + property).find(".manage-advanced-value").prop("checked");
 
-            if (currentValue !== value) {
-                manageDisplayAdvancedConflictMessage( property );
+            if (currentValue != value) {
+                manageDisplayAdvancedConflictMessage(property);
                 $("#manage-advanced-prop-" + property).find(".manage-advanced-value").prop("checked", false);
             }
         } else {
             var currentValue = $("#manage-advanced-prop-" + property).find(".manage-advanced-value").val();
 
-            if (currentValue !== value) {
-                manageDisplayAdvancedConflictMessage( property );
+            if (currentValue != value) {
+                manageDisplayAdvancedConflictMessage(property);
                 $("#manage-advanced-prop-" + property).find(".manage-advanced-value").val("");
             }
         }

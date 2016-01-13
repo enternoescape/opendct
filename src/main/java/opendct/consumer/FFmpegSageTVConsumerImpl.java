@@ -814,19 +814,21 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             if (preferredVideo != AVERROR_STREAM_NOT_FOUND) {
                 videoCodecCtx = getCodecContext(avfCtxInput.streams(preferredVideo));
+            }
 
-                if (videoCodecCtx == null) {
-                    if (isInterrupted()) {
-                        return FFMPEG_INIT_INTERRUPTED;
-                    }
-
-                    if (dynamicProbeSize == probeSizeLimit) {
-                        return "Could not find a video stream";
-                    }
-
-                    freeAndSetNullAttemptData();
-                    continue;
+            if (videoCodecCtx == null) {
+                if (isInterrupted()) {
+                    return FFMPEG_INIT_INTERRUPTED;
                 }
+
+                String error = "Could not find a video stream.";
+                if (dynamicProbeSize == probeSizeLimit) {
+                    return error;
+                }
+                logger.debug(error);
+
+                freeAndSetNullAttemptData();
+                continue;
             }
 
             if (isInterrupted()) {
@@ -846,9 +848,54 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     return FFMPEG_INIT_INTERRUPTED;
                 }
 
+                String error = "Could not find an audio stream.";
                 if (dynamicProbeSize == probeSizeLimit) {
-                    return "Could not find an audio stream";
+                    return error;
                 }
+                logger.debug(error);
+
+                freeAndSetNullAttemptData();
+                continue;
+            }
+
+
+            if (videoCodecCtx == null) {
+                if (isInterrupted()) {
+                    return FFMPEG_INIT_INTERRUPTED;
+                }
+
+                String error = "Could not find a video stream.";
+                if (dynamicProbeSize == probeSizeLimit) {
+                    return error;
+                }
+                logger.debug(error);
+
+                freeAndSetNullAttemptData();
+                continue;
+            }
+
+            if (isInterrupted()) {
+                return FFMPEG_INIT_INTERRUPTED;
+            }
+
+            logger.debug("Finding best audio stream.");
+
+            preferredAudio = findBestAudioStream(avfCtxInput);
+
+            if (preferredAudio != AVERROR_STREAM_NOT_FOUND) {
+                audioCodecCtx = getCodecContext(avfCtxInput.streams(preferredAudio));
+            }
+
+            if (audioCodecCtx == null) {
+                if (isInterrupted()) {
+                    return FFMPEG_INIT_INTERRUPTED;
+                }
+
+                String error = "Could not find an audio stream.";
+                if (dynamicProbeSize == probeSizeLimit) {
+                    return error;
+                }
+                logger.debug(error);
 
                 freeAndSetNullAttemptData();
                 continue;

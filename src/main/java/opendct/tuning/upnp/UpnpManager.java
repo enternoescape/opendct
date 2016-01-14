@@ -128,15 +128,24 @@ public class UpnpManager implements PowerEventListener {
             discoveryThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    while (SageTVManager.captureDevicesLoaded() && !Thread.currentThread().isInterrupted()) {
+                    logger.info("UPnP discovery thread has started.");
+
+                    while (!SageTVManager.captureDevicesLoaded()) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            break;
+                        }
+
                         try {
                             Thread.sleep(searchInterval);
                         } catch (InterruptedException e) {
-                            break;
+                            logger.info("UPnP discovery thread was interrupted => ", e);
+                            return;
                         }
 
                         searchSecureContainers(secureContainers);
                     }
+
+                    logger.info("Capture device count reached. UPnP discovery thread has stopped.");
                 }
             });
             discoveryThread.setName("UPnPDiscovery-" + discoveryThread.getId());

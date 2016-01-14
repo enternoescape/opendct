@@ -172,5 +172,5 @@
 
 > *Addressed standby issue with UPnP devices not responding quickly enough.
 
-> *The latest updates to the standby code did not update the network listener preventing us from
-> waiting for the network to be able before resuming any other activities.
+> *Fixed standby network listener to work with the new standby code. It will now wait for the 
+> network to be available before resuming any other activities like it did before the update.

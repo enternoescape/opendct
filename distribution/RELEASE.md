@@ -162,5 +162,6 @@
 > *Addressed possibility that the RTP stall monitoring thread could continue running even after it
 > should have stopped. This has no serious consequence other than annoying logged warnings.
 
-> *Increased default detection timeout to 60 seconds. UPnP detection doesn't always work very
-> quickly for some setups.
+> *Fixed a rare null pointer issue in the FFmpeg consumer.
+
+> *Addressed standby issue with UPnP devices not responding quickly enough.

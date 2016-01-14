@@ -21,6 +21,7 @@ import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
+import opendct.sagetv.SageTVManager;
 import opendct.tuning.upnp.config.DCTDefaultUpnpServiceConfiguration;
 import opendct.tuning.upnp.listener.DCTRegistryListener;
 import org.apache.logging.log4j.LogManager;
@@ -45,6 +46,8 @@ public class UpnpManager implements PowerEventListener {
     private static volatile boolean running;
     private static UpnpService upnpService = null;
     private static RegistryListener registryListener = null;
+    private static Thread discoveryThread = null;
+
     private AtomicBoolean suspend = new AtomicBoolean(false);
 
     // This object is thread-safe and the code on the other side
@@ -114,6 +117,31 @@ public class UpnpManager implements PowerEventListener {
             }
 
             returnValue = true;
+
+            // This property will give us the ability to add new schema descriptors as they are
+            // changed/discovered. Note that this will not actually limit the responses from UPnP
+            // devices on the network, so it is not a filter.
+            final String secureContainers[] = Config.getStringArray("upnp.new.device.search_strings_csv", "schemas-cetoncorp-com", "schemas-dkeystone-com");
+            final int searchInterval = Config.getInteger("upnp.new.device.search_interval_s", 4) * 1000;
+            searchSecureContainers(secureContainers);
+
+            discoveryThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (SageTVManager.captureDevicesLoaded() && !Thread.currentThread().isInterrupted()) {
+                        try {
+                            Thread.sleep(searchInterval);
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+
+                        searchSecureContainers(secureContainers);
+                    }
+                }
+            });
+            discoveryThread.setName("UPnPDiscovery-" + discoveryThread.getId());
+            discoveryThread.start();
+
         } catch (Exception e) {
             logger.error("UPnP services were unable to start => ", e);
             running = false;
@@ -121,13 +149,6 @@ public class UpnpManager implements PowerEventListener {
         } finally {
             upnpServiceLock.writeLock().unlock();
         }
-
-        // This property will give us the ability to add new schema descriptors
-        // as they are changed/discovered. Note that this will not actually
-        // limit the responses from UPnP devices on the network, so it is not a
-        // filter.
-        String secureContainers[] = Config.getStringArray("upnp.new.device.search_strings_csv", "schemas-cetoncorp-com", "schemas-dkeystone-com");
-        searchSecureContainers(secureContainers);
 
         return logger.exit(returnValue);
     }
@@ -144,6 +165,10 @@ public class UpnpManager implements PowerEventListener {
             if (!running) {
                 logger.debug("UPnP services have already stopped.");
             } else {
+                if (discoveryThread != null) {
+                    discoveryThread.interrupt();
+                }
+
                 upnpService.shutdown();
             }
             returnValue = true;
@@ -215,7 +240,7 @@ public class UpnpManager implements PowerEventListener {
         boolean returnValue = true;
 
         try {
-            upnpService.getControlPoint().search(new DeviceTypeHeader(type));
+            upnpService.getControlPoint().search(new DeviceTypeHeader(type), 1);
         } catch (Exception e) {
             logger.error("The SecureContainer search message for '{}' devices was not sent => {}", schema, e);
             returnValue = false;

@@ -125,7 +125,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     }
 
     public void onResumeAutomaticEvent() {
-        // Don't use this method.
+        waitForNetworkInterfaces();
     }
 
     private static void getNetworkInterfaces(boolean printOutput) {

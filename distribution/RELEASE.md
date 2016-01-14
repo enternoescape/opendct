@@ -171,3 +171,6 @@
 > *Fixed a rare null pointer issue in the FFmpeg consumer. [ws]
 
 > *Addressed standby issue with UPnP devices not responding quickly enough.
+
+> *The latest updates to the standby code did not update the network listener preventing us from
+> waiting for the network to be able before resuming any other activities.

@@ -158,8 +158,12 @@
 
 > *Added more suspend logic to handle unexpected states.
 
-#### 0.4.13-Beta
 > *Windows installer now applies firewall settings the official way.
+
+#### 0.4.13-Beta
+> *Windows installer now will not fail on firewall rules on upgrades. If you need to roll back to
+> 0.4.12, you will need to install 0.4.11 first, then 0.4.12 to get around the firewall upgrade
+> issues.
 
 > *Addressed possibility that the RTP stall monitoring thread could continue running even after it
 > should have stopped. This has no serious consequence other than annoying logged warnings.

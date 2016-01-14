@@ -156,16 +156,16 @@
 						<Directory Id="jswBinDir" Name="bin">
 							<Component Id="jswWrapper.exe" Guid="{0acc4829-4194-4aa4-acde-4afb5da49294}" Win64="$(var.Win64)">
 								<File Source="$(var.jswSourcePath)\bin\wrapper.exe" Vital="yes" Id="jswWrapper.exe" KeyPath="yes">
-                                    <fire:FirewallException Id="jswWrapper.exe.ex1" Name="OpenDCT (JSW)" Port="any" Protocol="tcp" Scope="any" />
-									<fire:FirewallException Id="jswWrapper.exe.ex2" Name="OpenDCT (JSW)" Port="any" Protocol="udp" Scope="any" />
+                                    <fire:FirewallException Id="jswWrapper.exe.ex1" Name="OpenDCT (JSW)" Port="any" Protocol="tcp" Scope="any" IgnoreFailure="yes" />
+									<fire:FirewallException Id="jswWrapper.exe.ex2" Name="OpenDCT (JSW)" Port="any" Protocol="udp" Scope="any" IgnoreFailure="yes" />
                                 </File>
 
-                                <fire:FirewallException Id="jswWrapper.exe.ex3" Name="OpenDCT (Media Server)" Port="7818" Protocol="tcp" Scope="any"/>
-                                <fire:FirewallException Id="jswWrapper.exe.ex4" Name="OpenDCT (SageTV Network Encoder)" Port="9000-9100" Protocol="tcp" Scope="any" />
-                                <fire:FirewallException Id="jswWrapper.exe.ex5" Name="OpenDCT (SageTV Discovery)" Port="8271" Protocol="udp" Scope="any" />
-                                <fire:FirewallException Id="jswWrapper.exe.ex6" Name="OpenDCT (RTP)" Port="8300-8500" Protocol="udp" Scope="any" />
-                                <fire:FirewallException Id="jswWrapper.exe.ex7" Name="OpenDCT (Cling HTTP TCP)" Port="8501" Protocol="udp" Scope="any" />
-								
+                                <fire:FirewallException Id="jswWrapper.exe.ex3" Name="OpenDCT (Media Server)" Port="7818" Protocol="tcp" Scope="any" IgnoreFailure="yes" />
+                                <fire:FirewallException Id="jswWrapper.exe.ex4" Name="OpenDCT (SageTV Network Encoder)" Port="9000-9100" Protocol="tcp" Scope="any" IgnoreFailure="yes" />
+                                <fire:FirewallException Id="jswWrapper.exe.ex5" Name="OpenDCT (SageTV Discovery)" Port="8271" Protocol="udp" Scope="any" IgnoreFailure="yes" />
+                                <fire:FirewallException Id="jswWrapper.exe.ex6" Name="OpenDCT (RTP)" Port="8300-8500" Protocol="udp" Scope="any" IgnoreFailure="yes" />
+                                <fire:FirewallException Id="jswWrapper.exe.ex7" Name="OpenDCT (Cling HTTP TCP)" Port="8501" Protocol="udp" Scope="any" IgnoreFailure="yes" />
+
 								<ServiceInstall Id="jswWrapper.exe.service" Name="opendct" DisplayName="SageTV OpenDCT" Type="ownProcess" Start="auto" Vital="yes"
 									ErrorControl="normal" Description="SageTV OpenDCT Java Network Encoder for Digital Cable Tuners"
 									Arguments="-s &quot;[INSTALLDIR]\jsw\conf\wrapper.conf&quot;" />

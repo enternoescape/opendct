@@ -159,9 +159,11 @@
 > *Added more suspend logic to handle unexpected states.
 
 #### 0.4.13-Beta
+> *Windows installer now applies firewall settings the official way.
+
 > *Addressed possibility that the RTP stall monitoring thread could continue running even after it
 > should have stopped. This has no serious consequence other than annoying logged warnings.
 
-> *Fixed a rare null pointer issue in the FFmpeg consumer.
+> *Fixed a rare null pointer issue in the FFmpeg consumer. [ws]
 
 > *Addressed standby issue with UPnP devices not responding quickly enough.

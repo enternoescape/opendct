@@ -42,7 +42,7 @@ The majority of the configuration is done inside opendct.properties. The file is
 * sagetv.device.global.required\_devices\_loaded\_count=0
  * This is the number of devices that need to be detected and loaded before the required timeout. This must be the total number of devices OpenDCT normally detects and loads for standby support to work correctly. 
 
-> Available as of version 0.4 (compile only; not yet released)
+> Available as of version 0.4 (public beta)
 
 * upnp.service.configuration.ignore\_interfaces\_csv=
  * Specify the name of interfaces in a comma delimited list of network interfaces as they are named by Java to be ignored when UPnP is performing discovery.

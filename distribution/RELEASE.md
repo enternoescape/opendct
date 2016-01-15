@@ -174,3 +174,6 @@
 
 > *Fixed standby network listener to work with the new standby code. It will now wait for the 
 > network to be available before resuming any other activities like it did before the update.
+
+#### 0.4.14-Beta
+> *Changed over to a more public beta.

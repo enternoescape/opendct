@@ -858,49 +858,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 continue;
             }
 
-
-            if (videoCodecCtx == null) {
-                if (isInterrupted()) {
-                    return FFMPEG_INIT_INTERRUPTED;
-                }
-
-                String error = "Could not find a video stream.";
-                if (dynamicProbeSize == probeSizeLimit) {
-                    return error;
-                }
-                logger.debug(error);
-
-                freeAndSetNullAttemptData();
-                continue;
-            }
-
-            if (isInterrupted()) {
-                return FFMPEG_INIT_INTERRUPTED;
-            }
-
-            logger.debug("Finding best audio stream.");
-
-            preferredAudio = findBestAudioStream(avfCtxInput);
-
-            if (preferredAudio != AVERROR_STREAM_NOT_FOUND) {
-                audioCodecCtx = getCodecContext(avfCtxInput.streams(preferredAudio));
-            }
-
-            if (audioCodecCtx == null) {
-                if (isInterrupted()) {
-                    return FFMPEG_INIT_INTERRUPTED;
-                }
-
-                String error = "Could not find an audio stream.";
-                if (dynamicProbeSize == probeSizeLimit) {
-                    return error;
-                }
-                logger.debug(error);
-
-                freeAndSetNullAttemptData();
-                continue;
-            }
-
             break;
         }
 

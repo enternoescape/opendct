@@ -30,6 +30,8 @@ import static org.bytedeco.javacpp.avutil.av_log_format_line;
 //import org.bytedeco.javacpp.avutil.AVClass;
 
 public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
+    public static final boolean linuxLogging = Config.getBoolean("consumer.ffmpeg.linux_logging", false);
+
     int[] printPrefix = new int[]{1};
     StringBuilder lineBuf = new StringBuilder();
 
@@ -95,7 +97,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         byte[] bytes = new byte[1024];
 
-        if (Config.IS_WINDOWS) {
+        if (Config.IS_WINDOWS || Config.IS_LINUX && linuxLogging) {
             av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
         }
 

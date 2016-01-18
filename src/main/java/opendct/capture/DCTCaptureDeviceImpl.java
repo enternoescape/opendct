@@ -845,35 +845,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     logger.debug("HDHomeRun is unable to get program because the thread was interrupted => ", e);
                     return logger.exit(false);
                 }
-
-                try {
-                    newConsumer.setPids(hdhrTuner.getFilter());
-
-                    int timeout = 50;
-
-                    while (newConsumer.getPids().length <= 1) {
-                        Thread.sleep(100);
-                        newConsumer.setPids(hdhrTuner.getFilter());
-
-                        if (timeout-- < 0) {
-                            logger.error("Unable to get PIDs after 5 seconds.");
-                            newConsumer.setPids(new int[0]);
-                            break;
-                        }
-
-                        if (tuningThread != Thread.currentThread()) {
-                            stopProducing(false);
-                            return logger.exit(false);
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.error("HDHomeRun is unable to get PIDs because the device cannot be reached => ", e);
-                } catch (GetSetException e) {
-                    logger.error("HDHomeRun is unable to get PIDs because the command did not work => ", e);
-                } catch (InterruptedException e) {
-                    logger.debug("HDHomeRun is unable to get PIDs because the thread was interrupted => ", e);
-                    return logger.exit(false);
-                }
             }
 
             logger.info("Configuring and starting the new SageTV consumer...");
@@ -1014,34 +985,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     logger.error("Unable to get program number => ", e);
                 } catch (InterruptedException e) {
                     logger.debug("Unable to get program number => ", e);
-                    return logger.exit(false);
-                }
-
-                try {
-                    int pids[] = InfiniTVStatus.getPids(encoderIPAddress, encoderNumber, 5);
-                    newConsumer.setPids(pids);
-
-                    int timeout = 50;
-
-                    while (newConsumer.getPids().length <= 1) {
-                        Thread.sleep(100);
-                        pids = InfiniTVStatus.getPids(encoderIPAddress, encoderNumber, 5);
-                        newConsumer.setPids(pids);
-
-                        if (timeout-- < 0) {
-                            logger.error("Unable to get PIDs after more than 5 seconds.");
-                            return logger.exit(false);
-                        }
-
-                        if (tuningThread != Thread.currentThread()) {
-                            stopProducing(false);
-                            return logger.exit(false);
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.error("Unable to get PID numbers => ", e);
-                } catch (InterruptedException e) {
-                    logger.debug("Unable to get PID numbers => ", e);
                     return logger.exit(false);
                 }
             }
@@ -1330,20 +1273,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     newConsumer.setProgram(program);
                 } catch (Exception e) {
                     logger.warn("Unable to parse program => ", e);
-                }
-
-                try {
-                    String pidsString = muxAction.SERVICE_ACTIONS.queryActionVariable("PIDList");
-                    String split[] = pidsString.split(",");
-                    int pids[] = new int[split.length];
-
-                    for (int i = 0; i < pids.length; i++) {
-                        pids[i] = Integer.parseInt(split[i].trim(), 16);
-                    }
-
-                    newConsumer.setPids(pids);
-                } catch (Exception e) {
-                    logger.warn("Unable to parse PIDs => ", e);
                 }
 
                 logger.info("Configuring and starting the SageTV consumer...");

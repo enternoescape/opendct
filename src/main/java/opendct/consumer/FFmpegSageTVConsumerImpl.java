@@ -111,7 +111,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private int currentUploadID = -1;
     private int switchUploadID = -1;
     private String currentRecordingQuality = null;
-    private int desiredPids[] = new int[0];
     private int desiredProgram = -1;
     private String tunedChannel = "";
 
@@ -1122,16 +1121,8 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         }
     }
 
-    public void setPids(int[] pids) {
-        desiredPids = pids;
-    }
-
     public void setProgram(int program) {
         desiredProgram = program;
-    }
-
-    public int[] getPids() {
-        return desiredPids;
     }
 
     public int getProgram() {

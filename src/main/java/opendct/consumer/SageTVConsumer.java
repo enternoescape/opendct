@@ -198,16 +198,6 @@ public interface SageTVConsumer extends Runnable {
     public int getEncoderUploadID();
 
     /**
-     * Sets the desired PIDs from the originating transport stream.
-     * <p/>
-     * The consumer should not rely on this being present. If this value is never set or is set to
-     * an empty array, the consumer must do a best effort.
-     *
-     * @param pids The desired PIDs.
-     */
-    public void setPids(int pids[]);
-
-    /**
      * Sets the desired program from the originating transport stream.
      * <p/>
      * The consumer should not rely on this being set. If this value is never set or is set to
@@ -216,13 +206,6 @@ public interface SageTVConsumer extends Runnable {
      * @param program The desired program number.
      */
     public void setProgram(int program);
-
-    /**
-     * Gets the desired PIDs.
-     *
-     * @return The desired PIDs or an empty array.
-     */
-    public int[] getPids();
 
     /**
      * Gets the desired program number.

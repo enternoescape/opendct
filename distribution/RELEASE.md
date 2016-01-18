@@ -177,3 +177,6 @@
 
 #### 0.4.14-Beta
 > *Changed over to a more public beta.
+
+#### 0.4.15-Beta
+> *Internal: Removed desired PID from consumer interface since it can be unreliable.

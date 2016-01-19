@@ -820,14 +820,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 try {
                     newConsumer.setProgram(hdhrTuner.getProgram());
 
-                    int timeout = 50;
+                    int timeout = 20;
 
                     while (newConsumer.getProgram() <= 0) {
                         Thread.sleep(100);
                         newConsumer.setProgram(hdhrTuner.getProgram());
 
                         if (timeout-- < 0) {
-                            logger.error("Unable to get program after 5 seconds.");
+                            logger.error("Unable to get program after 2 seconds.");
                             newConsumer.setProgram(-1);
                             break;
                         }
@@ -964,15 +964,15 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     int getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 5);
                     newConsumer.setProgram(getProgram);
 
-                    int timeout = 50;
+                    int timeout = 20;
 
                     while (newConsumer.getProgram() == -1) {
                         Thread.sleep(100);
-                        getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 5);
+                        getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 2);
                         newConsumer.setProgram(getProgram);
 
                         if (timeout-- < 0) {
-                            logger.error("Unable to get program after more than 5 seconds.");
+                            logger.error("Unable to get program after more than 2 seconds.");
                             return logger.exit(false);
                         }
 
@@ -1317,6 +1317,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 logger.info("Tuning monitoring thread started.");
 
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+
                 int timeout = 0;
                 long lastValue = 0;
                 long currentValue = 0;

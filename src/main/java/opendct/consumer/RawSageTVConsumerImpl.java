@@ -58,6 +58,15 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                     maxTransferSize * 2
             );
 
+    private final int rawThreadPriority =
+            Math.max(
+                    Math.min(
+                            Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
+                            Thread.MAX_PRIORITY
+                    ),
+                    Thread.MIN_PRIORITY
+            );
+
     private final int standoff = Config.getInteger("consumer.raw.standoff", 8192);
 
     // Atomic because long values take two clocks to process in 32-bit. We could get incomplete
@@ -96,6 +105,9 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("Raw consumer is already running.");
         }
+
+        logger.debug("Thread priority is {}.", rawThreadPriority);
+        Thread.currentThread().setPriority(rawThreadPriority);
 
         int bytesReceivedCount = 0;
         int bytesReceivedBuffer = 0;

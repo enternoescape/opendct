@@ -98,6 +98,15 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     RW_BUFFER_SIZE
             );
 
+    private final int ffmpegThreadPriority =
+            Math.max(
+                    Math.min(
+                            Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
+                            Thread.MAX_PRIORITY
+                    ),
+                    Thread.MIN_PRIORITY
+            );
+
     // Atomic because long values take two clocks just to store in 32-bit. We could get incomplete
     // values otherwise. Don't ever forget to set this value and increment it correctly. This is
     // crucial to playback in SageTV.
@@ -159,6 +168,9 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("FFmpeg consumer is already running.");
         }
+
+        logger.debug("Thread priority is {}.", ffmpegThreadPriority);
+        Thread.currentThread().setPriority(ffmpegThreadPriority);
 
         opaquePointer = new Pointer(new TmpPointer());
         instanceMap.put(opaquePointer, this);

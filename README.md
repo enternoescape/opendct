@@ -119,9 +119,9 @@ gradlew idea
  * If the WiX binaries cannot be found, the build will fail after the Linux packages have been created.
 
 3. Execute:
-```
-gradlew packageAll
-```
+   ```
+   gradlew packageAll
+   ```
 *The packages will be found under build/distributions.*
 
 # Reporting Issues

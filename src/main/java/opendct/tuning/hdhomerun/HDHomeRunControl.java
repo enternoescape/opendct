@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class HDHomeRunControl {
@@ -110,6 +111,12 @@ public class HDHomeRunControl {
         connectSocket(new InetSocketAddress(address,
                 HDHomeRunPacket.HDHOMERUN_CONTROL_TCP_PORT));
 
+        rxPacket.BUFFER.clear();
+        returnedBytes = 0;
+        Thread receiveThread = new Thread(new ReceiveThread());
+        receiveThread.setName("HDHomeRunControlReceive-" + receiveThread.getId());
+        receiveThread.start();
+
         try {
             while (txPacket.BUFFER.hasRemaining()) {
                 if (logger.isDebugEnabled()) {
@@ -122,32 +129,29 @@ public class HDHomeRunControl {
         } catch (IOException e) {
             closeSocket();
             throw e;
-        }
+        } finally {
+            try {
+                receiveThread.join(HDHOMERUN_CONTROL_RECV_TIMEOUT);
 
-        rxPacket.BUFFER.clear();
-        returnedBytes = 0;
-        Thread receiveThread = new Thread(new ReceiveThread());
-        receiveThread.setName("HDHomeRunControlReceive-" + receiveThread.getId());
-        receiveThread.start();
+                //Stop receiving.
+                receiveThread.interrupt();
 
-        try {
-            receiveThread.join(HDHOMERUN_CONTROL_RECV_TIMEOUT);
-
-            //Stop receiving.
-            receiveThread.interrupt();
-
-            // Wait for the thread to actually stop.
-            receiveThread.join();
-        } catch (InterruptedException e) {
-            receiveThread.interrupt();
-            closeSocket();
-            throw new IOException(e.getMessage());
+                // Wait for the thread to actually stop.
+                receiveThread.join();
+            } catch (InterruptedException e) {
+                receiveThread.interrupt();
+                closeSocket();
+                throw new IOException(e.getMessage());
+            }
         }
 
         rxPacket.BUFFER.flip();
-        if (rxPacket.BUFFER.limit() > 0) {
+        int bufferLimit = rxPacket.BUFFER.limit();
+
+        if (bufferLimit > 0) {
             if (rxPacket.getPacketType() == HDHomeRunPacketType.HDHOMERUN_TYPE_GETSET_RPY) {
                 int packetLength = rxPacket.getPacketLength();
+                logger.debug("bufferLimit: {}, packetLength: {}", bufferLimit, packetLength);
                 rxPacket.BUFFER.limit(packetLength + 4);
 
                 while (rxPacket.BUFFER.remaining() > 4) {
@@ -191,7 +195,11 @@ public class HDHomeRunControl {
                             break;
                     }
                 }
+            } else {
+                logger.warn("Packet returned was not HDHOMERUN_TYPE_GETSET_RPY.");
             }
+        } else {
+            logger.warn("Message sent, HDHomeRun did not reply.");
         }
 
         logger.error("HDHomeRun device did not reply with a valid message for key = '{}', value ='{}' and lockkey='{}'.", key, value, lockkey);
@@ -239,12 +247,30 @@ public class HDHomeRunControl {
 
             if (socket != null) {
                 try {
-                    int returnBytes = 0;
-                    while (returnBytes == 0) {
-                        returnBytes = socket.read(rxPacket.BUFFER);
-                    }
+                    boolean firstBytes = true;
 
-                    returnedBytes += returnBytes;
+                    int bytesNeeded = rxPacket.BUFFER.limit();
+                    int returnBytes = 0;
+
+                    while (true) {
+                        returnBytes = socket.read(rxPacket.BUFFER);
+                        returnedBytes += returnBytes;
+
+                        if (firstBytes && returnBytes > 2) {
+                            firstBytes = false;
+                            ByteBuffer slice = rxPacket.BUFFER.duplicate();
+                            slice.flip();
+
+                            // This makes sure we get everything in case the message gets broken up.
+                            bytesNeeded = slice.getShort();
+                        }
+
+                        if (bytesNeeded > returnBytes) {
+                            logger.debug("bytesNeeded: {} > returnBytes: {}");
+                        } else {
+                            break;
+                        }
+                    }
                 } catch (IOException e) {
                     logger.debug("ReceiveThread was unable to receive => ", e);
                 }

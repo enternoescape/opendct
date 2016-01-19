@@ -184,3 +184,11 @@
 > *Internal: Removed desired PID from consumer interface since it can be unreliable.
 
 #### 0.4.16-Beta
+> *Limited program detection to 2 seconds. Normally it's detected in less than 200ms, so this should
+> not introduce any new issues and should keep the capture device from returning so late that the
+> circular buffer is overflowing.
+
+> *Added more resilience to the HDHomeRun native communications. It will now try up to 5 times at 1
+> second intervals to reach a device before it gives up.
+
+> *Improved fragmented HDHomeRun response support.

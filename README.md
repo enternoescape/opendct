@@ -46,6 +46,7 @@ On Windows platforms, unless you have the 64-bit Java Runtime installed, use the
 4. Start OpenDCT in console mode the first time.
   * *Windows:* From the Start Menu, open OpenDCT Run as Console.
   * *Linux:* From a console as root run:
+    
     ```
     /opt/opendct/console-only
     ```
@@ -56,10 +57,12 @@ On Windows platforms, unless you have the 64-bit Java Runtime installed, use the
 7. Start the OpenDCT service. *You will always need to stop the OpenDCT service before making any changes to opendct.properties*
   * *Windows:* From the Start Menu, open OpenDCT Start Service.
   * *Ubuntu:* From a console as root run:
+    
     ```
     service opendct start
     ```
   * *CentOS:* From a console as root run: *The first command enables the service so it will always run at startup.*
+    
     ```
     systemctl enable opendct.service
     systemctl start opendct.service

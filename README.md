@@ -69,7 +69,7 @@ On Windows platforms, unless you have the 64-bit Java Runtime installed, use the
     ```
 8. Change the property value of network\_encoder\_discovery to true in Sage.properties.
 9. Start the SageTV service.
-10. New capture devices will now be available to be added within SageTV and will look similar to *DCT-HDHomeRun Prime Tuner XXXXXXXX-0 on x.x.x.x:9000*.
+10. New capture devices will now be available to be added within SageTV and will look similar to *DCT-HDHomeRun Prime Tuner XXXXXXXX-0 on x.x.x.x:9000*. If you are running OpenDCT on multiple computers, always verify that the IP address *x.x.x.x:9000* in SageTV matches the computer you intend to use for that capture device.
 
 #### opendct.properties
 The majority of the configuration is done inside opendct.properties. The file is automatically populated after the first time the program is run. Do not make changes to this file while the program is running since your changes will be overwritten. This list is just the very basics to keep the program from communicating with undesired devices.

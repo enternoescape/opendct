@@ -16,6 +16,7 @@
 
 package opendct.tuning.hdhomerun;
 
+import opendct.config.Config;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketTag;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketType;
 import org.apache.logging.log4j.LogManager;
@@ -35,7 +36,7 @@ public class HDHomeRunControl {
     public final static int HDHOMERUN_CONTROL_SEND_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_RECV_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_UPGRADE_TIMEOUT = 30000;
-    public final static int HDHOMERUN_CONTROL_COMMUNICATION_RETRY = 30;
+    public final static int HDHOMERUN_CONTROL_COMMUNICATION_RETRY = Config.getInteger("hdhr.retry_count", 30);
 
     private HDHomeRunPacket txPacket;
     private HDHomeRunPacket rxPacket;
@@ -121,7 +122,7 @@ public class HDHomeRunControl {
         int retryCount = 0;
         boolean success = false;
 
-        while (!success && retryCount++ < HDHOMERUN_CONTROL_COMMUNICATION_RETRY) {
+        while (!success && retryCount++ <= HDHOMERUN_CONTROL_COMMUNICATION_RETRY) {
             try {
                 packetSendReceive(txPacket.BUFFER.slice(), HDHOMERUN_CONTROL_RECV_TIMEOUT);
                 success = true;
@@ -142,6 +143,7 @@ public class HDHomeRunControl {
 
         if (!success) {
             if (errorMessage != null) {
+                logger.error("Unable to communicate with HDHomeRun after {} attempts.", HDHOMERUN_CONTROL_COMMUNICATION_RETRY);
                 throw errorMessage;
             } else {
                 logger.error("No error was reported, but data was not able to be sent.");

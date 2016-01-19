@@ -686,7 +686,21 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             scanOnly = true;
         }
 
-        setHDHRLock(true);
+        int timeout = 5;
+        while (!setHDHRLock(true) && !Thread.currentThread().isInterrupted()) {
+            if (timeout-- < 0) {
+                logger.error("Locking HDHomeRun device failed after 5 attempts.");
+                return logger.exit(false);
+            }
+
+            logger.warn("Unable to lock HDHomeRun device.");
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                return logger.exit(false);
+            }
+        }
 
         // The producer and consumer methods are requested to not block. If they don't shut down in
         // time, it will be caught and handled later. This gives us a small gain in speed.
@@ -820,7 +834,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 try {
                     newConsumer.setProgram(hdhrTuner.getProgram());
 
-                    int timeout = 20;
+                    timeout = 20;
 
                     while (newConsumer.getProgram() <= 0) {
                         Thread.sleep(100);

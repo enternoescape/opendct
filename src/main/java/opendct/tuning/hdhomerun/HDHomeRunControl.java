@@ -36,7 +36,7 @@ public class HDHomeRunControl {
     public final static int HDHOMERUN_CONTROL_SEND_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_RECV_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_UPGRADE_TIMEOUT = 30000;
-    public final static int HDHOMERUN_CONTROL_COMMUNICATION_RETRY = Config.getInteger("hdhr.retry_count", 30);
+    public final static int HDHOMERUN_CONTROL_COMMUNICATION_RETRY = Config.getInteger("hdhr.retry_count", 5);
 
     private HDHomeRunPacket txPacket;
     private HDHomeRunPacket rxPacket;

@@ -122,7 +122,7 @@ public class HDHomeRunControl {
         int retryCount = 0;
         boolean success = false;
 
-        while (!success && retryCount++ <= HDHOMERUN_CONTROL_COMMUNICATION_RETRY) {
+        while (!success && retryCount++ <= HDHOMERUN_CONTROL_COMMUNICATION_RETRY && !Thread.currentThread().isInterrupted()) {
             try {
                 packetSendReceive(txPacket.BUFFER.slice(), HDHOMERUN_CONTROL_RECV_TIMEOUT);
                 success = true;

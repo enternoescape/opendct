@@ -179,4 +179,6 @@
 > *Changed over to a more public beta.
 
 #### 0.4.15-Beta
+> *Added tunable thread priorities for consumer and producer threads.
+
 > *Internal: Removed desired PID from consumer interface since it can be unreliable.

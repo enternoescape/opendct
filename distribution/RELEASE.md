@@ -192,3 +192,7 @@
 > second intervals to reach a device before it gives up.
 
 > *Improved fragmented HDHomeRun response support.
+
+#### 0.4.17-Beta
+> *HDHomeRun packet length was not accounting for the 4 byte header and 4 byte CRC when ensuring we
+> don't have a fragmented packet.

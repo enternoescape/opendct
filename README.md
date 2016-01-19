@@ -42,9 +42,11 @@ On Windows platforms, unless you have the 64-bit Java Runtime installed, use the
 2. Make a backup copy of Sage.properties and Wiz.bin from your SageTV installation folder.
 3. Edit opendct.properties per the section below if you want to limit what it should discover otherwise continue to the next step.
   * *Windows:* From the Start Menu, open OpenDCT Properties.
+  
   * *Linux:* The opendct.properties file is located under /opt/opendct/conf/opendct.properties.
 4. Start OpenDCT in console mode the first time.
   * *Windows:* From the Start Menu, open OpenDCT Run as Console.
+  
   * *Linux:* From a console as root run:
     
     ```
@@ -53,9 +55,11 @@ On Windows platforms, unless you have the 64-bit Java Runtime installed, use the
 5. Press Ctrl-C after waiting about 30 seconds to stop OpenDCT.
 6. After the program exits, you can edit opendct.properties per the section below. The [first post on the SageTV forums](http://forums.sagetv.com/forums/showthread.php?p=581743&postcount=1) explains some of the more detailed options.
   * *Windows:* From the Start Menu, open OpenDCT Properties.
+  
   * *Linux:* The opendct.properties file is located under /opt/opendct/conf/opendct.properties.
 7. Start the OpenDCT service. *You will always need to stop the OpenDCT service before making any changes to opendct.properties*
   * *Windows:* From the Start Menu, open OpenDCT Start Service.
+  
   * *Ubuntu:* From a console as root run:
     
     ```

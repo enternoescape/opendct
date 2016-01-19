@@ -153,7 +153,7 @@ public class HDHomeRunControl {
 
         int bufferLimit = rxPacket.BUFFER.limit();
 
-        if (bufferLimit > 0) {
+        if (bufferLimit > 4) {
             if (rxPacket.getPacketType() == HDHomeRunPacketType.HDHOMERUN_TYPE_GETSET_RPY) {
                 int packetLength = rxPacket.getPacketLength();
                 logger.debug("bufferLimit: {}, packetLength: {}", bufferLimit, packetLength);
@@ -300,12 +300,13 @@ public class HDHomeRunControl {
                         returnBytes = socket.read(rxPacket.BUFFER);
                         returnedBytes += returnBytes;
 
-                        if (firstBytes && returnBytes > 2) {
+                        if (firstBytes && returnBytes > 4) {
                             firstBytes = false;
                             ByteBuffer slice = rxPacket.BUFFER.duplicate();
                             slice.flip();
 
                             // This makes sure we get everything in case the message gets broken up.
+                            slice.getShort();
                             bytesNeeded = slice.getShort();
                         }
 

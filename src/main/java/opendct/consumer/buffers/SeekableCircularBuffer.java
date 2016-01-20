@@ -20,6 +20,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SeekableCircularBuffer {
@@ -32,9 +33,10 @@ public class SeekableCircularBuffer {
     protected volatile int writePasses = 0;
     protected volatile int readPasses = 0;
 
-
+    private LinkedBlockingDeque<byte[]> overflowQueue = new LinkedBlockingDeque<>();
     private AtomicInteger bytesOverflow = new AtomicInteger(0);
     private AtomicInteger bytesLost = new AtomicInteger(0);
+    private boolean overflowToQueue = false;
     private boolean overflow = false;
 
     private volatile boolean closed = false;
@@ -98,9 +100,9 @@ public class SeekableCircularBuffer {
      * <p/>
      * You cannot write more data into the buffer than the total size of the buffer.
      *
-     * @param bytes
-     * @param offset
-     * @param length
+     * @param bytes The byte array containing data to be written into to the buffer.
+     * @param offset The offset within the array to start copying data.
+     * @param length The number of bytes to copy starting at the offset.
      * @throws ArrayIndexOutOfBoundsException If you try to write more data than the total length of
      *                                        the buffer.
      */
@@ -120,55 +122,123 @@ public class SeekableCircularBuffer {
             int writeAvailable = writeAvailable();
 
             if (writeAvailable - length <= 0) {
-                if (!overflow) {
-                    logger.warn("The buffer contains {} bytes, has only {} bytes left for writing and {} bytes cannot be added.", readAvailable(), writeAvailable, length);
-                    overflow = true;
+                if (!overflowToQueue) {
+                    logger.warn("The buffer contains {} bytes, has only {} bytes left for writing and {} bytes cannot be added. Deferring bytes to queue buffer.", readAvailable(), writeAvailable, length);
+                    overflowToQueue = true;
                 }
-                bytesOverflow.getAndAdd(Math.abs(length));
+
+                // Enable the queue to back up to 4 times the buffer size. On a system with 20
+                // capture devices and a 7MB buffer, this potentially adds up to 560MB in RAM just
+                // for the buffer if things get really backed up. The JVM should be able to handle
+                // this kind of growth without crashing. Also this is not a typical situation.
+                if (bytesOverflow.get() < buffer.length * 4 && overflowQueue.size() < Integer.MAX_VALUE) {
+                    // Store overflowing bytes in double-ended queue.
+                    byte[] queueBytes = new byte[length];
+                    System.arraycopy(bytes, offset, queueBytes, 0, length);
+                    overflowQueue.addLast(queueBytes);
+
+                    bytesOverflow.getAndAdd(length);
+                } else if (!overflow) {
+                    logger.warn("The buffer contains {} bytes, has only {} bytes left for writing and {} bytes cannot be added. The queue buffer is full at {} bytes.", readAvailable(), writeAvailable, length, bytesOverflow.get());
+                    overflow = true;
+                    bytesLost.addAndGet(length);
+                } else {
+                    bytesLost.addAndGet(length);
+                }
 
                 synchronized (readMonitor) {
                     readMonitor.notifyAll();
                 }
 
                 return;
-            } else if (overflow && writeAvailable > 0) {
-                logger.warn("The buffer has lost {} bytes.", bytesOverflow.get());
+            } else if (overflowQueue.size() > 0) {
 
-                /*if (bytesOverflow.get() > 0) {
-                    logger.debug("Dumping the overflow bytes from the fifo buffer into the circular buffer.");
+                // Store recently added data in double-ended queue.
+                byte[] queueBytes = new byte[length];
+                System.arraycopy(bytes, offset, queueBytes, 0, length);
+                overflowQueue.addLast(queueBytes);
 
-                }*/
+                processQueue();
 
-                bytesOverflow.set(0);
+                return;
+            }
+
+            internalWrite(bytes, offset, length);
+        }
+    }
+
+    public boolean processQueue() {
+        int recoveredBytes = 0;
+        boolean returnValue = false;
+
+        synchronized (writeLock) {
+            while (overflowQueue.size() > 0) {
+                byte[] overflowBytes = overflowQueue.removeFirst();
+                int writeAvailable = writeAvailable();
+
+                if (overflowBytes.length > writeAvailable) {
+                    // If the next array is larger than what will fit into the array, put it
+                    // back in the front of the queue.
+                    overflowQueue.addFirst(overflowBytes);
+                    break;
+                }
+
+                internalWrite(overflowBytes, 0, overflowBytes.length);
+
+                recoveredBytes += overflowBytes.length;
+            }
+
+            if (recoveredBytes > 0) {
+                logger.info("Recovered {} bytes from the queue buffer.", recoveredBytes);
+                bytesOverflow.addAndGet(-recoveredBytes);
+                returnValue = true;
+            }
+
+            if (overflowQueue.size() == 0) {
+                // Reset log warnings.
+                overflowToQueue = false;
                 overflow = false;
-            }
+                bytesOverflow.set(0);
 
-            if (writeIndex + length > buffer.length) {
-                int end = buffer.length - writeIndex;
-                logger.trace("bytes.length = {}, offset = {}, buffer.length = {}, writeIndex = {}, end = {}", bytes.length, offset, buffer.length, writeIndex, end);
-                System.arraycopy(bytes, offset, buffer, writeIndex, end);
-
-                int writeRemaining = length - end;
-                if (writeRemaining > 0) {
-                    logger.trace("bytes.length = {}, end = {}, buffer.length = {}, writeRemaining = {}", bytes.length, end, buffer.length, writeRemaining);
-                    System.arraycopy(bytes, offset + end, buffer, 0, writeRemaining);
+                if (bytesLost.get() > 0) {
+                    logger.info("Lost {} bytes that could not be queued in the queue buffer.", bytesLost.get());
+                    bytesLost.set(0);
                 }
-
-                synchronized (rwPassLock) {
-                    writeIndex = writeRemaining;
-                    writePasses += 1;
-                }
-            } else {
-                System.arraycopy(bytes, offset, buffer, writeIndex, length);
-                writeIndex += length;
-
-            }
-
-            synchronized (readMonitor) {
-                readMonitor.notifyAll();
             }
         }
 
+        return returnValue;
+    }
+
+    private void internalWrite(byte bytes[], int offset, int length) {
+        logger.entry(bytes.length, offset, length);
+
+        if (writeIndex + length > buffer.length) {
+            int end = buffer.length - writeIndex;
+            logger.trace("bytes.length = {}, offset = {}, buffer.length = {}, writeIndex = {}, end = {}", bytes.length, offset, buffer.length, writeIndex, end);
+            System.arraycopy(bytes, offset, buffer, writeIndex, end);
+
+            int writeRemaining = length - end;
+            if (writeRemaining > 0) {
+                logger.trace("bytes.length = {}, end = {}, buffer.length = {}, writeRemaining = {}", bytes.length, end, buffer.length, writeRemaining);
+                System.arraycopy(bytes, offset + end, buffer, 0, writeRemaining);
+            }
+
+            synchronized (rwPassLock) {
+                writeIndex = writeRemaining;
+                writePasses += 1;
+            }
+        } else {
+            System.arraycopy(bytes, offset, buffer, writeIndex, length);
+            writeIndex += length;
+
+        }
+
+        synchronized (readMonitor) {
+            readMonitor.notifyAll();
+        }
+
+        logger.exit();
     }
 
     /**

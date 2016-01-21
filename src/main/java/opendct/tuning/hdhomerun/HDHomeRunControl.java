@@ -321,7 +321,7 @@ public class HDHomeRunControl {
 
                             // This makes sure we get everything in case the message gets broken up.
                             slice.getShort();
-                            bytesNeeded = slice.getShort() + 8; // +8 to include header and CRC
+                            bytesNeeded = (slice.getShort() & 0xffff) + 8; // +8 to include header and CRC
                         }
 
                         if (bytesNeeded > returnBytes) {

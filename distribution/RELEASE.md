@@ -197,5 +197,9 @@
 > *HDHomeRun packet length was not accounting for the 4 byte header and 4 byte CRC when ensuring we
 > don't have a fragmented packet.
 
+> *Addressed more possible situations for HDHomeRun communication failures.
+
+> *Fixed single character HDHomeRun response handling.
+
 > *Added a byte array queue buffer to the circular buffer to help with data overflow situations. It 
 > will queue up to 4x the size of the buffer in a data overflow situation.

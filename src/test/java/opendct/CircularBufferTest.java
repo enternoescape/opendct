@@ -35,7 +35,7 @@ public final class CircularBufferTest {
 
         for (int i = 0; i < returnObject.length; i++) {
             returnObject[i][0] = (i + 5) * 1024 * 1024;
-            returnObject[i][1] = (int)((int)returnObject[i][0] * 3.2 + i);
+            returnObject[i][1] = (int)((int)returnObject[i][0] * 3.6 + i);
             returnObject[i][2] = (int)((int)returnObject[i][0] / 55.3 + i);
         }
 
@@ -127,6 +127,10 @@ public final class CircularBufferTest {
 
         while (seekableCircularBuffer.readAvailable() > 0) {
             readPosition += seekableCircularBuffer.read(readData, readPosition, bufferSize);
+
+            // This will directly trigger queue cleanup. Currently the only other thing that will
+            // trigger it is a write.
+            seekableCircularBuffer.processQueue();
         }
 
         for (int i = 0; i < readPosition; i++) {
@@ -163,6 +167,10 @@ public final class CircularBufferTest {
 
         while (seekableCircularBuffer.readAvailable() > 0) {
             readPosition += seekableCircularBuffer.read(readData);
+
+            // This will directly trigger queue cleanup. Currently the only other thing that will
+            // trigger it is a write.
+            seekableCircularBuffer.processQueue();
         }
 
         readData.flip();

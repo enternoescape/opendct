@@ -1333,8 +1333,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
                 int timeout = 0;
-                long lastValue = 0;
-                long currentValue = 0;
                 boolean firstPass = true;
 
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {

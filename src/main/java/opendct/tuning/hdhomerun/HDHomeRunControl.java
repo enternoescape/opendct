@@ -159,7 +159,7 @@ public class HDHomeRunControl {
                 logger.debug("bufferLimit: {}, packetLength: {}", bufferLimit, packetLength);
                 rxPacket.BUFFER.limit(packetLength + 4);
 
-                while (rxPacket.BUFFER.remaining() > 4) {
+                while (rxPacket.BUFFER.remaining() >= 2) {
                     HDHomeRunPacketTag tag = rxPacket.getTag();
                     int length = rxPacket.getVariableLength();
 
@@ -183,6 +183,7 @@ public class HDHomeRunControl {
                         case HDHOMERUN_TAG_GETSET_NAME:
                             // The device may return the key name.
                             rxPacket.BUFFER.position(rxPacket.BUFFER.position() + length);
+                            logger.debug("HDHomeRun device returned the key name. Skipped {} bytes.", length);
                             break;
 
                         case HDHOMERUN_TAG_GETSET_VALUE:
@@ -205,6 +206,14 @@ public class HDHomeRunControl {
             }
         } else {
             logger.warn("Message sent, HDHomeRun did not reply.");
+            closeSocket();
+        }
+
+        if (logger.isDebugEnabled()) {
+            if (rxPacket.BUFFER.remaining() > 0) {
+                String returnValue = rxPacket.getTLVString(rxPacket.BUFFER.limit() - rxPacket.BUFFER.position());
+                logger.debug("HDHomeRun device returned UTF-8: '{}'", returnValue);
+            }
         }
 
         logger.error("HDHomeRun device did not reply with a valid message for key = '{}', value ='{}' and lockkey='{}'.", key, value, lockkey);
@@ -280,6 +289,11 @@ public class HDHomeRunControl {
         }
 
         rxPacket.BUFFER.flip();
+
+        if (rxPacket.BUFFER.remaining() == 0) {
+            closeSocket();
+            throw new IOException("HDHomeRun did not reply with a message. Closing socket...");
+        }
 
         logger.exit();
     }

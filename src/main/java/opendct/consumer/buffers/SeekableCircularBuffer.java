@@ -88,8 +88,8 @@ public class SeekableCircularBuffer {
     }
 
     public void waitForBytes() throws InterruptedException {
-        while (readIndex == writeIndex && !closed) {
-            synchronized (readMonitor) {
+        synchronized (readMonitor) {
+            while (readIndex == writeIndex && !closed) {
                 readMonitor.wait(500);
             }
         }
@@ -309,7 +309,8 @@ public class SeekableCircularBuffer {
             long readAvailable = readAvailable();
             logger.trace("{} bytes remain available. Returning {} bytes.", readAvailable, returnLength);
         }*/
-        return logger.exit(returnLength);
+        //return logger.exit(returnLength);
+        return returnLength;
     }
 
     /**

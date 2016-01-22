@@ -20,6 +20,7 @@ import org.apache.tools.ant.filters.*
 plugins {
     id "nebula.os-package" version "2.2.6"
     id "com.jfrog.bintray" version "1.4"
+    id 'com.craigburke.bower-installer' version '2.5.1'
 }
 
 apply plugin: 'idea'
@@ -53,7 +54,6 @@ ext {
     jnaVersion = '4.2.1'
     jettyVersion = '9.3.6.v20151106'
     jerseyVersion = '2.22.1'
-    jacksonVersion = '2.6.4'
 
 	versionText = new File('src/main/java/opendct/config/Config.java').text
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
@@ -79,7 +79,6 @@ configurations {
 }
 
 dependencies {
-    //testCompile 'junit:junit:4.12'
     testCompile 'org.testng:testng:6.1.1'
 
     compile fileTree(dir: 'lib', include: ['*.jar'])
@@ -170,6 +169,14 @@ jar {
 	exclude 'opendct.properties'
 }
 
+bower {
+    installBase = 'src/main/webapp/assets/bower'
+
+    'polymer'('1.2.x') {
+        source '**'
+    }
+}
+
 ospackage {
     release = linuxPackageRelease
     user = linuxUser
@@ -243,7 +250,7 @@ ospackage {
 }
 
 task buildWin32(dependsOn: build) << {
-	println "Built native binary for Windows 32-bit..."
+    println "Built native binary for Windows 32-bit..."
 
 }
 

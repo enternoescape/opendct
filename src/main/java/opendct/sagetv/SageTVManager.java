@@ -50,12 +50,14 @@ public class SageTVManager implements PowerEventListener {
     private static final ReentrantReadWriteLock fileToSocketServerLock = new ReentrantReadWriteLock();
     private static final Object loadUnloadLock = new Object();
 
-    private static final HashMap<Integer, SageTVSocketServer> portToSocketServer = new HashMap<Integer, SageTVSocketServer>();
-    private static final HashMap<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<String, CaptureDevice>();
-    private static final HashMap<CaptureDevice, String> captureDeviceToFiles = new HashMap<CaptureDevice, String>();
+    private static final HashMap<Integer, SageTVSocketServer> portToSocketServer = new HashMap<>();
+    private static final HashMap<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<>();
+    private static final HashMap<Integer, CaptureDevice> captureDeviceHashToCaptureDevice = new HashMap<>();
+    private static final HashMap<CaptureDevice, String> captureDeviceToFiles = new HashMap<>();
     private static final HashMap<String, SageTVUnloadedDevice> unloadedCaptureDeviceToInit = new HashMap<>();
-    private static final HashMap<String, Integer> fileToUploadID = new HashMap<String, Integer>();
-    private static final HashMap<String, SageTVSocketServer> fileToSocketServer = new HashMap<String, SageTVSocketServer>();
+    private static final HashMap<Integer, SageTVUnloadedDevice> unloadedCaptureDeviceHashToInit = new HashMap<>();
+    private static final HashMap<String, Integer> fileToUploadID = new HashMap<>();
+    private static final HashMap<String, SageTVSocketServer> fileToSocketServer = new HashMap<>();
 
     public static boolean isBroadcasting() {
         return broadcasting.get();
@@ -95,7 +97,12 @@ public class SageTVManager implements PowerEventListener {
         try {
             if (captureDeviceNameToCaptureDevice.get(captureDevice.getEncoderName()) != null) {
                 logger.error("A capture device with the name '{}' already exists.", captureDevice.getEncoderName());
-                throw new Exception("Duplicate capture device.");
+                throw new Exception("Duplicate capture device name.");
+            }
+
+            if (captureDeviceHashToCaptureDevice.get(captureDevice.getEncoderUniqueHash()) != null) {
+                logger.error("A capture device with the hash {} already exists.", captureDevice.getEncoderUniqueHash());
+                throw new Exception("Duplicate capture device hash.");
             }
 
             //Check to see if a socket server is already running with this port.
@@ -108,12 +115,13 @@ public class SageTVManager implements PowerEventListener {
 
             portToSocketServer.put(newPort, socketServer);
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
-
-            /*if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
-                SageTVPoolManager.addPoolCaptureDevice(captureDevice.getEncoderPoolName(), captureDevice.getEncoderName());
-            }*/
+            captureDeviceHashToCaptureDevice.put(captureDevice.getEncoderUniqueHash(), captureDevice);
 
             logger.info("The capture device '{}' is ready.", captureDevice.getEncoderName());
+
+            if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
+                SageTVPoolManager.addPoolCaptureDevice(captureDevice.getEncoderPoolName(), captureDevice.getEncoderName());
+            }
 
             // Count down the devices loaded timeout thread.
             devicesWaitingThread.deviceAdded();
@@ -155,6 +163,16 @@ public class SageTVManager implements PowerEventListener {
         logger.exit();
     }
 
+    /**
+     * Loads an unloaded capture device by name.
+     *
+     * @param unloadedDeviceName This is the name of the unloaded capture device. This will always
+     *                           be the default name. If the name has been customized, the custom
+     *                           name will be assigned to the returned object.
+     * @return The initialized capture device or <i>null</i> if it could not be loaded.
+     * @throws SocketException Thrown if the requested socket can't be opened. This will not be
+     *                         thrown if the port is already open.
+     */
     public static CaptureDevice addCaptureDevice(String unloadedDeviceName) throws SocketException {
         CaptureDevice newCaptureDevice = null;
 
@@ -209,8 +227,9 @@ public class SageTVManager implements PowerEventListener {
             try {
                 newCaptureDevice = unloadedDevice.initCaptureDevice();
 
-                if (!unloadedDevice.isPersistent()) {
-                    unloadedCaptureDeviceToInit.remove(unloadedDeviceName);
+                if (newCaptureDevice != null && !unloadedDevice.isPersistent()) {
+                    unloadedCaptureDeviceToInit.remove(unloadedDevice.ENCODER_NAME);
+                    unloadedCaptureDeviceHashToInit.remove(unloadedDevice.ENCODER_HASH);
                 }
             } catch (Exception e) {
                 logger.error("Unable to create new capture device => ", e);
@@ -239,6 +258,7 @@ public class SageTVManager implements PowerEventListener {
 
         try {
             unloadedCaptureDeviceToInit.put(sageTVUnloadedDevice.ENCODER_NAME, sageTVUnloadedDevice);
+            unloadedCaptureDeviceHashToInit.put(sageTVUnloadedDevice.ENCODER_HASH, sageTVUnloadedDevice);
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
@@ -263,6 +283,32 @@ public class SageTVManager implements PowerEventListener {
 
         try {
             sageTVUnloadedDevice = unloadedCaptureDeviceToInit.get(deviceName);
+        } catch (Exception e) {
+            logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            unloadedCaptureDeviceToInitLock.readLock().unlock();
+        }
+
+        return sageTVUnloadedDevice;
+    }
+
+    /**
+     * Get an unloaded device by hash from the unloaded devices map.
+     * <p/>
+     * Do not use the method getCaptureDevice() since it will initialize the device and that's only
+     * to be done by SageTVManager.
+     *
+     * @param deviceHash The hash of the device to get. If it doesn't exist <i>null</i> will be
+     *                   returned.
+     */
+    public static SageTVUnloadedDevice getUnloadedDeviceByHash(int deviceHash) {
+
+        SageTVUnloadedDevice sageTVUnloadedDevice = null;
+
+        unloadedCaptureDeviceToInitLock.readLock().lock();
+
+        try {
+            sageTVUnloadedDevice = unloadedCaptureDeviceToInit.get(deviceHash);
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
@@ -378,8 +424,8 @@ public class SageTVManager implements PowerEventListener {
      *
      * @param ports A list of sockets to be added.
      */
-    public static void addAndStartSocketServers(int ports[]) {
-        logger.entry(ports);
+    public static void addAndStartSocketServers(int... ports) {
+        logger.entry(Arrays.toString(ports));
 
         for (int port : ports) {
             portToSocketServerLock.writeLock().lock();
@@ -439,6 +485,7 @@ public class SageTVManager implements PowerEventListener {
                 captureDevice.stopDevice();
 
                 captureDeviceNameToCaptureDevice.remove(captureDeviceName);
+                captureDeviceHashToCaptureDevice.remove(captureDevice.getEncoderUniqueHash());
                 captureDeviceToFiles.remove(captureDevice);
 
                 unloadedDevice = captureDevice.getUnloadedDevice();
@@ -565,6 +612,7 @@ public class SageTVManager implements PowerEventListener {
 
             try {
                 captureDeviceNameToCaptureDevice.clear();
+                captureDeviceHashToCaptureDevice.clear();
                 captureDeviceToFiles.clear();
                 fileToUploadID.clear();
                 fileToSocketServer.clear();
@@ -659,6 +707,58 @@ public class SageTVManager implements PowerEventListener {
                         deviceName = deviceName.substring(0, deviceName.length() - " Digital TV Tuner".length());
                     }
                     captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
+                } catch (Exception e) {
+                    logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+                } finally {
+                    captureDeviceNameToCaptureDeviceLock.readLock().unlock();
+                }
+            }
+        }
+
+        return logger.exit(captureDevice);
+    }
+
+    /**
+     * Get a capture device by name.
+     * <p/>
+     * This will return a capture device and offers optional blocking in the event that we know the
+     * device will be there, but it's just not there right this second. The blocking is based on if
+     * all required devices are accounted for or not.
+     *
+     * @param deviceHash This is the unique hash of the capture device.
+     * @param wait When <i>true</i> this will wait for all of the required capture devices to be
+     *             loaded if it is not found on the first attempt.
+     * @return The capture device requested or <i>null</i> if it doesn't exist.
+     */
+    public static CaptureDevice getSageTVCaptureDeviceByHash(int deviceHash, boolean wait) {
+        logger.entry(deviceHash);
+
+        CaptureDevice captureDevice = null;
+
+        captureDeviceNameToCaptureDeviceLock.readLock().lock();
+
+        try {
+            captureDevice = captureDeviceHashToCaptureDevice.get(deviceHash);
+        } catch (Exception e) {
+            logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+        } finally {
+            captureDeviceNameToCaptureDeviceLock.readLock().unlock();
+        }
+
+        if (wait) {
+            // In case the capture device was not loaded yet, we can wait for an further expected
+            // devices here before trying one more time.
+            if (captureDevice == null) {
+                try {
+                    blockUntilCaptureDevicesLoaded();
+                } catch (InterruptedException e) {
+                    logger.debug("getSageTVCaptureDevice was interrupted while waiting for all capture devices to be loaded.");
+                }
+
+                captureDeviceNameToCaptureDeviceLock.readLock().lock();
+
+                try {
+                    captureDevice = captureDeviceHashToCaptureDevice.get(deviceHash);
                 } catch (Exception e) {
                     logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
                 } finally {

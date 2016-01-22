@@ -1716,7 +1716,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                 new Object[]{dctDevice},
                 new Class[]{Device.class},
                 false,
-                "UPnP detected Digital Cable Tuner.");
+                "UPnP detected Digital Cable Tuner.",
+                encoderUniqueHash);
     }
 
     public String getTunerStatusString() {

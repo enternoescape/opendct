@@ -16,24 +16,24 @@
 
 package opendct.jetty.json;
 
-public class JsonGetException extends Exception {
-    public JsonGetException() {
+public class JsonGetSetException extends Exception {
+    public JsonGetSetException() {
         super();
     }
 
-    public JsonGetException(String message) {
+    public JsonGetSetException(String message) {
         super(message);
     }
 
-    public JsonGetException(String message, Throwable cause) {
+    public JsonGetSetException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public JsonGetException(Throwable cause) {
+    public JsonGetSetException(Throwable cause) {
         super(cause);
     }
 
-    protected JsonGetException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected JsonGetSetException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

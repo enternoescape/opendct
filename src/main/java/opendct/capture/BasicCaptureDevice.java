@@ -313,8 +313,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     public void setMerit(int merit) {
         Config.setInteger(propertiesDeviceRoot + "encoder_merit", merit);
         encoderMerit = merit;
-
-        SageTVPoolManager.resortMerits(encoderPoolName);
     }
 
     /**
@@ -334,10 +332,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     public void setEncoderPoolName(String poolName) {
         Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
         encoderPoolName = poolName;
-
-        if (SageTVPoolManager.isUsePools()) {
-            SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName);
-        }
     }
 
     public void setAlwaysForceExternalUnlock(boolean forceLock) {

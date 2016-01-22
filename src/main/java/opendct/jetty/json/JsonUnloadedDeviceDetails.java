@@ -29,9 +29,9 @@ public class JsonUnloadedDeviceDetails {
      *
      * @param unloadDeviceName The name of the capture device to get details.
      * @return <i>true</i> if the capture device was found and everything is populated.
-     * @throws JsonGetException Thrown if there was a problem populating details.
+     * @throws JsonGetSetException Thrown if there was a problem populating details.
      */
-    public boolean setUnloadedDeviceDetails(String unloadDeviceName) throws JsonGetException {
+    public boolean setUnloadedDeviceDetails(String unloadDeviceName) throws JsonGetSetException {
         SageTVUnloadedDevice unloadedDevice = SageTVManager.getUnloadedDevice(unloadDeviceName);
 
         if (unloadedDevice == null) {
@@ -43,7 +43,7 @@ public class JsonUnloadedDeviceDetails {
             description = unloadedDevice.DESCRIPTION;
             persistent = unloadedDevice.isPersistent();
         } catch (Exception e) {
-            throw new JsonGetException(e);
+            throw new JsonGetSetException(e);
         }
 
         return true;

@@ -275,7 +275,8 @@ public class DummyCaptureDevice implements CaptureDevice {
                         InetAddress.class,
                         InetAddress.class },
                 false,
-                "Dummy capture device.");
+                "Dummy capture device.",
+                getEncoderUniqueHash());
     }
 
     @Override

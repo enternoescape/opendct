@@ -18,6 +18,8 @@ Thumbs.db
 # Gradle
 /.gradle
 /build/
+/node_modules/
+/src/main/webapp/assets/bower/
 
 # Debug
 /archive/

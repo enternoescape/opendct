@@ -22,7 +22,9 @@ import opendct.capture.RTPCaptureDevice;
 import opendct.config.Config;
 import opendct.jetty.JettyManager;
 import opendct.sagetv.SageTVManager;
+import opendct.sagetv.SageTVPoolManager;
 import opendct.sagetv.SageTVUnloadedDevice;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -129,10 +131,18 @@ public class JsonCaptureDeviceGetSet {
 
             if (merit != null && !(captureDevice.getMerit() == merit)) {
                 captureDevice.setMerit(merit);
+
+                if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
+                    SageTVPoolManager.resortMerits(captureDevice.getEncoderPoolName());
+                }
             }
 
             if (encoderPoolName != null && !captureDevice.getEncoderPoolName().equals(encoderPoolName)) {
                 captureDevice.setEncoderPoolName(encoderPoolName);
+
+                if (SageTVPoolManager.isUsePools()) {
+                    SageTVPoolManager.addPoolCaptureDevice(captureDevice.getEncoderPoolName(), captureDevice.getEncoderName());
+                }
             }
 
             if (alwaysForceExternalUnlock != null) {

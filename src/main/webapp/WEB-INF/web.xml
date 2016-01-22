@@ -23,6 +23,10 @@
             <param-name>jersey.config.server.provider.scanning.recursive</param-name>
             <param-value>false</param-value>
         </init-param>
+        <init-param>
+            <param-name>useFileMappedBuffer</param-name>
+            <param-value>false</param-value>
+        </init-param>
     </servlet>
     <servlet-mapping>
         <servlet-name>jersey</servlet-name>

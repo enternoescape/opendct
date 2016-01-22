@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- <link rel="stylesheet" type="text/css" href="assets/css/opendct.css"/> -->
+    
+    <script src="assets/bower/webcomponentsjs/webcomponents.js"></script>
+    <link rel="import" href="assets/bower/polymer/polymer.html">
+    <link rel="import" href="assets/shared-styles/opendct-main-doc-style.html">
+    
+    <script src="assets/js/menu.js"></script>
+    <script src="assets/js/dashboard.js"></script>
+
+    <title>OpenDCT Web Interface</title>
+</head>
+<body>
+    <dom-module id="main-document-element">
+      <template>
+        <style include="opendct-main-doc-style"></style>
+        <style>:host { display: block; }</style>
+        <p>
+          Hi! I'm a Polymer element that was defined in the
+          main document!
+        </p>
+      </template>
+      <script>
+        HTMLImports.whenReady(function () {
+          Polymer({
+            is: 'main-document-element'
+          });
+          
+          Polymer({
+              is: 'x-custom',
+
+              properties: {
+                user: String,
+                isHappy: Boolean,
+                count: {
+                  type: Number,
+                  readOnly: true,
+                  notify: true
+                }
+              },
+
+              ready: function() {
+                this.textContent = 'Hello World, I am a Custom Element!';
+              }
+
+            });
+        });
+      </script>
+    </dom-module>
+
+    <dom-module id="x-custom-2">
+        <template>
+            <div>I will respond</div>
+            <div>to a tap on</div>
+            <div>any of my children!</div>
+
+            <div id="special">I am special!</div>
+            
+            <button on-click="handleClick">Kick Me</button>
+        </template>
+
+        <script>
+
+            Polymer({
+
+              is: 'x-custom-2',
+
+              listeners: {
+                'tap': 'regularTap',
+                'special.tap': 'specialTap'
+              },
+
+              regularTap: function(e) {
+                alert("Thank you for tapping");
+              },
+
+              specialTap: function(e) {
+                alert("It was special tapping");
+              }
+
+            });
+
+          </script>
+    </dom-module>
+    
+    <x-custom></x-custom>
+    <x-custom-2></x-custom-2>
+    <main-document-element></main-document-element>
+    <main-document-element></main-document-element>
+    <main-document-element></main-document-element>
+</body>
+</html>

@@ -11,6 +11,7 @@ public class SageTVUnloadedDevice implements Comparable<SageTVUnloadedDevice> {
     private final Logger logger = LogManager.getLogger(SageTVUnloadedDevice.class);
 
     public final String ENCODER_NAME;
+    public final int ENCODER_HASH;
     public final String DESCRIPTION;
     private final Class<CaptureDevice> captureDeviceImpl;
     private final Object[] parameters;
@@ -30,10 +31,13 @@ public class SageTVUnloadedDevice implements Comparable<SageTVUnloadedDevice> {
      *                even when added.
      * @param description This is a description of the device. This should contain enough detail to
      *                    give you an idea of what you would be loading.
+     * @param encoderId  This is the unique ID that will always only refer to one instance of this
+     *                   capture device.
      */
-    public SageTVUnloadedDevice(String encoderName, Class captureDeviceImpl, Object parameters[], Class parameterTypes[], boolean persist, String description) {
+    public SageTVUnloadedDevice(String encoderName, Class captureDeviceImpl, Object parameters[], Class parameterTypes[], boolean persist, String description, int encoderId) {
         this.ENCODER_NAME = encoderName;
         this.DESCRIPTION = description;
+        this.ENCODER_HASH = encoderId;
         this.captureDeviceImpl = captureDeviceImpl;
         this.parameters = parameters;
         this.parameterTypes = parameterTypes;
@@ -77,7 +81,6 @@ public class SageTVUnloadedDevice implements Comparable<SageTVUnloadedDevice> {
         SageTVUnloadedDevice that = (SageTVUnloadedDevice) o;
 
         return ENCODER_NAME.equals(that.ENCODER_NAME);
-
     }
 
     @Override

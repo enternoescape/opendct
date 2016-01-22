@@ -216,3 +216,5 @@
 
 > *Internal: Updated Linux install package build scripts for better compliance with current
 > standards.
+
+> *Optimized overflow queue and removed debug code in buffer from production code.

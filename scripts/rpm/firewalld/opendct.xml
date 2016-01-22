@@ -31,6 +31,6 @@
     <!-- RTP receiving ports -->
     <port protocol="udp" port="8300-8500"/>
 
-    <!-- Cling HTTP TCP receiving ports -->
+    <!-- Cling HTTP TCP receiving port -->
     <port protocol="tcp" port="8501"/>
 </service>

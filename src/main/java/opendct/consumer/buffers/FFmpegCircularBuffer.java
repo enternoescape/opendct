@@ -51,7 +51,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
      *                                   total size of the ring buffer.
      */
     public int read(BytePointer bytePtr, int offset, int length) throws InterruptedException, IndexOutOfBoundsException {
-        logger.entry(bytePtr, offset, length);
+        //logger.entry(bytePtr, offset, length);
 
         // This technically shouldn't be happening.
         if (length == 0) {
@@ -69,21 +69,20 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
         synchronized (readLock) {
             returnLength = Math.min(length, readAvailable());
 
-            if (logger.isTraceEnabled()) {
+            /*if (logger.isTraceEnabled()) {
                 logger.trace("{} bytes are currently available with a length of {} bytes being requested.", readAvailable(), length);
-            }
-
+            }*/
 
             if (readIndex + returnLength > buffer.length) {
                 int end = buffer.length - readIndex;
-                logger.debug("offset = {}, buffer.length = {}, readIndex = {}, , end = {}", offset, buffer.length, readIndex, end);
+                //logger.debug("offset = {}, buffer.length = {}, readIndex = {}, , end = {}", offset, buffer.length, readIndex, end);
 
                 bytePtr.position(offset).put(buffer, readIndex, end);
 
                 int readRemaining = returnLength - end;
 
                 if (readIndex > 0) {
-                    logger.debug("offset = {}, buffer.length = {},  readRemaining = {}", offset, buffer.length, readRemaining);
+                    //logger.debug("offset = {}, buffer.length = {},  readRemaining = {}", offset, buffer.length, readRemaining);
 
                     bytePtr.position(offset).put(buffer, 0, readRemaining);
                 }
@@ -98,10 +97,11 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
             }
         }
 
-        if (logger.isTraceEnabled()) {
+        /*if (logger.isTraceEnabled()) {
             logger.trace("{} bytes remain available. Returning {} bytes.", readAvailable(), returnLength);
-        }
-        return logger.exit(returnLength);
+        }*/
+        //return logger.exit(returnLength);
+        return returnLength;
     }
 
     /**
@@ -113,7 +113,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
      * @return This returns either the current index or -1 if there was a problem.
      */
     public long seek(int wence, long offset) {
-        logger.entry(wence, offset);
+        //logger.entry(wence, offset);
 
         long returnValue = -1;
 
@@ -129,7 +129,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
                         returnValue = offset;
                     }
                 } catch (IndexOutOfBoundsException e) {
-                    logger.warn("Seek: Requested a read index that is not yet available => ", e);
+                    logger.warn("Seek: Requested a read index that is not available => ", e);
                 }
                 break;
             case 1:
@@ -137,7 +137,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
                 try {
                     returnValue = incrementReadIndexFromStart(offset);
                 } catch (IndexOutOfBoundsException e) {
-                    logger.warn("Seek: Requested a read index that is not yet available => ", e);
+                    logger.warn("Seek: Requested a read index relative to current read index that is not available => ", e);
                 }
                 break;
             case 2:
@@ -145,7 +145,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
                 try {
                     returnValue = incrementReadIndexFromEnd(offset);
                 } catch (IndexOutOfBoundsException e) {
-                    logger.warn("Seek: Requested a read index that is not yet available => ", e);
+                    logger.warn("Seek: Requested a read index relative to the end of the stream that is not available => ", e);
                 }
                 break;
             case 65536:
@@ -159,6 +159,7 @@ public class FFmpegCircularBuffer extends SeekableCircularBuffer {
 
 
         logger.debug("Seek: wence = {}, offset = {}, readIndex = {}, returnValue = {}", wence, offset, readIndex, returnValue);
-        return logger.exit(returnValue);
+        //return logger.exit(returnValue);
+        return returnValue;
     }
 }

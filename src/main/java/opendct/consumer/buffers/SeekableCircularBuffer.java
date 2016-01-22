@@ -64,7 +64,7 @@ public class SeekableCircularBuffer {
      * This should be used to reset the buffer without re-initializing a new buffer.
      */
     public void clear() {
-        logger.entry();
+        //logger.entry();
         synchronized (writeLock) {
             synchronized (readLock) {
                 writeIndex = 0;
@@ -76,7 +76,7 @@ public class SeekableCircularBuffer {
                 closed = false;
             }
         }
-        logger.exit();
+        //logger.exit();
     }
 
     public void close() {
@@ -88,8 +88,8 @@ public class SeekableCircularBuffer {
     }
 
     public void waitForBytes() throws InterruptedException {
-        synchronized (readMonitor) {
-            while (readIndex == writeIndex && !closed) {
+        while (readIndex == writeIndex && !closed) {
+            synchronized (readMonitor) {
                 readMonitor.wait(500);
             }
         }
@@ -260,7 +260,7 @@ public class SeekableCircularBuffer {
      *                                   total size of the ring buffer.
      */
     public int read(byte bytes[], int offset, int length) throws InterruptedException, IndexOutOfBoundsException {
-        logger.entry(bytes.length, offset, length);
+        //logger.entry(bytes.length, offset, length);
 
         // This technically shouldn't be happening.
         if (length == 0) {
@@ -278,20 +278,20 @@ public class SeekableCircularBuffer {
         synchronized (readLock) {
             returnLength = Math.min(length, readAvailable());
 
-            if (logger.isTraceEnabled()) {
+            /*if (logger.isTraceEnabled()) {
                 long readAvailable = readAvailable();
                 logger.trace("{} bytes are currently available with a length of {} bytes being requested.", readAvailable, length);
-            }
+            }*/
 
             if (readIndex + returnLength > buffer.length) {
                 int end = buffer.length - readIndex;
-                logger.trace("buffer.length = {}, readIndex = {}, bytes.length = {}, offset = {}, end = {}", buffer.length, readIndex, bytes.length, offset, end);
+                //logger.trace("buffer.length = {}, readIndex = {}, bytes.length = {}, offset = {}, end = {}", buffer.length, readIndex, bytes.length, offset, end);
                 System.arraycopy(buffer, readIndex, bytes, offset, end);
 
                 int readRemaining = returnLength - end;
 
                 if (readRemaining > 0) {
-                    logger.trace("buffer.length = {}, bytes.length = {}, offset = {}, end = {}, readRemaining = {}", buffer.length, bytes.length, offset, end, readRemaining);
+                    //logger.trace("buffer.length = {}, bytes.length = {}, offset = {}, end = {}, readRemaining = {}", buffer.length, bytes.length, offset, end, readRemaining);
                     System.arraycopy(buffer, 0, bytes, offset + end, readRemaining);
                 }
 
@@ -305,10 +305,10 @@ public class SeekableCircularBuffer {
             }
         }
 
-        if (logger.isTraceEnabled()) {
+        /*if (logger.isTraceEnabled()) {
             long readAvailable = readAvailable();
             logger.trace("{} bytes remain available. Returning {} bytes.", readAvailable, returnLength);
-        }
+        }*/
         return logger.exit(returnLength);
     }
 
@@ -324,7 +324,7 @@ public class SeekableCircularBuffer {
      * @throws InterruptedException
      */
     public int read(ByteBuffer outBuffer) throws InterruptedException {
-        logger.entry(outBuffer);
+        //logger.entry(outBuffer);
 
         // This technically shouldn't be happening.
         if (outBuffer.remaining() == 0) {
@@ -340,20 +340,20 @@ public class SeekableCircularBuffer {
         synchronized (readLock) {
             returnLength = Math.min(length, readAvailable());
 
-            if (logger.isTraceEnabled()) {
+            /*if (logger.isTraceEnabled()) {
                 long readAvailable = readAvailable();
                 logger.trace("{} bytes are currently available with a length of {} bytes being requested.", readAvailable, length);
-            }
+            }*/
 
             if (readIndex + returnLength > buffer.length) {
                 int end = buffer.length - readIndex;
-                logger.trace("buffer.length = {}, readIndex = {}, outBuffer.remaining = {}, end = {}", buffer.length, readIndex, outBuffer.remaining(), end);
+                //logger.trace("buffer.length = {}, readIndex = {}, outBuffer.remaining = {}, end = {}", buffer.length, readIndex, outBuffer.remaining(), end);
                 outBuffer.put(buffer, readIndex, end);
 
                 int readRemaining = returnLength - end;
 
                 if (readIndex > 0) {
-                    logger.trace("buffer.length = {}, outBuffer.remaining = {}, readRemaining = {}", buffer.length, outBuffer.remaining(), readRemaining);
+                    //logger.trace("buffer.length = {}, outBuffer.remaining = {}, readRemaining = {}", buffer.length, outBuffer.remaining(), readRemaining);
                     outBuffer.put(buffer, 0, readRemaining);
                 }
 
@@ -367,11 +367,12 @@ public class SeekableCircularBuffer {
             }
         }
 
-        if (logger.isTraceEnabled()) {
+        /*if (logger.isTraceEnabled()) {
             long readAvailable = readAvailable();
             logger.trace("{} bytes remain available. Returning {} bytes.", readAvailable, returnLength);
-        }
-        return logger.exit(returnLength);
+        }*/
+        //return logger.exit(returnLength);
+        return returnLength;
     }
 
     /**
@@ -385,7 +386,7 @@ public class SeekableCircularBuffer {
      *                              return, this will be thrown. If you are not blocking, this will never happen.
      */
     public int read() throws InterruptedException {
-        logger.entry();
+        //logger.entry();
 
         int returnValue;
 
@@ -404,7 +405,8 @@ public class SeekableCircularBuffer {
 
         }
 
-        return logger.exit(returnValue);
+        //return logger.exit(returnValue);
+        return returnValue;
     }
 
     /**
@@ -417,7 +419,7 @@ public class SeekableCircularBuffer {
      * @param index Relative index based on the total written bytes in the buffer.
      */
     public void setReadIndex(long index) throws ArrayIndexOutOfBoundsException {
-        logger.entry(index);
+        //logger.entry(index);
 
         if (index < 0) {
             return;
@@ -437,7 +439,7 @@ public class SeekableCircularBuffer {
             }
         }
 
-        logger.debug("Relative index {} to bytes set read index to actual index {}, read passes {}.", index, readIndex, readPasses);
+        //logger.debug("Relative index {} to bytes set read index to actual index {}, read passes {}.", index, readIndex, readPasses);
         logger.exit();
     }
 
@@ -450,7 +452,7 @@ public class SeekableCircularBuffer {
      *         increment.
      */
     public long incrementReadIndexFromStart(long increment) throws IndexOutOfBoundsException {
-        logger.entry(increment);
+        //logger.entry(increment);
 
         long returnValue = -1;
 
@@ -476,8 +478,9 @@ public class SeekableCircularBuffer {
             returnValue = totalBytesReadIndex();
         }
 
-        logger.debug("Incremental index {} to bytes read index set read index to actual index {}, read passes {}.", increment, readIndex, readPasses);
-        return logger.exit(returnValue);
+        //logger.debug("Incremental index {} to bytes read index set read index to actual index {}, read passes {}.", increment, readIndex, readPasses);
+        //return logger.exit(returnValue);
+        return returnValue;
     }
 
     /**
@@ -489,7 +492,7 @@ public class SeekableCircularBuffer {
      *         increment.
      */
     public long incrementReadIndexFromEnd(long increment) throws IndexOutOfBoundsException {
-        logger.entry(increment);
+        //logger.entry(increment);
 
         long returnValue = -1;
 
@@ -515,8 +518,9 @@ public class SeekableCircularBuffer {
             returnValue = totalBytesReadIndex();
         }
 
-        logger.debug("Incremental index {} to bytes read index set read index to actual index {}, read passes {}.", increment, readIndex, readPasses);
-        return logger.exit(returnValue);
+        //logger.debug("Incremental index {} to bytes read index set read index to actual index {}, read passes {}.", increment, readIndex, readPasses);
+        //return logger.exit(returnValue);
+        return returnValue;
     }
 
     /**
@@ -526,7 +530,7 @@ public class SeekableCircularBuffer {
      * @return The number of bytes available for writing.
      */
     public int writeAvailable() {
-        logger.entry();
+        //logger.entry();
         int available;
         int limitIndex;
 
@@ -539,12 +543,13 @@ public class SeekableCircularBuffer {
                 available = (buffer.length - 1) - (writeIndex - limitIndex);
             }
 
-            if (logger.isDebugEnabled() && available <= 0) {
+            /*if (logger.isDebugEnabled() && available <= 0) {
                 logger.debug("writeAvailable() = {}", available);
-            }
+            }*/
         }
 
-        return logger.exit(available);
+        //return logger.exit(available);
+        return available;
     }
 
     /**
@@ -553,7 +558,7 @@ public class SeekableCircularBuffer {
      * @return The number of bytes available to be read.
      */
     public int readAvailable() {
-        logger.entry();
+        //logger.entry();
         int available;
 
         synchronized (rwPassLock) {
@@ -564,19 +569,24 @@ public class SeekableCircularBuffer {
             }
         }
 
-        return logger.exit(available);
+        //return logger.exit(available);
+        return available;
     }
 
     public long totalBytesReadIndex() {
-        logger.entry();
+        //logger.entry();
+        long available;
 
         synchronized (rwPassLock) {
-            return logger.exit(totalBytesAvailable() - readAvailable());
+            available = totalBytesAvailable() - readAvailable();
         }
+
+        //return logger.exit(available);
+        return available;
     }
 
     public long totalBytesAvailable() {
-        logger.entry();
+        //logger.entry();
         int available;
 
         synchronized (rwPassLock) {
@@ -587,7 +597,8 @@ public class SeekableCircularBuffer {
             }
         }
 
-        return logger.exit(available);
+        //return logger.exit(available);
+        return available;
     }
 }
 

@@ -107,7 +107,6 @@ public class SeekableCircularBuffer {
      *                                        the buffer.
      */
     public void write(byte bytes[], int offset, int length) throws ArrayIndexOutOfBoundsException {
-        logger.entry(bytes.length, offset, length);
 
         // This technically shouldn't be happening.
         if (length == 0) {
@@ -151,12 +150,15 @@ public class SeekableCircularBuffer {
                 }
 
                 return;
-            } else if (overflowQueue.size() > 0) {
+            } else if (bytesOverflow.get() > 0) {
 
-                // Store recently added data in double-ended queue.
-                byte[] queueBytes = new byte[length];
-                System.arraycopy(bytes, offset, queueBytes, 0, length);
-                overflowQueue.addLast(queueBytes);
+                if (overflowQueue.size() < Integer.MAX_VALUE) {
+                    // Store recently added data in double-ended queue.
+                    byte[] queueBytes = new byte[length];
+                    System.arraycopy(bytes, offset, queueBytes, 0, length);
+                    overflowQueue.addLast(queueBytes);
+                    bytesOverflow.addAndGet(length);
+                }
 
                 processQueue();
 
@@ -211,16 +213,14 @@ public class SeekableCircularBuffer {
     }
 
     private void internalWrite(byte bytes[], int offset, int length) {
-        logger.entry(bytes.length, offset, length);
-
         if (writeIndex + length > buffer.length) {
             int end = buffer.length - writeIndex;
-            logger.trace("bytes.length = {}, offset = {}, buffer.length = {}, writeIndex = {}, end = {}", bytes.length, offset, buffer.length, writeIndex, end);
+            //logger.trace("bytes.length = {}, offset = {}, buffer.length = {}, writeIndex = {}, end = {}", bytes.length, offset, buffer.length, writeIndex, end);
             System.arraycopy(bytes, offset, buffer, writeIndex, end);
 
             int writeRemaining = length - end;
             if (writeRemaining > 0) {
-                logger.trace("bytes.length = {}, end = {}, buffer.length = {}, writeRemaining = {}", bytes.length, end, buffer.length, writeRemaining);
+                //logger.trace("bytes.length = {}, end = {}, buffer.length = {}, writeRemaining = {}", bytes.length, end, buffer.length, writeRemaining);
                 System.arraycopy(bytes, offset + end, buffer, 0, writeRemaining);
             }
 
@@ -237,8 +237,6 @@ public class SeekableCircularBuffer {
         synchronized (readMonitor) {
             readMonitor.notifyAll();
         }
-
-        logger.exit();
     }
 
     /**

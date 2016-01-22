@@ -150,7 +150,7 @@ public class SeekableCircularBuffer {
                 }
 
                 return;
-            } else if (bytesOverflow.get() > 0) {
+            } else if (overflowToQueue) {
 
                 if (overflowQueue.size() < Integer.MAX_VALUE) {
                     // Store recently added data in double-ended queue.
@@ -174,7 +174,27 @@ public class SeekableCircularBuffer {
         boolean returnValue = false;
 
         synchronized (writeLock) {
-            while (overflowQueue.size() > 0) {
+            while (true) {
+                if (overflowQueue.size() == 0) {
+                    if (recoveredBytes > 0) {
+                        logger.info("Recovered {} bytes from the queue buffer.", recoveredBytes);
+                        bytesOverflow.addAndGet(-recoveredBytes);
+                        returnValue = true;
+                    }
+
+                    // Reset log warnings.
+                    overflowToQueue = false;
+                    overflow = false;
+                    bytesOverflow.set(0);
+
+                    if (bytesLost.get() > 0) {
+                        logger.info("Lost {} bytes that could not be queued in the queue buffer.", bytesLost.get());
+                        bytesLost.set(0);
+                    }
+
+                    break;
+                }
+
                 byte[] overflowBytes = overflowQueue.removeFirst();
                 int writeAvailable = writeAvailable();
 
@@ -188,24 +208,6 @@ public class SeekableCircularBuffer {
                 internalWrite(overflowBytes, 0, overflowBytes.length);
 
                 recoveredBytes += overflowBytes.length;
-            }
-
-            if (recoveredBytes > 0) {
-                logger.info("Recovered {} bytes from the queue buffer.", recoveredBytes);
-                bytesOverflow.addAndGet(-recoveredBytes);
-                returnValue = true;
-            }
-
-            if (overflowQueue.size() == 0) {
-                // Reset log warnings.
-                overflowToQueue = false;
-                overflow = false;
-                bytesOverflow.set(0);
-
-                if (bytesLost.get() > 0) {
-                    logger.info("Lost {} bytes that could not be queued in the queue buffer.", bytesLost.get());
-                    bytesLost.set(0);
-                }
             }
         }
 

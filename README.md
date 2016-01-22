@@ -21,13 +21,13 @@ dpkg -i opendct_x.x.x-x_arch.deb
 #### CentOS 7
 ```
 yum install java-1.8.0-openjdk-headless
-rpm -i opendct_x.x.x-x_arch.rpm
+rpm -U opendct_x.x.x-x_arch.rpm
 ```
 
-#### Fedora 22
+#### Fedora 22, 23
 ```
 dnf install java-1.8.0-openjdk-headless
-rpm -i opendct_x.x.x-x_arch.rpm
+rpm -U opendct_x.x.x-x_arch.rpm
 ```
 
 #### Windows 7+
@@ -43,7 +43,7 @@ On Windows platforms, unless you have the 64-bit Java Runtime installed, use the
 3. Edit opendct.properties per the section below if you want to limit what it should discover otherwise continue to the next step.
   * *Windows:* From the Start Menu, open OpenDCT Properties.
   
-  * *Linux:* The opendct.properties file is located under /opt/opendct/conf/opendct.properties.
+  * *Linux:* In versions 0.4.17 and older, the opendct.properties file is located under /opt/opendct/conf/opendct.properties. Starting with 0.4.18 it is now located under /etc/opendct/conf/opendct.properties.
 4. Start OpenDCT in console mode the first time.
   * *Windows:* From the Start Menu, open OpenDCT Run as Console.
   
@@ -56,7 +56,7 @@ On Windows platforms, unless you have the 64-bit Java Runtime installed, use the
 6. After the program exits, you can edit opendct.properties per the section below. The [first post on the SageTV forums](http://forums.sagetv.com/forums/showthread.php?p=581743&postcount=1) explains some of the more detailed options.
   * *Windows:* From the Start Menu, open OpenDCT Properties.
   
-  * *Linux:* The opendct.properties file is located under /opt/opendct/conf/opendct.properties.
+  * *Linux:* In versions 0.4.17 and older, the opendct.properties file is located under /opt/opendct/conf/opendct.properties. Starting with 0.4.18 it is now located under /etc/opendct/conf/opendct.properties.
 7. Start the OpenDCT service. *You will always need to stop the OpenDCT service before making any changes to opendct.properties*
   * *Windows:* From the Start Menu, open OpenDCT Start Service.
   
@@ -96,7 +96,7 @@ The majority of the configuration is done inside opendct.properties. The file is
  
 #### Sage.properties
 
-After configuring OpenDCT, the SageTV service needs to be stopped. Open Sage.properties and find the property network\_encoder\_discovery and change the value to true. Start the SageTV service again while OpenDCT is running to discover the available capture devices.
+After configuring OpenDCT, the SageTV service needs to be stopped. Open Sage.properties and find the property network\_encoder\_discovery and change the value to true. Start the SageTV service again while OpenDCT is already running to discover the available capture devices.
 
 ## Compiling
 OpenDCT builds are created using Gradle. The following commands should get you started.
@@ -111,7 +111,7 @@ gradlew eclipse
 gradlew idea
 ```
 
-#### Compile the project and create packages for installation on Ubuntu 14.04, CentOS 7, Fedora 22 and Windows 7+.
+#### Compile the project and create packages for installation on Ubuntu 14.04, CentOS 7, Fedora 22, 23 and Windows 7+.
 *Note: Building the Windows installer is currently only supported on Windows.*
 
 1. Install the latest [Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/) for your OS architecture.

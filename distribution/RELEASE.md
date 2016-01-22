@@ -158,12 +158,64 @@
 
 > *Added more suspend logic to handle unexpected states.
 
+> *Windows installer now applies firewall settings the official way.
+
 #### 0.4.13-Beta
+> *Windows installer now will not fail on firewall rules on upgrades. If you need to roll back to
+> 0.4.12, you will need to install 0.4.11 first, then 0.4.12 to get around the firewall upgrade
+> issues.
+
 > *Addressed possibility that the RTP stall monitoring thread could continue running even after it
 > should have stopped. This has no serious consequence other than annoying logged warnings.
 
-> *Increased default detection timeout to 60 seconds. UPnP detection doesn't always work very
-> quickly for some setups.
+> *Fixed a rare null pointer issue in the FFmpeg consumer. [ws]
+
+> *Addressed standby issue with UPnP devices not responding quickly enough.
+
+> *Fixed standby network listener to work with the new standby code. It will now wait for the 
+> network to be available before resuming any other activities like it did before the update.
+
+#### 0.4.14-Beta
+> *Changed over to a more public beta.
+
+#### 0.4.15-Beta
+> *Added tunable thread priorities for consumer and producer threads.
+
+> *Internal: Removed desired PID from consumer interface since it can be unreliable.
+
+#### 0.4.16-Beta
+> *Limited program detection to 2 seconds. Normally it's detected in less than 200ms, so this should
+> not introduce any new issues and should keep the capture device from returning so late that the
+> circular buffer is overflowing.
+
+> *Added more resilience to the HDHomeRun native communications. It will now try up to 5 times at 1
+> second intervals to reach a device before it gives up.
+
+> *Improved fragmented HDHomeRun response support.
+
+#### 0.4.17-Beta
+> *HDHomeRun packet length was not accounting for the 4 byte header and 4 byte CRC when ensuring we
+> don't have a fragmented packet.
+
+> *Addressed more possible situations for HDHomeRun communication failures.
+
+> *Fixed single character HDHomeRun response handling.
+
+> *Added a byte array queue buffer to the circular buffer to help with data overflow situations. It 
+> will queue up to 4x the size of the buffer in a data overflow situation.
+
+#### 0.4.18-Beta
+> *To be more compliant with Debian, all Linux future packages now use /etc/opendct/conf for
+> configuration. That includes opendct.properties. The install scripts will detect old
+> configurations and copy your /opt/opendct/conf folder to /etc/opendct/conf, then rename
+> /opt/opendct/conf to /opt/opendct/conf.moved in the /opt/opendct/conf folder. The copy is
+> triggered on the existence of /opt/opendct/conf so it will only trigger once. You can safely
+> delete /opt/opendct/conf.moved if you want to clean up.
+
+> *Fedora 23 is now officially supported.
+
+> *Internal: Updated Linux install package build scripts for better compliance with current
+> standards.
 
 #### 1.0.0-Beta (compile only; not released)
 > *Added web interface on port 8090.

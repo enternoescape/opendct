@@ -16,6 +16,7 @@
 
 package opendct.tuning.hdhomerun;
 
+import opendct.config.Config;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketTag;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketType;
 import org.apache.logging.log4j.LogManager;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class HDHomeRunControl {
@@ -34,6 +36,7 @@ public class HDHomeRunControl {
     public final static int HDHOMERUN_CONTROL_SEND_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_RECV_TIMEOUT = 2500;
     public final static int HDHOMERUN_CONTROL_UPGRADE_TIMEOUT = 30000;
+    public final static int HDHOMERUN_CONTROL_COMMUNICATION_RETRY = Config.getInteger("hdhr.retry_count", 5);
 
     private HDHomeRunPacket txPacket;
     private HDHomeRunPacket rxPacket;
@@ -110,47 +113,53 @@ public class HDHomeRunControl {
         connectSocket(new InetSocketAddress(address,
                 HDHomeRunPacket.HDHOMERUN_CONTROL_TCP_PORT));
 
-        try {
-            while (txPacket.BUFFER.hasRemaining()) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("key: '{}' value: '{}' lockKey: '{}' remaining: {}",
-                            key, value, lockkey, txPacket.BUFFER.remaining());
+        if (logger.isDebugEnabled()) {
+            logger.debug("key: '{}' value: '{}' lockKey: '{}' sendLength: {}",
+                    key, value, lockkey, txPacket.BUFFER.remaining());
+        }
+
+        IOException errorMessage = null;
+        int retryCount = 0;
+        boolean success = false;
+
+        while (!success && retryCount++ <= HDHOMERUN_CONTROL_COMMUNICATION_RETRY && !Thread.currentThread().isInterrupted()) {
+            try {
+                packetSendReceive(txPacket.BUFFER.slice(), HDHOMERUN_CONTROL_RECV_TIMEOUT);
+                success = true;
+            } catch (IOException e) {
+                errorMessage = e;
+                closeSocket();
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e0) {
+                    // This is intentional. We should have the reason we are waiting returned as the
+                    // exception since it is itself an exception.
+                    throw e;
                 }
-
-                socket.write(txPacket.BUFFER);
+                connectSocket(new InetSocketAddress(address,
+                        HDHomeRunPacket.HDHOMERUN_CONTROL_TCP_PORT));
             }
-        } catch (IOException e) {
-            closeSocket();
-            throw e;
         }
 
-        rxPacket.BUFFER.clear();
-        returnedBytes = 0;
-        Thread receiveThread = new Thread(new ReceiveThread());
-        receiveThread.setName("HDHomeRunControlReceive-" + receiveThread.getId());
-        receiveThread.start();
-
-        try {
-            receiveThread.join(HDHOMERUN_CONTROL_RECV_TIMEOUT);
-
-            //Stop receiving.
-            receiveThread.interrupt();
-
-            // Wait for the thread to actually stop.
-            receiveThread.join();
-        } catch (InterruptedException e) {
-            receiveThread.interrupt();
-            closeSocket();
-            throw new IOException(e.getMessage());
+        if (!success) {
+            if (errorMessage != null) {
+                logger.error("Unable to communicate with HDHomeRun after {} attempts.", HDHOMERUN_CONTROL_COMMUNICATION_RETRY);
+                throw errorMessage;
+            } else {
+                logger.error("No error was reported, but data was not able to be sent.");
+                throw new IOException("No error was reported, but data was not able to be sent.");
+            }
         }
 
-        rxPacket.BUFFER.flip();
-        if (rxPacket.BUFFER.limit() > 0) {
+        int bufferLimit = rxPacket.BUFFER.limit();
+
+        if (bufferLimit > 4) {
             if (rxPacket.getPacketType() == HDHomeRunPacketType.HDHOMERUN_TYPE_GETSET_RPY) {
                 int packetLength = rxPacket.getPacketLength();
+                logger.debug("bufferLimit: {}, packetLength: {}", bufferLimit, packetLength);
                 rxPacket.BUFFER.limit(packetLength + 4);
 
-                while (rxPacket.BUFFER.remaining() > 4) {
+                while (rxPacket.BUFFER.remaining() >= 2) {
                     HDHomeRunPacketTag tag = rxPacket.getTag();
                     int length = rxPacket.getVariableLength();
 
@@ -174,6 +183,7 @@ public class HDHomeRunControl {
                         case HDHOMERUN_TAG_GETSET_NAME:
                             // The device may return the key name.
                             rxPacket.BUFFER.position(rxPacket.BUFFER.position() + length);
+                            logger.debug("HDHomeRun device returned the key name. Skipped {} bytes.", length);
                             break;
 
                         case HDHOMERUN_TAG_GETSET_VALUE:
@@ -191,13 +201,24 @@ public class HDHomeRunControl {
                             break;
                     }
                 }
+            } else {
+                logger.warn("Packet returned was not HDHOMERUN_TYPE_GETSET_RPY.");
+            }
+        } else {
+            logger.warn("Message sent, HDHomeRun did not reply.");
+            closeSocket();
+        }
+
+        if (logger.isDebugEnabled()) {
+            if (rxPacket.BUFFER.remaining() > 0) {
+                String returnValue = rxPacket.getTLVString(rxPacket.BUFFER.limit() - rxPacket.BUFFER.position());
+                logger.debug("HDHomeRun device returned UTF-8: '{}'", returnValue);
             }
         }
 
         logger.error("HDHomeRun device did not reply with a valid message for key = '{}', value ='{}' and lockkey='{}'.", key, value, lockkey);
         return logger.exit(null);
     }
-
 
     private void connectSocket(SocketAddress address) throws IOException {
         logger.entry(address);
@@ -210,6 +231,7 @@ public class HDHomeRunControl {
             closeSocket();
         } catch (Exception e) {
             logger.debug("connectSocket created an unexpected exception => ", e);
+            closeSocket();
         }
 
         socket = SocketChannel.open(address);
@@ -224,9 +246,53 @@ public class HDHomeRunControl {
             try {
                 socket.close();
                 socket.socket().close();
+                socket = null;
             } catch (Exception e) {
                 logger.debug("closeSocket created an unexpected exception => ", e);
             }
+        }
+
+        logger.exit();
+    }
+
+    private void packetSendReceive(ByteBuffer packetSend, long timeout) throws IOException {
+        logger.entry(packetSend, timeout);
+
+        rxPacket.BUFFER.clear();
+        returnedBytes = 0;
+        Thread receiveThread = new Thread(new ReceiveThread());
+        receiveThread.setName("HDHomeRunControlReceive-" + receiveThread.getId());
+
+        try {
+            while (packetSend.hasRemaining()) {
+                socket.write(packetSend);
+            }
+        } catch (IOException e) {
+            closeSocket();
+            throw e;
+        }
+
+        receiveThread.start();
+
+        try {
+            receiveThread.join(timeout);
+
+            //Stop receiving.
+            receiveThread.interrupt();
+
+            // Wait for the thread to actually stop.
+            receiveThread.join();
+        } catch (InterruptedException e) {
+            receiveThread.interrupt();
+            closeSocket();
+            throw new IOException(e.getMessage());
+        }
+
+        rxPacket.BUFFER.flip();
+
+        if (rxPacket.BUFFER.remaining() == 0) {
+            closeSocket();
+            throw new IOException("HDHomeRun did not reply with a message. Closing socket...");
         }
 
         logger.exit();
@@ -239,14 +305,35 @@ public class HDHomeRunControl {
 
             if (socket != null) {
                 try {
-                    int returnBytes = 0;
-                    while (returnBytes == 0) {
-                        returnBytes = socket.read(rxPacket.BUFFER);
-                    }
+                    boolean firstBytes = true;
 
-                    returnedBytes += returnBytes;
+                    int bytesNeeded = rxPacket.BUFFER.limit();
+                    int returnBytes = 0;
+
+                    while (!Thread.currentThread().isInterrupted()) {
+                        returnBytes = socket.read(rxPacket.BUFFER);
+                        returnedBytes += returnBytes;
+
+                        if (firstBytes && returnBytes > 4) {
+                            firstBytes = false;
+                            ByteBuffer slice = rxPacket.BUFFER.duplicate();
+                            slice.flip();
+
+                            // This makes sure we get everything in case the message gets broken up.
+                            slice.getShort();
+                            bytesNeeded = (slice.getShort() & 0xffff) + 8; // +8 to include header and CRC
+                        }
+
+                        if (bytesNeeded > returnBytes) {
+                            logger.debug("bytesNeeded: {} > returnBytes: {}");
+                        } else {
+                            break;
+                        }
+                    }
                 } catch (IOException e) {
                     logger.debug("ReceiveThread was unable to receive => ", e);
+                } catch (Exception e) {
+                    logger.warn("ReceiveThread experienced an unexpected exception => ", e);
                 }
             }
 

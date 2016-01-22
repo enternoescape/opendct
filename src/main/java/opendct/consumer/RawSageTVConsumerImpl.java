@@ -58,6 +58,15 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                     maxTransferSize * 2
             );
 
+    private final int rawThreadPriority =
+            Math.max(
+                    Math.min(
+                            Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
+                            Thread.MAX_PRIORITY
+                    ),
+                    Thread.MIN_PRIORITY
+            );
+
     private final int standoff = Config.getInteger("consumer.raw.standoff", 8192);
 
     // Atomic because long values take two clocks to process in 32-bit. We could get incomplete
@@ -73,7 +82,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private int currentUploadID = -1;
     private int switchUploadID = -1;
     private String currentRecordingQuality = null;
-    private int desiredPids[] = new int[0];
     private int desiredProgram = -1;
     private String tunedChannel = "";
 
@@ -97,6 +105,9 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("Raw consumer is already running.");
         }
+
+        logger.debug("Thread priority is {}.", rawThreadPriority);
+        Thread.currentThread().setPriority(rawThreadPriority);
 
         int bytesReceivedCount = 0;
         int bytesReceivedBuffer = 0;
@@ -511,16 +522,8 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         return currentUploadID;
     }
 
-    public void setPids(int[] pids) {
-        desiredPids = pids;
-    }
-
     public void setProgram(int program) {
         desiredProgram = program;
-    }
-
-    public int[] getPids() {
-        return desiredPids;
     }
 
     public int getProgram() {

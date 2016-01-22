@@ -675,7 +675,21 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
             scanOnly = true;
         }
 
-        setHDHRLock(true);
+        int timeout = 5;
+        while (!setHDHRLock(true) && !Thread.currentThread().isInterrupted()) {
+            if (timeout-- < 0) {
+                logger.error("Locking HDHomeRun device failed after 5 attempts.");
+                return logger.exit(false);
+            }
+
+            logger.warn("Unable to lock HDHomeRun device.");
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                return logger.exit(false);
+            }
+        }
 
         // The producer and consumer methods are requested to not block. If they don't shut down in
         // time, it will be caught and handled later. This gives us a small gain in speed.
@@ -809,14 +823,14 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                 try {
                     newConsumer.setProgram(hdhrTuner.getProgram());
 
-                    int timeout = 50;
+                    timeout = 20;
 
                     while (newConsumer.getProgram() <= 0) {
                         Thread.sleep(100);
                         newConsumer.setProgram(hdhrTuner.getProgram());
 
                         if (timeout-- < 0) {
-                            logger.error("Unable to get program after 5 seconds.");
+                            logger.error("Unable to get program after 2 seconds.");
                             newConsumer.setProgram(-1);
                             break;
                         }
@@ -832,35 +846,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     logger.error("HDHomRun is unable to get program because the command did not work => ", e);
                 } catch (InterruptedException e) {
                     logger.debug("HDHomeRun is unable to get program because the thread was interrupted => ", e);
-                    return logger.exit(false);
-                }
-
-                try {
-                    newConsumer.setPids(hdhrTuner.getFilter());
-
-                    int timeout = 50;
-
-                    while (newConsumer.getPids().length <= 1) {
-                        Thread.sleep(100);
-                        newConsumer.setPids(hdhrTuner.getFilter());
-
-                        if (timeout-- < 0) {
-                            logger.error("Unable to get PIDs after 5 seconds.");
-                            newConsumer.setPids(new int[0]);
-                            break;
-                        }
-
-                        if (tuningThread != Thread.currentThread()) {
-                            stopProducing(false);
-                            return logger.exit(false);
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.error("HDHomeRun is unable to get PIDs because the device cannot be reached => ", e);
-                } catch (GetSetException e) {
-                    logger.error("HDHomeRun is unable to get PIDs because the command did not work => ", e);
-                } catch (InterruptedException e) {
-                    logger.debug("HDHomeRun is unable to get PIDs because the thread was interrupted => ", e);
                     return logger.exit(false);
                 }
             }
@@ -982,15 +967,15 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     int getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 5);
                     newConsumer.setProgram(getProgram);
 
-                    int timeout = 50;
+                    int timeout = 20;
 
                     while (newConsumer.getProgram() == -1) {
                         Thread.sleep(100);
-                        getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 5);
+                        getProgram = InfiniTVStatus.getProgram(encoderIPAddress, encoderNumber, 2);
                         newConsumer.setProgram(getProgram);
 
                         if (timeout-- < 0) {
-                            logger.error("Unable to get program after more than 5 seconds.");
+                            logger.error("Unable to get program after more than 2 seconds.");
                             return logger.exit(false);
                         }
 
@@ -1003,34 +988,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     logger.error("Unable to get program number => ", e);
                 } catch (InterruptedException e) {
                     logger.debug("Unable to get program number => ", e);
-                    return logger.exit(false);
-                }
-
-                try {
-                    int pids[] = InfiniTVStatus.getPids(encoderIPAddress, encoderNumber, 5);
-                    newConsumer.setPids(pids);
-
-                    int timeout = 50;
-
-                    while (newConsumer.getPids().length <= 1) {
-                        Thread.sleep(100);
-                        pids = InfiniTVStatus.getPids(encoderIPAddress, encoderNumber, 5);
-                        newConsumer.setPids(pids);
-
-                        if (timeout-- < 0) {
-                            logger.error("Unable to get PIDs after more than 5 seconds.");
-                            return logger.exit(false);
-                        }
-
-                        if (tuningThread != Thread.currentThread()) {
-                            stopProducing(false);
-                            return logger.exit(false);
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.error("Unable to get PID numbers => ", e);
-                } catch (InterruptedException e) {
-                    logger.debug("Unable to get PID numbers => ", e);
                     return logger.exit(false);
                 }
             }
@@ -1321,20 +1278,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                     logger.warn("Unable to parse program => ", e);
                 }
 
-                try {
-                    String pidsString = muxAction.SERVICE_ACTIONS.queryActionVariable("PIDList");
-                    String split[] = pidsString.split(",");
-                    int pids[] = new int[split.length];
-
-                    for (int i = 0; i < pids.length; i++) {
-                        pids[i] = Integer.parseInt(split[i].trim(), 16);
-                    }
-
-                    newConsumer.setPids(pids);
-                } catch (Exception e) {
-                    logger.warn("Unable to parse PIDs => ", e);
-                }
-
                 logger.info("Configuring and starting the SageTV consumer...");
 
                 if (uploadID > 0 && remoteAddress != null) {
@@ -1377,11 +1320,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice {
                 logger.info("Tuning monitoring thread started.");
 
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+
                 int timeout = 0;
-                long lastValue = 0;
-                long currentValue = 0;
-                long lastBytesRecorded = 0;
-                long currentBytesRecorded = 0;
+
                 boolean firstPass = true;
 
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {

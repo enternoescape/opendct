@@ -1057,6 +1057,10 @@ public class SageTVManager implements PowerEventListener {
         devicesWaitingThread.blockUntilLoaded();
     }
 
+    public static boolean captureDevicesLoaded() {
+        return !devicesWaitingThread.isAlive();
+    }
+
     /**
      * Implements a callback for Suspend Event.
      * <p/>

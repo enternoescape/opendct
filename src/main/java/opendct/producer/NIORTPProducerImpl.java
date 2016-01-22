@@ -45,6 +45,16 @@ public class NIORTPProducerImpl implements RTPProducer {
     private long packetsLastReceived = 0;
     private boolean stalled = false;
     private int localPort = 0;
+
+    private final int nioRtpThreadPriority =
+            Math.max(
+                    Math.min(
+                            Config.getInteger("producer.rtp.nio.thread_priority", Thread.MAX_PRIORITY - 1),
+                            Thread.MAX_PRIORITY
+                    ),
+                    Thread.MIN_PRIORITY
+            );
+
     private final int stalledTimeout =
             Config.getInteger("producer.rtp.nio.stalled_timeout_s", 6);
     private final int udpNativeReceiveBufferSize =
@@ -219,8 +229,10 @@ public class NIORTPProducerImpl implements RTPProducer {
 
         // We could be doing channel scanning that doesn't need this kind of prioritization.
         if (Thread.currentThread().getPriority() != Thread.MIN_PRIORITY) {
-            Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+            Thread.currentThread().setPriority(nioRtpThreadPriority);
         }
+
+        logger.debug("Thread priority is {}.", Thread.currentThread().getPriority());
 
         while (!stop.get() && !Thread.currentThread().isInterrupted()) {
             if (stop.get()) {

@@ -656,6 +656,10 @@ public class SageTVRequestHandler implements Runnable {
             virtualDevice = virtualDevice.substring(0, virtualDevice.length() - " Digital TV Tuner".length());
         }
 
+        if (poolDevice != null && poolDevice.endsWith(" Digital TV Tuner")) {
+            poolDevice = poolDevice.substring(0, poolDevice.length() - " Digital TV Tuner".length());
+        }
+
         String newThreadName;
 
         if (!SageTVPoolManager.isUsePools() || (virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {

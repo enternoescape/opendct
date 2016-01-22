@@ -98,6 +98,15 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     RW_BUFFER_SIZE
             );
 
+    private final int ffmpegThreadPriority =
+            Math.max(
+                    Math.min(
+                            Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
+                            Thread.MAX_PRIORITY
+                    ),
+                    Thread.MIN_PRIORITY
+            );
+
     // Atomic because long values take two clocks just to store in 32-bit. We could get incomplete
     // values otherwise. Don't ever forget to set this value and increment it correctly. This is
     // crucial to playback in SageTV.
@@ -111,7 +120,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private int currentUploadID = -1;
     private int switchUploadID = -1;
     private String currentRecordingQuality = null;
-    private int desiredPids[] = new int[0];
     private int desiredProgram = -1;
     private String tunedChannel = "";
 
@@ -160,6 +168,9 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("FFmpeg consumer is already running.");
         }
+
+        logger.debug("Thread priority is {}.", ffmpegThreadPriority);
+        Thread.currentThread().setPriority(ffmpegThreadPriority);
 
         opaquePointer = new Pointer(new TmpPointer());
         instanceMap.put(opaquePointer, this);
@@ -814,19 +825,21 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             if (preferredVideo != AVERROR_STREAM_NOT_FOUND) {
                 videoCodecCtx = getCodecContext(avfCtxInput.streams(preferredVideo));
+            }
 
-                if (videoCodecCtx == null) {
-                    if (isInterrupted()) {
-                        return FFMPEG_INIT_INTERRUPTED;
-                    }
-
-                    if (dynamicProbeSize == probeSizeLimit) {
-                        return "Could not find a video stream";
-                    }
-
-                    freeAndSetNullAttemptData();
-                    continue;
+            if (videoCodecCtx == null) {
+                if (isInterrupted()) {
+                    return FFMPEG_INIT_INTERRUPTED;
                 }
+
+                String error = "Could not find a video stream.";
+                if (dynamicProbeSize == probeSizeLimit) {
+                    return error;
+                }
+                logger.debug(error);
+
+                freeAndSetNullAttemptData();
+                continue;
             }
 
             if (isInterrupted()) {
@@ -846,9 +859,11 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     return FFMPEG_INIT_INTERRUPTED;
                 }
 
+                String error = "Could not find an audio stream.";
                 if (dynamicProbeSize == probeSizeLimit) {
-                    return "Could not find an audio stream";
+                    return error;
                 }
+                logger.debug(error);
 
                 freeAndSetNullAttemptData();
                 continue;
@@ -1118,16 +1133,8 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         }
     }
 
-    public void setPids(int[] pids) {
-        desiredPids = pids;
-    }
-
     public void setProgram(int program) {
         desiredProgram = program;
-    }
-
-    public int[] getPids() {
-        return desiredPids;
     }
 
     public int getProgram() {

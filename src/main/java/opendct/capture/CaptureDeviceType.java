@@ -17,11 +17,12 @@
 package opendct.capture;
 
 public enum CaptureDeviceType {
-    UNKNOWN,       // This is the default state for the AbstractRTPCaptureDevice class. You must change it.
+    UNKNOWN,       // This is the default value for the BasicCaptureDevice class. No device can have this value.
     DCT_INFINITV,  // Ceton InfiniTV
     DCT_PRIME,     // Silicondust HDHomeRun Prime
     QAM_INFINITV,  // Ceton InfiniTV without a cable card.
     QAM_PRIME,     // Silicondust HDHomeRun Prime without a cable card.
+    HDHOMERUN,     // Silicondust HDHomeRun devices.
     PI_HDPVR,      // HD-PVR connected to a Raspberry Pi
     PI_TUNER,      // any USB tuner connected to a Raspberry Pi
     SCREENGRABBER, // any source that is actually just recording content via screen capture.

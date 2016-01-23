@@ -203,3 +203,23 @@
 
 > *Added a byte array queue buffer to the circular buffer to help with data overflow situations. It 
 > will queue up to 4x the size of the buffer in a data overflow situation.
+
+#### 0.4.18-Beta
+> *To be more compliant with Debian, all Linux future packages now use /etc/opendct/conf for
+> configuration. That includes opendct.properties. The install scripts will detect old
+> configurations and copy your /opt/opendct/conf folder to /etc/opendct/conf, then rename
+> /opt/opendct/conf to /opt/opendct/conf.moved in the /opt/opendct/conf folder. The copy is
+> triggered on the existence of /opt/opendct/conf so it will only trigger once. You can safely
+> delete /opt/opendct/conf.moved if you want to clean up.
+
+> *Fedora 23 is now officially supported.
+
+> *Internal: Updated Linux install package build scripts for better compliance with current
+> standards.
+
+> *Optimized overflow queue and removed debug code in buffer from production code.
+
+> *Changed how InfiniTV ClearQAM tuning stops the packet stream without completely tearing down 
+> RTSP. The old way could put InfiniTV 6 devices in a state that requires a soft reboot to be able
+> to detect programs available on the tuned frequency again. This issue happens with the CGMS-A fix
+> firmware installed.

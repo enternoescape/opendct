@@ -57,8 +57,8 @@ public class InfiniTVTuning {
                     tuneFrequency(tvChannel, deviceAddress, tunerNumber, retry);
                 }
 
-                int attempts = 10;
-                boolean programSelected = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "mux", "ProgramNumber").equals(tvChannel.getProgram());
+                int attempts = 20;
+                boolean programSelected = false;
 
                 while (!programSelected) {
                     // If we are not already on the correct frequency, it takes the tuner a moment
@@ -77,7 +77,7 @@ public class InfiniTVTuning {
                             // Sleep if the first request fails so we don't overwhelm the device
                             // with requests. Remember up to 6 of these kinds of request could
                             // happen at the exact same time.
-                            Thread.sleep(10);
+                            Thread.sleep(100);
                         } catch (InterruptedException e) {
                             logger.error("tuneChannel was interrupted while selecting a program.");
                             return logger.exit(false);

@@ -1426,8 +1426,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     }
                 } else {
                     try {
-                        InfiniTVTuning.tuneFrequency(
-                                new TVChannelImpl("0", "0", "QAM256", "0", "0", "0", false),
+                        InfiniTVTuning.tuneProgram(
+                                new TVChannelImpl("0", "0", "QAM256", "0", "65535", "0", false),
                                 encoderIPAddress,
                                 encoderNumber,
                                 25);

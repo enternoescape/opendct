@@ -24,6 +24,7 @@ import opendct.video.ffmpeg.FFmpegUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.BytePointer;
+import org.bytedeco.javacpp.IntPointer;
 import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.javacpp.avformat.*;
@@ -56,13 +57,13 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     // This is the smallest probe size allowed.
     private final long minProbeSize =
             Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_probe_size", 800128),
-                    600096
+                    Config.getInteger("consumer.ffmpeg.min_probe_size", 82720 * 2),
+                    82720
             );
     private final long minAnalyzeDuration =
             Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_analyze_duration", 800000),
-                    600000
+                    Config.getInteger("consumer.ffmpeg.min_analyze_duration", 82720 * 2),
+                    82720
             );
 
     // This is the largest probe size allowed. 5MB is the minimum allowed value.
@@ -148,6 +149,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
     public static final String FFMPEG_INIT_INTERRUPTED = "FFmpeg initialization was interrupted.";
     public static final int NO_STREAM_IDX = -1;
+    public static final String TRYING_AGAIN = " Trying again with an extended probe.";
 
     private volatile boolean ffmpegInterrupted;
     private Pointer opaquePointer;
@@ -806,20 +808,27 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             logger.info("After avformat_find_stream_info() pos={} bytes_read={} seek_count={}. probesize: {} analyzeduration: {}.",
                     avioCtxInput.pos(), avioCtxInput.bytes_read(), avioCtxInput.seek_count(), dynamicProbeSize, dynamicAnalyzeDuration);
 
-            if (ret < 0) {
-                if (isInterrupted()) {
-                    return FFMPEG_INIT_INTERRUPTED;
-                }
+            if (isInterrupted()) {
+                return FFMPEG_INIT_INTERRUPTED;
+            }
 
+            if (ret < 0) {
+                String error = "avformat_find_stream_info() failed with error code " + -ret + ".";
                 if (dynamicProbeSize == probeSizeLimit) {
-                    return "avformat_find_stream_info returned error code " + ret;
+                    return error;
                 }
+                logger.info(error + " Trying again with more data.");
 
                 freeAndSetNullAttemptData();
                 continue;
             }
 
-            logger.debug("Finding best video stream");
+            // While we haven't seen all streams for the desired program and we haven't exhausted our attempts, try again...
+            if (!findAllStreamsForDesiredProgram(avfCtxInput) && dynamicProbeSize != probeSizeLimit) {
+                logger.info("Stream details unavailable for one or more streams. " + TRYING_AGAIN);
+                freeAndSetNullAttemptData();
+                continue;
+            }
 
             preferredVideo = av_find_best_stream(avfCtxInput, AVMEDIA_TYPE_VIDEO, NO_STREAM_IDX, NO_STREAM_IDX, (PointerPointer<AVCodec>) null, 0);
 
@@ -836,7 +845,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 if (dynamicProbeSize == probeSizeLimit) {
                     return error;
                 }
-                logger.debug(error);
+                logger.info(error + TRYING_AGAIN);
 
                 freeAndSetNullAttemptData();
                 continue;
@@ -845,8 +854,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             if (isInterrupted()) {
                 return FFMPEG_INIT_INTERRUPTED;
             }
-
-            logger.debug("Finding best audio stream.");
 
             preferredAudio = findBestAudioStream(avfCtxInput);
 
@@ -863,7 +870,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 if (dynamicProbeSize == probeSizeLimit) {
                     return error;
                 }
-                logger.debug(error);
+                logger.info(error + TRYING_AGAIN);
 
                 freeAndSetNullAttemptData();
                 continue;
@@ -898,7 +905,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         streamMap[preferredAudio] = audioStream.id();
 
         StringBuilder buf = new StringBuilder(2000);
-        FFmpegUtil.dumpFormat(buf, avfCtxInput, 0, inputFilename, /*isOutput*/false);
+        FFmpegUtil.dumpFormat(buf, avfCtxInput, 0, inputFilename, /*isOutput*/false, desiredProgram);
         if (isInterrupted()) {
             return FFMPEG_INIT_INTERRUPTED;
         }
@@ -922,7 +929,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
         buf.setLength(0);
         String outputFilename = currentRecordingFilename != null ? currentRecordingFilename : "output.ts";
-        FFmpegUtil.dumpFormat(buf, avfCtxOutput, 0, outputFilename, /*isOutput*/true);
+        FFmpegUtil.dumpFormat(buf, avfCtxOutput, 0, outputFilename, /*isOutput*/true, /*desiredProgram*/0);
 
         if (isInterrupted()) {
             return FFMPEG_INIT_INTERRUPTED;
@@ -941,6 +948,37 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         return null;
     }
 
+    private boolean findAllStreamsForDesiredProgram(AVFormatContext ic) {
+        int numPrograms = ic.nb_programs();
+
+        for (int programIndex = 0; programIndex < numPrograms; programIndex++) {
+            if ( ic.programs(programIndex).id() == desiredProgram) {
+                AVProgram program = ic.programs(programIndex);
+                IntPointer streamIndexArray = program.stream_index();
+                int streamIndexArrayLength = program.nb_stream_indexes();
+                boolean foundAllCodecs = true;
+
+                for (int streamIndexArrayIndex = 0; streamIndexArrayIndex < streamIndexArrayLength; streamIndexArrayIndex++) {
+                    int streamIndex = streamIndexArray.get(streamIndexArrayIndex);
+                    AVStream st = ic.streams(streamIndex);
+                    AVCodecContext avctx = st.codec();
+                    int codecType = avctx.codec_type();
+                    if (codecType == AVMEDIA_TYPE_AUDIO && (avctx.channels() == 0 || avctx.sample_rate() == 0)) {
+                        logger.info("Audio stream " + streamIndex + " has no channels or no sample rate.");
+                        foundAllCodecs = false;
+                    }
+                    else if (codecType == AVMEDIA_TYPE_VIDEO && (avctx.width() == 0 || avctx.height() == 0)) {
+                        logger.info("Video stream " + streamIndex + " has no width or no height.");
+                        foundAllCodecs = false;
+                    }
+                }
+
+                return foundAllCodecs;
+            }
+        }
+
+        return false;
+    }
     private AVCodecContext getCodecContext(AVStream inputStream) {
         AVCodecContext codecCtxInput = inputStream.codec();
         int codecType = codecCtxInput.codec_type();

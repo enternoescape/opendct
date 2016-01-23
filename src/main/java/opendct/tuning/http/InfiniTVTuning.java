@@ -51,14 +51,37 @@ public class InfiniTVTuning {
 
             try {
                 // Check if the frequency is already correct.
-                boolean frequencyTuned = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency").equals(tvChannel.getFrequency());
+                String currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
 
-                if (!frequencyTuned) {
+                boolean frequencyTuned = currentFrequency.equals(tvChannel.getFrequency());
+                int attempts = 20;
+
+                while (!frequencyTuned) {
                     tuneFrequency(tvChannel, deviceAddress, tunerNumber, retry);
+
+                    currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
+                    frequencyTuned = currentFrequency.equals(tvChannel.getFrequency());
+
+                    if (attempts-- == 0 && !frequencyTuned) {
+                        logger.error("The requested frequency cannot be tuned.");
+                        return logger.exit(false);
+                    } else if (!frequencyTuned) {
+                        try {
+                            // Sleep if the first request fails so we don't overwhelm the device
+                            // with requests. Remember up to 6 of these kinds of request could
+                            // happen at the exact same time.
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            logger.error("tuneChannel was interrupted while tuning to a frequency.");
+                            return logger.exit(false);
+                        }
+                    }
                 }
 
-                int attempts = 20;
+                attempts = 20;
                 boolean programSelected = false;
+
+                Thread.sleep(250);
 
                 while (!programSelected) {
                     // If we are not already on the correct frequency, it takes the tuner a moment

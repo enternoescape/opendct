@@ -281,6 +281,19 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
             }
 
+            if (httpTune) {
+                try {
+                    InfiniTVStatus.getVar(encoderIPAddress, encoderNumber - 1, "diag", "Streaming_IP");
+                } catch (IOException e) {
+                    logger.warn("httpTune has been requested on this capture device, but it can't support it. Disabling feature...");
+                    if (encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
+                        logger.error("This device is configured for QAM and httpTune is not available, you may not be able to use it.");
+                    }
+
+                    httpTune = false;
+                }
+            }
+
             if (isHttpTune()) {
                 logger.info("Using HTTP web interface tuning for this device.");
             } else {
@@ -1364,7 +1377,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         }
 
 
-                        logger.error("No data was streamed after {} milliseconds. Copy protection status is '{}' and signal strength is {}. Re-tuning channel...", timeout, getCopyProtection(), getSignalStrength());
+                        logger.error("No data was streamed. Copy protection status is '{}' and signal strength is {}. Re-tuning channel...", getCopyProtection(), getSignalStrength());
                         if (logger.isDebugEnabled()) {
                             logger.debug(getTunerStatusString());
                         }

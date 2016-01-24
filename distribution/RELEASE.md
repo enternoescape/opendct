@@ -223,3 +223,7 @@
 > RTSP. The old way could put InfiniTV 6 devices in a state that requires a soft reboot to be able
 > to detect programs available on the tuned frequency again. This issue happens with the CGMS-A fix
 > firmware installed.
+
+#### 0.4.19-Beta
+> *Added detection for old InfiniTV 4 firmwares to prevent http tuning from being able to be
+> selected since it will not work.

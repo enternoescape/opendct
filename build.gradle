@@ -170,7 +170,7 @@ jar {
 }
 
 bower {
-    installBase = 'src/main/webapp/assets/bower'
+    installBase = 'src/main/webapp/bower'
 
     'polymer'('1.2.x') {
         source '**'

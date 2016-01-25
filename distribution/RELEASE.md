@@ -227,3 +227,6 @@
 #### 0.4.19-Beta
 > *Added detection for old InfiniTV 4 firmwares to prevent http tuning from being able to be
 > selected since it will not work.
+
+> *Upload ID is now disabled by default since it might cause Java heap problems for some setups.
+> Current installations upgrading will retain the enabled setting.

@@ -38,7 +38,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private final Logger logger = LogManager.getLogger(RawSageTVConsumerImpl.class);
 
     private final boolean acceptsUploadID =
-            Config.getBoolean("consumer.raw.upload_id_enabled", true);
+            Config.getBoolean("consumer.raw.upload_id_enabled", false);
 
     private final int minTransferSize =
             Math.max(

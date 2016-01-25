@@ -169,10 +169,12 @@ jar {
 	exclude 'opendct.properties'
 }
 
+// bowerInstall
+// bowerRefresh
 bower {
     installBase = 'src/main/webapp/bower'
 
-    'polymer'('1.2.x') {
+    'bootstrap'('3.3.6') {
         source '**'
     }
 }

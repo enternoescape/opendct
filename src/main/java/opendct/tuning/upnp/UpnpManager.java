@@ -142,7 +142,17 @@ public class UpnpManager implements PowerEventListener {
                             return;
                         }
 
-                        searchSecureContainers(secureContainers);
+                        upnpServiceLock.readLock().lock();
+
+                        try {
+                            if (!running) {
+                                break;
+                            }
+
+                            searchSecureContainers(secureContainers);
+                        } finally {
+                            upnpServiceLock.readLock().unlock();
+                        }
                     }
 
                     logger.info("Capture device count reached. UPnP discovery thread has stopped.");

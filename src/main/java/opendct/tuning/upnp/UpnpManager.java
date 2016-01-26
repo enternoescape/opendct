@@ -129,8 +129,9 @@ public class UpnpManager implements PowerEventListener {
                 @Override
                 public void run() {
                     logger.info("UPnP discovery thread has started.");
+                    long endTime = System.currentTimeMillis() + 30000;
 
-                    while (!SageTVManager.captureDevicesLoaded()) {
+                    while (!SageTVManager.captureDevicesLoaded() || System.currentTimeMillis() < endTime) {
                         if (Thread.currentThread().isInterrupted()) {
                             break;
                         }

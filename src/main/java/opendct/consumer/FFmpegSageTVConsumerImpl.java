@@ -52,7 +52,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final Logger logger = LogManager.getLogger(FFmpegSageTVConsumerImpl.class);
 
     private final boolean acceptsUploadID =
-            Config.getBoolean("consumer.ffmpeg.upload_id_enabled", true);
+            Config.getBoolean("consumer.ffmpeg.upload_id_enabled", false);
 
     // This is the smallest probe size allowed.
     private final long minProbeSize =

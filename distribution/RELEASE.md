@@ -230,3 +230,5 @@
 
 > *Upload ID is now disabled by default since it might cause Java heap problems for some setups.
 > Current installations upgrading will retain the enabled setting.
+
+> *Improved UPnP search thread.

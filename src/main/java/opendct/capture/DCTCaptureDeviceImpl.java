@@ -21,6 +21,7 @@ import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.RTPProducer;
 import opendct.sagetv.SageTVManager;
+import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.hdhomerun.GetSetException;
 import opendct.tuning.hdhomerun.HDHomeRunDevice;
 import opendct.tuning.hdhomerun.HDHomeRunTuner;
@@ -91,13 +92,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private String connectionManagerSourceProtocol;
     private String connectionManagerAVTransportID;
 
-    // This is the amount of time in seconds that we should wait for a channel to report that it is
-    // COPY_FREELY and to wait for data to be output to null.
-    private int offlineDetectionWait =
-            Config.getInteger("upnp.dct.wait_for_offline_detection_s", 8);
-    private long offlineDetectionMinBytes =
-            Config.getLong("upnp.dct.offline_detection_min_bytes", 18800);
-
     private boolean offlineScan = false;
 
     private int encoderNumber = -1;
@@ -105,16 +99,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
 
-    private int retuneTimeout =
-            Config.getInteger("upnp.retune_poll_s", 1) * 1000;
-    private boolean httpTune =
-            Config.getBoolean("upnp.dct.http_tuning", true);
-    private boolean hdhrTune =
-            Config.getBoolean("upnp.dct.hdhr_tuning", true);
-    private boolean autoMapReference =
-            Config.getBoolean("upnp.qam.automap_reference_lookup", true);
-    private boolean autoMapTuning =
-            Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
+    private boolean httpTune = UpnpDiscoverer.getHttpTuning();
+    private boolean hdhrTune = UpnpDiscoverer.getHdhrTuning();
+
     private HDHomeRunTuner hdhrTuner = null;
     private boolean forceExternalUnlock =
             Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
@@ -126,8 +113,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
     // When this is enabled, the DCT is put into a state that is only waiting for a channel to be
     // requested.
-    private boolean fastTune = Config.getBoolean("upnp.dct.fast_tuning", false);
-    private boolean hdhrLock = Config.getBoolean("hdhr.locking", true);
+    private boolean fastTune = UpnpDiscoverer.getFastTune();
+    private boolean hdhrLock = UpnpDiscoverer.getHdhrLock();
 
     /**
      * Create a new DCT capture device.
@@ -487,7 +474,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_PRIME));
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_PRIME));
 
-        if (autoMapReference) {
+        if (UpnpDiscoverer.getAutoMapReference()) {
             for (CaptureDevice device : devices) {
                 if (device == this) {
                     continue;
@@ -517,7 +504,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
-        if (autoMapTuning) {
+        if (UpnpDiscoverer.getAutoMapTuning()) {
             for (CaptureDevice device : devices) {
                 if (device == this) {
                     continue;
@@ -581,7 +568,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 return logger.exit(false);
             }
 
-            int timeout = offlineDetectionWait;
+            int offlineDetectionMinBytes = UpnpDiscoverer.getOfflineDetectionMinBytes();
+            int timeout = UpnpDiscoverer.getOfflineDetectionSeconds();
+
             if (!isHDHRTune()) {
                 while (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning() &&
                         getRecordedBytes() < offlineDetectionMinBytes && timeout-- > 0) {
@@ -1247,7 +1236,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             String ipString = null;
             try {
                 if (rtpStreamRemoteURI == null) {
-                    logger.error("The URI received was null. Will try again in {} seconds.", retuneTimeout /  1000);
+                    logger.error("The URI received was null. Will try again in {} seconds.", UpnpDiscoverer.getRetunePolling());
                 } else {
                     ipString = rtpStreamRemoteURI.getHost();
                     rtpStreamRemoteIP = InetAddress.getByName(ipString);
@@ -1351,9 +1340,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
                     // Music Choice channels take forever to start and with a 4 second timeout,
                     // they might never start.
-                    timeout = retuneTimeout * 4;
+                    timeout = UpnpDiscoverer.getRetunePolling() * 4000;
                 } else {
-                    timeout = retuneTimeout;
+                    timeout = UpnpDiscoverer.getRetunePolling() * 1000;
                 }
 
                 while (!Thread.currentThread().isInterrupted()) {

@@ -117,12 +117,12 @@ public class DiscoveryManager implements PowerEventListener {
         }
 
         if (!supportedOS) {
-            logger.info("The discovery method {} does not support the OS {}.", newDiscoverer.name(), Config.getOsVersion());
+            logger.info("The discovery method {} does not support the OS {}.", newDiscoverer.getName(), Config.getOsVersion());
             return;
         }
 
         for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-            if (newDiscoverer.name().equals(deviceDiscoverer.name())) {
+            if (newDiscoverer.getName().equals(deviceDiscoverer.getName())) {
                 throw new DiscoveryException("This discovery method or another discovery method" +
                         " with the same name is a duplicate and will not be loaded.");
             }
@@ -138,7 +138,7 @@ public class DiscoveryManager implements PowerEventListener {
         if (running.get()) {
             // This will throw an exception if there is a problem starting.
             newDiscoverer.startDetection(DEVICE_LOADER);
-            logger.info("{} discovery started.", newDiscoverer.name());
+            logger.info("{} discovery started.", newDiscoverer.getName());
         }
     }
 
@@ -155,7 +155,7 @@ public class DiscoveryManager implements PowerEventListener {
             try {
                 deviceDiscoverer.startDetection(DEVICE_LOADER);
             } catch (DiscoveryException e) {
-                logger.warn("Unable to start capture device discovery for {} => {}", deviceDiscoverer.name(), e.getMessage());
+                logger.warn("Unable to start capture device discovery for {} => {}", deviceDiscoverer.getName(), e.getMessage());
             }
         }
     }
@@ -178,11 +178,11 @@ public class DiscoveryManager implements PowerEventListener {
             if (deviceDiscoverer.isRunning()) {
                 try {
                     deviceDiscoverer.stopDetection();
-                    logger.info("Stopping discovery for {}.", deviceDiscoverer.name());
+                    logger.info("Stopping discovery for {}.", deviceDiscoverer.getName());
                 } catch (DiscoveryException e) {
-                    logger.warn("Unable to stop capture device discovery for {} => {}", deviceDiscoverer.name(), e.getMessage());
+                    logger.warn("Unable to stop capture device discovery for {} => {}", deviceDiscoverer.getName(), e.getMessage());
                 } catch (Exception e) {
-                    logger.error("Unexpected error while stopping discovery for {} => ", deviceDiscoverer.name(), e);
+                    logger.error("Unexpected error while stopping discovery for {} => ", deviceDiscoverer.getName(), e);
                 }
             }
         }
@@ -191,11 +191,11 @@ public class DiscoveryManager implements PowerEventListener {
             if (deviceDiscoverer.errorMessage() == null) {
                 try {
                     deviceDiscoverer.waitForStopDetection();
-                    logger.info("{} discovery stopped.", deviceDiscoverer.name());
+                    logger.info("{} discovery stopped.", deviceDiscoverer.getName());
                 } catch (InterruptedException e) {
                     throw e;
                 } catch (Exception e) {
-                    logger.error("Unexpected error while waiting for discovery to stop for {} => ", deviceDiscoverer.name(), e);
+                    logger.error("Unexpected error while waiting for discovery to stop for {} => ", deviceDiscoverer.getName(), e);
                 }
             }
         }

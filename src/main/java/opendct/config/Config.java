@@ -330,6 +330,46 @@ public class Config {
         logger.exit();
     }
 
+    public static void setIntegerArray(String key, int values[]) {
+        logger.entry(key, values);
+
+        StringBuilder mergedArray = new StringBuilder();
+
+        for (int value : values) {
+            mergedArray.append(Integer.toString(value));
+            mergedArray.append(",");
+        }
+
+        // Remove the extra comma at the end.
+        if (mergedArray.length() > 0) {
+            mergedArray.deleteCharAt(mergedArray.length() - 1);
+        }
+
+        Config.properties.setProperty(key, mergedArray.toString());
+
+        logger.exit();
+    }
+
+    public static void setIntegerArray(String key, Integer values[]) {
+        logger.entry(key, values);
+
+        StringBuilder mergedArray = new StringBuilder();
+
+        for (int value : values) {
+            mergedArray.append(Integer.toString(value));
+            mergedArray.append(",");
+        }
+
+        // Remove the extra comma at the end.
+        if (mergedArray.length() > 0) {
+            mergedArray.deleteCharAt(mergedArray.length() - 1);
+        }
+
+        Config.properties.setProperty(key, mergedArray.toString());
+
+        logger.exit();
+    }
+
     public static void setLong(String key, long value) {
         logger.entry(key, value);
 
@@ -402,6 +442,26 @@ public class Config {
         }
 
         setInteger(key, returnValue);
+
+        return logger.exit(returnValue);
+    }
+
+    public static int[] getIntegerArray(String key, int... defaultValue) {
+        logger.entry(key, defaultValue);
+
+        String stringValue[] = properties.getProperty(key, "").split("\\s*,\\s*");
+        int returnValue[] = new int[stringValue.length];
+
+        try {
+            for (int i = 0; i < returnValue.length; i++) {
+                returnValue[i] = Integer.valueOf(stringValue[i]);
+            }
+        } catch (Exception e) {
+            logger.error("The property '{}' should be an integer array, but '{}' was returned. Using the default value of '{}'", key, stringValue, defaultValue);
+            returnValue = defaultValue;
+        }
+
+        setIntegerArray(key, returnValue);
 
         return logger.exit(returnValue);
     }

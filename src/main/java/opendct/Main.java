@@ -23,6 +23,7 @@ import opendct.config.ExitCode;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
+import opendct.tuning.discovery.DiscoveryManager;
 import opendct.tuning.hdhomerun.HDHomeRunManager;
 import opendct.tuning.upnp.UpnpManager;
 import org.apache.logging.log4j.LogManager;
@@ -188,6 +189,8 @@ public class Main {
         // duplicates.
         boolean useHDHR = Config.getBoolean("hdhr.enabled", false);
 
+        boolean useDiscoveryManager = Config.getBoolean("discovery.exp_enabled", false);
+
         Config.saveConfig();
 
         if (earlyPortAssignment) {
@@ -218,6 +221,24 @@ public class Main {
                 public void run() {
                     logger.info("Stopping HDHomeRun services...");
                     HDHomeRunManager.removeAllDevices();
+                }
+            });
+        }
+
+        if (useDiscoveryManager) {
+            DiscoveryManager.startDeviceDiscovery();
+
+            PowerMessageManager.EVENTS.addListener(DiscoveryManager.POWER_EVENT_LISTENER);
+
+            Runtime.getRuntime().addShutdownHook(new Thread("DiscoveryManagerShutdown") {
+                @Override
+                public void run() {
+                    logger.info("Stopping device discovery services...");
+                    try {
+                        DiscoveryManager.stopDeviceDiscovery();
+                    } catch (InterruptedException e) {
+                        logger.debug("Stopping device discovery services was interrupted => ", e);
+                    }
                 }
             });
         }

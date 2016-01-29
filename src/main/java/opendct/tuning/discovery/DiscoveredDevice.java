@@ -16,6 +16,8 @@
 
 package opendct.tuning.discovery;
 
+import opendct.capture.CaptureDevice;
+import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.options.DeviceOptions;
 
 public interface DiscoveredDevice extends DeviceOptions {
@@ -67,4 +69,18 @@ public interface DiscoveredDevice extends DeviceOptions {
      * @return A description of the capture device.
      */
     public String getDescription();
+
+    /**
+     * /**
+     * Creates the capture device implementation for this device.
+     *
+     * @return A ready to use capture device.
+     * @throws CaptureDeviceIgnoredException Thrown if this device isn't supposed to be loaded. This
+     *                                       is a soon to be deprecated way to prevent capture
+     *                                       devices from loading.
+     * @throws CaptureDeviceLoadException Thrown if there is a problem preventing the device from
+     *                                    being able to load.
+     */
+    public CaptureDevice loadCaptureDevice()
+            throws CaptureDeviceIgnoredException, CaptureDeviceLoadException;
 }

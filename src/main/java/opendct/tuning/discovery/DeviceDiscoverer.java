@@ -28,7 +28,14 @@ public interface DeviceDiscoverer extends DeviceOptions {
      *
      * @return The friendly name of the implementation.
      */
-    public String name();
+    public String getName();
+
+    /**
+     * This returns a brief description of what devices this discoverer detects.
+     *
+     * @return A description of the implementation.
+     */
+    public String getDescription();
 
     /**
      * Should this discovery method be started.

@@ -143,6 +143,11 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private int uploadIDPort = Config.getInteger("consumer.ffmpeg.upload_id_port", 7818);
     private SocketAddress uploadIDSocket = null;
 
+    private String stateMessage = "Detecting stream...";
+    private boolean stalled = false;
+    private boolean streaming = false;
+    private final Object streamingMonitor = new Object();
+
     private static ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl> instanceMap = new ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl>();
     private static final AtomicLong callbackAddress = new AtomicLong(0);
     private static final FFmpegLogger logCallback = new FFmpegLogger();
@@ -170,6 +175,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("FFmpeg consumer is already running.");
         }
+
+        stateMessage = "Detecting stream...";
+        stalled = false;
+        streaming = false;
 
         logger.debug("Thread priority is {}.", ffmpegThreadPriority);
         Thread.currentThread().setPriority(ffmpegThreadPriority);
@@ -203,6 +212,9 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                             uploadIDSocket, currentRecordingFilename, currentUploadID);
                 } catch (IOException e) {
                     logger.error("Unable to connect to SageTV server to start transfer via uploadID.");
+
+                    stalled = true;
+                    stateMessage = "ERROR: Unable to connect to SageTV server to start transfer via uploadID.";
                 }
 
                 if (!uploadIDConfigured) {
@@ -220,6 +232,9 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                         } catch (FileNotFoundException e) {
                             logger.error("Unable to create the recording file '{}'.", currentRecordingFilename);
                             currentRecordingFilename = null;
+
+                            stalled = true;
+                            stateMessage = "ERROR: Unable to create the recording file '" + currentRecordingFilename + "'.";
                         }
                     }
                 } else {
@@ -236,6 +251,8 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             long startTime = System.currentTimeMillis();
 
+            stalled = false;
+            stateMessage = "Detecting stream...";
             String error = initRemuxer();
 
             if (error == null && logger.isDebugEnabled()) {
@@ -249,9 +266,23 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             if (error != null) {
                 if (!error.equals(FFMPEG_INIT_INTERRUPTED)) {
                     logger.error("FFmpeg remux failed: {}", error);
+
+                    stateMessage = error;
+                    stalled = true;
+                    streaming = false;
+
+                    synchronized (streamingMonitor) {
+                        streamingMonitor.notifyAll();
+                    }
                 }
             } else {
-                // initRemuxer() returns the read index back to 0 when it completes.
+                stateMessage = "Streaming...";
+                stalled = false;
+                streaming = true;
+
+                synchronized (streamingMonitor) {
+                    streamingMonitor.notifyAll();
+                }
 
                 // This will loop until the thread is interrupted.
                 remuxRtpPackets();
@@ -296,6 +327,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             }
 
             seekableBuffer.clear();
+
+            stateMessage = "Stopped.";
+            streaming = false;
+            stalled = true;
 
             logger.info("FFmpeg consumer thread has stopped.");
             running.set(false);
@@ -881,9 +916,16 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
         avfCtxOutput = new AVFormatContext(null);
 
+        String outputFilename = currentRecordingFilename != null ? currentRecordingFilename : "output.ts";
         logger.debug("Calling avformat_alloc_output_context2");
 
-        int ret = avformat_alloc_output_context2(avfCtxOutput, null, null, "output.ts"/*outputFilename*/);
+        int ret;
+        if (outputFilename.endsWith(".mpg")) {
+            ret = avformat_alloc_output_context2(avfCtxOutput, null, "dvd", null/*outputFilename*/);
+        } else {
+            ret = avformat_alloc_output_context2(avfCtxOutput, null, null, "output.ts"/*outputFilename*/);
+        }
+
         if (ret < 0) {
             return "avformat_alloc_output_context2 returned error code " + ret;
         }
@@ -928,7 +970,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         }
 
         buf.setLength(0);
-        String outputFilename = currentRecordingFilename != null ? currentRecordingFilename : "output.ts";
         FFmpegUtil.dumpFormat(buf, avfCtxOutput, 0, outputFilename, /*isOutput*/true, /*desiredProgram*/0);
 
         if (isInterrupted()) {
@@ -1185,5 +1226,28 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
     public void setChannel(String tunedChannel) {
         this.tunedChannel = tunedChannel;
+    }
+
+    @Override
+    public boolean isStalled() {
+        return stalled;
+    }
+
+    @Override
+    public String stateMessage() {
+        return stateMessage;
+    }
+
+    @Override
+    public boolean isStreaming(long timeout) {
+        synchronized (streamingMonitor) {
+            try {
+                streamingMonitor.wait(timeout);
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while waiting for consumer to start streaming.");
+            }
+        }
+
+        return streaming;
     }
 }

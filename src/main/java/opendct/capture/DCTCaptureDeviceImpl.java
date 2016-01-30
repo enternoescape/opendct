@@ -270,7 +270,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             if (httpTune) {
                 try {
-                    InfiniTVStatus.getVar(encoderIPAddress, encoderNumber - 1, "diag", "Streaming_IP");
+                    InfiniTVStatus.getVar(encoderIPAddress, encoderNumber, "diag", "Streaming_IP");
                 } catch (IOException e) {
                     logger.warn("httpTune has been requested on this capture device, but it can't support it. Disabling feature...");
                     if (encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
@@ -888,6 +888,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
+        sageTVConsumerRunnable.isStreaming(UpnpDiscoverer.getStreamingWait());
+
         return logger.exit(true);
     }
 
@@ -1032,6 +1034,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
             }
         }
+
+        sageTVConsumerRunnable.isStreaming(UpnpDiscoverer.getStreamingWait());
 
         return logger.exit(true);
     }
@@ -1318,6 +1322,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 }
             }
         }
+
+        sageTVConsumerRunnable.isStreaming(UpnpDiscoverer.getStreamingWait());
 
         return logger.exit(true);
     }

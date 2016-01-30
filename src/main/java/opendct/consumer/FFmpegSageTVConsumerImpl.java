@@ -280,10 +280,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 stalled = false;
                 streaming = true;
 
-                synchronized (streamingMonitor) {
-                    streamingMonitor.notifyAll();
-                }
-
                 // This will loop until the thread is interrupted.
                 remuxRtpPackets();
             }
@@ -587,6 +583,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
                 if (consumer.logger.isTraceEnabled()) {
                     consumer.logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
+                }
+
+                synchronized (consumer.streamingMonitor) {
+                    consumer.streamingMonitor.notifyAll();
                 }
             }
 

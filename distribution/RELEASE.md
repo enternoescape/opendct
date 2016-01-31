@@ -238,6 +238,5 @@
 > *Experimental support for MPEG-PS.
 
 > *OpenDCT when tuning a new channel now doesn't respond to SageTV until FFmpeg has completed
-> detection or 5 seconds have passed. This is necessary to support proper detection of MPEG-PS. This
-> feature strangely appears to have improved MPEG-TS time to playback in SageTV. 
+> detection or 5 seconds have passed. This is necessary to support proper detection of MPEG-PS.
 

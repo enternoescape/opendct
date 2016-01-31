@@ -147,6 +147,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private boolean stalled = false;
     private boolean streaming = false;
     private final Object streamingMonitor = new Object();
+    private long initBufferedData = 1048576;
 
     private static ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl> instanceMap = new ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl>();
     private static final AtomicLong callbackAddress = new AtomicLong(0);
@@ -629,10 +630,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     return logger.exit(length);
                 }
 
-                synchronized (streamingMonitor) {
-                    streamingMonitor.notifyAll();
-                }
-
                 streamBuffer.flip();
 
                 if (!Thread.currentThread().isInterrupted()) {
@@ -686,15 +683,15 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                         nioSageTVUploadID.uploadAutoIncrement(streamBuffer);
                     }
 
-                    bytesStreamed.addAndGet(bytesToStream);
+                    if (bytesStreamed.addAndGet(bytesToStream) > initBufferedData) {
+                        synchronized (streamingMonitor) {
+                            streamingMonitor.notifyAll();
+                        }
+                    }
                 }
 
                 streamBuffer.clear();
             } else if (!consumeToNull) {
-
-                synchronized (streamingMonitor) {
-                    streamingMonitor.notifyAll();
-                }
 
                 streamBuffer.flip();
 
@@ -747,7 +744,12 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
                 while (streamBuffer.hasRemaining()) {
                     int savedSize = currentFile.write(streamBuffer);
-                    bytesStreamed.addAndGet(savedSize);
+
+                    if (bytesStreamed.addAndGet(savedSize) > initBufferedData) {
+                        synchronized (streamingMonitor) {
+                            streamingMonitor.notifyAll();
+                        }
+                    }
 
                     if (stvRecordBufferSize > 0 && stvRecordBufferPos.get() >
                             stvRecordBufferSize) {
@@ -994,6 +996,8 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         if (ret < 0) {
             return "Error " + ret + " occurred while writing header to output file: " + outputFilename;
         }
+
+        initBufferedData = seekableBuffer.readAvailable();
 
         return null;
     }

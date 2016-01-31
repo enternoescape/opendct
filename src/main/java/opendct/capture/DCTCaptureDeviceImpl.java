@@ -832,7 +832,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         // If we are trying to restart the stream, we don't need to stop the consumer.
         if (monitorThread == null || monitorThread != Thread.currentThread()) {
             // If we are buffering this can create too much backlog and overruns the file based buffer.
-            if (bufferSize == 0) {
+            //if (bufferSize == 0) {
                 try {
                     newConsumer.setProgram(hdhrTuner.getProgram());
 
@@ -861,7 +861,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     logger.debug("HDHomeRun is unable to get program because the thread was interrupted => ", e);
                     return logger.exit(false);
                 }
-            }
+            //}
 
             logger.info("Configuring and starting the new SageTV consumer...");
 
@@ -974,7 +974,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         InfiniTVTuning.startRTSP(localIPAddress.getHostAddress(), rtpLocalPort, encoderIPAddress, encoderNumber);
 
         // If we are buffering this can create too much backlog and overruns the file based buffer.
-        if (bufferSize == 0) {
+        //if (bufferSize == 0) {
             // If we are trying to restart the stream, we don't need to change anything on the
             // consumer.
             if (monitorThread == null || monitorThread != Thread.currentThread()) {
@@ -1006,7 +1006,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     return logger.exit(false);
                 }
             }
-        }
+        //}
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
         if (monitorThread == null || monitorThread != Thread.currentThread()) {

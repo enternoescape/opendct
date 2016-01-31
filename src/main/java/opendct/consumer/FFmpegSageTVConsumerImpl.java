@@ -584,10 +584,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 if (consumer.logger.isTraceEnabled()) {
                     consumer.logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
                 }
-
-                synchronized (consumer.streamingMonitor) {
-                    consumer.streamingMonitor.notifyAll();
-                }
             }
 
             if (numBytesWritten < 0) {
@@ -631,6 +627,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             if (uploadEnabled) {
                 if (streamBuffer.position() < minUploadIDTransfer) {
                     return logger.exit(length);
+                }
+
+                synchronized (streamingMonitor) {
+                    streamingMonitor.notifyAll();
                 }
 
                 streamBuffer.flip();
@@ -691,9 +691,14 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
                 streamBuffer.clear();
             } else if (!consumeToNull) {
-                streamBuffer.flip();
-                if (switchFile) {
 
+                synchronized (streamingMonitor) {
+                    streamingMonitor.notifyAll();
+                }
+
+                streamBuffer.flip();
+
+                if (switchFile) {
                     if (switchIndex > -1) {
                         synchronized (switchMonitor) {
                             if (switchIndex > streamBuffer.position()) {
@@ -753,6 +758,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 }
                 streamBuffer.clear();
             } else {
+                synchronized (streamingMonitor) {
+                    streamingMonitor.notifyAll();
+                }
+
                 // Write to null.
                 bytesStreamed.addAndGet(streamBuffer.position());
                 streamBuffer.clear();
@@ -921,7 +930,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
         int ret;
         if (outputFilename.endsWith(".mpg")) {
-            ret = avformat_alloc_output_context2(avfCtxOutput, null, "dvd", null/*outputFilename*/);
+            ret = avformat_alloc_output_context2(avfCtxOutput, null, "vob", null/*outputFilename*/);
         } else {
             ret = avformat_alloc_output_context2(avfCtxOutput, null, null, "output.ts"/*outputFilename*/);
         }

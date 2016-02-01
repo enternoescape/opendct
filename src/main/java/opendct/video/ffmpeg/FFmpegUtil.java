@@ -25,15 +25,19 @@ import org.bytedeco.javacpp.avformat.AVProgram;
 import org.bytedeco.javacpp.avformat.AVStream;
 import org.bytedeco.javacpp.avutil.*;
 
+import opendct.config.Config;
+
 import static org.bytedeco.javacpp.avcodec.avcodec_string;
 import static org.bytedeco.javacpp.avformat.AVFMT_SHOW_IDS;
 import static org.bytedeco.javacpp.avutil.*;
 
 public abstract class FFmpegUtil {
+    private static final boolean LOG_STREAM_DETAILS_FOR_ALL_PROGRAMS = Config.getBoolean("consumer.ffmpeg.log_stream_details_for_all_programs", false);
+
     /**
      * Dump the AVFormatContext info like AVFormat.av_dump_format() does.
      */
-    public static void dumpFormat(StringBuilder buf, AVFormatContext ic, int index, String url, boolean isOutput) {
+    public static void dumpFormat(StringBuilder buf, AVFormatContext ic, int index, String url, boolean isOutput, int desiredProgram) {
         int i;
         int numStreams = ic.nb_streams();
 
@@ -99,10 +103,27 @@ public abstract class FFmpegUtil {
             dumpMetadata(buf, ch.metadata(), "    ");
         }
 
+        boolean logDesiredProgramOnly = false;
+
         if (ic.nb_programs() > 0) {
             int total = 0;
 
-            for (int j = 0; j < ic.nb_programs(); j++) {
+            int startProgramIndex = 0;
+            int endProgramIndex = ic.nb_programs();
+
+            // If requested via configuration, log only the desired program
+            if (desiredProgram > 0 && !LOG_STREAM_DETAILS_FOR_ALL_PROGRAMS) {
+                for (int programIndex = startProgramIndex; programIndex < endProgramIndex; programIndex++) {
+                    if ( ic.programs(programIndex).id() == desiredProgram) {
+                        startProgramIndex = programIndex;
+                        endProgramIndex = programIndex + 1;
+                        logDesiredProgramOnly = true;
+                        break;
+                    }
+                }
+            }
+
+            for (int j = startProgramIndex; j < endProgramIndex; j++) {
                 AVDictionaryEntry name = av_dict_get(ic.programs(j).metadata(), "name", null, 0);
 
                 buf.append("  Program ").append(ic.programs(j).id());
@@ -126,14 +147,16 @@ public abstract class FFmpegUtil {
                 total += ic.programs(j).nb_stream_indexes();
             }
 
-            if (total < ic.nb_streams()) {
+            if (!logDesiredProgramOnly && total < ic.nb_streams()) {
                 buf.append("  No Program").append(System.lineSeparator());
             }
         }
 
-        for (i = 0; i < ic.nb_streams(); i++) {
-            if (!printed[i]) {
-                dumpStreamFormat(buf, ic, i, index, isOutput);
+        if (!logDesiredProgramOnly) {
+            for (i = 0; i < ic.nb_streams(); i++) {
+                if (!printed[i]) {
+                    dumpStreamFormat(buf, ic, i, index, isOutput);
+                }
             }
         }
     }

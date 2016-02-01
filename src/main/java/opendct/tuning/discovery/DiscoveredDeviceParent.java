@@ -18,6 +18,8 @@ package opendct.tuning.discovery;
 
 import opendct.config.options.DeviceOptions;
 
+import java.net.InetAddress;
+
 public interface DiscoveredDeviceParent extends DeviceOptions {
 
     /**
@@ -47,6 +49,30 @@ public interface DiscoveredDeviceParent extends DeviceOptions {
      *
      * @return The unique ID for this capture device.
      */
-    public int getId();
+    public int getParentId();
 
+    /**
+     * Is this a network device?
+     *
+     * @return <i>true</i> if this is a network device.
+     */
+    public boolean isNetworkDevice();
+
+    /**
+     * Returns the local IP address to be used when streaming to this computer.
+     * <p/>
+     * Return <i>null</i> if this is not a network device.
+     *
+     * @return Returns the local IP address if this is a network device or <i>null</i>.
+     */
+    public InetAddress getLocalAddress();
+
+    /**
+     * Returns the current IP address of the capture device parent.
+     * <p/>
+     * Return <i>null</i> if this is not a network device.
+     *
+     * @return Returns the remote IP address if this is a network device or <i>null</i>.
+     */
+    public InetAddress getRemoteAddress();
 }

@@ -27,14 +27,19 @@ import org.apache.logging.log4j.Logger;
 
 import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DiscoveryManager implements PowerEventListener {
     private static final Logger logger = LogManager.getLogger(DiscoveryManager.class);
     public static final PowerEventListener POWER_EVENT_LISTENER = new DiscoveryManager();
     private final AtomicBoolean suspend = new AtomicBoolean(false);
+
+    // If using both locks, always use discoverLock first.
+    private final static ReentrantReadWriteLock discoverLock = new ReentrantReadWriteLock();
+    private final static ReentrantReadWriteLock permitLock = new ReentrantReadWriteLock();
 
     public static final DeviceLoader DEVICE_LOADER = new DeviceLoaderImpl();
     private static final AtomicBoolean running = new AtomicBoolean(false);
@@ -58,8 +63,21 @@ public class DiscoveryManager implements PowerEventListener {
      * @param deviceId This is the device ID to check.
      * @return <i>true</i> if the device is permitted to load.
      */
-    public static synchronized boolean isDevicePermitted(int deviceId) {
-        return permittedDevices.contains(deviceId);
+    public static boolean isDevicePermitted(int deviceId) {
+        boolean returnValue = false;
+
+        permitLock.readLock().lock();
+
+        try {
+            returnValue = permittedDevices.contains(deviceId);
+        } catch (Exception e) {
+            logger.error("isDevicePermitted created an unexpected exception while using" +
+                    " permitLock => ", e);
+        } finally {
+            permitLock.readLock().unlock();
+        }
+
+        return returnValue;
     }
 
     /**
@@ -70,11 +88,21 @@ public class DiscoveryManager implements PowerEventListener {
      *
      * @param deviceId This is the device ID to add.
      */
-    public static synchronized void permitDevice(int deviceId) {
-        permittedDevices.add(deviceId);
-        Integer newList[] = permittedDevices.toArray(new Integer[permittedDevices.size()]);
-        Config.setIntegerArray("discovery.devices.permitted", newList);
-        Config.saveConfig();
+    public static void permitDevice(int deviceId) {
+
+        permitLock.writeLock().lock();
+
+        try {
+            permittedDevices.add(deviceId);
+            Integer newList[] = permittedDevices.toArray(new Integer[permittedDevices.size()]);
+            Config.setIntegerArray("discovery.devices.permitted", newList);
+            Config.saveConfig();
+        } catch (Exception e) {
+            logger.error("permitDevice created an unexpected exception while using" +
+                    " permitLock => ", e);
+        } finally {
+            permitLock.writeLock().unlock();
+        }
     }
 
     /**
@@ -85,11 +113,21 @@ public class DiscoveryManager implements PowerEventListener {
      *
      * @param deviceId This is the device ID to remove.
      */
-    public static synchronized void revokeDevice(int deviceId) {
-        permittedDevices.remove(deviceId);
-        Integer newList[] = permittedDevices.toArray(new Integer[permittedDevices.size()]);
-        Config.setIntegerArray("discovery.devices.permitted", newList);
-        Config.saveConfig();
+    public static void revokeDevice(int deviceId) {
+
+        permitLock.writeLock().lock();
+
+        try {
+            permittedDevices.remove(deviceId);
+            Integer newList[] = permittedDevices.toArray(new Integer[permittedDevices.size()]);
+            Config.setIntegerArray("discovery.devices.permitted", newList);
+            Config.saveConfig();
+        } catch (Exception e) {
+            logger.error("revokeDevice created an unexpected exception while using" +
+                    " permitLock => ", e);
+        } finally {
+            permitLock.writeLock().unlock();
+        }
     }
 
     /**
@@ -102,7 +140,7 @@ public class DiscoveryManager implements PowerEventListener {
      * @throws DiscoveryException This will be thrown if a discovery method with the exact same name
      *                            is already registered.
      */
-    public static synchronized void addDiscoverer(DeviceDiscoverer newDiscoverer)
+    public static void addDiscoverer(DeviceDiscoverer newDiscoverer)
             throws DiscoveryException {
 
         if (newDiscoverer == null) {
@@ -117,46 +155,76 @@ public class DiscoveryManager implements PowerEventListener {
         }
 
         if (!supportedOS) {
-            logger.info("The discovery method {} does not support the OS {}.", newDiscoverer.getName(), Config.getOsVersion());
+            logger.info("The discovery method {} does not support the OS {}.",
+                    newDiscoverer.getName(), Config.getOsVersion());
             return;
         }
 
-        for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-            if (newDiscoverer.getName().equals(deviceDiscoverer.getName())) {
-                throw new DiscoveryException("This discovery method or another discovery method" +
-                        " with the same name is a duplicate and will not be loaded.");
-            }
-        }
+        discoverLock.writeLock().lock();
 
-        // The discovery method is always added if it's new even if it won't load.
-        deviceDiscoveries.add(newDiscoverer);
+        try {
+            for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
+                if (newDiscoverer.getName().equals(deviceDiscoverer.getName())) {
+                    throw new DiscoveryException("This discovery method or another discovery" +
+                            " method with the same name is a duplicate and will not be loaded.");
+                }
+            }
+
+            // The discovery method is always added if it's new and supported by the current OS even
+            // if it won't load.
+            deviceDiscoveries.add(newDiscoverer);
+        } catch (Exception e) {
+            logger.error("addDiscoverer created an unexpected exception while using first" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.writeLock().unlock();
+        }
 
         if (!newDiscoverer.isEnabled()) {
             return;
         }
 
-        if (running.get()) {
-            // This will throw an exception if there is a problem starting.
-            newDiscoverer.startDetection(DEVICE_LOADER);
-            logger.info("{} discovery started.", newDiscoverer.getName());
+        discoverLock.writeLock().lock();
+
+        try {
+            if (running.get()) {
+                // This will throw an exception if there is a problem starting.
+                newDiscoverer.startDetection(DEVICE_LOADER);
+                logger.info("{} discovery started.", newDiscoverer.getName());
+            }
+        } catch (Exception e) {
+            logger.error("addDiscoverer created an unexpected exception while using second" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.writeLock().unlock();
         }
     }
 
     /**
      * Start device discovery for all currently available discovery methods.
      */
-    public static synchronized void startDeviceDiscovery() {
+    public static void startDeviceDiscovery() {
         if (running.getAndSet(true)) {
             logger.debug("Device discovery is already running.");
             return;
         }
 
-        for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-            try {
-                deviceDiscoverer.startDetection(DEVICE_LOADER);
-            } catch (DiscoveryException e) {
-                logger.warn("Unable to start capture device discovery for {} => {}", deviceDiscoverer.getName(), e.getMessage());
+        discoverLock.writeLock().lock();
+
+        try {
+            for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
+                try {
+                    deviceDiscoverer.startDetection(DEVICE_LOADER);
+                } catch (DiscoveryException e) {
+                    logger.warn("Unable to start capture device discovery for {} => {}",
+                            deviceDiscoverer.getName(), e.getMessage());
+                }
             }
+        } catch (Exception e) {
+            logger.error("startDeviceDiscovery created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.writeLock().unlock();
         }
     }
 
@@ -168,36 +236,58 @@ public class DiscoveryManager implements PowerEventListener {
      * @throws InterruptedException Thrown if this thread is interrupted while waiting for device
      *                              discovery methods to stop running.
      */
-    public static synchronized void stopDeviceDiscovery() throws InterruptedException {
+    public static void stopDeviceDiscovery() throws InterruptedException {
         if (!running.getAndSet(false)) {
             logger.debug("Device discovery is already stopped.");
             return;
         }
 
-        for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-            if (deviceDiscoverer.isRunning()) {
-                try {
-                    deviceDiscoverer.stopDetection();
-                    logger.info("Stopping discovery for {}.", deviceDiscoverer.getName());
-                } catch (DiscoveryException e) {
-                    logger.warn("Unable to stop capture device discovery for {} => {}", deviceDiscoverer.getName(), e.getMessage());
-                } catch (Exception e) {
-                    logger.error("Unexpected error while stopping discovery for {} => ", deviceDiscoverer.getName(), e);
+        InterruptedException interruptedException = null;
+
+        discoverLock.writeLock().lock();
+
+        try {
+            for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
+                if (deviceDiscoverer.isRunning()) {
+                    try {
+                        deviceDiscoverer.stopDetection();
+                        logger.info("Stopping discovery for {}.", deviceDiscoverer.getName());
+                    } catch (DiscoveryException e) {
+                        logger.warn("Unable to stop capture device discovery for {} => {}",
+                                deviceDiscoverer.getName(), e.getMessage());
+                    } catch (Exception e) {
+                        logger.error("Unexpected error while stopping discovery for {} => ",
+                                deviceDiscoverer.getName(), e);
+                    }
                 }
             }
+
+            for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
+                if (deviceDiscoverer.errorMessage() == null) {
+                    try {
+                        deviceDiscoverer.waitForStopDetection();
+                        logger.info("{} discovery stopped.", deviceDiscoverer.getName());
+                    } catch (InterruptedException e) {
+                        throw e;
+                    } catch (Exception e) {
+                        logger.error("Unexpected error while waiting for discovery to stop for" +
+                                " {} => ", deviceDiscoverer.getName(), e);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                interruptedException = (InterruptedException)e;
+            } else {
+                logger.error("stopDeviceDiscovery created an unexpected exception while using" +
+                        " discoverLock => ", e);
+            }
+        } finally {
+            discoverLock.writeLock().unlock();
         }
 
-        for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-            if (deviceDiscoverer.errorMessage() == null) {
-                try {
-                    deviceDiscoverer.waitForStopDetection();
-                    logger.info("{} discovery stopped.", deviceDiscoverer.getName());
-                } catch (InterruptedException e) {
-                    throw e;
-                } catch (Exception e) {
-                    logger.error("Unexpected error while waiting for discovery to stop for {} => ", deviceDiscoverer.getName(), e);
-                }
-            }
+        if (interruptedException != null) {
+            throw interruptedException;
         }
     }
 
@@ -208,11 +298,20 @@ public class DiscoveryManager implements PowerEventListener {
      *
      * @return An array of all discovered devices.
      */
-    public static synchronized DiscoveredDevice[] getDiscoveredDevices() {
+    public static DiscoveredDevice[] getDiscoveredDevices() {
         ArrayList<DiscoveredDevice> returnValues = new ArrayList<>();
 
-        for (DeviceDiscoverer discovery : deviceDiscoveries) {
-            returnValues.addAll(Arrays.asList(discovery.getAllDeviceDetails()));
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                Collections.addAll(returnValues, discovery.getAllDeviceDetails());
+            }
+        } catch (Exception e) {
+            logger.error("getDiscoveredDevices created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
         }
 
         return returnValues.toArray(new DiscoveredDevice[returnValues.size()]);
@@ -225,15 +324,24 @@ public class DiscoveryManager implements PowerEventListener {
      *
      * @return An array of all discovered devices that are not permitted to load.
      */
-    public static synchronized DiscoveredDevice[] getDisabledDiscoveredDevices() {
+    public static DiscoveredDevice[] getDisabledDiscoveredDevices() {
         ArrayList<DiscoveredDevice> returnValues = new ArrayList<>();
 
-        for (DeviceDiscoverer discovery : deviceDiscoveries) {
-            for (DiscoveredDevice deviceDetail : discovery.getAllDeviceDetails()) {
-                if (!isDevicePermitted(deviceDetail.getId())) {
-                    returnValues.add(deviceDetail);
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                for (DiscoveredDevice deviceDetail : discovery.getAllDeviceDetails()) {
+                    if (!isDevicePermitted(deviceDetail.getId())) {
+                        returnValues.add(deviceDetail);
+                    }
                 }
             }
+        } catch (Exception e) {
+            logger.error("getDisabledDiscoveredDevices created an unexpected exception while" +
+                    " using discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
         }
 
         return returnValues.toArray(new DiscoveredDevice[returnValues.size()]);
@@ -247,15 +355,24 @@ public class DiscoveryManager implements PowerEventListener {
      *
      * @return An array of all discovered devices that are permitted to load.
      */
-    public static synchronized DiscoveredDevice[] getEnabledDiscoveredDevices() {
+    public static DiscoveredDevice[] getEnabledDiscoveredDevices() {
         ArrayList<DiscoveredDevice> returnValues = new ArrayList<>();
 
-        for (DeviceDiscoverer discovery : deviceDiscoveries) {
-            for (DiscoveredDevice deviceDetail : discovery.getAllDeviceDetails()) {
-                if (isDevicePermitted(deviceDetail.getId())) {
-                    returnValues.add(deviceDetail);
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                for (DiscoveredDevice deviceDetail : discovery.getAllDeviceDetails()) {
+                    if (isDevicePermitted(deviceDetail.getId())) {
+                        returnValues.add(deviceDetail);
+                    }
                 }
             }
+        } catch (Exception e) {
+            logger.error("getEnabledDiscoveredDevices created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
         }
 
         return returnValues.toArray(new DiscoveredDevice[returnValues.size()]);
@@ -274,21 +391,39 @@ public class DiscoveryManager implements PowerEventListener {
      * @throws CaptureDeviceLoadException Thrown if there is a problem loading the device.
      * @throws SocketException Thrown if a socket can't be opened to listen to SageTV.
      */
-    public static synchronized CaptureDevice enableCaptureDevice(int deviceId)
+    public static CaptureDevice enableCaptureDevice(int deviceId)
             throws CaptureDeviceIgnoredException, CaptureDeviceLoadException, SocketException {
 
         DiscoveredDevice deviceDetails;
         CaptureDevice captureDevice = null;
 
-        for (DeviceDiscoverer discovery : deviceDiscoveries) {
-            deviceDetails = discovery.getDeviceDetails(deviceId);
+        discoverLock.writeLock().lock();
 
-            if (deviceDetails != null) {
-                captureDevice = discovery.loadCaptureDevice(deviceId);
-                SageTVManager.addCaptureDevice(captureDevice);
-                permitDevice(deviceId);
-                break;
+        try {
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                deviceDetails = discovery.getDeviceDetails(deviceId);
+
+                if (deviceDetails != null) {
+                    captureDevice = discovery.loadCaptureDevice(deviceId);
+                    SageTVManager.addCaptureDevice(captureDevice);
+                    permitDevice(deviceId);
+                    break;
+                }
             }
+
+        } catch (Exception e) {
+            if (e instanceof CaptureDeviceIgnoredException) {
+                throw (CaptureDeviceIgnoredException)e;
+            } else if (e instanceof CaptureDeviceLoadException) {
+                throw (CaptureDeviceLoadException)e;
+            } else if (e instanceof SocketException) {
+                throw (SocketException)e;
+            } else {
+                logger.error("enableCaptureDevice created an unexpected exception while using" +
+                        " discoverLock => ", e);
+            }
+        } finally {
+            discoverLock.writeLock().unlock();
         }
 
         return  captureDevice;
@@ -301,20 +436,85 @@ public class DiscoveryManager implements PowerEventListener {
      *
      * @param deviceId This is the unique ID associated with this device.
      */
-    public static synchronized void disableCaptureDevice(int deviceId) {
-        revokeDevice(deviceId);
-
+    public static void disableCaptureDevice(int deviceId) {
         DiscoveredDevice deviceDetails;
 
-        for (DeviceDiscoverer discovery : deviceDiscoveries) {
-            deviceDetails = discovery.getDeviceDetails(deviceId);
+        discoverLock.writeLock().lock();
 
-            if (deviceDetails != null) {
-                SageTVManager.removeCaptureDevice(deviceId);
-                revokeDevice(deviceId);
-                break;
+        try {
+            revokeDevice(deviceId);
+
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                deviceDetails = discovery.getDeviceDetails(deviceId);
+
+                if (deviceDetails != null) {
+                    SageTVManager.removeCaptureDevice(deviceId);
+                    break;
+                }
             }
+        } catch (Exception e) {
+            logger.error("disableCaptureDevice created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.writeLock().unlock();
         }
+    }
+
+    /**
+     * Get details for all capture device parents.
+     *
+     * @return Details for all currently discovered capture device parents.
+     */
+    public static DiscoveredDeviceParent[] getAllDiscoveredParents() {
+        ArrayList<DiscoveredDeviceParent> deviceParents = new ArrayList<>();
+
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                DiscoveredDeviceParent parentDetails[] = discovery.getAllDeviceParentDetails();
+
+                if (parentDetails != null && parentDetails.length > 0) {
+                    Collections.addAll(deviceParents, parentDetails);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("getAllDiscoveredParents created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
+        }
+
+        return deviceParents.toArray(new DiscoveredDeviceParent[deviceParents.size()]);
+    }
+
+    /**
+     * Get details for a specific capture device parent.
+     *
+     * @param parentId This is the unique ID associated with the capture device parent.
+     * @return Details about capture device parent.
+     */
+    public static DiscoveredDeviceParent getDiscoveredDeviceParent(int parentId) {
+        DiscoveredDeviceParent deviceDetails = null;
+
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                deviceDetails = discovery.getDeviceParentDetails(parentId);
+
+                if (deviceDetails != null) {
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("getDiscoveredDeviceParent created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
+        }
+
+        return  deviceDetails;
     }
 
     /**

@@ -134,6 +134,21 @@ public interface DeviceDiscoverer extends DeviceOptions {
     public DiscoveredDevice getDeviceDetails(int deviceId);
 
     /**
+     * Returns all capture device parents.
+     *
+     * @return The details of all available capture device parents.
+     */
+    public DiscoveredDeviceParent[] getAllDeviceParentDetails();
+
+    /**
+     * Returns the requested capture device parent.
+     *
+     * @param parentId The capture device parent ID.
+     * @return The details of the requested capture device parent.
+     */
+    public DiscoveredDeviceParent getDeviceParentDetails(int parentId);
+
+    /**
      * Creates the capture device implementation for the requested unloaded device.
      *
      * @param deviceId The name of the unloaded device.

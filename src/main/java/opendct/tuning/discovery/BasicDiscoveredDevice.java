@@ -43,7 +43,7 @@ public abstract class BasicDiscoveredDevice implements DiscoveredDevice {
         this.description = description;
 
         propertiesDeviceRoot = "sagetv.device." + id + ".";
-        propertiesDeviceParent = "sagetv.device.parent." + id + ".";
+        propertiesDeviceParent = "sagetv.device.parent." + parentId + ".";
         propertiesDeviceName = propertiesDeviceRoot + "device_name";
 
         this.friendlyName = Config.getString(propertiesDeviceName, friendlyName);
@@ -59,7 +59,7 @@ public abstract class BasicDiscoveredDevice implements DiscoveredDevice {
         return friendlyName;
     }
 
-    public void setFriendlyName(String friendlyName) {
+    protected void setFriendlyName(String friendlyName) {
         this.friendlyName = friendlyName;
     }
 
@@ -84,7 +84,7 @@ public abstract class BasicDiscoveredDevice implements DiscoveredDevice {
                 false,
                 "Name",
                 propertiesDeviceName,
-                "This is the name the capture device that SageTV will see. If this" +
+                "This is the name of the capture device that SageTV will use. If this" +
                         " name is changed on a device already in use in SageTV, you" +
                         " will need to re-add the device."
         );

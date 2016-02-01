@@ -122,7 +122,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         if (message.endsWith("Invalid frame dimensions 0x0.") ||
                 message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
-                message.endsWith("is not set in estimate_timings_from_pts")) {
+                message.endsWith("is not set in estimate_timings_from_pts") || message.contains(" buffer underflow st=")) {
 
             return;
         }

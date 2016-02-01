@@ -228,4 +228,33 @@ public interface SageTVConsumer extends Runnable {
      * @return The set channel.
      */
     public String getChannel();
+
+    /**
+     * Gets if the consumer is unable to output anything.
+     *
+     * @return <i>true</i> if the consumer is stalled.
+     */
+    public boolean isStalled();
+
+    /**
+     * Gets the presumed or known state of the consumer.
+     * <p/>
+     * This will primarily be used to get a message about why the consumer is stalled. This may be
+     * displayed on a web page, so at least make it a presentable message.
+     *
+     * @return A brief message about the current state of the consumer.
+     */
+    public String stateMessage();
+
+    /**
+     * Gets if the consumer is currently streaming.
+     * <p/>
+     * This method will also block for the specified amount of time up until the moment that
+     * streaming has begun.
+     *
+     * @param timeout The amount of time in milliseconds to block until returning even if the stream
+     *                has not started.
+     * @return <i>true</i> if the consumer is currently streaming.
+     */
+    public boolean isStreaming(long timeout);
 }

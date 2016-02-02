@@ -25,6 +25,10 @@ public class IntegerDeviceOption extends BaseDeviceOption {
 
     /**
      * Create a new device option for the type <i>int</i>.
+     * <p/>
+     * Be sure to include the minimum and maximum allowed values in the description so someone does
+     * not get confused when the value they try to use keeps being automatically adjusted to the
+     * minimum or maximum value permitted.
      *
      * @param value This is the initial value for this option.
      * @param readonly If this is <i>true</i>, changes to this option will not be allowed.
@@ -48,6 +52,10 @@ public class IntegerDeviceOption extends BaseDeviceOption {
 
     /**
      * Create a new device option for the type <i>int</i>.
+     * <p/>
+     * Be sure to include the minimum and maximum allowed values in the description so someone does
+     * not get confused when the value they try to use keeps being automatically adjusted to the
+     * minimum or maximum value permitted.
      *
      * @param values These are the initial values for this option.
      * @param allowEmpty <i>true</i> if the array is allowed to be empty.

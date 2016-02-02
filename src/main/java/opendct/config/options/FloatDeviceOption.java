@@ -140,7 +140,7 @@ public class FloatDeviceOption extends BaseDeviceOption {
         float proposedValues[] = new float[newValues.length];
 
         for (int i = 0; i < newValues.length; i++) {
-            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Float.valueOf(newValues[i])));
+            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Float.parseFloat(newValues[i])));
         }
 
         super.setValue(Util.arrayToStringArray(proposedValues));

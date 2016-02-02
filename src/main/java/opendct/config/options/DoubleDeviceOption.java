@@ -142,7 +142,7 @@ public class DoubleDeviceOption extends BaseDeviceOption {
         double proposedValues[] = new double[newValues.length];
 
         for (int i = 0; i < newValues.length; i++) {
-            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Double.valueOf(newValues[i])));
+            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Double.parseDouble(newValues[i])));
         }
 
         super.setValue(Util.arrayToStringArray(proposedValues));

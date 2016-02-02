@@ -140,7 +140,7 @@ public class IntegerDeviceOption extends BaseDeviceOption {
         int proposedValues[] = new int[newValues.length];
 
         for (int i = 0; i < newValues.length; i++) {
-            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Integer.valueOf(newValues[i])));
+            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Integer.parseInt(newValues[i])));
         }
 
         super.setValue(Util.arrayToStringArray(proposedValues));

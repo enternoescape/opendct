@@ -86,10 +86,12 @@ public abstract class BaseDeviceOption implements DeviceOption {
     public void setValue(String... newValues) throws DeviceOptionException {
         if (readonly) {
             throw new DeviceOptionException("The value cannot be set because this is a read-only option.", this);
-        } else if (newValues.length == 0 && !allowEmpty) {
-            throw new DeviceOptionException("The value cannot be set because no value was provided and this will not accept an empty array.", this);
         } else if (newValues.length > 1 && !isArray) {
             throw new DeviceOptionException("The value cannot be set because an array was provided and this is not an array based option.", this);
+        } else if (newValues.length == 0 && !isArray) {
+            throw new DeviceOptionException("The value cannot be set because an empty array was provided and this is not an array based option.", this);
+        } else if (newValues.length == 0 && !allowEmpty) {
+            throw new DeviceOptionException("The value cannot be set because an empty array was provided and this option will not accept an empty array.", this);
         }
 
         if (validValues.length > 0 && newValues.length > 0) {
@@ -106,7 +108,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
                             if (stringBuilder == null) {
                                 stringBuilder = new StringBuilder("The value '" + newValue + "' is not equal to 'true' or 'false'.");
                             } else {
-                                stringBuilder.append(Config.NEW_LINE + "The value '" + newValue + "' is not equal to 'true' or 'false'.");
+                                stringBuilder.append(Config.NEW_LINE).append("The value '").append(newValue).append("' is not equal to 'true' or 'false'.");
                             }
                         }
                         break;
@@ -117,7 +119,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
                             if (stringBuilder == null) {
                                 stringBuilder = new StringBuilder("The value '" + newValue + "' is not an integer number.");
                             } else {
-                                stringBuilder.append(Config.NEW_LINE + "The value '" + newValue + "' is not an integer number.");
+                                stringBuilder.append(Config.NEW_LINE).append("The value '").append(newValue).append("' is not an integer number.");
                             }
                         }
                         break;
@@ -128,7 +130,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
                             if (stringBuilder == null) {
                                 stringBuilder = new StringBuilder("The value '" + newValue + "' is not a long number.");
                             } else {
-                                stringBuilder.append(Config.NEW_LINE + "The value '" + newValue + "' is not a long number.");
+                                stringBuilder.append(Config.NEW_LINE).append("The value '").append(newValue).append("' is not a long number.");
                             }
                         }
                         break;
@@ -139,7 +141,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
                             if (stringBuilder == null) {
                                 stringBuilder = new StringBuilder("The value '" + newValue + "' is not a float number.");
                             } else {
-                                stringBuilder.append(Config.NEW_LINE + "The value '" + newValue + "' is not a float number.");
+                                stringBuilder.append(Config.NEW_LINE).append("The value '").append(newValue).append("' is not a float number.");
                             }
                         }
                         break;
@@ -150,7 +152,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
                             if (stringBuilder == null) {
                                 stringBuilder = new StringBuilder("The value '" + newValue + "' is not a double number.");
                             } else {
-                                stringBuilder.append(Config.NEW_LINE + "The value '" + newValue + "' is not a double number.");
+                                stringBuilder.append(Config.NEW_LINE).append("The value '").append(newValue).append("' is not a double number.");
                             }
                         }
                         break;
@@ -167,7 +169,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
                     if (stringBuilder == null) {
                         stringBuilder = new StringBuilder("The value '" + newValue + "' is not a valid option.");
                     } else {
-                        stringBuilder.append(Config.NEW_LINE + "The value '" + newValue + "' is not a valid option.");
+                        stringBuilder.append(Config.NEW_LINE).append("The value '").append(newValue).append("' is not a valid option.");
                     }
                 }
             }

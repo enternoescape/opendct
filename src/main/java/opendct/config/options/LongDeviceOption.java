@@ -140,7 +140,7 @@ public class LongDeviceOption extends BaseDeviceOption {
         long proposedValues[] = new long[newValues.length];
 
         for (int i = 0; i < newValues.length; i++) {
-            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Long.valueOf(newValues[i])));
+            proposedValues[i] = Math.min(maxValue, Math.max(minValue, Long.parseLong(newValues[i])));
         }
 
         super.setValue(Util.arrayToStringArray(proposedValues));

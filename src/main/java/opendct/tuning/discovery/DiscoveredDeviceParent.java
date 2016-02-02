@@ -75,4 +75,14 @@ public interface DiscoveredDeviceParent extends DeviceOptions {
      * @return Returns the remote IP address if this is a network device or <i>null</i>.
      */
     public InetAddress getRemoteAddress();
+
+    /**
+     * Returns the unique IDs of all child devices for this parent device.
+     * <p/>
+     * This list is allowed to expand. When a capture device is detected, the device parent should
+     * always be added first.
+     *
+     * @return An array of the child devices by unique ID.
+     */
+    public int[] getChildDevices();
 }

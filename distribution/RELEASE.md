@@ -233,7 +233,7 @@
 
 > *Improved UPnP search thread.
 
-> *Improved FFmpeg detection times and stream selection accuracy.
+> *Improved FFmpeg detection times and stream selection accuracy. [ws]
 
 > *Experimental support for MPEG-PS.
 

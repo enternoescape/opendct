@@ -23,6 +23,9 @@ import opendct.config.options.StringDeviceOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.HashSet;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 public abstract class BasicDiscoveredDeviceParent implements DiscoveredDeviceParent {
     private final Logger logger = LogManager.getLogger(BasicDiscoveredDeviceParent.class);
 
@@ -32,6 +35,9 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
 
     protected final String propertiesDeviceParent;
     protected final String propertiesDeviceParentName;
+
+    private final ReentrantReadWriteLock childIdLock = new ReentrantReadWriteLock();
+    private final HashSet<Integer> childIds = new HashSet<>();
 
     public BasicDiscoveredDeviceParent(String name, int parentId) {
         this.name = name;
@@ -60,6 +66,45 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
     @Override
     public int getParentId() {
         return parentId;
+    }
+
+    protected void addChild(int deviceId) {
+        childIdLock.writeLock().lock();
+
+        try {
+            childIds.add(deviceId);
+        } finally {
+            childIdLock.writeLock().unlock();
+        }
+    }
+
+    protected void removeChild(int deviceId) {
+        childIdLock.writeLock().lock();
+
+        try {
+            childIds.remove(deviceId);
+        } finally {
+            childIdLock.writeLock().unlock();
+        }
+    }
+
+    public int[] getChildDevices() {
+        int returnValues[];
+
+        childIdLock.readLock().lock();
+
+        try {
+            returnValues = new int[childIds.size()];
+
+            int i = 0;
+            for (Integer childId : childIds) {
+                returnValues[i++] = childId;
+            }
+        } finally {
+            childIdLock.readLock().unlock();
+        }
+
+        return returnValues;
     }
 
     public DeviceOption getParentNameOption() throws DeviceOptionException {

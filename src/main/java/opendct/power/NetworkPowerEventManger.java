@@ -35,7 +35,15 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
 
     // Two minutes should be enough time to determine if we experiencing a problem. A value of 0
     // will disable the timeout.
-    private int resumeNetworkTimeout = Config.getInteger("pm.network.resume_timeout_ms", 120000);
+    private int resumeNetworkTimeout = Math.max(
+            0,
+            Config.getInteger("pm.network.resume_timeout_ms", 120000)
+    );
+
+    private final static int startNetworkTimeout = Math.max(
+            0,
+            Config.getInteger("pm.network.start_retry", 120)
+    );
 
     private static HashSet<String> currentInterfaceNames = new HashSet<String>();
     private HashSet<String> monitoredInterfaceNames = new HashSet<String>();
@@ -43,6 +51,24 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     static {
         // This will print out the current interfaces when the program first starts.
         getNetworkInterfaces(true);
+
+        int timeout = startNetworkTimeout;
+
+        while (currentInterfaceNames.size() == 0) {
+            try {
+                logger.error("No network interfaces currently have an IP address. {} {}" +
+                        " remaining. Checking again in 1 second...",
+                        timeout, timeout == 1 ? "attempt" : "attempts");
+                Thread.sleep(1000);
+                getNetworkInterfaces(true);
+            } catch (InterruptedException e) {
+                logger.debug("");
+            }
+
+            if (timeout-- <= 0) {
+                ExitCode.NO_NETWORK_INTERFACES.terminateJVM();
+            }
+        }
     }
 
     public DeviceOption[] getOptions() {
@@ -158,7 +184,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             msg.append(e);
         }
 
-        if (printOutput) {
+        if (printOutput && currentInterfaceNames.size() > 0) {
             logger.info(msg.toString());
         }
     }

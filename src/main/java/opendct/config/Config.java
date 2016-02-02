@@ -34,13 +34,14 @@ import org.apache.logging.log4j.Logger;
 import java.io.*;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 19;
+    public static final int VERSION_BUILD = 20;
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -671,6 +672,12 @@ public class Config {
             setStringArray(option.getProperty(), option.getArrayValue());
         } else {
             setString(option.getProperty(), option.getValue());
+        }
+    }
+
+    public static void mapDeviceOptions(ConcurrentHashMap<String, DeviceOption> optionsMap, DeviceOption... options) {
+        for (DeviceOption option : options) {
+            optionsMap.put(option.getProperty(), option);
         }
     }
 

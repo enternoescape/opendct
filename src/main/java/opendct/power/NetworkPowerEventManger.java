@@ -82,6 +82,16 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                             "This indicates how long in milliseconds after a resume event to wait" +
                                     " for network devices to become available before terminating" +
                                     " the program. Setting this value to 0 disables the timeout."
+                    ),
+                    new IntegerDeviceOption(
+                            startNetworkTimeout,
+                            false,
+                            "Startup Retry Count",
+                            "pm.network.start_retry",
+                            "This indicates how many times the program will attempt to find a" +
+                                    " usable network interface at one second intervals. At least" +
+                                    " one network interface must be available and assigned an IP" +
+                                    " address for this program to work."
                     )
             };
         } catch (DeviceOptionException e) {
@@ -96,6 +106,14 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         for (DeviceOption deviceOption : deviceOptions) {
             // This covers all values that should not be changed instantly and makes the values persistent.
             Config.setDeviceOption(deviceOption);
+
+            if (deviceOption.getProperty().equals("pm.network.resume_timeout_ms")) {
+                try {
+                    resumeNetworkTimeout = Math.max(0, Integer.parseInt(deviceOption.getValue()));
+                } catch (NumberFormatException e) {
+                    resumeNetworkTimeout = 120000;
+                }
+            }
         }
     }
 

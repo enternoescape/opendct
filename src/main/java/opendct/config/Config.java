@@ -34,13 +34,14 @@ import org.apache.logging.log4j.Logger;
 import java.io.*;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 19;
+    public static final int VERSION_BUILD = 20;
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -674,6 +675,12 @@ public class Config {
         }
     }
 
+    public static void mapDeviceOptions(ConcurrentHashMap<String, DeviceOption> optionsMap, DeviceOption... options) {
+        for (DeviceOption option : options) {
+            optionsMap.put(option.getProperty(), option);
+        }
+    }
+
     //=============================================================================================
     // Interface implementation lookups. If you create a new implementation, add it here.
     //=============================================================================================
@@ -885,6 +892,86 @@ public class Config {
     }
 
     /**
+     * Checks if new device parent name is unique and then sets the new name if it is unique.
+     * <p/>
+     * This is synchronized to prevent a race condition whereby multiple requests could technically
+     * get through and cause a name to not be unique.
+     *
+     * @param parentId This is the the unique id for the parent device to change.
+     * @param newName This is the desired new name for the parent device.
+     * @return <i>true</i> if the name was unique and actually changed.
+     */
+    public static synchronized boolean setUniqueParentName(int parentId, String newName) {
+        boolean returnValue = true;
+        String oldName = "No Name";
+        newName = newName.trim();
+
+        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+            String key = (String)entry.getKey();
+            String value = (String)entry.getValue();
+
+            if (key.equals("sagetv.device.parent." + parentId + ".device_name")) {
+                oldName = value;
+            } else if (key.startsWith("sagetv.device.parent.") && key.endsWith(".device_name")) {
+                if (value.equals(newName)) {
+                    logger.error("The desired new name '{}' for parent id {} conflicts with the" +
+                            " parent property '{}'. New parent name not set.",
+                            newName, parentId, key);
+
+                    returnValue = false;
+                }
+            }
+        }
+
+        if (returnValue) {
+            setString("sagetv.device.parent." + parentId + ".device_name", newName);
+            logger.info("Renamed the parent id {} from '{}' to '{}'.", parentId, oldName, newName);
+        }
+
+        return returnValue;
+    }
+
+    /**
+     * Checks if new device name is unique and then sets the new name if it is unique.
+     * <p/>
+     * This is synchronized to prevent a race condition whereby multiple requests could technically
+     * get through and cause a name to not be unique.
+     *
+     * @param deviceId This is the the unique id for the parent device to change.
+     * @param newName This is the desired new name for the parent device.
+     * @return <i>true</i> if the name was unique and actually changed.
+     */
+    public static synchronized boolean setUniqueDeviceName(int deviceId, String newName) {
+        boolean returnValue = true;
+        String oldName = "No Name";
+        newName = newName.trim();
+
+        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+            String key = (String)entry.getKey();
+            String value = (String)entry.getValue();
+
+            if (key.equals("sagetv.device." + deviceId + ".device_name")) {
+                oldName = value;
+            } else if (key.startsWith("sagetv.device.") && key.endsWith(".device_name")) {
+                if (value.equals(newName)) {
+                    logger.error("The desired new name '{}' for device id {} conflicts with the" +
+                                    " capture device property '{}'. New device name not set.",
+                            newName, deviceId, key);
+
+                    returnValue = false;
+                }
+            }
+        }
+
+        if (returnValue) {
+            setString("sagetv.device." + deviceId + ".device_name", newName);
+            logger.info("Renamed the parent id {} from '{}' to '{}'.", deviceId, oldName, newName);
+        }
+
+        return returnValue;
+    }
+
+    /**
      * Returns a valid socket server port for the requested uniqueID.
      * <p/>
      * The value of encoder_listen_port is generated.
@@ -945,14 +1032,6 @@ public class Config {
                     if (getValue != 0) {
                         portArray.add(getValue);
                     }
-
-                    /*String getEncoderLevel = getString(currentKey.substring(0, currentKey.length() - "encoder_listen_port".length() - 1) + ".encoder_level", encoderLevel);
-
-                    if (getEncoderLevel.equals("3.0") && getValue != 0) {
-
-                        // Take the first port that can be shared if we are allowing this.
-                        return logger.exit(getValue);
-                    }*/
                 }
             }
 

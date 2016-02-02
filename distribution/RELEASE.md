@@ -233,12 +233,13 @@
 
 > *Improved UPnP search thread.
 
-> *Improved FFmpeg detection times and stream selection accuracy.
+> *Improved FFmpeg detection times and stream selection accuracy. [ws]
 
 > *Experimental support for MPEG-PS.
 
 > *OpenDCT when tuning a new channel now doesn't respond to SageTV until FFmpeg has completed
-> detection or 5 seconds have passed. This is necessary to support proper detection of MPEG-PS.
+> detection or 5 seconds have passed. This is necessary to support proper detection of MPEG-PS by
+> SageTV.
 
 #### 0.4.20-Beta
 > *Added check at startup for at least one network interface to be present before continuing

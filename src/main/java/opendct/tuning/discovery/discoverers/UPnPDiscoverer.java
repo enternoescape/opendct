@@ -23,11 +23,13 @@ import opendct.config.OSVersion;
 import opendct.config.options.*;
 import opendct.tuning.discovery.*;
 import opendct.tuning.upnp.UpnpDiscoveredDevice;
+import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class UpnpDiscoverer implements DeviceDiscoverer {
@@ -42,6 +44,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     };
 
     // Global UPnP device settings.
+    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
     private static IntegerDeviceOption offlineDetectionSeconds;
     private static IntegerDeviceOption offlineDetectionMinBytes;
     private static IntegerDeviceOption retunePolling;
@@ -56,12 +59,15 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     // Detection configuration and state
     private static boolean enabled;
     private boolean running;
+    private DeviceLoader deviceLoader;
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
     private final HashMap<Integer, UpnpDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final HashMap<Integer, UpnpDiscoveredDeviceParent> discoveredParents = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("upnp.discoverer_enabled", true);
+        deviceOptions = new ConcurrentHashMap<>();
 
         try {
             streamingWait = new LongDeviceOption(
@@ -70,7 +76,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                     "Return to SageTV",
                     "upnp.dct.wait_for_streaming",
                     "This is the maximum number of milliseconds to wait before returning to" +
-                            " SageTV regardless of if the program is actually streaming."
+                            " SageTV regardless of if the requested channel is actually streaming."
             );
 
             offlineDetectionSeconds = new IntegerDeviceOption(
@@ -181,6 +187,21 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                             " generally not be disabled. The affected capture devices need" +
                             " to be re-loaded for this setting to take effect."
             );
+
+            Config.mapDeviceOptions(
+                    deviceOptions,
+                    offlineDetectionSeconds,
+                    offlineDetectionMinBytes,
+                    retunePolling,
+                    streamingWait,
+                    httpTuning,
+                    hdhrTuning,
+                    autoMapReference,
+                    autoMapTuning,
+                    fastTune,
+                    hdhrLock
+            );
+
         } catch (DeviceOptionException e) {
             logger.error("Unable to configure device options for UpnpDiscoverer => ", e);
         }
@@ -207,7 +228,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public synchronized void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+        UpnpDiscoverer.enabled = enabled;
         Config.setBoolean("upnp.discoverer_enabled", enabled);
     }
 
@@ -218,9 +239,10 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public synchronized void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
-        if (!enabled || running) {
+        if (deviceLoader == null || !enabled || running) {
             return;
         }
+        //UpnpManager.startUpnpServices(DCTDefaultUpnpServiceConfiguration.getDCTDefault(), new DCTRegistryListener());
 
 
     }
@@ -262,7 +284,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         try {
             returnValue = discoveredDevices.size();
         } catch (Exception e) {
-            logger.error("");
+            logger.error("discoveredDevices created an unexpected exception while using" +
+                    " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.readLock().unlock();
         }
@@ -285,7 +308,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
             }
 
         } catch (Exception e) {
-            logger.error("An unhandled exception happened in getAllDeviceDetails while using" +
+            logger.error("getAllDeviceDetails created an unexpected exception while using" +
                     " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.readLock().unlock();
@@ -307,7 +330,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         try {
             returnValue = discoveredDevices.get(deviceId);
         } catch (Exception e) {
-            logger.error("An unhandled exception happened in getDeviceDetails while using" +
+            logger.error("getDeviceDetails created an unexpected exception while using" +
                     " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.readLock().unlock();
@@ -317,11 +340,57 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
+    public DiscoveredDeviceParent[] getAllDeviceParentDetails() {
+        DiscoveredDeviceParent[] returnValues = null;
+
+        discoveredDevicesLock.readLock().lock();
+
+        try {
+            returnValues = new UpnpDiscoveredDeviceParent[discoveredParents.size()];
+
+            int i = 0;
+            for (Map.Entry<Integer, UpnpDiscoveredDeviceParent> discoveredParent : discoveredParents.entrySet()) {
+                returnValues[i++] = discoveredParent.getValue();
+            }
+
+        } catch (Exception e) {
+            logger.error("getAllDeviceParentDetails created an unexpected exception while using" +
+                    " discoveredDevicesLock => ", e);
+        } finally {
+            discoveredDevicesLock.readLock().unlock();
+        }
+
+        if (returnValues == null) {
+            returnValues = new UpnpDiscoveredDeviceParent[0];
+        }
+
+        return returnValues;
+    }
+
+    @Override
+    public DiscoveredDeviceParent getDeviceParentDetails(int parentId) {
+        DiscoveredDeviceParent deviceParent = null;
+
+        discoveredDevicesLock.readLock().lock();
+
+        try {
+            deviceParent = discoveredParents.get(parentId);
+        } catch (Exception e) {
+            logger.error("getDeviceParentDetails created an unexpected exception while using" +
+                    " discoveredDevicesLock => ", e);
+        } finally {
+            discoveredDevicesLock.readLock().unlock();
+        }
+
+        return deviceParent;
+    }
+
+    @Override
     public CaptureDevice loadCaptureDevice(int deviceId)
             throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
 
         CaptureDevice returnValue = null;
-        UpnpDiscoveredDevice discoveredDevice = null;
+        UpnpDiscoveredDevice discoveredDevice;
         CaptureDeviceLoadException loadException = null;
 
         discoveredDevicesLock.readLock().lock();
@@ -369,7 +438,19 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+        for (DeviceOption option : deviceOptions) {
+            DeviceOption optionReference = UpnpDiscoverer.deviceOptions.get(option.getProperty());
 
+            if (optionReference.isArray()) {
+                optionReference.setValue(option.getArrayValue());
+            } else {
+                optionReference.setValue(option.getValue());
+            }
+
+            Config.setDeviceOption(optionReference);
+        }
+
+        Config.saveConfig();
     }
 
     public static int getOfflineDetectionSeconds() {

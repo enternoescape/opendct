@@ -159,7 +159,7 @@ public class SeekableCircularBuffer {
                 }
 
                 if (!overflowToQueue) {
-                    logger.warn("The buffer contains {} bytes, has only {} bytes left for writing and {} bytes cannot be added. Deferring bytes to queue buffer.", readAvailable(), writeAvailable, length);
+                    logger.warn("The buffer has {} bytes left to be read, has only {} bytes left for writing and {} bytes cannot be added. Deferring bytes to queue buffer.", readAvailable(), writeAvailable, length);
                     overflowToQueue = true;
                 }
 
@@ -175,7 +175,7 @@ public class SeekableCircularBuffer {
 
                     bytesOverflow.getAndAdd(length);
                 } else if (!overflow) {
-                    logger.warn("The buffer contains {} bytes, has only {} bytes left for writing and {} bytes cannot be added. The queue buffer is full at {} bytes.", readAvailable(), writeAvailable, length, bytesOverflow.get());
+                    logger.warn("The buffer has {} bytes left to be read, has only {} bytes left for writing and {} bytes cannot be added. The queue buffer is full at {} bytes.", readAvailable(), writeAvailable, length, bytesOverflow.get());
                     overflow = true;
                     bytesLost.addAndGet(length);
                 } else {

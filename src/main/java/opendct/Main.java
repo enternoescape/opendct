@@ -24,7 +24,6 @@ import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.DiscoveryManager;
-import opendct.tuning.hdhomerun.HDHomeRunManager;
 import opendct.tuning.upnp.UpnpManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -184,11 +183,7 @@ public class Main {
         // a capture device that doesn't use UPnP so we would want it disabled if we don't need it.
         boolean useUPnP = Config.getBoolean("upnp.enabled", true);
 
-        // If this is enabled, this will discover for HDHomeRun devices. At the moment this won't
-        // actually create any devices based on discovery, but it will find devices and prevent
-        // duplicates.
-        boolean useHDHR = Config.getBoolean("hdhr.enabled", false);
-
+        // If this is enabled the program will
         boolean useDiscoveryManager = Config.getBoolean("discovery.exp_enabled", false);
 
         Config.saveConfig();
@@ -207,20 +202,6 @@ public class Main {
                 public void run() {
                     logger.info("Stopping UPnP services...");
                     UpnpManager.stopUpnpServices();
-                }
-            });
-        }
-
-        if (useHDHR) {
-            HDHomeRunManager.startDeviceDetection();
-
-            PowerMessageManager.EVENTS.addListener(HDHomeRunManager.POWER_EVENT_LISTENER);
-
-            Runtime.getRuntime().addShutdownHook(new Thread("HDHomeRunManagerShutdown") {
-                @Override
-                public void run() {
-                    logger.info("Stopping HDHomeRun services...");
-                    HDHomeRunManager.removeAllDevices();
                 }
             });
         }

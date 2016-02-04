@@ -24,6 +24,7 @@ import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.DiscoveryManager;
+import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.upnp.UpnpManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -208,6 +209,7 @@ public class Main {
 
         if (useDiscoveryManager) {
             DiscoveryManager.startDeviceDiscovery();
+            DiscoveryManager.addDiscoverer(new HDHomeRunDiscoverer());
 
             PowerMessageManager.EVENTS.addListener(DiscoveryManager.POWER_EVENT_LISTENER);
 

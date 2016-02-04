@@ -21,9 +21,10 @@ import opendct.consumer.buffers.FFmpegCircularBuffer;
 import opendct.consumer.buffers.SeekableCircularBuffer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.testng.annotations.*;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Random;
 
 public final class CircularBufferTest {
@@ -162,6 +163,95 @@ public final class CircularBufferTest {
                 readPosition += seekableCircularBuffer.read(readData);
             }
         }
+
+        int filledReadPosition = readPosition;
+
+        while (seekableCircularBuffer.readAvailable() > 0) {
+            readPosition += seekableCircularBuffer.read(readData);
+
+            // This will directly trigger queue cleanup. Currently the only other thing that will
+            // trigger it is a write.
+            seekableCircularBuffer.processQueue();
+        }
+
+        readData.flip();
+
+        for (int i = 0; i < readPosition; i++) {
+            byte newByte = readData.get();
+            assert writeData[i] == newByte : "At index " + i + ": " + writeData[i] + " != " + newByte + " buffer was filled at index " + filledReadPosition;
+        }
+    }
+
+    @Test(groups = { "buffer", "byteArray" }, dataProvider = "getBufferPattern", threadPoolSize = 3)
+    public void testArrayBufferGrow(int bufferSize, int dataSize, int addIncrement) throws InterruptedException {
+        SeekableCircularBuffer seekableCircularBuffer = new SeekableCircularBuffer(bufferSize);
+        byte writeData[] = generateByteData(dataSize);
+        byte readData[] = new byte[dataSize];
+        int readPosition = 0;
+
+        int dataWritten = 0;
+
+        seekableCircularBuffer.setNoWrap(true);
+
+        while(true) {
+            if (dataWritten + addIncrement < dataSize) {
+                seekableCircularBuffer.write(writeData, dataWritten, addIncrement);
+                dataWritten += addIncrement;
+            } else {
+                // Don't worry about the remaining random data.
+                break;
+            }
+
+            // Stop reading about half-way through the buffer.
+            if (readPosition < (bufferSize / 2)) {
+                readPosition += seekableCircularBuffer.read(readData, readPosition, bufferSize);
+            }
+        }
+
+        seekableCircularBuffer.setNoWrap(false);
+
+        int filledReadPosition = readPosition;
+
+        while (seekableCircularBuffer.readAvailable() > 0) {
+            readPosition += seekableCircularBuffer.read(readData, readPosition, bufferSize);
+
+            // This will directly trigger queue cleanup. Currently the only other thing that will
+            // trigger it is a write.
+            seekableCircularBuffer.processQueue();
+        }
+
+        for (int i = 0; i < readPosition; i++) {
+            assert writeData[i] == readData[i] : "At index " + i + ": " + writeData[i] + " != " + readData[i] + " buffer was filled at index " + filledReadPosition;
+        }
+    }
+
+    @Test(groups = { "buffer", "byteBuffer" }, dataProvider = "getBufferPattern", threadPoolSize = 3)
+    public void testByteBufferGrow(int bufferSize, int dataSize, int addIncrement) throws InterruptedException {
+        SeekableCircularBuffer seekableCircularBuffer = new SeekableCircularBuffer(bufferSize);
+        byte writeData[] = generateByteData(dataSize);
+        ByteBuffer readData = ByteBuffer.allocate(dataSize);
+        int readPosition = 0;
+
+        int dataWritten = 0;
+
+        seekableCircularBuffer.setNoWrap(true);
+
+        while(true) {
+            if (dataWritten + addIncrement < dataSize) {
+                seekableCircularBuffer.write(writeData, dataWritten, addIncrement);
+                dataWritten += addIncrement;
+            } else {
+                // Don't worry about the remaining random data.
+                break;
+            }
+
+            // Stop reading about half-way through the buffer.
+            if (readPosition < (bufferSize / 2)) {
+                readPosition += seekableCircularBuffer.read(readData);
+            }
+        }
+
+        seekableCircularBuffer.setNoWrap(false);
 
         int filledReadPosition = readPosition;
 

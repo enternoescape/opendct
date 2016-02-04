@@ -16,6 +16,8 @@
 
 package opendct.tuning.hdhomerun;
 
+import opendct.sagetv.SageTVManager;
+import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketTag;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketType;
 import org.apache.logging.log4j.LogManager;
@@ -40,6 +42,7 @@ public class HDHomeRunDiscovery implements Runnable {
     HDHomeRunPacket txPacket;
     HDHomeRunPacket rxPacket;
 
+    HDHomeRunDiscoverer discoverer;
     private HashSet<HDHomeRunDevice> devices;
     private final Object devicesLock = new Object();
 
@@ -79,11 +82,13 @@ public class HDHomeRunDiscovery implements Runnable {
         }
     }
 
-    public void start() throws IOException {
+    public void start(HDHomeRunDiscoverer discoverer) throws IOException {
         if (sendThread != null && !sendThread.isAlive()) {
             logger.warn("Already listening for HDHomeRun devices on port {}", BROADCAST_PORT);
             return;
         }
+
+        this.discoverer = discoverer;
 
         if (receiveThread != null && receiveThread.isAlive()) {
             receiveThread.interrupt();
@@ -110,12 +115,25 @@ public class HDHomeRunDiscovery implements Runnable {
         receiveThread.start();
     }
 
-    public void stop() throws InterruptedException {
+    public void stop() {
         sendThread.interrupt();
-        receiveThread.join();
+        receiveThread.interrupt();
     }
 
-    public void waitForDiscovery() throws InterruptedException {
+    public boolean isRunning() {
+        if (sendThread != null) {
+            return sendThread.isAlive();
+        }
+
+        if (receiveThread != null) {
+            return receiveThread.isAlive();
+        }
+
+        return false;
+    }
+
+    public void waitForStop() throws InterruptedException {
+        receiveThread.join();
         sendThread.join();
     }
 
@@ -134,52 +152,86 @@ public class HDHomeRunDiscovery implements Runnable {
 
         txPacket.endPacket();
 
-        int retry = 3;
         txPacket.BUFFER.mark();
 
-        while (!Thread.currentThread().isInterrupted() && retry-- > 0) {
+        while (!Thread.currentThread().isInterrupted()) {
+            int retry = 3;
 
-            boolean failed = false;
-            while (txPacket.BUFFER.hasRemaining()) {
+            while (!Thread.currentThread().isInterrupted() && retry-- > 0) {
+
+                boolean failed = false;
+                while (txPacket.BUFFER.hasRemaining()) {
+                    try {
+                        logger.info("Sending HDHomeRun discovery packet length {}...", txPacket.BUFFER.limit());
+                        datagramChannel.send(txPacket.BUFFER, BROADCAST_SOCKET);
+                    } catch (IOException e) {
+                        logger.error("Error while sending HDHomeRun discovery packets to {} => ", BROADCAST_SOCKET, e);
+                        failed = true;
+                        break;
+                    }
+                }
+
+                txPacket.BUFFER.reset();
+
+                if (failed) {
+                    continue;
+                }
+
                 try {
-                    logger.info("Sending HDHomeRun discovery packet length {}...", txPacket.BUFFER.limit());
-                    datagramChannel.send(txPacket.BUFFER, BROADCAST_SOCKET);
-                } catch (IOException e) {
-                    logger.error("Error while sending HDHomeRun discovery packets to {} => ", BROADCAST_SOCKET, e);
-                    failed = true;
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    logger.debug("Interrupted while waiting for packets to be received => ", e);
                     break;
+                }
+
+            }
+
+            if (datagramChannel != null && datagramChannel.isConnected()) {
+                try {
+                    datagramChannel.close();
+                    datagramChannel.socket().close();
+                } catch (IOException e) {
+                    logger.debug("Created an IO exception while closing the datagram channel => ", e);
                 }
             }
 
-            txPacket.BUFFER.reset();
-
-            if (failed) {
-                continue;
+            if (receiveThread != null && receiveThread.isAlive()) {
+                receiveThread.interrupt();
             }
 
+            discoverer.addDevices(getAndClearDevices());
+
             try {
-                Thread.sleep(200);
+                int interval = HDHomeRunDiscoverer.getBroadcastInterval();
+                boolean devicesLoaded = SageTVManager.captureDevicesLoaded();
+
+                if (interval == 0 && devicesLoaded) {
+                    break;
+                } else if (interval == 0 && !devicesLoaded) {
+                    Thread.sleep(4500);
+                } else {
+                    Thread.sleep(HDHomeRunDiscoverer.getBroadcastInterval() * 1000);
+                }
             } catch (InterruptedException e) {
-                logger.debug("Interrupted while waiting for packets to be received => ", e);
+                logger.debug("Interrupted while waiting for next broadcast to be sent => ", e);
                 break;
             }
 
-        }
-
-        if (datagramChannel != null && datagramChannel.isConnected()) {
             try {
-                datagramChannel.close();
-                datagramChannel.socket().close();
-            } catch (IOException e0) {
-                logger.debug("Created an exception while closing the datagram channel => {}", e0);
+                datagramChannel = DatagramChannel.open();
+                datagramChannel.socket().bind(new InetSocketAddress(BROADCAST_PORT));
+                datagramChannel.socket().setBroadcast(true);
+                datagramChannel.socket().setReceiveBufferSize(10000);
+            } catch (IOException e) {
+                logger.error("Unable to re-open datagram channel => ", e);
+                break;
             }
-        }
 
-        if (receiveThread != null && receiveThread.isAlive()) {
-            receiveThread.interrupt();
-        }
 
-        HDHomeRunManager.addDevices(getAndClearDevices());
+            receiveThread = new Thread(new ReceiveThread());
+            receiveThread.setName("HDHomeRunDiscoveryReceive-" + sendThread.getId());
+            receiveThread.start();
+        }
     }
 
     private class ReceiveThread implements Runnable {
@@ -187,7 +239,7 @@ public class HDHomeRunDiscovery implements Runnable {
         public void run() {
             final char recvBase64EncodeTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
 
-            while (sendThread.isAlive()) {
+            while (!Thread.currentThread().isInterrupted() && sendThread != null && sendThread.isAlive()) {
                 rxPacket.BUFFER.clear();
 
                 InetSocketAddress socketAddress;
@@ -318,7 +370,7 @@ public class HDHomeRunDiscovery implements Runnable {
 
     public static InetAddress getBroadcast() {
         try {
-            return InetAddress.getByAddress(
+            return Inet4Address.getByAddress(
                     new byte[]{(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff});
         } catch (UnknownHostException e) {
             // This isn't going to happen.

@@ -31,11 +31,10 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
     private final Logger logger = LogManager.getLogger(NetworkDiscoveredDeviceParent.class);
 
     private InetAddress localAddress;
-    private InetAddress remoteAddress;
 
     protected String propertiesLocalAddressOverride = propertiesDeviceParent + "local_ip_override";
 
-    public NetworkDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, InetAddress remoteAddress) {
+    public NetworkDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress) {
         super(name, parentId);
 
         if (!Util.isNullOrEmpty(Config.getString(propertiesLocalAddressOverride))) {
@@ -43,7 +42,6 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
         }
 
         this.localAddress = localAddress;
-        this.remoteAddress = remoteAddress;
     }
 
     @Override
@@ -54,15 +52,6 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
     @Override
     public InetAddress getLocalAddress() {
         return localAddress;
-    }
-
-    @Override
-    public InetAddress getRemoteAddress() {
-        return remoteAddress;
-    }
-
-    protected void setRemoteAddress(InetAddress remoteAddress) {
-        this.remoteAddress = remoteAddress;
     }
 
     public DeviceOption getLocalAddressOverrideOption() throws DeviceOptionException {

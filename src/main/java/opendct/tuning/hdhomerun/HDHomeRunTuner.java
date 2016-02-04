@@ -65,6 +65,14 @@ public class HDHomeRunTuner {
         }
     }
 
+    @Override
+    public String toString() {
+        return "HDHomeRunTuner{" +
+                "DEVICE=" + DEVICE +
+                ", TUNER_NUMBER=" + TUNER_NUMBER +
+                '}';
+    }
+
     /**
      * Get a list of all values returned from calling the get methods in this class.
      * <p/>

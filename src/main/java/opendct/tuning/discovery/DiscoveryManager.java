@@ -263,7 +263,7 @@ public class DiscoveryManager implements PowerEventListener {
             }
 
             for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-                if (deviceDiscoverer.errorMessage() == null) {
+                if (deviceDiscoverer.getErrorMessage() == null) {
                     try {
                         deviceDiscoverer.waitForStopDetection();
                         logger.info("{} discovery stopped.", deviceDiscoverer.getName());

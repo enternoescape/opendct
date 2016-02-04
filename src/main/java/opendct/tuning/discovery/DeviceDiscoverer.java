@@ -106,7 +106,7 @@ public interface DeviceDiscoverer extends DeviceOptions {
      *
      * @return <i>null</i> or a message pertaining to the current error conditions.
      */
-    public String errorMessage();
+    public String getErrorMessage();
 
     /**
      * How many unique capture devices have been discovered?

@@ -50,6 +50,22 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        BasicDiscoveredDeviceParent that = (BasicDiscoveredDeviceParent) o;
+
+        return parentId == that.parentId;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return parentId;
+    }
+
+    @Override
     public String getName() {
         return name;
     }
@@ -68,7 +84,7 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
         return parentId;
     }
 
-    protected void addChild(int deviceId) {
+    public void addChild(int deviceId) {
         childIdLock.writeLock().lock();
 
         try {
@@ -78,7 +94,7 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
         }
     }
 
-    protected void removeChild(int deviceId) {
+    public void removeChild(int deviceId) {
         childIdLock.writeLock().lock();
 
         try {

@@ -33,12 +33,17 @@ public class SeekableCircularBuffer {
     protected volatile int writePasses = 0;
     protected volatile int readPasses = 0;
 
+    // These are only used to permanently expand the buffer while we are not allowed to wrap.
+    private volatile int maxBufferSize;
+    private volatile int resizeBufferIncrement;
+
     private LinkedBlockingDeque<byte[]> overflowQueue = new LinkedBlockingDeque<>();
     private AtomicInteger bytesOverflow = new AtomicInteger(0);
     private AtomicInteger bytesLost = new AtomicInteger(0);
     private boolean overflowToQueue = false;
     private boolean overflow = false;
 
+    private volatile boolean noWrap = false;
     private volatile boolean closed = false;
 
     // These are in the order they should always be used if more than one needs to be used.
@@ -55,7 +60,9 @@ public class SeekableCircularBuffer {
      */
     public SeekableCircularBuffer(int bufferSize) {
         buffer = new byte[bufferSize];
-        maxOverflowBytes = bufferSize;
+        maxBufferSize = bufferSize * 3;
+        resizeBufferIncrement = bufferSize;
+        maxOverflowBytes = bufferSize * 4;
     }
 
     /**
@@ -67,6 +74,7 @@ public class SeekableCircularBuffer {
         //logger.entry();
         synchronized (writeLock) {
             synchronized (readLock) {
+                buffer = new byte[resizeBufferIncrement];
                 writeIndex = 0;
                 readIndex = 0;
                 writePasses = 0;
@@ -74,6 +82,7 @@ public class SeekableCircularBuffer {
                 bytesOverflow.set(0);
                 bytesLost.set(0);
                 closed = false;
+                noWrap = false;
             }
         }
         //logger.exit();
@@ -85,6 +94,18 @@ public class SeekableCircularBuffer {
 
     public boolean isClosed() {
         return closed;
+    }
+
+    public void setNoWrap(boolean noWrap) {
+        this.noWrap = noWrap;
+    }
+
+    public boolean isNoWrap() {
+        return noWrap;
+    }
+
+    public int getBufferSize() {
+        return buffer.length;
     }
 
     public void waitForBytes() throws InterruptedException {
@@ -121,6 +142,22 @@ public class SeekableCircularBuffer {
             int writeAvailable = writeAvailable();
 
             if (writeAvailable - length <= 0) {
+                if (noWrap && buffer.length < maxBufferSize) {
+                    synchronized (readLock) {
+                        byte newBuffer[] = new byte[buffer.length + resizeBufferIncrement];
+
+                        logger.warn("The buffer is being expanded from {} bytes to {} bytes.", buffer.length, newBuffer.length);
+
+                        System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
+                        buffer = newBuffer;
+
+                        logger.info("The buffer has been expanded.");
+                    }
+
+                    internalWrite(bytes, offset, length);
+                    return;
+                }
+
                 if (!overflowToQueue) {
                     logger.warn("The buffer contains {} bytes, has only {} bytes left for writing and {} bytes cannot be added. Deferring bytes to queue buffer.", readAvailable(), writeAvailable, length);
                     overflowToQueue = true;
@@ -130,7 +167,7 @@ public class SeekableCircularBuffer {
                 // capture devices and a 7MB buffer, this potentially adds up to 560MB in RAM just
                 // for the buffer if things get really backed up. The JVM should be able to handle
                 // this kind of growth without crashing. Also this is not a typical situation.
-                if (bytesOverflow.get() < buffer.length * 4 && overflowQueue.size() < Integer.MAX_VALUE) {
+                if (bytesOverflow.get() < maxOverflowBytes && overflowQueue.size() < Integer.MAX_VALUE) {
                     // Store overflowing bytes in double-ended queue.
                     byte[] queueBytes = new byte[length];
                     System.arraycopy(bytes, offset, queueBytes, 0, length);
@@ -538,7 +575,9 @@ public class SeekableCircularBuffer {
         synchronized (rwPassLock) {
             limitIndex = readIndex;
 
-            if (limitIndex > writeIndex) {
+            if (noWrap) {
+                available = (buffer.length - 1) - writeIndex;
+            } else if (limitIndex > writeIndex) {
                 available = limitIndex - (writeIndex - 1);
             } else {
                 available = (buffer.length - 1) - (writeIndex - limitIndex);

@@ -57,12 +57,12 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     // This is the smallest probe size allowed.
     private final long minProbeSize =
             Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_probe_size", 82720 * 2),
+                    Config.getInteger("consumer.ffmpeg.min_probe_size", 165440),
                     82720
             );
     private final long minAnalyzeDuration =
             Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_analyze_duration", 82720 * 2),
+                    Config.getInteger("consumer.ffmpeg.min_analyze_duration", 165440),
                     82720
             );
 
@@ -71,7 +71,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             Math.max(
                     Config.getInteger("consumer.ffmpeg.max_probe_size", 5617370),
                     5617370
-            );
+            ) * 3;
 
     // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
     private final long maxAnalyzeDuration =
@@ -89,7 +89,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final int circularBufferSize =
             (int) Math.max(
                     Config.getInteger("consumer.ffmpeg.circular_buffer_size", 7864320),
-                    maxProbeSize + 1123474
+                    (maxProbeSize / 3) + 1123474
             );
 
     // This is the smallest amount of data that will be transfered to the SageTV server.
@@ -252,9 +252,11 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             long startTime = System.currentTimeMillis();
 
+            seekableBuffer.setNoWrap(true);
             stalled = false;
             stateMessage = "Detecting stream...";
             String error = initRemuxer();
+            seekableBuffer.setNoWrap(false);
 
             if (error == null && logger.isDebugEnabled()) {
                 long endTime = System.currentTimeMillis();

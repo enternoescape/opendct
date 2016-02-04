@@ -17,6 +17,7 @@
 package opendct.tuning.hdhomerun;
 
 import opendct.power.PowerEventListener;
+import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,7 +35,7 @@ public class HDHomeRunManager implements PowerEventListener {
             new ConcurrentHashMap<Integer, HDHomeRunDevice>();
 
     public static void startDeviceDetection() throws IOException {
-        discovery.start();
+        discovery.start(new HDHomeRunDiscoverer());
     }
 
     public static synchronized void addDevices(HashSet<HDHomeRunDevice> devices) {
@@ -60,7 +61,7 @@ public class HDHomeRunManager implements PowerEventListener {
     public void onSuspendEvent() {
         try {
             discovery.stop();
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             logger.debug("Interrupted while stopping thread for suspend => ", e);
         }
         removeAllDevices();

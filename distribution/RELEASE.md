@@ -244,3 +244,12 @@
 #### 0.4.20-Beta
 > *Added check at startup for at least one network interface to be present before continuing
 > startup. This has a default timeout of 2 minutes.
+
+> *Circular buffer now expands dynamically during FFmpeg detection.
+
+> *Internal: Created framework for capture device detection as a "plugin."
+
+> *Internal: HDHomeRun native detection method completely implemented.
+
+> *Internal: Enabled JSW configuration reload on restart for future automatic/requested upgrading
+> via web interface.

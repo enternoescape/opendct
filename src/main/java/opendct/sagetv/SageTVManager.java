@@ -706,6 +706,11 @@ public class SageTVManager implements PowerEventListener {
         devicesWaitingThread.blockUntilLoaded();
     }
 
+    /**
+     * Is OpenDCT still waiting for all capture devices to be loaded?
+     *
+     * @return <i>true</i> if all expected capture devices have not been loaded yet.
+     */
     public static boolean captureDevicesLoaded() {
         return !devicesWaitingThread.isAlive();
     }

@@ -18,6 +18,7 @@ package opendct.tuning.hdhomerun;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.tuning.discovery.BasicDiscoveredDevice;
@@ -39,11 +40,25 @@ public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
 
     @Override
     public DeviceOption[] getOptions() {
+        try {
+            return new DeviceOption[] {
+                    getDeviceNameOption()
+            };
+        } catch (DeviceOptionException e) {
+            logger.error("Unable to build options for device => ", e);
+        }
+
         return new DeviceOption[0];
     }
 
     @Override
     public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+        for (DeviceOption deviceOption : deviceOptions) {
+            if (deviceOption.getProperty().equals(propertiesDeviceName)) {
+                setFriendlyName(deviceOption.getValue());
+            }
 
+            Config.setDeviceOption(deviceOption);
+        }
     }
 }

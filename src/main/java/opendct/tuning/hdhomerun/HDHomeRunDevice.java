@@ -68,6 +68,30 @@ public class HDHomeRunDevice {
         return deviceId;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        HDHomeRunDevice that = (HDHomeRunDevice) o;
+
+        return getDeviceId() == that.getDeviceId();
+    }
+
+    @Override
+    public String toString() {
+        return "HDHomeRunDevice{" +
+                "ipAddress=" + ipAddress +
+                ", deviceId=" + deviceId +
+                '}';
+    }
+
+    public void update(HDHomeRunDevice update) {
+        if (update != null && update.getIpAddress() != null) {
+            setIpAddress(update.getIpAddress());
+        }
+    }
+
     public InetAddress getIpAddress() {
         return ipAddress;
     }

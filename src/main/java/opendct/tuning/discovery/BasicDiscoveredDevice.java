@@ -50,6 +50,25 @@ public abstract class BasicDiscoveredDevice implements DiscoveredDevice {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        BasicDiscoveredDevice that = (BasicDiscoveredDevice) o;
+
+        if (id != that.id) return false;
+        return parentId == that.parentId;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id;
+        result = 31 * result + parentId;
+        return result;
+    }
+
+    @Override
     public String getName() {
         return this.name;
     }

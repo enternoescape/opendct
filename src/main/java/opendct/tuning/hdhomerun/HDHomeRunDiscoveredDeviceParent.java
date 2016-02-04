@@ -25,7 +25,16 @@ import java.net.InetAddress;
 public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
     private final Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDeviceParent.class);
 
-    public HDHomeRunDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, InetAddress remoteAddress) {
-        super(name, parentId, localAddress, remoteAddress);
+    HDHomeRunDevice device;
+
+    public HDHomeRunDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, HDHomeRunDevice hdHomeRunDevice) {
+        super(name, parentId, localAddress);
+
+        device = hdHomeRunDevice;
+    }
+
+    @Override
+    public InetAddress getRemoteAddress() {
+        return device.getIpAddress();
     }
 }

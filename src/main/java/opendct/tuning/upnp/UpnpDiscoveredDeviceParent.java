@@ -25,8 +25,15 @@ import java.net.InetAddress;
 public class UpnpDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
     private final Logger logger = LogManager.getLogger(UpnpDiscoveredDeviceParent.class);
 
+    InetAddress remoteAddress;
+
     public UpnpDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, InetAddress remoteAddress) {
-        super(name, parentId, localAddress, remoteAddress);
+        super(name, parentId, localAddress);
+        this.remoteAddress = remoteAddress;
     }
 
+    @Override
+    public InetAddress getRemoteAddress() {
+        return remoteAddress;
+    }
 }

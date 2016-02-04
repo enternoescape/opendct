@@ -318,7 +318,7 @@ public class HDHomeRunDiscovery implements Runnable {
 
     public static InetAddress getBroadcast() {
         try {
-            return InetAddress.getByAddress(
+            return Inet4Address.getByAddress(
                     new byte[]{(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff});
         } catch (UnknownHostException e) {
             // This isn't going to happen.

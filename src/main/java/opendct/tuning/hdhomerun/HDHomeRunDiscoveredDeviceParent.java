@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package opendct.tuning.upnp;
+package opendct.tuning.hdhomerun;
 
 import opendct.tuning.discovery.NetworkDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
@@ -22,11 +22,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.net.InetAddress;
 
-public class UpnpDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
-    private final Logger logger = LogManager.getLogger(UpnpDiscoveredDeviceParent.class);
+public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
+    private final Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDeviceParent.class);
 
-    public UpnpDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, InetAddress remoteAddress) {
+    public HDHomeRunDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, InetAddress remoteAddress) {
         super(name, parentId, localAddress, remoteAddress);
     }
-
 }

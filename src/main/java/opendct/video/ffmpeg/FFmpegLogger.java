@@ -103,26 +103,13 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         String message = trim(bytes);
 
-//        if ( printPrefix[ 0 ] == 1 && lineBuf.length() > 0 )
-//        {
-//            String line = lineBuf.toString();
-//            lineBuf.setLength( 0 );
-//            lineBuf.append( message );
-//            message = line;
-//        }
-//        else
-//        {
-//            lineBuf.append( message );
-//            return;
-//        }
-//
-//        logger.info( "class_name=" + className );
-//
-//        message = "level=" + level + ", callLogLevel=" + callLogLevel + ", configuredLogLevel=" + configuredLogLevel + "(" + configuredLogLevel.intValue() + "): " + message;
-
+        // Clean up logging. Everything ignored here is expected and does not need to be logged.
         if (message.endsWith("Invalid frame dimensions 0x0.") ||
                 message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
-                message.endsWith("is not set in estimate_timings_from_pts") || message.contains(" buffer underflow st=")) {
+                message.endsWith("is not set in estimate_timings_from_pts") ||
+                message.endsWith("non-existing PPS 0 referenced") ||
+                message.endsWith("decode_slice_header error") ||
+                message.contains(" buffer underflow st=")) {
 
             return;
         }

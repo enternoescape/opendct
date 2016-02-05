@@ -16,15 +16,17 @@
 
 package opendct.tuning.hdhomerun.returns;
 
+import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
+
 import java.util.Arrays;
 
 public class HDHomeRunFeatures {
-    private final String channelmap[];
+    private final String channelmaps[];
     private final String modulation[];
     private final String autoModulation[];
 
-    public HDHomeRunFeatures(String channelmap[], String modulation[], String autoModulation[]) {
-        this.channelmap = channelmap;
+    public HDHomeRunFeatures(String channelmaps[], String modulation[], String autoModulation[]) {
+        this.channelmaps = channelmaps;
         this.modulation = modulation;
         this.autoModulation = autoModulation;
     }
@@ -54,13 +56,34 @@ public class HDHomeRunFeatures {
             }
         }
 
-        this.channelmap = channelmap;
+        this.channelmaps = channelmap;
         this.modulation = modulation;
         this.autoModulation = autoModulation;
     }
 
-    public String[] getChannelmap() {
-        return channelmap;
+    public String[] getChannelmaps() {
+        return channelmaps;
+    }
+
+    public HDHomeRunChannelMap[] getChannelmapEnum() {
+        HDHomeRunChannelMap returnValues[] = new HDHomeRunChannelMap[channelmaps.length];
+
+        int i = 0;
+        for (String channelMap : channelmaps) {
+            returnValues[i++] = getEnumForChannelmap(channelMap);
+        }
+
+        return returnValues;
+    }
+
+    public static HDHomeRunChannelMap getEnumForChannelmap(String channelmap) {
+        for (HDHomeRunChannelMap map : HDHomeRunChannelMap.values()) {
+            if (map.CHANNEL_MAP_NAME.equals(channelmap.toLowerCase())) {
+                return map;
+            }
+        }
+
+        return HDHomeRunChannelMap.UNKNOWN;
     }
 
     public String[] getModulation() {
@@ -74,7 +97,7 @@ public class HDHomeRunFeatures {
     @Override
     public String toString() {
         return "HDHomeRunFeatures{" +
-                "channelmap=" + Arrays.toString(channelmap) +
+                "channelmap=" + Arrays.toString(channelmaps) +
                 ", modulation=" + Arrays.toString(modulation) +
                 ", autoModulation=" + Arrays.toString(autoModulation) +
                 '}';

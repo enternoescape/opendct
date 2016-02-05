@@ -16,6 +16,7 @@
 
 package opendct.video.ffmpeg;
 
+import opendct.config.Config;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.IntPointer;
 import org.bytedeco.javacpp.avformat;
@@ -24,8 +25,6 @@ import org.bytedeco.javacpp.avformat.AVFormatContext;
 import org.bytedeco.javacpp.avformat.AVProgram;
 import org.bytedeco.javacpp.avformat.AVStream;
 import org.bytedeco.javacpp.avutil.*;
-
-import opendct.config.Config;
 
 import static org.bytedeco.javacpp.avcodec.avcodec_string;
 import static org.bytedeco.javacpp.avformat.AVFMT_SHOW_IDS;

@@ -451,7 +451,14 @@ public class Config {
         logger.entry(key, defaultValue);
 
         String stringValue[] = properties.getProperty(key, "").split("\\s*,\\s*");
-        int returnValue[] = new int[stringValue.length];
+        int returnValue[];
+
+        if (stringValue.length == 1 && stringValue[0].equals("")) {
+            returnValue = new int[0];
+            stringValue = new String[0];
+        } else {
+            returnValue = new int[stringValue.length];
+        }
 
         try {
             for (int i = 0; i < returnValue.length; i++) {

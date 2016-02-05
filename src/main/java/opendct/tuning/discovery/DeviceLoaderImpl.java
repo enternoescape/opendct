@@ -18,6 +18,8 @@ package opendct.tuning.discovery;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
+import opendct.config.Config;
+import opendct.power.NetworkPowerEventManger;
 import opendct.sagetv.SageTVManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,23 +29,59 @@ import java.net.SocketException;
 public class DeviceLoaderImpl implements DeviceLoader {
     private final Logger logger = LogManager.getLogger(DeviceLoaderImpl.class);
 
+    // Once the web interface becomes the new way to load specific devices, this value will be
+    // changed to discovery.devices.always_enable=false.
+    private final boolean alwaysEnable = Config.getBoolean("discovery.devices.exp_always_enable", true);
+
     @Override
     public synchronized void advertiseDevice(DiscoveredDevice details, DeviceDiscoverer discovery) {
-        if (DiscoveryManager.isDevicePermitted(details.getId())) {
+        if (DiscoveryManager.isDevicePermitted(details.getId()) && !alwaysEnable) {
             return;
         }
 
         try {
             CaptureDevice captureDevice = discovery.loadCaptureDevice(details.getId());
             SageTVManager.addCaptureDevice(captureDevice);
+
+            DiscoveredDeviceParent parent = discovery.getDeviceParentDetails(details.getParentId());
+
+            if (parent != null) {
+                if (parent.isNetworkDevice()) {
+                    if (parent.getRemoteAddress() == null) {
+                        logger.warn("The capture device parent '{}' reports that it is a network" +
+                                " device, but does not have a remote address.",
+                                parent.getName());
+
+                    } else {
+                        NetworkPowerEventManger.POWER_EVENT_LISTENER.addDependentInterface(parent.getRemoteAddress());
+                    }
+                }
+            } else {
+                logger.warn("The capture device '{}' does not have a parent.",
+                        details.getName());
+
+            }
         } catch (CaptureDeviceIgnoredException e) {
-            logger.error("Not permitted to load the capture device '{}', id {} => ", details.getName(), details.getId(), e);
+            logger.error("Not permitted to load the capture device '{}', id {} => ",
+                    details.getName(), details.getId(), e);
+
         } catch (CaptureDeviceLoadException e) {
-            logger.error("Unable to load the capture device '{}', id {} => ", details.getName(), details.getId(), e);
+            logger.error("Unable to load the capture device '{}', id {} => ",
+                    details.getName(), details.getId(), e);
+
         } catch (SocketException e) {
-            logger.error("Unable to open a socket for the capture device '{}', id {} => ", details.getName(), details.getId(), e);
+            logger.error("Unable to open a socket for the capture device '{}', id {} => ",
+                    details.getName(), details.getId(), e);
+
         } catch (Exception e) {
-            logger.error("Unexpected exception created by the capture device '{}', id {} => ", details.getName(), details.getId(), e);
+            logger.error("Unexpected exception created by the capture device '{}', id {} => ",
+                    details.getName(), details.getId(), e);
+
         }
+    }
+
+    @Override
+    public boolean isWaitingForDevices() {
+        return !SageTVManager.captureDevicesLoaded();
     }
 }

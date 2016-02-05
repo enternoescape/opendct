@@ -108,7 +108,6 @@ public class RegisterDevice {
     }
 
     public static boolean removeRemoteDevice(Registry registry, RemoteDevice remoteDevice) {
-        //TODO: [js] Do we want to do anything about device removal?
         return true;
     }
 

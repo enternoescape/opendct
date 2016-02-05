@@ -25,6 +25,10 @@ import java.net.URL;
 public class HDHomeRunDevice {
     public final HDHomeRunControl CONTROL;
 
+    private String uniqueDeviceName;
+    private String uniqueTunerPrefix;
+
+    private HDHomeRunDiscoveredDeviceParent deviceParent;
     private InetAddress ipAddress;
     private int deviceType;
     private int deviceId;
@@ -306,6 +310,8 @@ public class HDHomeRunDevice {
 
     /**
      * Get if this is a CableCARD tuning device.
+     * <p/>
+     * This is not an indication of if the CableCARD is currently inserted.
      *
      * @return <i>true</i> if this is a CableCARD tuning device.
      * @throws IOException Thrown if communication with the device was incomplete or is not possible
@@ -339,7 +345,17 @@ public class HDHomeRunDevice {
             getSysHwModel();
         }
 
-        return "HDHomeRun " + sysHwModel + " " + deviceId;
+        if (uniqueDeviceName == null) {
+            if (sysHwModel.equals("HDHR3-CC")) {
+                // This is to ease the transition from using UPnP for detection of the Prime model.
+                // HDHomeRun DRI Tuner XXXXXXXX
+                uniqueDeviceName = "HDHomeRun DRI Tuner " + Integer.toHexString(deviceId).toUpperCase();
+            } else {
+                uniqueDeviceName = "HDHomeRun " + sysHwModel + " " + Integer.toHexString(deviceId).toUpperCase();
+            }
+        }
+
+        return uniqueDeviceName;
     }
 
     /**
@@ -358,6 +374,16 @@ public class HDHomeRunDevice {
             getSysHwModel();
         }
 
-        return "HDHomeRun " + sysHwModel + " Tuner " + deviceId + "-" + String.valueOf(tuner);
+        if (uniqueTunerPrefix == null) {
+            if (sysHwModel.equals("HDHR3-CC")) {
+                // This is to ease the transition from using UPnP for detection of the Prime model.
+                // DCT-HDHomeRun Prime Tuner XXXXXXXX-2
+                uniqueDeviceName = "DCT-HDHomeRun Prime Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
+            } else {
+                uniqueTunerPrefix = "HDHomeRun " + sysHwModel + " Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
+            }
+        }
+
+        return  uniqueTunerPrefix + String.valueOf(tuner);
     }
 }

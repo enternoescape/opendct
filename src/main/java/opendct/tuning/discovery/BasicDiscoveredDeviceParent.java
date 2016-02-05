@@ -40,6 +40,10 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
     private final HashSet<Integer> childIds = new HashSet<>();
 
     public BasicDiscoveredDeviceParent(String name, int parentId) {
+        this(name, name, parentId);
+    }
+
+    public BasicDiscoveredDeviceParent(String name, String friendlyName, int parentId) {
         this.name = name;
         this.parentId = parentId;
 

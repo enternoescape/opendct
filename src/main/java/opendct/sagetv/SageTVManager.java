@@ -81,7 +81,7 @@ public class SageTVManager implements PowerEventListener {
         // guarantee that two socket servers will not unintentionally use the same port.
         int newPort = Config.getSocketServerPort(
                 captureDevice.getEncoderUniqueHash(),
-                captureDevice.getEncoderVersion());
+                "3.0");
 
         if (newPort == 0) {
             throw new SocketException("There are no available ports within the provided range. The tuner cannot start.");
@@ -606,7 +606,7 @@ public class SageTVManager implements PowerEventListener {
                                 ".encoder_listen_port",
                         Config.getSocketServerPort(
                                 captureDevice.getEncoderUniqueHash(),
-                                captureDevice.getEncoderVersion()
+                                "3.0"
                         )
                 );
 

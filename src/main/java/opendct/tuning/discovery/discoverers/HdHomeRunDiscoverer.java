@@ -300,23 +300,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 parentDevice.addChild(newDevice.getId());
 
                 deviceLoader.advertiseDevice(newDevice, this);
-
-                /*try {
-                    logger.info(discoveredDevice.getTuner(0).getChannelmap());
-                } catch (IOException e) {
-                    logger.error("Unable to get channel map from HDHomeRun because it cannot be reached => ", e);
-                } catch (GetSetException e) {
-                    logger.error("Unable to get channel map from HDHomeRun because the command did not work => ", e);
-                }
-
-                try {
-                    logger.info("HDHomeRun details: {}, {}, {}, {}", discoveredDevice.getSysHwModel(), discoveredDevice.getSysModel(), discoveredDevice.getSysVersion(), discoveredDevice.getSysFeatures());
-                    logger.info("HDHomeRun help: {}", Arrays.toString(discoveredDevice.getHelp()));
-                } catch (IOException e) {
-                    logger.error("Unable to get help from HDHomeRun because the device cannot be reached => ", e);
-                } catch (GetSetException e) {
-                    logger.error("Unable to get help from the HDHomeRun because the command did not work => ", e);
-                }*/
             }
 
             hdHomeRunDevices.put(discoveredDevice.getDeviceId(), discoveredDevice);

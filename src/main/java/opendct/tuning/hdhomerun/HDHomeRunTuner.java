@@ -16,9 +16,11 @@
 
 package opendct.tuning.hdhomerun;
 
+import opendct.tuning.hdhomerun.returns.HDHomeRunFeatures;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStreamInfo;
 import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
+import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
 import opendct.util.Util;
 
 import java.io.IOException;
@@ -537,6 +539,12 @@ public class HDHomeRunTuner {
         channelmap = get("channelmap");
 
         return channelmap;
+    }
+
+    public HDHomeRunChannelMap getChannelmapEnum() throws IOException, GetSetException {
+        channelmap = get("channelmap");
+
+        return HDHomeRunFeatures.getEnumForChannelmap(channelmap);
     }
 
     /**

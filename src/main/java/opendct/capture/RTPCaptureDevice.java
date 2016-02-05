@@ -51,13 +51,29 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
      *
      * @param deviceParentName This is the name of the device containing this capture device. This
      *                         is used for identifying groupings of devices.
-     * @param deviceName       This name is used to uniquely identify this capture device. The encoder
-     *                         version is defaulted to 3.0.
+     * @param deviceName This name is used to uniquely identify this capture device. The encoder
+     *                   version is defaulted to 3.0.
      * @throws CaptureDeviceIgnoredException If the configuration indicates that this device should
      *                                       not be loaded, this exception will be thrown.
      */
     public RTPCaptureDevice(String deviceParentName, String deviceName) throws CaptureDeviceIgnoredException {
         super(deviceParentName, deviceName);
+    }
+
+    /**
+     * Create a new RTP capture device.
+     *
+     * @param deviceParentName This is the name of the device containing this capture device. This
+     *                         is used for identifying groupings of devices.
+     * @param deviceName This name is used to uniquely identify this capture device. The encoder
+     *                   version is defaulted to 3.0.
+     * @param encoderParentHash This is a unique integer for the parent device.
+     * @param encoderHash This is a unique integer for the encoder device.
+     * @throws CaptureDeviceIgnoredException If the configuration indicates that this device should
+     *                                       not be loaded, this exception will be thrown.
+     */
+    public RTPCaptureDevice(String deviceParentName, String deviceName, int encoderParentHash, int encoderHash) throws CaptureDeviceIgnoredException {
+        super(deviceParentName, deviceName, encoderParentHash, encoderHash);
     }
 
     /**

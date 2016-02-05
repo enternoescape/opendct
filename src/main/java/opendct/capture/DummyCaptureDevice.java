@@ -19,6 +19,8 @@ package opendct.capture;
 import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -210,5 +212,13 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public CopyProtection getCopyProtection() {
         return CopyProtection.UNKNOWN;
+    }
+
+    public DeviceOption[] getOptions() {
+        return new DeviceOption[0];
+    }
+
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+
     }
 }

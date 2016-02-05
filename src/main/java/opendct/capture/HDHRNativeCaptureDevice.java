@@ -255,16 +255,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     }
 
     @Override
-    public void tuneToChannel(String channel) {
-
-    }
-
-    @Override
-    public boolean autoTuneChannel(String channel) {
-        return false;
-    }
-
-    @Override
     public boolean isReady() {
         return true;
     }
@@ -274,12 +264,14 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         //TODO: Get the actual broadcast standard in use.
 
         try {
-            tuner.getChannelmap();
+            String lockStr = tuner.getStatus().LOCK_STR;
+            logger.debug("getBroadcastStandard: {}", lockStr);
         } catch (IOException e) {
             logger.error("Unable to get broadcast standard from HDHomeRun because it cannot be reached => ", e);
         } catch (GetSetException e) {
             logger.error("Unable to get broadcast standard from HDHomeRun because the command did not work => ", e);
         }
+
         return BroadcastStandard.QAM256;
     }
 

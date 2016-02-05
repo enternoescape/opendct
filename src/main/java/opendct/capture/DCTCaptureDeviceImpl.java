@@ -302,7 +302,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
-                ChannelLineup newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.PRIME, encoderIPAddress);
+                ChannelLineup newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.HDHOMERUN, encoderIPAddress);
                 ChannelManager.updateChannelLineup(newChannelLineup);
                 ChannelManager.addChannelLineup(newChannelLineup, true);
                 ChannelManager.saveChannelLineup(encoderLineup);
@@ -1574,14 +1574,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      */
     public boolean isHDHRTune() {
         return hdhrTune && encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN || encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN;
-    }
-
-    public void tuneToChannel(String channel) {
-
-    }
-
-    public boolean autoTuneChannel(String channel) {
-        return false;
     }
 
     /**

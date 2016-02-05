@@ -21,7 +21,7 @@ public enum CaptureDeviceType {
     DCT_INFINITV,  // Ceton InfiniTV
     DCT_PRIME,     // Silicondust HDHomeRun Prime
     QAM_INFINITV,  // Ceton InfiniTV without a cable card.
-    QAM_PRIME,     // Silicondust HDHomeRun Prime without a cable card.
+    QAM_HDHOMERUN,     // Silicondust HDHomeRun Prime without a cable card.
     HDHOMERUN,     // Silicondust HDHomeRun devices.
     PI_HDPVR,      // HD-PVR connected to a Raspberry Pi
     PI_TUNER,      // any USB tuner connected to a Raspberry Pi

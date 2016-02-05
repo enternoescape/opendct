@@ -294,7 +294,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 encoderDeviceType = CaptureDeviceType.DCT_PRIME;
                 setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
             } else {
-                encoderDeviceType = CaptureDeviceType.QAM_PRIME;
+                encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
                 setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
             }
 
@@ -474,7 +474,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         // First check if the value is already from an alternative lineup.
         ArrayList<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_PRIME));
-        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_PRIME));
+        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_HDHOMERUN));
 
         if (UpnpDiscoverer.getAutoMapReference()) {
             for (CaptureDevice device : devices) {
@@ -741,7 +741,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     return logger.exit(false);
                 }
                 break;
-            case QAM_PRIME:
+            case QAM_HDHOMERUN:
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
                 if (tvChannel == null) {
                     logger.error("The channel '{}' does not exist on the lineup '{}'.", channel, encoderLineup);
@@ -1055,7 +1055,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             monitorThread.interrupt();
         }
 
-        if(encoderDeviceType == CaptureDeviceType.QAM_INFINITV || encoderDeviceType == CaptureDeviceType.QAM_PRIME) {
+        if(encoderDeviceType == CaptureDeviceType.QAM_INFINITV || encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
             TVChannel qamChannel = ChannelManager.getChannel(encoderLineup, channel);
 
             if (qamChannel == null) {
@@ -1171,7 +1171,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     logger.error("Unable to get AVTransportID. Using the default 0.");
 
                     if (encoderDeviceType == CaptureDeviceType.DCT_PRIME ||
-                            encoderDeviceType == CaptureDeviceType.QAM_PRIME) {
+                            encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
                         avTransportSubscription.setAVTransportInstanceID("0");
                     } else {
                         avTransportSubscription.setAVTransportInstanceID("0");
@@ -1451,7 +1451,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     if (encoderDeviceType == CaptureDeviceType.DCT_PRIME) {
                         hdhrTuner.clearVirtualChannel();
                         hdhrTuner.clearTarget();
-                    } else if (encoderDeviceType == CaptureDeviceType.QAM_PRIME) {
+                    } else if (encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
                         hdhrTuner.clearChannel();
                         hdhrTuner.clearTarget();
                     }
@@ -1573,7 +1573,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      * @return <i>true</i> if the HDHomeRun native protocol is to be used.
      */
     public boolean isHDHRTune() {
-        return hdhrTune && encoderDeviceType == CaptureDeviceType.DCT_PRIME || encoderDeviceType == CaptureDeviceType.QAM_PRIME;
+        return hdhrTune && encoderDeviceType == CaptureDeviceType.DCT_PRIME || encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN;
     }
 
     public void tuneToChannel(String channel) {
@@ -1617,13 +1617,13 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
         } else if (encoderDeviceType == CaptureDeviceType.DCT_PRIME ||
-                encoderDeviceType == CaptureDeviceType.QAM_PRIME) {
+                encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
 
             try {
                 HDHomeRunStatus status = hdhrTuner.getStatus();
                 signal = status.SIGNAL_STRENGTH;
             } catch (Exception e) {
-                logger.debug("Unable to get CCI status from HDHomeRun.");
+                logger.debug("Unable to get signal strength from HDHomeRun.");
             }
         }
 
@@ -1647,7 +1647,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
         } else if (encoderDeviceType == CaptureDeviceType.DCT_PRIME ||
-                encoderDeviceType == CaptureDeviceType.QAM_PRIME) {
+                encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
 
             try {
                 HDHomeRunVStatus vstatus = hdhrTuner.getVirtualChannelStatus();
@@ -1706,7 +1706,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
         } else if (encoderDeviceType == CaptureDeviceType.DCT_PRIME ||
-                encoderDeviceType == CaptureDeviceType.QAM_PRIME) {
+                encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
 
             try {
                 stringBuilder.append("Target: ").append(hdhrTuner.getTarget());

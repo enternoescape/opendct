@@ -83,7 +83,7 @@ public class HDHomeRunDiscovery implements Runnable {
         datagramChannel = DatagramChannel.open();
         datagramChannel.socket().bind(new InetSocketAddress(BROADCAST_PORT));
         datagramChannel.socket().setBroadcast(true);
-        datagramChannel.socket().setReceiveBufferSize(10000);
+        datagramChannel.socket().setReceiveBufferSize(1000000);
 
         receiveThread = new Thread(new ReceiveThread());
         receiveThread.setName("HDHomeRunDiscoveryReceive-" + sendThread.getId());
@@ -110,8 +110,19 @@ public class HDHomeRunDiscovery implements Runnable {
     }
 
     public void waitForStop() throws InterruptedException {
-        receiveThread.join();
-        sendThread.join();
+        if (receiveThread != null) {
+            while (receiveThread.isAlive()) {
+                receiveThread.interrupt();
+                receiveThread.join(500);
+            }
+        }
+
+        if (sendThread != null) {
+            while (sendThread.isAlive()) {
+                sendThread.interrupt();
+                sendThread.join(500);
+            }
+        }
     }
 
     public void run() {
@@ -164,20 +175,7 @@ public class HDHomeRunDiscovery implements Runnable {
                 }
             }
 
-            if (datagramChannel != null) {
-                try {
-                    datagramChannel.close();
-                    datagramChannel.socket().close();
-                } catch (IOException e) {
-                    logger.debug("Created an IO exception while closing the datagram channel => ", e);
-                }
-            }
-
             while (!Thread.currentThread().isInterrupted()) {
-                if (receiveThread != null && receiveThread.isAlive()) {
-                    receiveThread.interrupt();
-                }
-
                 try {
                     int interval = HDHomeRunDiscoverer.getBroadcastInterval();
                     boolean devicesLoaded = discoverer.isWaitingForDevices();
@@ -193,22 +191,16 @@ public class HDHomeRunDiscovery implements Runnable {
                     logger.debug("Interrupted while waiting for next broadcast to be sent => ", e);
                     return;
                 }
-
-                try {
-                    datagramChannel = DatagramChannel.open();
-                    datagramChannel.socket().bind(new InetSocketAddress(BROADCAST_PORT));
-                    datagramChannel.socket().setBroadcast(true);
-                    datagramChannel.socket().setReceiveBufferSize(10000);
-                    break;
-                } catch (IOException e) {
-                    logger.error("Unable to re-open datagram channel => ", e);
-                }
             }
+        }
 
-
-            receiveThread = new Thread(new ReceiveThread());
-            receiveThread.setName("HDHomeRunDiscoveryReceive-" + sendThread.getId());
-            receiveThread.start();
+        if (datagramChannel != null) {
+            try {
+                datagramChannel.close();
+                datagramChannel.socket().close();
+            } catch (IOException e) {
+                logger.debug("Created an IO exception while closing the datagram channel => ", e);
+            }
         }
     }
 
@@ -217,7 +209,7 @@ public class HDHomeRunDiscovery implements Runnable {
         public void run() {
             final char recvBase64EncodeTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
 
-            while (!Thread.currentThread().isInterrupted() && sendThread != null && sendThread.isAlive()) {
+            while (sendThread != null && sendThread.isAlive()) {
                 rxPacket.BUFFER.clear();
 
                 InetSocketAddress socketAddress;
@@ -337,7 +329,11 @@ public class HDHomeRunDiscovery implements Runnable {
                             }
                         }
 
-                        discoverer.addDevices(device);
+                        try {
+                            discoverer.addDevices(device);
+                        } catch (Exception e) {
+                            logger.error("Unable to add new HDHomeRun capture device => ", e);
+                        }
 
                         if (discoverer.isWaitingForDevices()) {
                             logger.debug("Parsed discovery packet: {}", device);

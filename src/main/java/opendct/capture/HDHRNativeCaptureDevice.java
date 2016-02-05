@@ -23,13 +23,17 @@ import opendct.config.Config;
 import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.*;
+import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
+import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -57,7 +61,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
      * @throws CaptureDeviceIgnoredException If the configuration indicates that this device should
      *                                       not be loaded, this exception will be thrown.
      */
-    public HDHRNativeCaptureDevice(HDHomeRunDiscoveredDeviceParent discoveredDeviceParent, HDHomeRunDiscoveredDevice discoveredDevice) throws CaptureDeviceIgnoredException, CaptureDeviceInitException {
+    public HDHRNativeCaptureDevice(HDHomeRunDiscoveredDeviceParent discoveredDeviceParent, HDHomeRunDiscoveredDevice discoveredDevice) throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
         super(discoveredDeviceParent.getFriendlyName(), discoveredDevice.getFriendlyName(), discoveredDeviceParent.getParentId(), discoveredDevice.getId());
 
         this.discoveredDeviceParent = discoveredDeviceParent;
@@ -83,6 +87,35 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             );
         } catch (DeviceOptionException e) {
             logger.error("Unable to configure device options for HDHRNativeCaptureDevice => ", e);
+        }
+
+        encoderDeviceType = CaptureDeviceType.HDHOMERUN;
+
+        try {
+            if (device.isCableCardTuner()) {
+                encoderDeviceType = CaptureDeviceType.DCT_PRIME;
+            } else {
+                encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
+            }
+        } catch (IOException e) {
+            logger.error("Unable to check HDHomeRun mode because it cannot be reached => ", e);
+        }
+
+        try {
+            logger.info(tuner.getChannelmap());
+        } catch (IOException e) {
+            logger.error("Unable to get channel map from HDHomeRun because it cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to get channel map from HDHomeRun because the command did not work => ", e);
+        }
+
+        try {
+            logger.debug("HDHomeRun details: {}, {}, {}, {}", device.getSysHwModel(), device.getSysModel(), device.getSysVersion(), device.getSysFeatures());
+            logger.debug("HDHomeRun help: {}", Arrays.toString(device.getHelp()));
+        } catch (IOException e) {
+            logger.error("Unable to get help from HDHomeRun because the device cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to get help from the HDHomeRun because the command did not work => ", e);
         }
     }
 
@@ -201,22 +234,53 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
     @Override
     public boolean isReady() {
-        return false;
+        return true;
     }
 
     @Override
     public BroadcastStandard getBroadcastStandard() {
-        return null;
+        //TODO: Get the actual broadcast standard in use.
+
+        try {
+            tuner.getChannelmap();
+        } catch (IOException e) {
+            logger.error("Unable to get broadcast standard from HDHomeRun because it cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to get broadcast standard from HDHomeRun because the command did not work => ", e);
+        }
+        return BroadcastStandard.QAM256;
     }
 
     @Override
     public int getSignalStrength() {
-        return 0;
+        int signal = 0;
+
+        try {
+            HDHomeRunStatus status = tuner.getStatus();
+            signal = status.SIGNAL_STRENGTH;
+        } catch (IOException e) {
+            logger.error("Unable to get signal strength from HDHomeRun because it cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to get signal strength from HDHomeRun because the command did not work => ", e);
+        }
+
+        return signal;
     }
 
     @Override
     public CopyProtection getCopyProtection() {
-        return null;
+        CopyProtection returnValue = CopyProtection.UNKNOWN;
+
+        try {
+            HDHomeRunVStatus vstatus = tuner.getVirtualChannelStatus();
+            returnValue = vstatus.COPY_PROTECTION;
+        } catch (IOException e) {
+            logger.error("Unable to get CCI from HDHomeRun because it cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to get CCI from HDHomeRun because the command did not work => ", e);
+        }
+
+        return returnValue;
     }
 
     @Override

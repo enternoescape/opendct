@@ -18,6 +18,7 @@ package opendct.tuning.hdhomerun;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
+import opendct.capture.HDHRNativeCaptureDevice;
 import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
@@ -30,16 +31,19 @@ public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
     private final Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDevice.class);
 
     private int tunerNumber;
+    private HDHomeRunDiscoveredDeviceParent deviceParent;
 
-    public HDHomeRunDiscoveredDevice(String name, int id, int parentId, String description, int tunerNumber) {
+    public HDHomeRunDiscoveredDevice(String name, int id, int parentId, String description, int tunerNumber, HDHomeRunDiscoveredDeviceParent deviceParent) {
         super(name, id, parentId, description);
 
         this.tunerNumber = tunerNumber;
+        this.deviceParent = deviceParent;
     }
 
     @Override
     public CaptureDevice loadCaptureDevice() throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
-        return null;
+
+        return new HDHRNativeCaptureDevice(deviceParent, this);
     }
 
     public int getTunerNumber() {

@@ -344,7 +344,13 @@ public class HDHomeRunDevice {
         }
 
         if (uniqueDeviceName == null) {
-            uniqueDeviceName = "HDHomeRun " + sysHwModel + " " + Integer.toHexString(deviceId).toUpperCase();
+            if (sysHwModel.equals("HDHR3-CC")) {
+                // This is to ease the transition from using UPnP for detection of the Prime model.
+                // HDHomeRun DRI Tuner XXXXXXXX
+                uniqueDeviceName = "HDHomeRun DRI Tuner " + Integer.toHexString(deviceId).toUpperCase();
+            } else {
+                uniqueDeviceName = "HDHomeRun " + sysHwModel + " " + Integer.toHexString(deviceId).toUpperCase();
+            }
         }
 
         return uniqueDeviceName;
@@ -367,7 +373,13 @@ public class HDHomeRunDevice {
         }
 
         if (uniqueTunerPrefix == null) {
-            uniqueTunerPrefix = "HDHomeRun " + sysHwModel + " Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
+            if (sysHwModel.equals("HDHR3-CC")) {
+                // This is to ease the transition from using UPnP for detection of the Prime model.
+                // DCT-HDHomeRun Prime Tuner XXXXXXXX-2
+                uniqueDeviceName = "DCT-HDHomeRun Prime Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
+            } else {
+                uniqueTunerPrefix = "HDHomeRun " + sysHwModel + " Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
+            }
         }
 
         return  uniqueTunerPrefix + String.valueOf(tuner);

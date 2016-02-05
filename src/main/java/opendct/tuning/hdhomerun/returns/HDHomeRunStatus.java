@@ -17,14 +17,53 @@
 package opendct.tuning.hdhomerun.returns;
 
 public class HDHomeRunStatus {
+
+    //Page 5: https://www.silicondust.com/hdhomerun/hdhomerun_development.pdf
+
+    /**
+     * Channel requested.
+     */
     public final String CHANNEL;
-    public final String LOCK_STR; //This is not the device lock.
+
+    /**
+     * String representation of actual modulation detected.
+     */
+    public final String LOCK_STR;
+
+    /**
+     * Is a signal currently detected? If this is a CableCARD tuner, this does not always mean the
+     * channel can be streamed.
+     */
     public final boolean SIGNAL_PRESENT;
+
+    /**
+     * Is the currently requested modulation actually supported by this device?
+     */
     public final boolean LOCK_SUPPORTED;
+
+    /**
+     * Actual signal strength. 80% is approximately -12dBmV.
+     */
     public final int SIGNAL_STRENGTH;
+
+    /**
+     * Signal to noise quality (based on analog signal to noise ratio).
+     */
     public final int SIGNAL_TO_NOISE_QUALITY;
+
+    /**
+     * Symbol error quality (number of uncorrectable digital errors detected).
+     */
     public final int SYMBOL_ERROR_QUALITY;
+
+    /**
+     * Raw channel bits per second.
+     */
     public final int RAW_BITS_PER_SECOND;
+
+    /**
+     * Packets per second sent through the network.
+     */
     public final int PACKETS_PER_SECOND;
 
     public HDHomeRunStatus(String channel, String lockStr, boolean signalPresent, boolean lockSupported, int signalStrength, int signalToNoiseQuality, int symbolErrorQuality, int rawBitsPerSecond, int packetsPerSecond) {

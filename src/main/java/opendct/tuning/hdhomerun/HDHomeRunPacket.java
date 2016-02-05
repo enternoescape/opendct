@@ -157,7 +157,8 @@ public class HDHomeRunPacket {
             }
         }
 
-        logger.warn("Unable to find the enum for tag {}.", value);
+        // What is 0x27?
+        //logger.warn("Unable to find the enum for tag {}.", value);
         return null;
     }
 
@@ -168,7 +169,7 @@ public class HDHomeRunPacket {
             }
         }
 
-        logger.warn("Unable to find the enum for packet type {}.", value);
+        //logger.warn("Unable to find the enum for packet type {}.", value);
         return null;
     }
 

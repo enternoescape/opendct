@@ -29,4 +29,10 @@ public interface DeviceLoader {
      */
     public void advertiseDevice(DiscoveredDevice details, DeviceDiscoverer discovery);
 
+    /**
+     * Returns if the detection method should not stop discovery even if it is configured to do so.
+     *
+     * @return <i>true</i> if the device loader is still waiting on capture devices.
+     */
+    public boolean isWaitingForDevices();
 }

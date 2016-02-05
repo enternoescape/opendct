@@ -16,7 +16,6 @@
 
 package opendct.tuning.hdhomerun;
 
-import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketTag;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketType;
@@ -27,7 +26,6 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
-import java.util.HashSet;
 
 public class HDHomeRunDiscovery implements Runnable {
     private static final Logger logger = LogManager.getLogger(HDHomeRunDiscovery.class);
@@ -43,7 +41,6 @@ public class HDHomeRunDiscovery implements Runnable {
     HDHomeRunPacket rxPacket;
 
     HDHomeRunDiscoverer discoverer;
-    private HashSet<HDHomeRunDevice> devices;
     private final Object devicesLock = new Object();
 
     public HDHomeRunDiscovery(InetAddress broadcastAddress) {
@@ -52,7 +49,6 @@ public class HDHomeRunDiscovery implements Runnable {
         BROADCAST_SOCKET = new InetSocketAddress(BROADCAST_ADDRESS, BROADCAST_PORT);
         txPacket = new HDHomeRunPacket();
         rxPacket = new HDHomeRunPacket();
-        devices = new HashSet<HDHomeRunDevice>();
     }
 
     public HDHomeRunDiscovery(InetAddress broadcastAddress, int broadcastPort) {
@@ -61,25 +57,6 @@ public class HDHomeRunDiscovery implements Runnable {
         BROADCAST_SOCKET = new InetSocketAddress(BROADCAST_ADDRESS, BROADCAST_PORT);
         txPacket = new HDHomeRunPacket();
         rxPacket = new HDHomeRunPacket();
-        devices = new HashSet<HDHomeRunDevice>();
-    }
-
-    private HashSet<HDHomeRunDevice> getAndClearDevices() {
-        HashSet<HDHomeRunDevice> returnDevices = new HashSet<HDHomeRunDevice>();
-
-        synchronized (devicesLock) {
-            HashSet<HDHomeRunDevice> oldDevices = devices;
-            devices = returnDevices;
-            returnDevices = oldDevices;
-        }
-
-        return returnDevices;
-    }
-
-    private void addDevice(HDHomeRunDevice device) {
-        synchronized (devicesLock) {
-            devices.add(device);
-        }
     }
 
     public void start(HDHomeRunDiscoverer discoverer) throws IOException {
@@ -162,7 +139,9 @@ public class HDHomeRunDiscovery implements Runnable {
                 boolean failed = false;
                 while (txPacket.BUFFER.hasRemaining()) {
                     try {
-                        logger.info("Sending HDHomeRun discovery packet length {}...", txPacket.BUFFER.limit());
+                        if (discoverer.isWaitingForDevices()) {
+                            logger.info("Sending HDHomeRun discovery packet length {}...", txPacket.BUFFER.limit());
+                        }
                         datagramChannel.send(txPacket.BUFFER, BROADCAST_SOCKET);
                     } catch (IOException e) {
                         logger.error("Error while sending HDHomeRun discovery packets to {} => ", BROADCAST_SOCKET, e);
@@ -183,10 +162,9 @@ public class HDHomeRunDiscovery implements Runnable {
                     logger.debug("Interrupted while waiting for packets to be received => ", e);
                     break;
                 }
-
             }
 
-            if (datagramChannel != null && datagramChannel.isConnected()) {
+            if (datagramChannel != null) {
                 try {
                     datagramChannel.close();
                     datagramChannel.socket().close();
@@ -195,36 +173,36 @@ public class HDHomeRunDiscovery implements Runnable {
                 }
             }
 
-            if (receiveThread != null && receiveThread.isAlive()) {
-                receiveThread.interrupt();
-            }
-
-            discoverer.addDevices(getAndClearDevices());
-
-            try {
-                int interval = HDHomeRunDiscoverer.getBroadcastInterval();
-                boolean devicesLoaded = SageTVManager.captureDevicesLoaded();
-
-                if (interval == 0 && devicesLoaded) {
-                    break;
-                } else if (interval == 0 && !devicesLoaded) {
-                    Thread.sleep(4500);
-                } else {
-                    Thread.sleep(HDHomeRunDiscoverer.getBroadcastInterval() * 1000);
+            while (!Thread.currentThread().isInterrupted()) {
+                if (receiveThread != null && receiveThread.isAlive()) {
+                    receiveThread.interrupt();
                 }
-            } catch (InterruptedException e) {
-                logger.debug("Interrupted while waiting for next broadcast to be sent => ", e);
-                break;
-            }
 
-            try {
-                datagramChannel = DatagramChannel.open();
-                datagramChannel.socket().bind(new InetSocketAddress(BROADCAST_PORT));
-                datagramChannel.socket().setBroadcast(true);
-                datagramChannel.socket().setReceiveBufferSize(10000);
-            } catch (IOException e) {
-                logger.error("Unable to re-open datagram channel => ", e);
-                break;
+                try {
+                    int interval = HDHomeRunDiscoverer.getBroadcastInterval();
+                    boolean devicesLoaded = discoverer.isWaitingForDevices();
+
+                    if (interval == 0 && devicesLoaded) {
+                        return;
+                    } else if (interval == 0) {
+                        Thread.sleep(4500);
+                    } else {
+                        Thread.sleep(HDHomeRunDiscoverer.getBroadcastInterval() * 1000);
+                    }
+                } catch (InterruptedException e) {
+                    logger.debug("Interrupted while waiting for next broadcast to be sent => ", e);
+                    return;
+                }
+
+                try {
+                    datagramChannel = DatagramChannel.open();
+                    datagramChannel.socket().bind(new InetSocketAddress(BROADCAST_PORT));
+                    datagramChannel.socket().setBroadcast(true);
+                    datagramChannel.socket().setReceiveBufferSize(10000);
+                    break;
+                } catch (IOException e) {
+                    logger.error("Unable to re-open datagram channel => ", e);
+                }
             }
 
 
@@ -359,9 +337,11 @@ public class HDHomeRunDiscovery implements Runnable {
                             }
                         }
 
+                        discoverer.addDevices(device);
 
-                        addDevice(device);
-                        logger.debug("Parsed discovery packet: {}", device);
+                        if (discoverer.isWaitingForDevices()) {
+                            logger.debug("Parsed discovery packet: {}", device);
+                        }
                     }
                 }
             }

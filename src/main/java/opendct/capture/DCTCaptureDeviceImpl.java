@@ -18,6 +18,8 @@ package opendct.capture;
 
 import opendct.channel.*;
 import opendct.config.Config;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.RTPProducer;
 import opendct.sagetv.SageTVManager;
@@ -1761,5 +1763,15 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         logger.exit();
+    }
+
+    @Override
+    public DeviceOption[] getOptions() {
+        return new DeviceOption[0];
+    }
+
+    @Override
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+
     }
 }

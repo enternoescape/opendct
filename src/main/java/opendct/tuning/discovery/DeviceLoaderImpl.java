@@ -46,4 +46,9 @@ public class DeviceLoaderImpl implements DeviceLoader {
             logger.error("Unexpected exception created by the capture device '{}', id {} => ", details.getName(), details.getId(), e);
         }
     }
+
+    @Override
+    public boolean isWaitingForDevices() {
+        return !SageTVManager.captureDevicesLoaded();
+    }
 }

@@ -61,7 +61,7 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
                 "Local IP Address Override",
                 propertiesLocalAddressOverride,
                 "This is used to override the local IP address of the network interface used when" +
-                        " streaming to OpenDCT."
+                        " streaming to the program."
         );
     }
 

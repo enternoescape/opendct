@@ -29,13 +29,21 @@ import org.apache.logging.log4j.Logger;
 public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
     private final Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDevice.class);
 
-    public HDHomeRunDiscoveredDevice(String name, int id, int parentId, String description) {
+    private int tunerNumber;
+
+    public HDHomeRunDiscoveredDevice(String name, int id, int parentId, String description, int tunerNumber) {
         super(name, id, parentId, description);
+
+        this.tunerNumber = tunerNumber;
     }
 
     @Override
     public CaptureDevice loadCaptureDevice() throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
         return null;
+    }
+
+    public int getTunerNumber() {
+        return tunerNumber;
     }
 
     @Override

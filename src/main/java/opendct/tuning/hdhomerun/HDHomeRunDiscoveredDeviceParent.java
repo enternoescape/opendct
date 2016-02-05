@@ -37,4 +37,8 @@ public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDevicePare
     public InetAddress getRemoteAddress() {
         return device.getIpAddress();
     }
+
+    public HDHomeRunDevice getDevice() {
+        return device;
+    }
 }

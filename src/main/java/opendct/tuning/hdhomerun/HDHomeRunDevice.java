@@ -25,6 +25,10 @@ import java.net.URL;
 public class HDHomeRunDevice {
     public final HDHomeRunControl CONTROL;
 
+    private String uniqueDeviceName;
+    private String uniqueTunerPrefix;
+
+    private HDHomeRunDiscoveredDeviceParent deviceParent;
     private InetAddress ipAddress;
     private int deviceType;
     private int deviceId;
@@ -339,7 +343,11 @@ public class HDHomeRunDevice {
             getSysHwModel();
         }
 
-        return "HDHomeRun " + sysHwModel + " " + deviceId;
+        if (uniqueDeviceName == null) {
+            uniqueDeviceName = "HDHomeRun " + sysHwModel + " " + Integer.toHexString(deviceId).toUpperCase();
+        }
+
+        return uniqueDeviceName;
     }
 
     /**
@@ -358,6 +366,10 @@ public class HDHomeRunDevice {
             getSysHwModel();
         }
 
-        return "HDHomeRun " + sysHwModel + " Tuner " + deviceId + "-" + String.valueOf(tuner);
+        if (uniqueTunerPrefix == null) {
+            uniqueTunerPrefix = "HDHomeRun " + sysHwModel + " Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
+        }
+
+        return  uniqueTunerPrefix + String.valueOf(tuner);
     }
 }

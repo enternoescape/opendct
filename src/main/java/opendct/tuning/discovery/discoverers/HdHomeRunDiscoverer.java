@@ -101,7 +101,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                     Config.getBoolean("hdhr.qam.automap_tuning_lookup", false),
                     false,
                     "ClearQAM Auto-Map by Tuning",
-                    "hdhr.qam.automap_reference_lookup",
+                    "hdhr.qam.automap_tuning_lookup",
                     "This enables ClearQAM devices to look up their channels by tuning" +
                             " into the channel on a capture device with a CableCARD" +
                             " installed and then getting the current frequency and" +

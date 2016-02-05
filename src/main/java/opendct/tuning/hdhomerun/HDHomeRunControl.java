@@ -146,8 +146,14 @@ public class HDHomeRunControl {
                 logger.error("Unable to communicate with HDHomeRun after {} attempts.", retryLimit);
                 throw errorMessage;
             } else {
-                logger.error("No error was reported, but data was not able to be sent.");
-                throw new IOException("No error was reported, but data was not able to be sent.");
+                if (Thread.currentThread().isInterrupted()) {
+                    logger.error("Data was not able to be sent because the thread has bee interrupted.");
+                    throw new IOException("Data was not able to be sent because the thread has bee interrupted.");
+                } else {
+                    // We really should not be seeing this, but it's here just in case it happens.
+                    logger.error("No error was reported, but data was not able to be sent.");
+                    throw new IOException("No error was reported, but data was not able to be sent.");
+                }
             }
         }
 

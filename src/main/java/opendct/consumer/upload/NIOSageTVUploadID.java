@@ -337,7 +337,7 @@ public class NIOSageTVUploadID {
                             logger.info("Received message from SageTV server '{}'", returnString);
                             return logger.exit(returnString);
                         } else {
-                            messageInBuilder.append(new String(new byte[]{readChar}));
+                            messageInBuilder.append(new String(new byte[]{readChar}, Config.STD_BYTE));
                         }
                     }
                 } else {

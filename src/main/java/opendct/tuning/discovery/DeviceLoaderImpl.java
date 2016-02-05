@@ -18,6 +18,7 @@ package opendct.tuning.discovery;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
+import opendct.config.Config;
 import opendct.power.NetworkPowerEventManger;
 import opendct.sagetv.SageTVManager;
 import org.apache.logging.log4j.LogManager;
@@ -28,9 +29,13 @@ import java.net.SocketException;
 public class DeviceLoaderImpl implements DeviceLoader {
     private final Logger logger = LogManager.getLogger(DeviceLoaderImpl.class);
 
+    // Once the web interface becomes the new way to load specific devices, this value will be
+    // changed to discovery.devices.always_enable=false.
+    private final boolean alwaysEnable = Config.getBoolean("discovery.devices.exp_always_enable", true);
+
     @Override
     public synchronized void advertiseDevice(DiscoveredDevice details, DeviceDiscoverer discovery) {
-        if (DiscoveryManager.isDevicePermitted(details.getId())) {
+        if (DiscoveryManager.isDevicePermitted(details.getId()) && !alwaysEnable) {
             return;
         }
 

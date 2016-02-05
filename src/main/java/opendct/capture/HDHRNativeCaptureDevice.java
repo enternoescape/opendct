@@ -26,8 +26,10 @@ import opendct.config.options.DeviceOptionException;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.*;
+import opendct.tuning.hdhomerun.returns.HDHomeRunFeatures;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
 import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
+import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -69,6 +71,23 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         device = discoveredDeviceParent.getDevice();
         tuner = device.getTuner(discoveredDevice.getTunerNumber());
 
+        // =========================================================================================
+        // Print out diagnostic information for troubleshooting.
+        // =========================================================================================
+        if (logger.isDebugEnabled()) {
+            try {
+                logger.debug("HDHomeRun details: {}, {}, {}, {}", device.getSysHwModel(), device.getSysModel(), device.getSysVersion(), device.getSysFeatures());
+                logger.debug("HDHomeRun help: {}", Arrays.toString(device.getHelp()));
+            } catch (IOException e) {
+                logger.error("Unable to get help from HDHomeRun because the device cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to get help from the HDHomeRun because the command did not work => ", e);
+            }
+        }
+
+        // =========================================================================================
+        // Initialize and configure options.
+        // =========================================================================================
         deviceOptions = new ConcurrentHashMap<>();
 
         try {
@@ -86,37 +105,50 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     forceExternalUnlock
             );
         } catch (DeviceOptionException e) {
-            logger.error("Unable to configure device options for HDHRNativeCaptureDevice => ", e);
+            throw new CaptureDeviceLoadException(e);
         }
 
+        // =========================================================================================
+        // Determine device tuning mode.
+        // =========================================================================================
         encoderDeviceType = CaptureDeviceType.HDHOMERUN;
 
         try {
             if (device.isCableCardTuner()) {
-                encoderDeviceType = CaptureDeviceType.DCT_PRIME;
+                if (device.getCardStatus().toLowerCase().equals("inserted")) {
+                    encoderDeviceType = CaptureDeviceType.DCT_HDHOMERUN;
+                } else {
+                    encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
+                }
             } else {
+                String channelMapName = tuner.getChannelmap();
+                HDHomeRunChannelMap channelMap = HDHomeRunFeatures.getEnumForChannelmap(channelMapName);
+
+                switch (channelMap) {
+                    case US_BCAST:
+                        encoderDeviceType = CaptureDeviceType.ATSC_HDHOMERUN;
+                        break;
+
+                    case US_CABLE:
+                        encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
+                        break;
+
+                    case US_IRC:
+                    case US_HRC:
+                    case UNKNOWN:
+                        throw new CaptureDeviceLoadException("The program currently does not know how to use the channel map '" + channelMapName + "'.");
+                }
                 encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
             }
         } catch (IOException e) {
-            logger.error("Unable to check HDHomeRun mode because it cannot be reached => ", e);
-        }
-
-        try {
-            logger.info(tuner.getChannelmap());
-        } catch (IOException e) {
-            logger.error("Unable to get channel map from HDHomeRun because it cannot be reached => ", e);
+            logger.error("Unable to check HDHomeRun configuration because it cannot be reached => ", e);
         } catch (GetSetException e) {
             logger.error("Unable to get channel map from HDHomeRun because the command did not work => ", e);
         }
 
-        try {
-            logger.debug("HDHomeRun details: {}, {}, {}, {}", device.getSysHwModel(), device.getSysModel(), device.getSysVersion(), device.getSysFeatures());
-            logger.debug("HDHomeRun help: {}", Arrays.toString(device.getHelp()));
-        } catch (IOException e) {
-            logger.error("Unable to get help from HDHomeRun because the device cannot be reached => ", e);
-        } catch (GetSetException e) {
-            logger.error("Unable to get help from the HDHomeRun because the command did not work => ", e);
-        }
+
+
+
     }
 
     @Override

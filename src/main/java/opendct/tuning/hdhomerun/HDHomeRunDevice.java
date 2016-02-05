@@ -310,6 +310,8 @@ public class HDHomeRunDevice {
 
     /**
      * Get if this is a CableCARD tuning device.
+     * <p/>
+     * This is not an indication of if the CableCARD is currently inserted.
      *
      * @return <i>true</i> if this is a CableCARD tuning device.
      * @throws IOException Thrown if communication with the device was incomplete or is not possible

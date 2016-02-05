@@ -33,13 +33,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class HDHomeRunDiscoverer implements DeviceDiscoverer {
-    private static final Logger logger = LogManager.getLogger(UpnpDiscoverer.class);
+    private static final Logger logger = LogManager.getLogger(HDHomeRunDiscoverer.class);
 
     // Static information about this discovery method.
     private static String name = "HDHomeRun";
@@ -178,7 +177,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public void setEnabled(boolean enabled) {
+    public synchronized void setEnabled(boolean enabled) {
         HDHomeRunDiscoverer.enabled = enabled;
         Config.setBoolean("hdhr.discoverer_enabled", enabled);
     }
@@ -189,7 +188,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
+    public synchronized void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
         if (deviceLoader == null || !HDHomeRunDiscoverer.enabled || discovery.isRunning()) {
             return;
         }
@@ -204,7 +203,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public void stopDetection() throws DiscoveryException {
+    public synchronized void stopDetection() throws DiscoveryException {
         if (!discovery.isRunning()) {
             return;
         }
@@ -213,12 +212,25 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public void waitForStopDetection() throws InterruptedException {
+    public synchronized void waitForStopDetection() throws InterruptedException {
         if (!discovery.isRunning()) {
             return;
         }
 
         discovery.waitForStop();
+
+        discoveredDevicesLock.writeLock().lock();
+
+        try {
+            hdHomeRunDevices.clear();
+            discoveredDevices.clear();
+            discoveredParents.clear();
+        } catch (Exception e) {
+            logger.error("waitForStopDetection created an unexpected exception while using" +
+                    " discoveredDevicesLock => ", e);
+        } finally {
+            discoveredDevicesLock.writeLock().unlock();
+        }
     }
 
     @Override
@@ -226,57 +238,82 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         return discovery.isRunning();
     }
 
-    public void addDevices(HashSet<HDHomeRunDevice> discoveredDevices) {
-        for (HDHomeRunDevice discoveredDevice : discoveredDevices) {
-            HDHomeRunDevice updateDevice = this.hdHomeRunDevices.get(discoveredDevice.getDeviceId());
+    public boolean isWaitingForDevices() {
+        return deviceLoader == null || deviceLoader.isWaitingForDevices();
+    }
 
-            discoveredDevicesLock.writeLock().lock();
+    public void addDevices(HDHomeRunDevice discoveredDevice) {
+
+        discoveredDevicesLock.writeLock().lock();
+
+        try {
+            // This prevents accidentally re-adding a device after detection has stopped.
+            if (!discovery.isRunning()) {
+                return;
+            }
+
+            HDHomeRunDevice updateDevice = hdHomeRunDevices.get(discoveredDevice.getDeviceId());
 
             if (updateDevice != null) {
                 // This device has been detected before. We will only update the IP address.
-                updateDevice.update(discoveredDevice);
-                continue;
-            }
 
-            try {
-                String uniqueParentName = discoveredDevice.getUniqueDeviceName();
-
-                logger.info("Discovered a new HDHomeRun device '{}'.", uniqueParentName);
-
-                HDHomeRunDiscoveredDeviceParent parentDevice = new HDHomeRunDiscoveredDeviceParent(
-                        uniqueParentName,
-                        uniqueParentName.hashCode(),
-                        Util.getLocalIPForRemoteIP(discoveredDevice.getIpAddress()),
-                        discoveredDevice
-                );
-
-                discoveredParents.put(parentDevice.getParentId(), parentDevice);
-
-                for (int i = 0; i < discoveredDevice.getTunerCount(); i++) {
-                    String tunerName = discoveredDevice.getUniqueTunerName(i);
-
-                    HDHomeRunDiscoveredDevice newDevice = new HDHomeRunDiscoveredDevice(
-                            tunerName,
-                            tunerName.hashCode(),
-                            parentDevice.getParentId(),
-                            "HDHomeRun " + discoveredDevice.getSysHwModel() + " capture device."
+                if (!(discoveredDevice.getIpAddress() == discoveredDevice.getIpAddress())) {
+                    logger.info("HDHomeRun device '{}' changed its IP address from {} to {}.",
+                            updateDevice.getUniqueDeviceName(),
+                            updateDevice.getIpAddress().getHostAddress(),
+                            discoveredDevice.getIpAddress().getHostAddress()
                     );
 
-                    this.discoveredDevices.put(newDevice.getId(), newDevice);
-
-                    parentDevice.addChild(newDevice.getId());
+                    updateDevice.update(discoveredDevice);
                 }
-            } catch (IOException e) {
-                logger.error("Unable to communicate with HDHomeRun device '{}' => ", discoveredDevice, e);
-            } catch (GetSetException e) {
-                logger.error("HDHomeRun device '{}' returned an error instead of a value => ", discoveredDevice, e);
-            } catch (Exception e) {
-                logger.error("addDevices created an unexpected exception => ", e);
-            } finally {
-                discoveredDevicesLock.writeLock().unlock();
+
+                return;
             }
 
+            String uniqueParentName = discoveredDevice.getUniqueDeviceName();
+
+            logger.info("Discovered a new HDHomeRun device '{}'.", uniqueParentName);
+
+            HDHomeRunDiscoveredDeviceParent parentDevice = new HDHomeRunDiscoveredDeviceParent(
+                    uniqueParentName,
+                    uniqueParentName.hashCode(),
+                    Util.getLocalIPForRemoteIP(discoveredDevice.getIpAddress()),
+                    discoveredDevice
+            );
+
+            discoveredParents.put(parentDevice.getParentId(), parentDevice);
+
+            for (int i = 0; i < discoveredDevice.getTunerCount(); i++) {
+                String tunerName = discoveredDevice.getUniqueTunerName(i);
+
+                HDHomeRunDiscoveredDevice newDevice = new HDHomeRunDiscoveredDevice(
+                        tunerName,
+                        tunerName.hashCode(),
+                        parentDevice.getParentId(),
+                        "HDHomeRun " + discoveredDevice.getSysHwModel() + " capture device.",
+                        i
+                );
+
+                this.discoveredDevices.put(newDevice.getId(), newDevice);
+
+                parentDevice.addChild(newDevice.getId());
+            }
+
+            hdHomeRunDevices.put(discoveredDevice.getDeviceId(), discoveredDevice);
+        } catch (IOException e) {
+            logger.error("Unable to communicate with HDHomeRun device '{}' => ",
+                    discoveredDevice, e);
+
+        } catch (GetSetException e) {
+            logger.error("HDHomeRun device '{}' returned an error instead of a value => ",
+                    discoveredDevice, e);
+
+        } catch (Exception e) {
+            logger.error("addDevices created an unexpected exception => ", e);
+        } finally {
+            discoveredDevicesLock.writeLock().unlock();
         }
+
     }
 
     @Override

@@ -24,7 +24,7 @@ public enum ChannelSourceType {
     /**
      * This will use the Prime to get updates to the available channels on the lineup.
      */
-    PRIME,
+    HDHOMERUN,
     /**
      * This will pull the channel map from the Prime, then tune each channel to get the frequency
      * and program. It will then match that with the channel map from an InfiniTV to remap the

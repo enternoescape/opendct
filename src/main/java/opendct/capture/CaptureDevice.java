@@ -456,23 +456,6 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public long getRecordedBytes();
 
     /**
-     * Tunes to the specified channel.
-     * <p/>
-     * Apparently it doesn't matter if it's successful or not.
-     *
-     * @param channel This is the channel we want to attempt to tune.
-     */
-    public void tuneToChannel(String channel);
-
-    /**
-     * Tunes to the specified channel and reports if it has a signal or not.
-     *
-     * @param channel This is the channel we want to attempt to tune.
-     * @return Returns <i>true</i> if the channel can be tuned.
-     */
-    public boolean autoTuneChannel(String channel);
-
-    /**
      * Tunes to the specified channel and reports if it has a signal or not.
      * <p/>
      * In SageTV there's a little more logic behind this, but for our purposes, unless you can find a reason for this to

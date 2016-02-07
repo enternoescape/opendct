@@ -16,11 +16,14 @@
 
 package opendct.channel;
 
+import opendct.capture.CaptureDevice;
+import opendct.capture.CaptureDeviceType;
 import opendct.channel.http.InfiniTVChannels;
 import opendct.channel.http.PrimeChannels;
 import opendct.config.Config;
 import opendct.config.ConfigBag;
 import opendct.power.PowerEventListener;
+import opendct.sagetv.SageTVManager;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,6 +63,8 @@ public class ChannelManager implements PowerEventListener {
     private static Thread updateThread;
     private static boolean noOfflineScan = false;
 
+    final private static boolean autoMapReference = Config.getBoolean("channels.qam.automap_reference_lookup", true);
+    final private static boolean autoMapTuning = Config.getBoolean("channels.qam.automap_tuning_lookup", true);
 
     /**
      * Returns the offline channel scan object for the provided name.
@@ -464,8 +469,8 @@ public class ChannelManager implements PowerEventListener {
                 logger.info("Updating the InfiniTV channel lineup {} ({}).", channelLineup.getFriendlyName(), channelLineup.LINEUP_NAME);
                 InfiniTVChannels.populateChannels(channelLineup);
                 break;
-            case PRIME:
-                logger.info("Updating the Prime channel lineup {} ({}).", channelLineup.getFriendlyName(), channelLineup.LINEUP_NAME);
+            case HDHOMERUN:
+                logger.info("Updating the HDHomeRun channel lineup {} ({}).", channelLineup.getFriendlyName(), channelLineup.LINEUP_NAME);
                 PrimeChannels.populateChannels(channelLineup);
                 break;
             case STATIC:
@@ -624,8 +629,6 @@ public class ChannelManager implements PowerEventListener {
             availableChannels.deleteCharAt(availableChannels.length() - 1);
         }
 
-        configBag.removeAllByRootKey("sagetv.unavailable_channels_ref");
-        configBag.removeAllByRootKey("sagetv.available_channels_ref");
         configBag.setString("sagetv.unavailable_channels_ref", unavailableChannels.toString());
         configBag.setString("sagetv.available_channels_ref", availableChannels.toString());
 
@@ -663,14 +666,20 @@ public class ChannelManager implements PowerEventListener {
                                 }
                             }
                         } catch (InterruptedException e) {
-                            logger.debug("The ChannelManager update thread has been interrupted => ", e);
+                            logger.debug(
+                                    "The ChannelManager update thread has been interrupted => ", e);
+
                             break;
                         }
                     }
                 } catch (InterruptedException e) {
-                    logger.debug("The ChannelManager update thread has been interrupted => ", e);
+                    logger.debug(
+                            "The ChannelManager update thread has been interrupted => ", e);
+
                 } catch (Exception e) {
-                    logger.error("The ChannelManager thread created an unexpected exception => ", e);
+                    logger.error(
+                            "The ChannelManager thread created an unexpected exception => ", e);
+
                 } finally {
                     updateRunning.set(false);
                 }
@@ -697,6 +706,100 @@ public class ChannelManager implements PowerEventListener {
         }
 
         logger.exit();
+    }
+
+    /**
+     * Attempt to automatically map a vchannel to it's corresponding program and frequency based on
+     * all available sources.
+     * <p/>
+     * This will return the first result it finds, so it is possible that it can get it wrong which
+     * is why this feature can be disabled. It will also update the channel lineup for this encoder
+     * with the discovered frequency and program.
+     *
+     * @param captureDevice This is the capture device making the request. This is so we don't try
+     *                      to get the program and frequency from the device that obvious doesn't
+     *                      have it. This value can be <i>null</i> if a capture device isn't making
+     *                      the request.
+     * @param encoderLineup This is the lineup to update with the new program and frequency.
+     * @param tvChannel The channel to get the frequency and program for  automatically.
+     * @return The new channel with the program and frequency already mapped or <i>null</i> if no
+     *         mapping was possible.
+     */
+    public static TVChannel autoMap(CaptureDevice captureDevice, String encoderLineup, TVChannel tvChannel) {
+        logger.entry(tvChannel);
+
+        // First check if the value is already from an alternative lineup.
+        ArrayList<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
+        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
+        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_HDHOMERUN));
+
+        if (autoMapReference) {
+            for (CaptureDevice device : devices) {
+                if (device == captureDevice) {
+                    continue;
+                }
+
+                TVChannel refChannel = ChannelManager.getChannel(device.getChannelLineup(), tvChannel.getChannel());
+
+                if (refChannel != null && !Util.isNullOrEmpty(refChannel.getFrequency()) &&
+                        !Util.isNullOrEmpty(refChannel.getProgram())) {
+
+                    tvChannel.setModulation(refChannel.getModulation());
+                    tvChannel.setFrequency(refChannel.getFrequency());
+                    tvChannel.setProgram(refChannel.getProgram());
+                    ChannelManager.updateChannel(encoderLineup, tvChannel);
+                    logger.info(
+                            "Auto-mapped the channel '{}'" +
+                                    " to the frequency '{}'" +
+                                    " and program '{}'" +
+                                    " from the lineup '{}'" +
+                                    " saving mapping to the lineup '{}'.",
+                            tvChannel.getChannel(),
+                            tvChannel.getFrequency(),
+                            tvChannel.getProgram(),
+                            device.getChannelLineup(),
+                            encoderLineup);
+
+                    return tvChannel;
+                }
+            }
+        }
+
+        if (autoMapTuning) {
+            for (CaptureDevice device : devices) {
+                if (device == captureDevice) {
+                    continue;
+                }
+
+                if (!device.isLocked() &&
+                        (device.getEncoderDeviceType() == CaptureDeviceType.DCT_HDHOMERUN ||
+                                device.getEncoderDeviceType() == CaptureDeviceType.DCT_INFINITV)) {
+
+                    boolean result = device.getChannelInfoOffline(tvChannel);
+
+                    if (result) {
+                        ChannelManager.updateChannel(encoderLineup, tvChannel);
+
+                        logger.info(
+                                "Auto-mapped the channel '{}'" +
+                                        " to the frequency '{}'" +
+                                        " and program '{}'" +
+                                        " by tuning the device '{}'.",
+                                tvChannel.getChannel(),
+                                tvChannel.getFrequency(),
+                                tvChannel.getProgram(),
+                                device.getEncoderName());
+
+                        return tvChannel;
+                    }
+                }
+            }
+        }
+
+        logger.info("Auto-map failed to get the frequency and program for the channel '{}'.",
+                tvChannel.getChannel());
+
+        return null;
     }
 
     public void onSuspendEvent() {

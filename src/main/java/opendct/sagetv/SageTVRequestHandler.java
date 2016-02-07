@@ -472,7 +472,7 @@ public class SageTVRequestHandler implements Runnable {
                         // TUNE (tunes a channel)
                         //=============================================================================================
                     } else if (lastRequest.startsWith("TUNE ")) {
-                        StringTokenizer tokens = new StringTokenizer(lastRequest.substring(5), "|");
+                        /*StringTokenizer tokens = new StringTokenizer(lastRequest.substring(5), "|");
 
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 2) {
@@ -487,15 +487,17 @@ public class SageTVRequestHandler implements Runnable {
                             setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                             lockEncoder(captureDevice);
                             captureDevice.tuneToChannel(chanString);
-                        }
+                        }*/
 
+                        logger.warn("SageTV requested '{}'.", lastRequest);
                         sendResponse("OK");
+
 
                         //=============================================================================================
                         // AUTOTUNE (checks if channel is tunable or not)
                         //=============================================================================================
                     } else if (lastRequest.startsWith("AUTOTUNE ")) {
-                        StringTokenizer tokens = new StringTokenizer(lastRequest.substring(9), "|");
+                        /*StringTokenizer tokens = new StringTokenizer(lastRequest.substring(9), "|");
 
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 2) {
@@ -513,7 +515,10 @@ public class SageTVRequestHandler implements Runnable {
                             returnValue = captureDevice.autoTuneChannel(chanString);
                         }
 
-                        sendResponse((returnValue ? "OK" : "NO_SIGNAL"));
+                        sendResponse((returnValue ? "OK" : "NO_SIGNAL"));*/
+
+                        logger.warn("SageTV requested '{}'.", lastRequest);
+                        sendResponse("OK");
 
                         //=============================================================================================
                         // AUTOSCAN (checks if channel is tunable or not)

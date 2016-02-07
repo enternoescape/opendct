@@ -58,7 +58,7 @@ public class NIORTPProducerImpl implements RTPProducer {
     private final int stalledTimeout =
             Config.getInteger("producer.rtp.nio.stalled_timeout_s", 6);
     private final int udpNativeReceiveBufferSize =
-            Config.getInteger("producer.rtp.nio.native_udp_receive_buffer", 1328000);
+            Config.getInteger("producer.rtp.nio.native_udp_receive_buffer", 5312000);
     private int udpInternalReceiveBufferSize =
             Config.getInteger("producer.rtp.nio.internal_udp_receive_buffer", 1500);
     private final int udpInternalReceiveBufferLimit = 5242880;

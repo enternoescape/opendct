@@ -60,6 +60,7 @@ public class PrimeChannels {
         // returned information.
         boolean enableAllChannels = PrimeChannels.enableAllChannels;
         boolean isQam = false;
+        boolean isAtsc = false;
 
         HttpURLConnection httpURLConnection = null;
         HashSet<String> newChannelList = new HashSet<String>();
@@ -126,6 +127,11 @@ public class PrimeChannels {
                                     " will find the best match based on other lineups.");
                         }
 
+                        if (channel.contains(".")) {
+                            isAtsc = true;
+                            channel = channel.replace(".", "-");
+                        }
+
                         // Check if the name is on the ignore list.
                         boolean ignore = false;
                         for (String ignoreName : ignoreNamesContaining) {
@@ -160,7 +166,7 @@ public class PrimeChannels {
                             }
                         }
 
-                        TVChannel oldChannel = channelLineup.getChannel(channel);
+                        TVChannel oldChannel = channelLineup.getOriginalChannel(channel);
 
                         if (!isDuplicate) {
                             if (oldChannel == null) {
@@ -170,7 +176,13 @@ public class PrimeChannels {
                                     primeChannel.setTunable(true);
                                 }
 
+                                if (isAtsc) {
+                                    // This ensures that the mapping will be correct.
+                                    primeChannel.setChannelRemap(channel.replace("-", "."));
+                                }
+
                                 channelLineup.addChannel(primeChannel);
+
                             } else {
                                 oldChannel.setUrl(channelUrl);
 

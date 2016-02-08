@@ -20,10 +20,7 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.OSVersion;
-import opendct.config.options.BooleanDeviceOption;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
-import opendct.config.options.IntegerDeviceOption;
+import opendct.config.options.*;
 import opendct.tuning.discovery.*;
 import opendct.tuning.hdhomerun.*;
 import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
@@ -56,6 +53,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static BooleanDeviceOption hdhrLock;
     private static IntegerDeviceOption controlRetryCount;
     private static IntegerDeviceOption broadcastInterval;
+    private static StringDeviceOption ignoreModels;
+    private static StringDeviceOption ignoreDeviceIds;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -148,13 +147,34 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                     Integer.MAX_VALUE
             );
 
+            // Ignore the HDHomeRun Prime for now.
+            ignoreModels = new StringDeviceOption(
+                    new String[] { "HDHR3-CC" },
+                    true,
+                    false,
+                    "Ignore Models",
+                    "hdhr.exp_ignore_models",
+                    "Prevent specific HDHomeRun models from being detected and loaded."
+            );
+
+            ignoreDeviceIds = new StringDeviceOption(
+                    new String[] { "HDHR3-CC" },
+                    true,
+                    false,
+                    "Ignore Device IDs",
+                    "hdhr.ignore_device_ids",
+                    "Prevent specific HDHomeRun devices by ID from being detected and loaded."
+            );
+
             Config.mapDeviceOptions(
                     deviceOptions,
                     retunePolling,
                     autoMapReference,
                     autoMapTuning,
                     hdhrLock,
-                    controlRetryCount
+                    controlRetryCount,
+                    ignoreModels,
+                    ignoreDeviceIds
             );
         } catch (DeviceOptionException e) {
             logger.error("Unable to configure device options for HDHomeRunDiscoverer => ", e);
@@ -250,6 +270,18 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             // This prevents accidentally re-adding a device after detection has stopped.
             if (!discovery.isRunning()) {
                 return;
+            }
+
+            for (String ignoreModel : getIgnoreModels()) {
+                if (discoveredDevice.getSysHwModel().toUpperCase().equals(ignoreModel.toUpperCase())) {
+                    return;
+                }
+            }
+
+            for (String ignoreDeviceId : getIgnoreDeviceIds()) {
+                if (Integer.toHexString(discoveredDevice.getDeviceId()).toUpperCase().equals(ignoreDeviceId.toUpperCase())) {
+                    return;
+                }
             }
 
             HDHomeRunDevice updateDevice = hdHomeRunDevices.get(discoveredDevice.getDeviceId());
@@ -477,7 +509,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 autoMapReference,
                 autoMapTuning,
                 hdhrLock,
-                controlRetryCount
+                controlRetryCount,
+                ignoreModels,
+                ignoreDeviceIds
         };
     }
 
@@ -524,5 +558,13 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static int getBroadcastInterval() {
         return broadcastInterval.getInteger();
+    }
+
+    public static String[] getIgnoreModels() {
+        return ignoreModels.getArrayValue();
+    }
+
+    public static String[] getIgnoreDeviceIds() {
+        return ignoreDeviceIds.getArrayValue();
     }
 }

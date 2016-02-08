@@ -54,12 +54,22 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final boolean acceptsUploadID =
             Config.getBoolean("consumer.ffmpeg.upload_id_enabled", false);
 
+    // We must have at a minimum a 5 MB buffer plus 1MB to catch up. This ensures that if
+    // someone changes this setting to a lower value, it will be overridden.
+    private final int circularBufferSize =
+            (int) Math.max(
+                    Config.getInteger("consumer.ffmpeg.circular_buffer_size", 7864320),
+                    5617370 + 1123474
+            );
+
     // This is the smallest probe size allowed.
     private final long minProbeSize =
             Math.max(
                     Config.getInteger("consumer.ffmpeg.min_probe_size", 165440),
                     82720
             );
+
+    // This is the smallest probe duration allowed.
     private final long minAnalyzeDuration =
             Math.max(
                     Config.getInteger("consumer.ffmpeg.min_analyze_duration", 165440),
@@ -67,11 +77,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             );
 
     // This is the largest probe size allowed. 5MB is the minimum allowed value.
-    private final long maxProbeSize =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.max_probe_size", 5617370),
-                    5617370
-            ) * 3;
+    private final long maxProbeSize = (circularBufferSize * 3) - 1123474;
 
     // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
     private final long maxAnalyzeDuration =
@@ -84,15 +90,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final int RW_BUFFER_SIZE =
             Math.max(Config.getInteger("consumer.ffmpeg.rw_buffer_size", 20680), 10340);
 
-    // We must have at a minimum a 5 MB buffer plus 1MB to catch up. This ensures that if
-    // someone changes this setting to a lower value, it will be overridden.
-    private final int circularBufferSize =
-            (int) Math.max(
-                    Config.getInteger("consumer.ffmpeg.circular_buffer_size", 7864320),
-                    (maxProbeSize / 3) + 1123474
-            );
-
-    // This is the smallest amount of data that will be transfered to the SageTV server.
+    // This is the smallest amount of data that will be transferred to the SageTV server.
     private final int minUploadIDTransfer =
             Math.max(
                     Config.getInteger("consumer.ffmpeg.min_upload_id_transfer_size", 20680),

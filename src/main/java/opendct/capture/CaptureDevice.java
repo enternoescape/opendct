@@ -456,18 +456,6 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public long getRecordedBytes();
 
     /**
-     * Tunes to the specified channel and reports if it has a signal or not.
-     * <p/>
-     * In SageTV there's a little more logic behind this, but for our purposes, unless you can find a reason for this to
-     * not just return the results from the method <b>autoTuneChannel</b>. This is here in case someone finds a reason
-     * to implement it differently.
-     *
-     * @param channel This is the channel we want to attempt to tune.
-     * @return Returns <i>true</i> if the channel can be tuned.
-     */
-    public boolean autoScanChannel(String channel);
-
-    /**
      * Return a valid incremental channel number for the provided index.
      * <p/>
      * Prior to this, SageTV will send the BUFFER command to the capture device, telling it to tune into the last

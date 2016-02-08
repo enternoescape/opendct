@@ -241,4 +241,22 @@ public class TVChannelImpl implements TVChannel {
         changes = new String[12];
         return oldChanges;
     }
+
+    @Override
+    public String toString() {
+        return "TVChannelImpl{" +
+                "tunable=" + tunable +
+                ", ignore=" + ignore +
+                ", cci=" + cci +
+                ", signalStrength=" + signalStrength +
+                ", channelRemap='" + channelRemap + '\'' +
+                ", channel='" + channel + '\'' +
+                ", name='" + name + '\'' +
+                ", url='" + url + '\'' +
+                ", modulation='" + modulation + '\'' +
+                ", frequency='" + frequency + '\'' +
+                ", program='" + program + '\'' +
+                ", eia='" + eia + '\'' +
+                '}';
+    }
 }

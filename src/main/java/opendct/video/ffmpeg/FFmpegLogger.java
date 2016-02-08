@@ -105,10 +105,17 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
         if (message.endsWith("Invalid frame dimensions 0x0.") ||
+                // We handle this message by increasing probe sizes based on the currently available data.
                 message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
                 message.endsWith("is not set in estimate_timings_from_pts") ||
+                // Seen in H.264 stream init. It means a key frame has not be processed yet. A
+                // key frame can take over 5 seconds in some situations to arrive.
                 message.endsWith("non-existing PPS 0 referenced") ||
+                // Seen in H.264 stream init. This is a resulting error from the non-existing
+                // reference above. These errors stop as soon as a key frame is received.
                 message.endsWith("decode_slice_header error") ||
+                // Seen when writing MPEG-PS. This basically means the file being created will
+                // potentially not play on a hardware DVD player which is not really a concern.
                 message.contains(" buffer underflow st=")) {
 
             return;

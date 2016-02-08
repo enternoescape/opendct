@@ -16,7 +16,7 @@
 
 package opendct.config.messages;
 
-import java.util.Date;
+import org.apache.logging.log4j.Level;
 
 public interface MessageContainer {
 
@@ -30,11 +30,19 @@ public interface MessageContainer {
     public String getSender();
 
     /**
-     * The severity of this message.
+     * The severity level of this message.
      *
-     * @return The severity of this message.
+     * @return The severity level of this message.
      */
-    public MessageSeverity getSeverity();
+    public Level getLevel();
+
+    /**
+     * A static title for this error type.
+     *
+     *
+     * @return The title for this error type.
+     */
+    public String getTitle();
 
     /**
      * The actual message.
@@ -46,9 +54,17 @@ public interface MessageContainer {
     /**
      * The date and time of every occurrence.
      *
-     * @return The date and time of the first occurrence.
+     * @return The date and time of the first occurrence in Epoch.
      */
-    public Date[] getTime();
+    public long[] getTime();
+
+    /**
+     * This actually puts the message into the log.
+     *
+     * @param exception The exception if an exception is to be logged. This value can be
+     *                  <i>null</i>.
+     */
+    public void logMessage(Exception exception);
 
     /**
      * Increment the repeat count for this message.

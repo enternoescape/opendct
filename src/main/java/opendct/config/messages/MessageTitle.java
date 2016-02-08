@@ -16,8 +16,17 @@
 
 package opendct.config.messages;
 
-public enum  MessageSeverity {
-    INFO,
-    WARNING,
-    ERROR
+public enum MessageTitle {
+    CONSUMER_INIT_FAILURE("FFmpeg initialization failure.");
+
+    public final String TITLE;
+
+    MessageTitle(String title) {
+        TITLE = title;
+    }
+
+    @Override
+    public String toString() {
+        return TITLE;
+    }
 }

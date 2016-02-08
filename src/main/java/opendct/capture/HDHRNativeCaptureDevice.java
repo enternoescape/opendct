@@ -198,6 +198,25 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         logger.debug("Getting a port for incoming RTP data...");
         rtpLocalPort = Config.getFreeRTSPPort(encoderName);
+
+
+        logger.info("Encoder Manufacturer: '{}'," +
+                " Number: {}," +
+                " Remote IP: '{}'," +
+                " Local IP: '{}'," +
+                " CableCARD: {}," +
+                " Lineup: '{}'," +
+                " Offline Scan Enabled: {}," +
+                " RTP Port: {}",
+                "Silicondust",
+                tuner.TUNER_NUMBER,
+                device.getIpAddress(),
+                discoveredDeviceParent.getLocalAddress(),
+                (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN),
+                encoderLineup,
+                offlineScan,
+                rtpLocalPort);
+
     }
 
     @Override

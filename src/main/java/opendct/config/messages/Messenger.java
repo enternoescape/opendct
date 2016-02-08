@@ -16,9 +16,11 @@
 
 package opendct.config.messages;
 
+import org.apache.logging.log4j.Level;
+
 public interface Messenger {
 
-    public void message(Object sender, MessageSeverity severity, String message);
+    public void message(Object sender, Level severity, String message);
 
     public void info(Object sender, String message);
 

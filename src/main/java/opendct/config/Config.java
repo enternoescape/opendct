@@ -331,7 +331,7 @@ public class Config {
         logger.exit();
     }
 
-    public static void setIntegerArray(String key, int values[]) {
+    public static void setIntegerArray(String key, int... values) {
         logger.entry(key, values);
 
         StringBuilder mergedArray = new StringBuilder();
@@ -351,7 +351,7 @@ public class Config {
         logger.exit();
     }
 
-    public static void setIntegerArray(String key, Integer values[]) {
+    public static void setIntegerArray(String key, Integer... values) {
         logger.entry(key, values);
 
         StringBuilder mergedArray = new StringBuilder();

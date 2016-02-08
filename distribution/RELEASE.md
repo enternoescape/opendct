@@ -245,11 +245,29 @@
 > *Added check at startup for at least one network interface to be present before continuing
 > startup. This has a default timeout of 2 minutes.
 
-> *Circular buffer now expands dynamically during FFmpeg detection.
+> *Circular buffer now expands dynamically during FFmpeg detection. To simplify things, the max
+> probe size is now always the requested circular buffer size times 3 then minus 1MB. That way the
+> detection will always be able to take advantage of the largest size the buffer could possibly be.
 
-> *Internal: Created framework for capture device detection as a "plugin."
+> *Official support for MPEG-PS.
+
+> *Experimental support for HDHomeRun ATSC and ClearQAM capture devices. Channel scanning is not an
+> option and will likely not be an option for a while because of how SageTV maps ATSC channels. To
+> enable support, you must enable the new capture device detection method. To do this, change
+> discovery.exp_enabled from false to true in opendct.properties. The new detection method currently
+> excludes the Prime from detection so you will not have any conflicts when UPnP loads the same
+> device.
+
+> *Fixed the extracting of the frequency from a currently tuned channel. It was removing the last 3
+> zeros, while the current approach is to keep them. The removal was to keep things consistent
+> between InfiniTV and Prime, but now 3 zeros are added to InfiniTV aquired lineups and are only
+> removed if tuning an InfiniTV device.
+
+> *Internal: Created framework for capture device detection that enables the addition of new 
+> detection methods to be more like creating a plugin.
 
 > *Internal: HDHomeRun native detection method completely implemented.
 
 > *Internal: Enabled JSW configuration reload on restart for future automatic/requested upgrading
-> via web interface.
+> via web interface. This method of updating is not currently in use and will be disabled by
+> default.

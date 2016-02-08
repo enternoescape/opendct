@@ -368,6 +368,8 @@ public class ChannelLineup {
 
         if (returnChannel == null) {
             returnChannel = channelMap.get(channelNumber);
+        } else {
+            logger.info("'{}' was remapped to '{}'.", channelNumber, returnChannel.getChannel());
         }
 
         return returnChannel;

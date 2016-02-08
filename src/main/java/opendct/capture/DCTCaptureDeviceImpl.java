@@ -365,7 +365,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
         // This means the lock was already set
         if (this.locked.getAndSet(locked) == locked) {
-            logger.info("Capture device is was already {}.", (locked ? "locked" : "unlocked"));
+            logger.info("Capture device was already {}.", (locked ? "locked" : "unlocked"));
             return false;
         }
 
@@ -553,7 +553,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      *         again on a different capture device since this one is currently locked.
      */
     public boolean getChannelInfoOffline(TVChannel tvChannel) {
-        logger.entry();
+        logger.entry(tvChannel);
 
         if (isLocked() || isExternalLocked()) {
             return logger.exit(false);
@@ -624,7 +624,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         if (split.length > 1 && split[split.length - 1].length() > 3) {
                             tvChannel.setModulation(split[0].toUpperCase());
 
-                            tvChannel.setFrequency(split[split.length - 1].substring(0, split.length - 3));
+                            tvChannel.setFrequency(split[split.length - 1]);
                         }
                     }
                 } catch (Exception e) {

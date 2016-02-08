@@ -168,7 +168,7 @@ public class InfiniTVChannels {
                                 }
 
                                 if (!isDuplicate) {
-                                    TVChannel oldChannel = channelLineup.getChannel(values[0]);
+                                    TVChannel oldChannel = channelLineup.getOriginalChannel(values[0]);
 
                                     boolean updated = false;
 

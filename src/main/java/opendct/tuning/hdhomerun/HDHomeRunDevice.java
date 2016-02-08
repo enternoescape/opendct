@@ -378,7 +378,7 @@ public class HDHomeRunDevice {
             if (sysHwModel.equals("HDHR3-CC")) {
                 // This is to ease the transition from using UPnP for detection of the Prime model.
                 // DCT-HDHomeRun Prime Tuner XXXXXXXX-2
-                uniqueDeviceName = "DCT-HDHomeRun Prime Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
+                uniqueTunerPrefix = "DCT-HDHomeRun Prime Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
             } else {
                 uniqueTunerPrefix = "HDHomeRun " + sysHwModel + " Tuner " + Integer.toHexString(deviceId).toUpperCase() + "-";
             }

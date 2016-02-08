@@ -472,6 +472,46 @@ public class ConfigBag {
         logger.exit();
     }
 
+    public void setIntegerArray(String key, int... values) {
+        logger.entry(key, values);
+
+        StringBuilder mergedArray = new StringBuilder();
+
+        for (int value : values) {
+            mergedArray.append(Integer.toString(value));
+            mergedArray.append(",");
+        }
+
+        // Remove the extra comma at the end.
+        if (mergedArray.length() > 0) {
+            mergedArray.deleteCharAt(mergedArray.length() - 1);
+        }
+
+        properties.setProperty(key, mergedArray.toString());
+
+        logger.exit();
+    }
+
+    public void setIntegerArray(String key, Integer... values) {
+        logger.entry(key, values);
+
+        StringBuilder mergedArray = new StringBuilder();
+
+        for (int value : values) {
+            mergedArray.append(Integer.toString(value));
+            mergedArray.append(",");
+        }
+
+        // Remove the extra comma at the end.
+        if (mergedArray.length() > 0) {
+            mergedArray.deleteCharAt(mergedArray.length() - 1);
+        }
+
+        properties.setProperty(key, mergedArray.toString());
+
+        logger.exit();
+    }
+
     /**
      * This method will convert numbers with commas and hyphens into an array with all of the
      * in-between numbers added.
@@ -606,6 +646,46 @@ public class ConfigBag {
         }
 
         properties.setProperty(key, mergedArray.toString());
+    }
+
+    public void setLongArray(String key, long... values) {
+        logger.entry(key, values);
+
+        StringBuilder mergedArray = new StringBuilder();
+
+        for (long value : values) {
+            mergedArray.append(Long.toString(value));
+            mergedArray.append(",");
+        }
+
+        // Remove the extra comma at the end.
+        if (mergedArray.length() > 0) {
+            mergedArray.deleteCharAt(mergedArray.length() - 1);
+        }
+
+        properties.setProperty(key, mergedArray.toString());
+
+        logger.exit();
+    }
+
+    public void setLongArray(String key, Long... values) {
+        logger.entry(key, values);
+
+        StringBuilder mergedArray = new StringBuilder();
+
+        for (Long value : values) {
+            mergedArray.append(Long.toString(value));
+            mergedArray.append(",");
+        }
+
+        // Remove the extra comma at the end.
+        if (mergedArray.length() > 0) {
+            mergedArray.deleteCharAt(mergedArray.length() - 1);
+        }
+
+        properties.setProperty(key, mergedArray.toString());
+
+        logger.exit();
     }
 
     public void setInetAddress(String key, InetAddress value) {

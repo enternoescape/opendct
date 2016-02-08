@@ -16,17 +16,21 @@
 
 package opendct.config.messages;
 
-import java.util.Date;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class MessageContainerImpl implements MessageContainer {
     private final String sender;
-    private final MessageSeverity severity;
+    private final Level level;
+    private final String title;
     private final String message;
-    private Date dates[];
+    private long dates[];
 
-    public MessageContainerImpl(String sender, MessageSeverity severity, String message, Date... dates) {
+    public MessageContainerImpl(String sender, Level level, String title, String message, long... dates) {
         this.sender = sender;
-        this.severity = severity;
+        this.level = level;
+        this.title = title;
         this.message = message;
         this.dates = dates;
 
@@ -35,31 +39,58 @@ public class MessageContainerImpl implements MessageContainer {
         }
     }
 
-    @Override
+    public MessageContainerImpl(String sender, Level level, MessageTitle title, String message, long... dates) {
+        this.sender = sender;
+        this.level = level;
+        this.title = title.TITLE;
+        this.message = message;
+        this.dates = dates;
+
+        if (dates.length == 0) {
+            incrementRepeat();
+        }
+    }
+
+    /**
+     * This actually puts the message into the log.
+     *
+     * @param exception The exception if an exception is to be logged. This value can be
+     *                  <i>null</i>.
+     */
+    public void logMessage(Exception exception) {
+        final Logger logger = LogManager.getLogger(sender);
+
+        if (exception != null) {
+            logger.log(level, "{} => ", message, exception);
+        } else {
+            logger.log(level, message);
+        }
+    }
+
     public String getSender() {
         return sender;
     }
 
-    @Override
-    public MessageSeverity getSeverity() {
-        return severity;
+    public Level getLevel() {
+        return level;
     }
 
-    @Override
+    public String getTitle() {
+        return title;
+    }
+
     public String getMessage() {
         return message;
     }
 
-    @Override
-    public Date[] getTime() {
+    public long[] getTime() {
         return dates;
     }
 
-    @Override
     public synchronized void incrementRepeat() {
-        Date newDate = new Date(System.currentTimeMillis());
+        long newDate = System.currentTimeMillis();
 
-        Date newDates[] = new Date[dates.length + 1];
+        long newDates[] = new long[dates.length + 1];
 
         System.arraycopy(dates, 0, newDates, 0, dates.length);
         newDates[dates.length] = newDate;
@@ -67,7 +98,6 @@ public class MessageContainerImpl implements MessageContainer {
         dates = newDates;
     }
 
-    @Override
     public int getRepeat() {
         return dates.length;
     }
@@ -79,14 +109,16 @@ public class MessageContainerImpl implements MessageContainer {
 
         MessageContainerImpl that = (MessageContainerImpl) o;
 
-        if (severity != that.severity) return false;
+        if (!level.equals(that.level)) return false;
+        if (!title.equals(that.title)) return false;
         return message.equals(that.message);
 
     }
 
     @Override
     public int hashCode() {
-        int result = severity.hashCode();
+        int result = level.hashCode();
+        result = 31 * result + title.hashCode();
         result = 31 * result + message.hashCode();
         return result;
     }

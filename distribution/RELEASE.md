@@ -245,11 +245,18 @@
 > *Added check at startup for at least one network interface to be present before continuing
 > startup. This has a default timeout of 2 minutes.
 
-> *Circular buffer now expands dynamically during FFmpeg detection.
+> *Circular buffer now expands dynamically during FFmpeg detection. To simplify things, the max
+> probe size is now always the requested circular buffer size times 3 then minus 1MB. That way the
+> detection will always be able to take advantage of the largest size the buffer could possibly be.
+
+> *Official support for MPEG-PS.
+
+> *Experimental support for HDHomeRun ATSC and ClearQAM capture devices.
 
 > *Internal: Created framework for capture device detection as a "plugin."
 
 > *Internal: HDHomeRun native detection method completely implemented.
 
 > *Internal: Enabled JSW configuration reload on restart for future automatic/requested upgrading
-> via web interface.
+> via web interface. This method of updating is not currently in use and will be disabled by
+> default.

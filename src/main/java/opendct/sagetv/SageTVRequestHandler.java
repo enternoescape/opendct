@@ -524,7 +524,7 @@ public class SageTVRequestHandler implements Runnable {
                         // AUTOSCAN (checks if channel is tunable or not)
                         //=============================================================================================
                     } else if (lastRequest.startsWith("AUTOSCAN ")) {
-                        StringTokenizer tokens = new StringTokenizer(lastRequest.substring(9), "|");
+                        /*StringTokenizer tokens = new StringTokenizer(lastRequest.substring(9), "|");
 
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 2) {
@@ -542,7 +542,10 @@ public class SageTVRequestHandler implements Runnable {
                             returnValue = captureDevice.autoScanChannel(chanString);
                         }
 
-                        sendResponse((returnValue ? "OK" : "NO_SIGNAL"));
+                        sendResponse((returnValue ? "OK" : "NO_SIGNAL"));*/
+
+                        logger.warn("SageTV requested '{}'.", lastRequest);
+                        sendResponse("OK");
 
                         //=============================================================================================
                         // AUTOINFOSCAN

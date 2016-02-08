@@ -129,7 +129,7 @@ public class PrimeChannels {
 
                         if (channel.contains(".")) {
                             isAtsc = true;
-                            channel = channel.replace(".", "-");
+                            //channel = channel.replace(".", "-");
                         }
 
                         // Check if the name is on the ignore list.
@@ -177,8 +177,8 @@ public class PrimeChannels {
                                 }
 
                                 if (isAtsc) {
-                                    // This ensures that the mapping will be correct.
-                                    primeChannel.setChannelRemap(channel.replace("-", "."));
+                                    // This ensures that the mapping will be correct from SageTV's perspective.
+                                    primeChannel.setChannelRemap(channel.replace(".", "-"));
                                 }
 
                                 channelLineup.addChannel(primeChannel);

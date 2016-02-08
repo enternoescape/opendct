@@ -624,7 +624,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         if (split.length > 1 && split[split.length - 1].length() > 3) {
                             tvChannel.setModulation(split[0].toUpperCase());
 
-                            tvChannel.setFrequency(split[split.length - 1].substring(0, split.length - 3));
+                            tvChannel.setFrequency(split[split.length - 1]);
                         }
                     }
                 } catch (Exception e) {

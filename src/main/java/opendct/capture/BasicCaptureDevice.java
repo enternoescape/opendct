@@ -411,10 +411,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return recordEncodingQuality;
     }
 
-    public boolean autoScanChannel(String channel) {
-        return autoTuneChannel(channel);
-    }
-
     private int scanChannelIndex = 0;
     private TVChannel scanChannels[];
     private boolean channelScanFirstZero = true;
@@ -457,6 +453,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
     public void setChannelLineup(String lineup) {
         encoderLineup = lineup;
+        Config.setString(propertiesDeviceParent + "lineup", lineup.toLowerCase());
     }
 
     /**

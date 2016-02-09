@@ -220,7 +220,7 @@ public class InfiniTVChannels {
                                                 values[0],
                                                 values[1],
                                                 values[2],
-                                                String.valueOf(frequency),
+                                                frequency,
                                                 String.valueOf(program),
                                                 String.valueOf(eia),
                                                 ignore);
@@ -234,8 +234,8 @@ public class InfiniTVChannels {
                                             updated = true;
                                         }
 
-                                        if (frequency > 0 && !oldChannel.getFrequency().equals(String.valueOf(frequency))) {
-                                            oldChannel.setFrequency(String.valueOf(frequency));
+                                        if (frequency > 0 && !(oldChannel.getFrequency() == frequency)) {
+                                            oldChannel.setFrequency(frequency);
                                             updated = true;
                                         }
 

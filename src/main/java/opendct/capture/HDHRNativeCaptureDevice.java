@@ -363,7 +363,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     if (split.length > 1 && split[split.length - 1].length() > 3) {
                         tvChannel.setModulation(split[0].toUpperCase());
 
-                        tvChannel.setFrequency(split[split.length - 1]);
+                        tvChannel.setFrequency(Integer.valueOf(split[split.length - 1]));
                     }
                 }
             } catch (Exception e) {
@@ -515,8 +515,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         modulation = "auto";
                     }
 
-                    String frequency = tvChannel.getFrequency();
-                    if (frequency == null) {
+                    int frequency = tvChannel.getFrequency();
+                    if (frequency <= 0) {
                         logger.error("The channel '{}' does not have a frequency on the lineup '{}'.", channel, encoderLineup);
                         return logger.exit(false);
                     }
@@ -750,7 +750,13 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 if (split.length > 1 && split[split.length - 1].length() > 3) {
                     tvChannel.setModulation(split[0].toUpperCase());
 
-                    tvChannel.setFrequency(split[split.length - 1]);
+                    tvChannel.setFrequency(Integer.valueOf(split[split.length - 1]));
+                }
+
+                if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
+                    int fChannel = Frequencies.getChannelForFrequency(FrequencyType._8VSB, tvChannel.getFrequency());
+
+                    //tvChannel.setChannelRemap();
                 }
             }
         } catch (Exception e) {

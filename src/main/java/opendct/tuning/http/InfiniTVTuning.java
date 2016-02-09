@@ -165,11 +165,11 @@ public class InfiniTVTuning {
 
         String frequency;
 
-        if (tvChannel.getFrequency().length() < 3) {
+        if (tvChannel.getFrequency() < 1000000) {
             frequency = "frequency=" + tvChannel.getFrequency();
         } else {
             // Tuning on the InfiniTV always excludes the last 3 zeros in the frequency.
-            frequency = "frequency=" + tvChannel.getFrequency().substring(0, tvChannel.getFrequency().length() - 3);
+            frequency = "frequency=" + tvChannel.getFrequency() / 1000;
         }
 
         String modulation = null;

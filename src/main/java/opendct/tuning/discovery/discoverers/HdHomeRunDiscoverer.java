@@ -66,7 +66,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
     private final HashMap<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new HashMap<>();
     private final HashMap<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new HashMap<>();
-    private final ConcurrentHashMap<Integer, HDHomeRunDevice> hdHomeRunDevices = new ConcurrentHashMap<>();
+    private final HashMap<Integer, HDHomeRunDevice> hdHomeRunDevices = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);

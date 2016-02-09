@@ -741,7 +741,7 @@ public class ChannelManager implements PowerEventListener {
 
                 TVChannel refChannel = ChannelManager.getChannel(device.getChannelLineup(), tvChannel.getChannel());
 
-                if (refChannel != null && !Util.isNullOrEmpty(refChannel.getFrequency()) &&
+                if (refChannel != null && refChannel.getFrequency() > 0 &&
                         !Util.isNullOrEmpty(refChannel.getProgram())) {
 
                     tvChannel.setModulation(refChannel.getModulation());

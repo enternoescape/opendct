@@ -227,6 +227,20 @@ public class HDHomeRunTuner {
      *                     at this time.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
+    public void setChannel(String modulation, int frequencyChannel, boolean channel) throws IOException, GetSetException {
+        set("channel", modulation.toLowerCase() + ":" + String.valueOf(frequencyChannel));
+    }
+
+    /**
+     * Set the modulation and frequency/channel.
+     *
+     * @param modulation This is the modulation to be used.
+     * @param frequencyChannel This is the frequency or channel to tune into.
+     * @param channel <i>true</i> if this is not a frequency.
+     * @throws IOException Thrown if communication with the device was incomplete or is not possible
+     *                     at this time.
+     * @throws GetSetException Thrown if the device returns an error instead of a value.
+     */
     public void setChannel(String modulation, String frequencyChannel, boolean channel) throws IOException, GetSetException {
         set("channel", modulation.toLowerCase() + ":" + frequencyChannel);
     }

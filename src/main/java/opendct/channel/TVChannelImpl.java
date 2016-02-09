@@ -31,7 +31,7 @@ public class TVChannelImpl implements TVChannel {
     private final String name;
     private String url = "";
     private String modulation = "";
-    private String frequency = "";
+    private int frequency = -1;
     private String program = "";
     private String eia = "";
     private String[] changes = new String[12];
@@ -65,7 +65,7 @@ public class TVChannelImpl implements TVChannel {
         name = properties[3];
         url = properties[4];
         modulation = properties[5];
-        frequency = properties[6];
+        frequency = Integer.valueOf(properties[6]);
         program = properties[7];
         eia = properties[8];
 
@@ -95,7 +95,7 @@ public class TVChannelImpl implements TVChannel {
         this.ignore = ignore;
     }
 
-    public TVChannelImpl(String channel, String name, String modulation, String frequency, String program, String eia, boolean ignore) {
+    public TVChannelImpl(String channel, String name, String modulation, int frequency, String program, String eia, boolean ignore) {
         this.channel = channel;
         this.name = name;
         this.modulation = modulation;
@@ -106,7 +106,7 @@ public class TVChannelImpl implements TVChannel {
         this.ignore = ignore;
     }
 
-    public TVChannelImpl(String channel, String channelRemap, boolean tunable, String name, String url, String modulation, String frequency, String program, String eia, int signalStrength, CopyProtection cci, boolean ignore) {
+    public TVChannelImpl(String channel, String channelRemap, boolean tunable, String name, String url, String modulation, int frequency, String program, String eia, int signalStrength, CopyProtection cci, boolean ignore) {
         this.channel = channel;
         this.channelRemap = channelRemap;
         this.tunable = tunable;
@@ -129,7 +129,7 @@ public class TVChannelImpl implements TVChannel {
                 name,
                 url,
                 modulation,
-                frequency,
+                String.valueOf(frequency),
                 program,
                 eia,
                 String.valueOf(signalStrength),
@@ -152,9 +152,9 @@ public class TVChannelImpl implements TVChannel {
         changes[iModulation] = modulation;
     }
 
-    public void setFrequency(String frequency) {
+    public void setFrequency(int frequency) {
         this.frequency = frequency;
-        changes[iFrequency] = frequency;
+        changes[iFrequency] = String.valueOf(frequency);
     }
 
     public void setProgram(String program) {
@@ -167,7 +167,7 @@ public class TVChannelImpl implements TVChannel {
         changes[iEIA] = eia;
     }
 
-    public String getFrequency() {
+    public int getFrequency() {
         return frequency;
     }
 

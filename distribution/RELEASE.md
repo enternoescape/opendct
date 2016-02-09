@@ -271,3 +271,6 @@
 > *Internal: Enabled JSW configuration reload on restart for future automatic/requested upgrading
 > via web interface. This method of updating is not currently in use and will be disabled by
 > default.
+
+#### 0.4.21-Beta
+> *Internal: Converted channel update methods to use device options for configuration.

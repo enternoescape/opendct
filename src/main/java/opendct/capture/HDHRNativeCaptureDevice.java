@@ -199,7 +199,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         logger.debug("Getting a port for incoming RTP data...");
         rtpLocalPort = Config.getFreeRTSPPort(encoderName);
 
-
         logger.info("Encoder Manufacturer: '{}'," +
                 " Number: {}," +
                 " Remote IP: '{}'," +
@@ -886,7 +885,15 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             logger.error("Unable to get broadcast standard from HDHomeRun because the command did not work => ", e);
         }
 
-        return BroadcastStandard.QAM256;
+        switch (encoderDeviceType) {
+            case DCT_HDHOMERUN:
+            case QAM_HDHOMERUN:
+                return BroadcastStandard.QAM256;
+            case ATSC_HDHOMERUN:
+                return BroadcastStandard.ATSC;
+        }
+
+        return BroadcastStandard.UNKNOWN;
     }
 
     @Override

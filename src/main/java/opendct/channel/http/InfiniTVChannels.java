@@ -20,6 +20,10 @@ import opendct.channel.ChannelLineup;
 import opendct.channel.TVChannel;
 import opendct.channel.TVChannelImpl;
 import opendct.config.Config;
+import opendct.config.options.BooleanDeviceOption;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
+import opendct.config.options.StringDeviceOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,32 +33,18 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class InfiniTVChannels {
     private static final Logger logger = LogManager.getLogger(InfiniTVChannels.class);
 
     private static final ReentrantReadWriteLock channelMapLock = new ReentrantReadWriteLock();
-    /*private static final HashMap<String, TVChannel> dctChannelMap = new HashMap<String, TVChannel>();
-    private static final HashMap<String, TVChannel> qamChannelMap = new HashMap<String, TVChannel>();*/
 
-    // This indicates to remove all SD channels that clearly have an HD equivalent. The associated
-    // searching method needs work and probably a lot of special cases will be found.
-    /*private static final boolean smartSDFilter =
-            Config.getBoolean("http.infinitv.remove_sd_for_hd", false);
-
-    // This removes all channels that do not indicated they are HD.
-    private static final boolean removeAllSD =
-            Config.getBoolean("http.infinitv.remove_all_sd", false);
-
-    private static final String[] hdLabels =
-            Config.getStringArray("http.infinitv.hd_labels_csv", "HD", "DT", "DT2", "DT3");*/
-    private static final String[] ignoreNamesContaining =
-            Config.getStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
-    private static final String[] ignoreChannelNumbers =
-            Config.getStringArray("channels.infinitv.ignore_channels_csv", "");
-    private static final boolean removeDuplicateChannels =
-            Config.getBoolean("channels.infinitv.remove_duplicate_channels", true);
+    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private static StringDeviceOption ignoreNamesContaining;
+    private static StringDeviceOption ignoreChannelNumbers;
+    private static BooleanDeviceOption removeDuplicateChannels;
 
     private static final String REQUEST_START =
             "<table style=\"text-align:center;width:600px\"><tr><th>Channel</th><th>Name</th><th>" +
@@ -63,6 +53,58 @@ public class InfiniTVChannels {
 
     // Default is every 8 hours. That should be frequent enough.
     private static long updateInterval = 28800000;
+
+    static {
+        deviceOptions = new ConcurrentHashMap<>();
+
+        while (true) {
+            try {
+                ignoreNamesContaining = new StringDeviceOption(
+                        Config.getStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE"),
+                        true,
+                        false,
+                        "Ignore Channel Names Containing",
+                        "channels.infinitv.ignore_names_containing_csv",
+                        "All channels containing any of the values in this list will be discarded on update."
+                );
+
+                ignoreChannelNumbers = new StringDeviceOption(
+                        Config.getStringArray("channels.infinitv.ignore_channels_csv"),
+                        true,
+                        false,
+                        "Ignore Channels",
+                        "channels.infinitv.ignore_channels_csv",
+                        "All channel values in this list will be discarded on update."
+                );
+
+                removeDuplicateChannels = new BooleanDeviceOption(
+                        Config.getBoolean("channels.infinitv.remove_duplicate_channels", true),
+                        false,
+                        "Remove Duplicate Channels",
+                        "channels.infinitv.remove_duplicate_channels",
+                        "Removed channels that have the exact same name. Preference is given to the" +
+                                " first channel to have the name."
+                );
+
+                Config.mapDeviceOptions(
+                        deviceOptions,
+                        ignoreNamesContaining,
+                        ignoreChannelNumbers,
+                        removeDuplicateChannels
+                );
+            } catch (DeviceOptionException e) {
+                logger.error("Unable to configure device options for InfiniTVChannels reverting to defaults => ", e);
+
+                Config.setStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
+                Config.setStringArray("channels.infinitv.ignore_channels_csv");
+                Config.setBoolean("channels.infinitv.remove_duplicate_channels", true);
+
+                continue;
+            }
+
+            break;
+        }
+    }
 
     // This will also kick off an update interval thread unless it is disabled in properties.
     public static boolean populateChannels(ChannelLineup channelLineup) {
@@ -109,7 +151,7 @@ public class InfiniTVChannels {
                         if (values.length == 6) {
                             // Check if the name is on the ignore list.
                             ignore = false;
-                            for (String ignoreName : ignoreNamesContaining) {
+                            for (String ignoreName : ignoreNamesContaining.getArrayValue()) {
                                 if (values[1].contains(ignoreName)) {
                                     logger.debug("Skipping channel {} ({}) because it contains '{}'", values[0], values[1], ignoreName);
                                     ignore = true;
@@ -117,7 +159,7 @@ public class InfiniTVChannels {
                                 }
                             }
 
-                            for (String ignoreChannel : ignoreChannelNumbers) {
+                            for (String ignoreChannel : ignoreChannelNumbers.getArrayValue()) {
                                 if (values[0].equals(ignoreChannel)) {
                                     logger.debug("Skipping channel {} ({}) because the channel number is '{}'", values[0], values[1], ignoreChannel);
                                     ignore = true;
@@ -155,7 +197,7 @@ public class InfiniTVChannels {
                                 boolean isDuplicate = false;
 
 
-                                if (removeDuplicateChannels) {
+                                if (removeDuplicateChannels.getBoolean()) {
                                     isDuplicate = channelLineup.isDuplicate(values[0], values[1]);
 
                                     if (isDuplicate) {

@@ -18,7 +18,7 @@ package opendct.config.options;
 
 public class StringDeviceOption extends BaseDeviceOption {
 
-    public StringDeviceOption(String[] values, boolean allowEmpty, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
+    public StringDeviceOption(String values[], boolean allowEmpty, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
         super(DeviceOptionType.STRING, allowEmpty, readonly, name, property, description, validValues);
         super.setValue(values);
     }

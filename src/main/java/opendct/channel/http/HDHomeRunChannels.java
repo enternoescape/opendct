@@ -20,6 +20,10 @@ import opendct.channel.ChannelLineup;
 import opendct.channel.TVChannel;
 import opendct.channel.TVChannelImpl;
 import opendct.config.Config;
+import opendct.config.options.BooleanDeviceOption;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
+import opendct.config.options.StringDeviceOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Document;
@@ -32,18 +36,78 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class PrimeChannels {
-    private static final Logger logger = LogManager.getLogger(PrimeChannels.class);
+public class HDHomeRunChannels {
+    private static final Logger logger = LogManager.getLogger(HDHomeRunChannels.class);
 
-    private static final String[] ignoreNamesContaining =
-            Config.getStringArray("channels.prime.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
-    private static final String[] ignoreChannelNumbers =
-            Config.getStringArray("channels.prime.ignore_channels_csv", "");
-    private static final boolean removeDuplicateChannels =
-            Config.getBoolean("channels.prime.remove_duplicate_channels", true);
-    private static final boolean enableAllChannels =
-            Config.getBoolean("channels.prime.enable_all_channels", true);
+    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private static StringDeviceOption ignoreNamesContaining;
+    private static StringDeviceOption ignoreChannelNumbers;
+    private static BooleanDeviceOption removeDuplicateChannels;
+    private static BooleanDeviceOption enableAllChannels;
+
+    static {
+        deviceOptions = new ConcurrentHashMap<>();
+
+        while (true) {
+            try {
+                ignoreNamesContaining = new StringDeviceOption(
+                        Config.getStringArray("channels.prime.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE"),
+                        true,
+                        false,
+                        "Ignore Channel Names Containing",
+                        "channels.prime.ignore_names_containing_csv",
+                        "All channels containing any of the values in this list will be discarded on update."
+                );
+
+                ignoreChannelNumbers = new StringDeviceOption(
+                        Config.getStringArray("channels.prime.ignore_channels_csv"),
+                        true,
+                        false,
+                        "Ignore Channels",
+                        "channels.prime.ignore_channels_csv",
+                        "All channel values in this list will be discarded on update."
+                );
+
+                removeDuplicateChannels = new BooleanDeviceOption(
+                        Config.getBoolean("channels.prime.remove_duplicate_channels", true),
+                        false,
+                        "Remove Duplicate Channels",
+                        "channels.prime.remove_duplicate_channels",
+                        "Removed channels that have the exact same name. Preference is given to the" +
+                                " first channel to have the name."
+                );
+
+                enableAllChannels = new BooleanDeviceOption(
+                        Config.getBoolean("channels.prime.enable_all_channels", true),
+                        false,
+                        "Enable All Channels",
+                        "channels.prime.enable_all_channels",
+                        "Enable all channels received by the HDHomeRun device that are not DRM" +
+                                " protected."
+                );
+
+                Config.mapDeviceOptions(
+                        deviceOptions,
+                        ignoreNamesContaining,
+                        ignoreChannelNumbers,
+                        removeDuplicateChannels
+                );
+            } catch (DeviceOptionException e) {
+                logger.error("Unable to configure device options for HDHomeRunChannels reverting to defaults => ", e);
+
+                Config.setStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
+                Config.setStringArray("channels.infinitv.ignore_channels_csv");
+                Config.setBoolean("channels.infinitv.remove_duplicate_channels", true);
+                Config.setBoolean("channels.prime.enable_all_channels", true);
+
+                continue;
+            }
+
+            break;
+        }
+    }
 
     /**
      * This will populate the provided channel lineup with the latest channel information provided
@@ -58,7 +122,7 @@ public class PrimeChannels {
         boolean returnValue = true;
         // This only applies when ClearQAM is not in use because we can't do anything with the
         // returned information.
-        boolean enableAllChannels = PrimeChannels.enableAllChannels;
+        boolean enableAllChannels = HDHomeRunChannels.enableAllChannels.getBoolean();
         boolean isQam = false;
         boolean isAtsc = false;
 
@@ -134,7 +198,7 @@ public class PrimeChannels {
 
                         // Check if the name is on the ignore list.
                         boolean ignore = false;
-                        for (String ignoreName : ignoreNamesContaining) {
+                        for (String ignoreName : ignoreNamesContaining.getArrayValue()) {
                             if (name.contains(ignoreName)) {
                                 logger.debug("Skipping channel {} ({}) because it contains '{}'", channel, name, ignoreName);
                                 ignore = true;
@@ -142,7 +206,7 @@ public class PrimeChannels {
                             }
                         }
 
-                        for (String ignoreChannel : ignoreChannelNumbers) {
+                        for (String ignoreChannel : ignoreChannelNumbers.getArrayValue()) {
                             if (channel.equals(ignoreChannel)) {
                                 logger.debug("Skipping channel {} ({}) because the channel number is '{}'", channel, name, ignoreChannel);
                                 ignore = true;
@@ -154,7 +218,7 @@ public class PrimeChannels {
 
                         boolean isDuplicate = false;
 
-                        if (removeDuplicateChannels && !isQam) {
+                        if (removeDuplicateChannels.getBoolean() && !isQam) {
                             isDuplicate = channelLineup.isDuplicate(channel, name);
 
                             if (isDuplicate) {

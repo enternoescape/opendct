@@ -16,6 +16,7 @@
 
 package opendct.channel;
 
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -65,7 +66,7 @@ public class TVChannelImpl implements TVChannel {
         name = properties[3];
         url = properties[4];
         modulation = properties[5];
-        frequency = Integer.valueOf(properties[6]);
+        frequency = Util.isNullOrEmpty(properties[6]) ? -1 : Integer.valueOf(properties[6]);
         program = properties[7];
         eia = properties[8];
 

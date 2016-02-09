@@ -18,8 +18,8 @@ package opendct.channel;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceType;
+import opendct.channel.http.HDHomeRunChannels;
 import opendct.channel.http.InfiniTVChannels;
-import opendct.channel.http.PrimeChannels;
 import opendct.config.Config;
 import opendct.config.ConfigBag;
 import opendct.power.PowerEventListener;
@@ -471,7 +471,7 @@ public class ChannelManager implements PowerEventListener {
                 break;
             case HDHOMERUN:
                 logger.info("Updating the HDHomeRun channel lineup {} ({}).", channelLineup.getFriendlyName(), channelLineup.LINEUP_NAME);
-                PrimeChannels.populateChannels(channelLineup);
+                HDHomeRunChannels.populateChannels(channelLineup);
                 break;
             case STATIC:
                 logger.info("The static channel lineup {} ({}) will remain unchanged.", channelLineup.getFriendlyName(), channelLineup.LINEUP_NAME);

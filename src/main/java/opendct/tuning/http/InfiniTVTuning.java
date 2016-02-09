@@ -53,14 +53,14 @@ public class InfiniTVTuning {
                 // Check if the frequency is already correct.
                 String currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
 
-                boolean frequencyTuned = currentFrequency.equals(tvChannel.getFrequency());
+                boolean frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
                 int attempts = 20;
 
                 while (!frequencyTuned) {
                     tuneFrequency(tvChannel, deviceAddress, tunerNumber, retry);
 
                     currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
-                    frequencyTuned = currentFrequency.equals(tvChannel.getFrequency());
+                    frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
 
                     if (attempts-- == 0 && !frequencyTuned) {
                         logger.error("The requested frequency cannot be tuned.");
@@ -165,12 +165,12 @@ public class InfiniTVTuning {
 
         String frequency;
 
-        if (tvChannel.getFrequency() < 1000000) {
+        /*if (tvChannel.getFrequency() < 1000000) {
             frequency = "frequency=" + tvChannel.getFrequency();
-        } else {
+        } else {*/
             // Tuning on the InfiniTV always excludes the last 3 zeros in the frequency.
-            frequency = "frequency=" + tvChannel.getFrequency() / 1000;
-        }
+            frequency = "frequency=" + (tvChannel.getFrequency() / 1000);
+        //}
 
         String modulation = null;
         if (tvChannel.getModulation().equals("QAM256")) {

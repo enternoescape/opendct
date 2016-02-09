@@ -163,14 +163,7 @@ public class InfiniTVTuning {
         }
         String instanceId = "instance_id=" + String.valueOf(tunerNumber - 1);
 
-        String frequency;
-
-        /*if (tvChannel.getFrequency() < 1000000) {
-            frequency = "frequency=" + tvChannel.getFrequency();
-        } else {*/
-            // Tuning on the InfiniTV always excludes the last 3 zeros in the frequency.
-            frequency = "frequency=" + (tvChannel.getFrequency() / 1000);
-        //}
+        String frequency = "frequency=" + (tvChannel.getFrequency() / 1000);
 
         String modulation = null;
         if (tvChannel.getModulation().equals("QAM256")) {

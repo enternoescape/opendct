@@ -303,7 +303,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @return <i>true</i> if the test was complete and successful. <i>false</i> if we should try
      * again on a different capture device since this one is currently locked.
      */
-    public boolean getChannelInfoOffline(TVChannel tvChannel);
+    public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI);
 
     /**
      * Stop anything currently happening and put the capture device in a safe state for shutdown.

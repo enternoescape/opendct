@@ -291,4 +291,6 @@
 > *FFmpeg now loads asynchronously as early as possible in startup. This results in devices becoming
 > ready up to 5 seconds sooner.
 
-> *Internal: Improved HDHomeRun discovery logging.
+> *Improved ClearQAM auto-mapping from HDHomeRun DCT by tuning performance.
+
+> *Internal: Improved HDHomeRun discovery and capture device logging.

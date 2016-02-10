@@ -67,10 +67,6 @@ public class DummyCaptureDevice implements CaptureDevice {
         return encoderName.hashCode();
     }
 
-    public String getEncoderVersion() {
-        return encoderVersion;
-    }
-
     private AtomicBoolean locked = new AtomicBoolean(false);
 
     public boolean isLocked() {
@@ -109,7 +105,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         return true;
     }
 
-    public boolean getChannelInfoOffline(TVChannel tvChannel) {
+    public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         return false;
     }
 

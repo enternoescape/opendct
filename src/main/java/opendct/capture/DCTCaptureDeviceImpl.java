@@ -516,7 +516,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         (device.getEncoderDeviceType() == CaptureDeviceType.DCT_HDHOMERUN ||
                                 device.getEncoderDeviceType() == CaptureDeviceType.DCT_INFINITV)) {
 
-                    boolean result = device.getChannelInfoOffline(tvChannel);
+                    boolean result = device.getChannelInfoOffline(tvChannel, true);
 
                     if (result) {
                         ChannelManager.updateChannel(encoderLineup, tvChannel);
@@ -552,7 +552,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      * @return <i>true</i> if the test was complete and successful. <i>false</i> if we should try
      *         again on a different capture device since this one is currently locked.
      */
-    public boolean getChannelInfoOffline(TVChannel tvChannel) {
+    public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         logger.entry(tvChannel);
 
         if (isLocked() || isExternalLocked()) {
@@ -590,31 +590,35 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 }
             }
 
-            CopyProtection copyProtection = getCopyProtection();
-            while ((copyProtection == CopyProtection.NONE ||
-                    copyProtection == CopyProtection.UNKNOWN) &&
-                    timeout-- > 0) {
+            if (!skipCCI) {
+                CopyProtection copyProtection = getCopyProtection();
+                while ((copyProtection == CopyProtection.NONE ||
+                        copyProtection == CopyProtection.UNKNOWN) &&
+                        timeout-- > 0) {
 
-                if (isLocked()) {
-                    stopEncoding();
-                    return logger.exit(false);
+                    if (isLocked()) {
+                        stopEncoding();
+                        return logger.exit(false);
+                    }
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        return logger.exit(false);
+                    }
+                    copyProtection = getCopyProtection();
                 }
 
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    return logger.exit(false);
+                tvChannel.setCci(copyProtection);
+
+                if (copyProtection == CopyProtection.COPY_FREELY || copyProtection == CopyProtection.NONE) {
+                    tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
+                } else {
+                    tvChannel.setTunable(false);
                 }
-                copyProtection = getCopyProtection();
             }
 
-            tvChannel.setCci(copyProtection);
             tvChannel.setSignalStrength(getSignalStrength());
-            if (copyProtection == CopyProtection.COPY_FREELY || copyProtection == CopyProtection.NONE) {
-                tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
-            } else {
-                tvChannel.setTunable(false);
-            }
 
             if (isHDHRTune()) {
                 try {

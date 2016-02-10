@@ -311,7 +311,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     }
 
     @Override
-    public boolean getChannelInfoOffline(TVChannel tvChannel) {
+    public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         logger.entry(tvChannel);
 
         if (isLocked() || isExternalLocked()) {
@@ -333,32 +333,35 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             int offlineDetectionMinBytes = 10528; //HDHomeRunDiscoverer.getOfflineDetectionMinBytes();
             int timeout = 8; //HDHomeRunDiscoverer.getOfflineDetectionSeconds();
 
-            CopyProtection copyProtection = getCopyProtection();
-            while ((copyProtection == CopyProtection.NONE ||
-                    copyProtection == CopyProtection.UNKNOWN) &&
-                    timeout-- > 0) {
+            if (!skipCCI) {
+                CopyProtection copyProtection = getCopyProtection();
+                while ((copyProtection == CopyProtection.NONE ||
+                        copyProtection == CopyProtection.UNKNOWN) &&
+                        timeout-- > 0) {
 
-                if (isLocked()) {
-                    stopEncoding();
-                    return logger.exit(false);
+                    if (isLocked()) {
+                        stopEncoding();
+                        return logger.exit(false);
+                    }
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        return logger.exit(false);
+                    }
+
+                    copyProtection = getCopyProtection();
                 }
 
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    return logger.exit(false);
+                tvChannel.setCci(copyProtection);
+                if (copyProtection == CopyProtection.COPY_FREELY || copyProtection == CopyProtection.NONE) {
+                    tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
+                } else {
+                    tvChannel.setTunable(false);
                 }
-
-                copyProtection = getCopyProtection();
             }
 
-            tvChannel.setCci(copyProtection);
             tvChannel.setSignalStrength(getSignalStrength());
-            if (copyProtection == CopyProtection.COPY_FREELY || copyProtection == CopyProtection.NONE) {
-                tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
-            } else {
-                tvChannel.setTunable(false);
-            }
 
             try {
                 String frequency = tuner.getChannel();
@@ -385,8 +388,22 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 try {
                     HDHomeRunVStatus status = tuner.getVirtualChannelStatus();
                     tvChannel.setTunable(!status.NOT_AVAILABLE && !status.COPY_PROTECTED && !status.NOT_SUBSCRIBED);
-                } catch (Exception e) {
-                    logger.error("Unable to get status from HDHomeRun => ", e);
+                } catch (IOException e) {
+                    logger.error("Unable to get virtual channel status from HDHomeRun because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to get virtual channel status from HDHomeRun because the command did not work => ", e);
+
+                    // Try one more time to see if anything actually recorded.
+                    tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
+                }
+            } else {
+                try {
+                    HDHomeRunStatus status = tuner.getStatus();
+                    tvChannel.setTunable(status.SIGNAL_PRESENT);
+                } catch (IOException e) {
+                    logger.error("Unable to get signal presence from HDHomeRun because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to get signal presence from HDHomeRun because the command did not work => ", e);
 
                     // Try one more time to see if anything actually recorded.
                     tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
@@ -538,14 +555,20 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 break;
             case QAM_HDHOMERUN:
                 if (tvChannel == null) {
-                    logger.error("The channel '{}' does not exist on the lineup '{}'.", channel, encoderLineup);
-                    return logger.exit(false);
+                    tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, new TVChannelImpl(channel, channel));
+
+                    if (tvChannel == null) {
+                        logger.error("Unable to tune channel because no references were found for this channel number.");
+                        return logger.exit(false);
+                    }
+
+                    logger.error("Added the channel '{}' to the lineup '{}'.", channel, encoderLineup);
                 }
 
                 try {
                     String modulation = tvChannel.getModulation();
                     if (modulation == null) {
-                        logger.warn("The channel '{}' does not have a modulation on the lineup '{}'. Using QAM256.", channel, encoderLineup);
+                        logger.debug("The channel '{}' does not have a modulation on the lineup '{}'. Using auto.", channel, encoderLineup);
                         modulation = "auto";
                     }
 
@@ -755,6 +778,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     if (getRecordedBytes() != 0 && firstPass) {
                         firstPass = false;
                         logger.info("Streamed first {} bytes.", getRecordedBytes());
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(getTunerStatusString());
+                        }
                     }
                 }
 

@@ -278,3 +278,9 @@
 > *HDHomeRun legacy devices can now be tuned in us-bcast mode.
 
 > *Internal: Converted channel update methods to use device options for configuration.
+
+#### 0.4.22-Beta
+> *HDHomeRun device detection is now broadcasted per available interface similar to UPnP.
+
+> *HDHomeRun ATSC channel detection now works for non-legacy devices. Legacy may work, but is 
+> untested.

@@ -16,6 +16,7 @@
 
 package opendct.tuning.hdhomerun;
 
+import opendct.power.NetworkPowerEventManger;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketTag;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketType;
@@ -26,29 +27,39 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
+import java.util.ArrayList;
 
 public class HDHomeRunDiscovery implements Runnable {
     private static final Logger logger = LogManager.getLogger(HDHomeRunDiscovery.class);
 
-    public final InetAddress BROADCAST_ADDRESS;
+    public final InetAddress BROADCAST_ADDRESS[];
     public final int BROADCAST_PORT;
-    public final InetSocketAddress BROADCAST_SOCKET;
+    public final InetSocketAddress BROADCAST_SOCKET[];
 
     private Thread sendThread;
-    private Thread receiveThread;
-    private DatagramChannel datagramChannel;
-    HDHomeRunPacket txPacket;
-    HDHomeRunPacket rxPacket;
+    private Thread receiveThreads[];
+    private DatagramChannel datagramChannels[];
+    private HDHomeRunPacket txPacket;
+    private HDHomeRunPacket rxPackets[];
 
     HDHomeRunDiscoverer discoverer;
     private final Object devicesLock = new Object();
 
-    public HDHomeRunDiscovery(InetAddress broadcastAddress) {
-        this.BROADCAST_ADDRESS = broadcastAddress;
+    public HDHomeRunDiscovery(InetAddress... broadcastAddress) {
+        BROADCAST_ADDRESS = broadcastAddress;
         BROADCAST_PORT = HDHomeRunPacket.HDHOMERUN_DISCOVER_UDP_PORT;
-        BROADCAST_SOCKET = new InetSocketAddress(BROADCAST_ADDRESS, BROADCAST_PORT);
+        BROADCAST_SOCKET = new InetSocketAddress[BROADCAST_ADDRESS.length];
+
         txPacket = new HDHomeRunPacket();
-        rxPacket = new HDHomeRunPacket();
+        rxPackets = new HDHomeRunPacket[BROADCAST_ADDRESS.length];
+
+        for (int i = 0; i < BROADCAST_ADDRESS.length; i++ ) {
+            BROADCAST_SOCKET[i] = new InetSocketAddress(BROADCAST_ADDRESS[i], BROADCAST_PORT);
+            rxPackets[i] = new HDHomeRunPacket();
+        }
+
+        receiveThreads = new Thread[BROADCAST_ADDRESS.length];
+        datagramChannels = new DatagramChannel[BROADCAST_ADDRESS.length];
     }
 
     public void start(HDHomeRunDiscoverer discoverer) throws IOException {
@@ -59,33 +70,45 @@ public class HDHomeRunDiscovery implements Runnable {
 
         this.discoverer = discoverer;
 
-        if (receiveThread != null && receiveThread.isAlive()) {
-            receiveThread.interrupt();
-            try {
-                receiveThread.join();
-            } catch (InterruptedException e) {
-                logger.debug("Interrupted while waiting for receive thread to stop => ", e);
-                return;
+        for (Thread receiveThread : receiveThreads) {
+            if (receiveThread != null && receiveThread.isAlive()) {
+                receiveThread.interrupt();
+                try {
+                    receiveThread.join();
+                } catch (InterruptedException e) {
+                    logger.debug("Interrupted while waiting for receive thread to stop => ", e);
+                    return;
+                }
             }
         }
 
         sendThread = new Thread(this);
         sendThread.setName("HDHomeRunDiscoverySend-" + sendThread.getId());
 
-        datagramChannel = DatagramChannel.open();
-        datagramChannel.socket().setBroadcast(true);
-        datagramChannel.socket().setReceiveBufferSize(1000000);
+        for (int i = 0; i < datagramChannels.length; i++ ) {
+            datagramChannels[i] = DatagramChannel.open();
+            datagramChannels[i].socket().setBroadcast(true);
+            datagramChannels[i].socket().setReceiveBufferSize(1000000);
 
-        receiveThread = new Thread(new ReceiveThread());
-        receiveThread.setName("HDHomeRunDiscoveryReceive-" + sendThread.getId());
+            ReceiveThread receiveThread = new ReceiveThread();
+            receiveThread.listenIndex = i;
+            receiveThreads[i] = new Thread(receiveThread);
+            receiveThreads[i].setName("HDHomeRunDiscoveryReceive-" + sendThread.getId());
+        }
 
         sendThread.start();
-        receiveThread.start();
+
+        for (Thread receiveThread : receiveThreads) {
+            receiveThread.start();
+        }
     }
 
     public void stop() {
         sendThread.interrupt();
-        receiveThread.interrupt();
+
+        for (Thread receiveThread : receiveThreads) {
+            receiveThread.interrupt();
+        }
     }
 
     public boolean isRunning() {
@@ -93,18 +116,22 @@ public class HDHomeRunDiscovery implements Runnable {
             return sendThread.isAlive();
         }
 
-        if (receiveThread != null) {
-            return receiveThread.isAlive();
+        for (Thread receiveThread : receiveThreads) {
+            if (receiveThread != null) {
+                return receiveThread.isAlive();
+            }
         }
 
         return false;
     }
 
     public void waitForStop() throws InterruptedException {
-        if (receiveThread != null) {
-            while (receiveThread.isAlive()) {
-                receiveThread.interrupt();
-                receiveThread.join(500);
+        if (receiveThreads != null) {
+            for (Thread receiveThread : receiveThreads) {
+                while (receiveThread.isAlive()) {
+                    receiveThread.interrupt();
+                    receiveThread.join(500);
+                }
             }
         }
 
@@ -117,6 +144,8 @@ public class HDHomeRunDiscovery implements Runnable {
     }
 
     public void run() {
+        logger.info("HDHomeRun discovery sender thread started.");
+
         txPacket.startPacket(HDHomeRunPacketType.HDHOMERUN_TYPE_DISCOVER_REQ);
 
         txPacket.putTagLengthValue(
@@ -139,20 +168,25 @@ public class HDHomeRunDiscovery implements Runnable {
             while (!Thread.currentThread().isInterrupted() && retry-- > 0) {
 
                 boolean failed = false;
-                while (txPacket.BUFFER.hasRemaining()) {
-                    try {
-                        if (discoverer.isWaitingForDevices()) {
-                            logger.info("Sending HDHomeRun discovery packet length {}...", txPacket.BUFFER.limit());
-                        }
-                        datagramChannel.send(txPacket.BUFFER, BROADCAST_SOCKET);
-                    } catch (IOException e) {
-                        logger.error("Error while sending HDHomeRun discovery packets to {} => ", BROADCAST_SOCKET, e);
-                        failed = true;
-                        break;
-                    }
-                }
 
-                txPacket.BUFFER.reset();
+                for (int i = 0; i < datagramChannels.length; i++) {
+                    while (txPacket.BUFFER.hasRemaining()) {
+                        try {
+                            if (discoverer.isWaitingForDevices()) {
+                                logger.info("Sending HDHomeRun discovery packet length {} on {}...", txPacket.BUFFER.limit(), BROADCAST_SOCKET[i].getAddress().getHostAddress());
+                            }
+
+                            datagramChannels[i].send(txPacket.BUFFER, BROADCAST_SOCKET[i]);
+
+                        } catch (IOException e) {
+                            logger.error("Error while sending HDHomeRun discovery packets to {} => ", BROADCAST_SOCKET[i], e);
+                            failed = true;
+                            break;
+                        }
+                    }
+
+                    txPacket.BUFFER.reset();
+                }
 
                 if (failed) {
                     continue;
@@ -185,20 +219,30 @@ public class HDHomeRunDiscovery implements Runnable {
             }
         }
 
-        if (datagramChannel != null) {
-            try {
-                datagramChannel.close();
-                datagramChannel.socket().close();
-            } catch (IOException e) {
-                logger.debug("Created an IO exception while closing the datagram channel => ", e);
+        if (datagramChannels != null) {
+            for (DatagramChannel datagramChannel : datagramChannels) {
+                try {
+                    datagramChannel.close();
+                    datagramChannel.socket().close();
+                } catch (IOException e) {
+                    logger.debug("Created an IO exception while closing the datagram channel => ", e);
+                }
             }
         }
+
+        logger.info("HDHomeRun discovery sender thread stopped.");
     }
 
     private class ReceiveThread implements Runnable {
+        protected int listenIndex = -1;
 
         public void run() {
+            logger.info("HDHomeRun discovery receive thread {} started.", listenIndex);
+
             final char recvBase64EncodeTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
+
+            HDHomeRunPacket rxPacket = rxPackets[listenIndex];
+            DatagramChannel datagramChannel = datagramChannels[listenIndex];
 
             while (sendThread != null && sendThread.isAlive()) {
                 rxPacket.BUFFER.clear();
@@ -332,19 +376,24 @@ public class HDHomeRunDiscovery implements Runnable {
                     }
                 }
             }
+
+            logger.info("HDHomeRun discovery receive thread stopped.");
         }
     }
 
-    public static InetAddress getBroadcast() {
-        try {
-            return Inet4Address.getByAddress(
-                    new byte[]{(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff});
-        } catch (UnknownHostException e) {
-            // This isn't going to happen.
-            logger.error("Unable to create broadcast address.");
+    public static InetAddress[] getBroadcast() {
+        NetworkInterface[] networkInterfaces = NetworkPowerEventManger.POWER_EVENT_LISTENER.getInterfaces();
+        ArrayList<InetAddress> addresses = new ArrayList<>();
+
+        for (NetworkInterface networkInterface : networkInterfaces) {
+            for (InterfaceAddress interfaceAddress : networkInterface.getInterfaceAddresses()) {
+                if (interfaceAddress.getAddress() instanceof Inet4Address) {
+                    addresses.add(interfaceAddress.getBroadcast());
+                }
+            }
         }
 
-        return null;
+        return addresses.toArray(new InetAddress[addresses.size()]);
     }
 
     public static boolean isLegacy(int deviceId) {

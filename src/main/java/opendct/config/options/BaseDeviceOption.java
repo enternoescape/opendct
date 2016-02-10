@@ -200,7 +200,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
     }
 
     public String[] getArrayValue() {
-        return new String[]{getValue()};
+        return values;
     }
 
     public String[] getValidValues() {

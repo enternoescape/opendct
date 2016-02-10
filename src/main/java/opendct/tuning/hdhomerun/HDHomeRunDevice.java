@@ -187,7 +187,9 @@ public class HDHomeRunDevice {
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
     public String[] getHelp() throws IOException, GetSetException {
-        help = CONTROL.getVariable(ipAddress, "help");
+        if (help == null) {
+            help = CONTROL.getVariable(ipAddress, "help");
+        }
 
         if (help.contains("\n")) {
             return help.split("\n");
@@ -239,7 +241,9 @@ public class HDHomeRunDevice {
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
     public HDHomeRunFeatures getSysFeatures() throws IOException, GetSetException {
-        sysFeatures = CONTROL.getVariable(ipAddress, "/sys/features");
+        if (sysFeatures == null) {
+            sysFeatures = CONTROL.getVariable(ipAddress, "/sys/features");
+        }
 
         return new HDHomeRunFeatures(sysFeatures);
     }

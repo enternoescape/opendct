@@ -262,7 +262,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         return deviceLoader == null || deviceLoader.isWaitingForDevices();
     }
 
-    public void addDevices(HDHomeRunDevice discoveredDevice) {
+    public void addDevice(HDHomeRunDevice discoveredDevice) {
 
         discoveredDevicesLock.writeLock().lock();
 
@@ -316,6 +316,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             discoveredParents.put(parentDevice.getParentId(), parentDevice);
 
             for (int i = 0; i < discoveredDevice.getTunerCount(); i++) {
+
                 String tunerName = discoveredDevice.getUniqueTunerName(i);
 
                 HDHomeRunDiscoveredDevice newDevice = new HDHomeRunDiscoveredDevice(
@@ -335,6 +336,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             }
 
             hdHomeRunDevices.put(discoveredDevice.getDeviceId(), discoveredDevice);
+
         } catch (IOException e) {
             logger.error("Unable to communicate with HDHomeRun device '{}' => ",
                     discoveredDevice, e);
@@ -348,7 +350,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         } finally {
             discoveredDevicesLock.writeLock().unlock();
         }
-
     }
 
     @Override

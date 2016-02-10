@@ -49,7 +49,27 @@ public class HDHomeRunStreamInfo {
         TSID = tsid;
     }
 
-    public String[] getPrograms() {
+    /**
+     * Returns a program parsed into PROGRAM, CHANNEL, CALLSIGN.
+     *
+     * @param program Raw program data from stream info.
+     * @return An object with <i>null</i> values for things that could not be determined.
+     */
+    public static HDHomeRunProgram parseProgram(String program) {
+        return new HDHomeRunProgram(program);
+    }
+
+    public HDHomeRunProgram[] getProgramsParsed() {
+        HDHomeRunProgram returnValues[] = new HDHomeRunProgram[programs.length];
+
+        for (int i = 0; i < returnValues.length; i++) {
+            returnValues[i] = parseProgram(programs[i]);
+        }
+
+        return returnValues;
+    }
+
+    public String[] getProgramsRaw() {
         return programs;
     }
 

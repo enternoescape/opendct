@@ -63,8 +63,8 @@ public class ChannelManager implements PowerEventListener {
     private static Thread updateThread;
     private static boolean noOfflineScan = false;
 
-    final private static boolean autoMapReference = Config.getBoolean("channels.qam.automap_reference_lookup", true);
-    final private static boolean autoMapTuning = Config.getBoolean("channels.qam.automap_tuning_lookup", true);
+    final private static boolean autoMapQamReference = Config.getBoolean("channels.qam.automap_reference_lookup", true);
+    final private static boolean autoMapQamTuning = Config.getBoolean("channels.qam.automap_tuning_lookup", true);
 
     /**
      * Returns the offline channel scan object for the provided name.
@@ -725,7 +725,7 @@ public class ChannelManager implements PowerEventListener {
      * @return The new channel with the program and frequency already mapped or <i>null</i> if no
      *         mapping was possible.
      */
-    public static TVChannel autoMap(CaptureDevice captureDevice, String encoderLineup, TVChannel tvChannel) {
+    public static TVChannel autoDctToQamMap(CaptureDevice captureDevice, String encoderLineup, TVChannel tvChannel) {
         logger.entry(tvChannel);
 
         // First check if the value is already from an alternative lineup.
@@ -733,7 +733,7 @@ public class ChannelManager implements PowerEventListener {
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_HDHOMERUN));
 
-        if (autoMapReference) {
+        if (autoMapQamReference) {
             for (CaptureDevice device : devices) {
                 if (device == captureDevice) {
                     continue;
@@ -765,7 +765,7 @@ public class ChannelManager implements PowerEventListener {
             }
         }
 
-        if (autoMapTuning) {
+        if (autoMapQamTuning) {
             for (CaptureDevice device : devices) {
                 if (device == captureDevice) {
                     continue;
@@ -775,7 +775,7 @@ public class ChannelManager implements PowerEventListener {
                         (device.getEncoderDeviceType() == CaptureDeviceType.DCT_HDHOMERUN ||
                                 device.getEncoderDeviceType() == CaptureDeviceType.DCT_INFINITV)) {
 
-                    boolean result = device.getChannelInfoOffline(tvChannel);
+                    boolean result = device.getChannelInfoOffline(tvChannel, true);
 
                     if (result) {
                         ChannelManager.updateChannel(encoderLineup, tvChannel);

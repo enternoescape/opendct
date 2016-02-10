@@ -40,7 +40,11 @@ public class DCTRegistryListener implements RegistryListener {
 
     public void remoteDeviceAdded(Registry registry, RemoteDevice device) {
         logger.entry();
-        logger.info("UPnP remote device '{}' discovered.", device.getDisplayString());
+
+        // This will filter what we actually end up seeing in the logs.
+        if (device.getDisplayString().toUpperCase().contains("PRIME") || device.getDisplayString().toUpperCase().contains("INFINITV")) {
+            logger.info("UPnP remote device '{}' discovered.", device.getDisplayString());
+        }
 
         // The event triggers a method that will attempt to add this device to the capture devices.
         RegisterDevice.addRemoteDevice(registry, device);

@@ -117,7 +117,9 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         }
     }
 
-    public synchronized NetworkInterface[] getInterfaces() {
+    public static synchronized NetworkInterface[] getInterfaces() {
+        getNetworkInterfaces(false);
+
         NetworkInterface returnValues[] = new NetworkInterface[currentInterfaceNames.size()];
 
         int i = 0;

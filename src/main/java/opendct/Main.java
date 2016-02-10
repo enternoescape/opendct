@@ -20,6 +20,7 @@ import opendct.channel.ChannelManager;
 import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
+import opendct.consumer.FFmpegSageTVConsumerImpl;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
@@ -104,6 +105,29 @@ public class Main {
         // This takes care of everything to do with logging from cling. The default configuration
         // only reports severe errors.
         UpnpManager.configureUPnPLogging();
+
+        Thread ffmpegAsyncInit = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                long startTime = System.currentTimeMillis();
+                logger.info("FFmpeg loading...");
+
+                // FFmpeg takes a while to initialize, it is accessed now to reduce delays. Creating this
+                // immediately disposed object can reduce the first device load time by up to 5 seconds.
+                // This should not wait until the first time a device is tuned since it will add a very
+                // measurable delay.
+                new FFmpegSageTVConsumerImpl();
+
+                long endTime = System.currentTimeMillis();
+                logger.info("FFmpeg loaded in {}ms.", endTime - startTime);
+            }
+        });
+
+        // This makes sure that it loads as fast as possible, so there are no delays when devices
+        // start loading.
+        ffmpegAsyncInit.setPriority(Thread.MAX_PRIORITY);
+        ffmpegAsyncInit.setName("FFmpegAsyncInit-" + ffmpegAsyncInit.getId());
+        ffmpegAsyncInit.start();
 
         // I think this should be turned on by default for now so it actually gets tested.
         boolean enablePowerManagement = Config.getBoolean("pm.enabled", true);
@@ -190,6 +214,7 @@ public class Main {
         Config.saveConfig();
 
         if (earlyPortAssignment) {
+            logger.info("Early port assignment is enabled.");
             SageTVManager.addAndStartSocketServers(Config.getAllSocketServerPorts());
         }
 
@@ -208,8 +233,8 @@ public class Main {
         }
 
         if (useDiscoveryManager) {
-            DiscoveryManager.startDeviceDiscovery();
             DiscoveryManager.addDiscoverer(new HDHomeRunDiscoverer());
+            DiscoveryManager.startDeviceDiscovery();
 
             PowerMessageManager.EVENTS.addListener(DiscoveryManager.POWER_EVENT_LISTENER);
 

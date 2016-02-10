@@ -283,4 +283,4 @@
 > *HDHomeRun device detection is now broadcasted per available interface similar to UPnP.
 
 > *HDHomeRun ATSC channel detection now works for non-legacy devices. Legacy may work, but is 
-> untested.
+> untested. After running the channel scan, you will need to clear remapped channels for the lineup.

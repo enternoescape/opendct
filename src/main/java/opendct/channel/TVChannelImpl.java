@@ -66,7 +66,14 @@ public class TVChannelImpl implements TVChannel {
         name = properties[3];
         url = properties[4];
         modulation = properties[5];
-        frequency = Util.isNullOrEmpty(properties[6]) ? -1 : Integer.valueOf(properties[6]);
+
+        try {
+            frequency = Util.isNullOrEmpty(properties[6]) ? -1 : Integer.valueOf(properties[6]);
+        } catch (NumberFormatException e) {
+            logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for frequency.", properties[6]);
+            frequency = -1;
+        }
+
         program = properties[7];
         eia = properties[8];
 

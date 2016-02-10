@@ -117,6 +117,21 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         }
     }
 
+    public synchronized NetworkInterface[] getInterfaces() {
+        NetworkInterface returnValues[] = new NetworkInterface[currentInterfaceNames.size()];
+
+        int i = 0;
+        for (String networkInterface : currentInterfaceNames) {
+            try {
+                returnValues[i++] = NetworkInterface.getByName(networkInterface);
+            } catch (SocketException e) {
+                logger.error("Unable to find the interface '{}' => ", networkInterface, e);
+            }
+        }
+
+        return returnValues;
+    }
+
     public synchronized void addDependentInterface(String interfaceName) throws IllegalArgumentException {
         logger.entry(interfaceName);
 

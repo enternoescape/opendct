@@ -41,7 +41,7 @@ public class Frequencies {
         }
 
         for (Frequency searchFrequency : searchTable) {
-            if (frequency > searchFrequency.LOW_FREQUENCY && frequency < searchFrequency.HIGH_FREQUENCY) {
+            if (searchFrequency != null && frequency > searchFrequency.LOW_FREQUENCY && frequency < searchFrequency.HIGH_FREQUENCY) {
                 return searchFrequency.CHANNEL;
             }
         }

@@ -27,10 +27,7 @@ import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.hdhomerun.*;
-import opendct.tuning.hdhomerun.returns.HDHomeRunFeatures;
-import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
-import opendct.tuning.hdhomerun.returns.HDHomeRunStreamInfo;
-import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
+import opendct.tuning.hdhomerun.returns.*;
 import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -438,7 +435,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
             // This will automatically create channels for channels that SageTV requests.
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN && tvChannel == null) {
-                String vfChannel = channel.substring(0, secondIndex - 1);
+                String vfChannel = channel.substring(0, firstIndex - 1);
                 String vChannel = channel.substring(firstIndex + 1);
 
                 tvChannel = ChannelManager.getChannel(encoderLineup, vChannel);
@@ -872,19 +869,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                 logger.debug("Searching for program '{}'...", programName);
 
-                for (String program : streamInfo.getPrograms()) {
-                    if (program.contains(programName)) {
-                        int firstColon = program.indexOf(":");
+                for (HDHomeRunProgram program : streamInfo.getProgramsParsed()) {
+                    if (program.PROGRAM != null && program.CHANNEL != null && program.CHANNEL.equals(programName)) {
 
-                        // We need at least one character or we don't have anything to select.
-                        if (firstColon <= 1) {
-                            logger.error("Unable to determine program from '{}'.", program);
-                            continue;
-                        }
-
-                        String programString = program.substring(0, firstColon - 1);
-
-                        tuner.setProgram(programString);
+                        tuner.setProgram(program.PROGRAM);
                         break;
                     }
                 }
@@ -1052,7 +1040,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         try {
                             streamInfo = tuner.getStreamInfo();
 
-                            if (streamInfo != null && streamInfo.getPrograms().length > 0) {
+                            if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
                                 break;
                             }
                         } catch (IOException e) {
@@ -1069,7 +1057,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     }
 
                     if (streamInfo != null) {
-                        String programs[] = streamInfo.getPrograms();
+                        String programs[] = streamInfo.getProgramsRaw();
 
                         programIndex++;
 

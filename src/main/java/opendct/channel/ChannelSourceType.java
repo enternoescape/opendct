@@ -22,15 +22,14 @@ public enum ChannelSourceType {
      */
     INFINITV,
     /**
-     * This will use the Prime to get updates to the available channels on the lineup.
+     * This will use the an HDHomeRun to get updates to the available channels on the lineup.
      */
     HDHOMERUN,
     /**
-     * This will pull the channel map from the Prime, then tune each channel to get the frequency
-     * and program. It will then match that with the channel map from an InfiniTV to remap the
-     * channels to VChannels.
+     * This will copy another lineup to get updates, the enable/disabled channel statuses in the
+     * source lineup will not effect the enabled/disabled channels in this lineup.
      */
-    PRIME_QAM_INFINITV_REMAP,
+    COPY,
     /**
      * This is used for lineups that have no method to update the available channels.
      */

@@ -198,46 +198,59 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             logger.info("FFmpeg consumer thread is now running.");
 
             if (currentUploadID > 0) {
-                if (nioSageTVUploadID == null) {
-                    nioSageTVUploadID = new NIOSageTVUploadID();
-                } else {
-                    nioSageTVUploadID.reset();
-                }
+                boolean ableToWrite = false;
 
-                boolean uploadIDConfigured = false;
+                while (!ableToWrite) {
 
-                try {
-                    uploadIDConfigured = nioSageTVUploadID.startUpload(
-                            uploadIDSocket, currentRecordingFilename, currentUploadID);
-                } catch (IOException e) {
-                    logger.error("Unable to connect to SageTV server to start transfer via uploadID.");
-
-                    stalled = true;
-                    stateMessage = "ERROR: Unable to connect to SageTV server to start transfer via uploadID.";
-                }
-
-                if (!uploadIDConfigured) {
-
-                    logger.error("FFmpeg consumer did not receive OK from SageTV server to start" +
-                                    " uploading to the file '{}' via the upload id '{}'" +
-                                    " using the socket '{}'.",
-                            currentRecordingFilename, currentUploadID, uploadIDSocket);
-
-                    if (currentRecordingFilename != null) {
-                        logger.info("Attempting to write the file directly.");
-                        try {
-                            this.currentFileOutputStream = new FileOutputStream(currentRecordingFilename);
-                            currentFile = currentFileOutputStream.getChannel();
-                        } catch (FileNotFoundException e) {
-                            logger.error("Unable to create the recording file '{}'.", currentRecordingFilename);
-                            currentRecordingFilename = null;
-
-                            stalled = true;
-                            stateMessage = "ERROR: Unable to create the recording file '" + currentRecordingFilename + "'.";
-                        }
+                    if (nioSageTVUploadID == null) {
+                        nioSageTVUploadID = new NIOSageTVUploadID();
+                    } else {
+                        nioSageTVUploadID.reset();
                     }
-                } else {
-                    uploadEnabled = true;
+
+                    boolean uploadIDConfigured = false;
+
+                    try {
+                        uploadIDConfigured = nioSageTVUploadID.startUpload(
+                                uploadIDSocket, currentRecordingFilename, currentUploadID);
+
+                        ableToWrite = true;
+                    } catch (IOException e) {
+                        logger.error("Unable to connect to SageTV server to start transfer via uploadID.");
+
+                        stalled = true;
+                        stateMessage = "ERROR: Unable to connect to SageTV server to start transfer via uploadID.";
+                    }
+
+                    if (!uploadIDConfigured) {
+
+                        logger.error("FFmpeg consumer did not receive OK from SageTV server to start" +
+                                        " uploading to the file '{}' via the upload id '{}'" +
+                                        " using the socket '{}'.",
+                                currentRecordingFilename, currentUploadID, uploadIDSocket);
+
+                        if (currentRecordingFilename != null) {
+                            logger.info("Attempting to write the file directly.");
+                            try {
+                                this.currentFileOutputStream = new FileOutputStream(currentRecordingFilename);
+                                currentFile = currentFileOutputStream.getChannel();
+
+                                ableToWrite = true;
+                            } catch (FileNotFoundException e) {
+                                logger.error("Unable to create the recording file '{}'.", currentRecordingFilename);
+
+                                stalled = true;
+                                stateMessage = "ERROR: Unable to create the recording file '" + currentRecordingFilename + "'.";
+                            }
+                        }
+                    } else {
+                        uploadEnabled = true;
+                    }
+
+                    if (isInterrupted()) {
+                        logger.info("Interrupted while attempting to start writting via upload id.");
+                        return;
+                    }
                 }
             } else if (currentFileOutputStream != null) {
                 currentFile = currentFileOutputStream.getChannel();

@@ -273,4 +273,8 @@
 > default.
 
 #### 0.4.21-Beta
+> *HDHomeRun will now use any local UDP port that's available for discovery. 
+
+> *HDHomeRun legacy devices can now be tuned in us-bcast mode.
+
 > *Internal: Converted channel update methods to use device options for configuration.

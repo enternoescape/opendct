@@ -29,8 +29,10 @@ import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.hdhomerun.*;
 import opendct.tuning.hdhomerun.returns.HDHomeRunFeatures;
 import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
+import opendct.tuning.hdhomerun.returns.HDHomeRunStreamInfo;
 import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
 import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -363,7 +365,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     if (split.length > 1 && split[split.length - 1].length() > 3) {
                         tvChannel.setModulation(split[0].toUpperCase());
 
-                        tvChannel.setFrequency(split[split.length - 1]);
+                        tvChannel.setFrequency(Integer.valueOf(split[split.length - 1]));
                     }
                 }
             } catch (Exception e) {
@@ -404,16 +406,42 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         boolean scanOnly = false;
 
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+        String dotChannel = channel;
 
-        if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN && tvChannel == null) {
-            int firstIndex = channel.indexOf("-");
-            int secondIndex = channel.lastIndexOf("-");
+        int firstIndex = channel.indexOf("-");
+        int secondIndex = channel.lastIndexOf("-");
 
-            if (firstIndex != -1 && firstIndex != secondIndex) {
-                channel = channel.substring(firstIndex + 1);
+        if (firstIndex != -1 && firstIndex != secondIndex) {
+
+            // This string is used as a last resort when attempting to tune a channel.
+            dotChannel = channel.substring(firstIndex + 1).replace("-", ".");
+
+            // This will automatically create channels for channels that SageTV requests.
+            if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN && tvChannel == null) {
+                String vfChannel = channel.substring(0, secondIndex - 1);
+                String vChannel = channel.substring(firstIndex + 1);
+
+                tvChannel = ChannelManager.getChannel(encoderLineup, vChannel);
+
+                if (tvChannel == null) {
+                    tvChannel = new TVChannelImpl(vChannel.replace("-", "."), vChannel);
+                }
+
+                try {
+                    int fChannel = Integer.parseInt(vfChannel);
+
+                    if (fChannel < 2 || fChannel > Frequencies.CHANNELS_8VSB.length ) {
+                        logger.error("The channel number {} is not a valid ATSC channel number.", fChannel);
+                    } else {
+                        tvChannel.setFrequency(Frequencies.CHANNELS_8VSB[fChannel].FREQUENCY);
+                    }
+                } catch (NumberFormatException e) {
+                    logger.error("Unable to parse '{}' into int => ", vfChannel, e);
+                }
+
+                tvChannel.setChannelRemap(channel);
+                ChannelManager.updateChannel(encoderLineup, tvChannel);
             }
-
-            tvChannel = ChannelManager.getChannel(encoderLineup, channel);
         }
 
         if (remoteAddress != null) {
@@ -475,7 +503,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         tuner.setVirtualChannel(tvChannel.getChannel());
                     } else {
                         // This is in case the lineup doesn't have the channel requested.
-                        tuner.setVirtualChannel(channel);
+                        tuner.setVirtualChannel(dotChannel);
                     }
                 } catch (IOException e) {
                     logger.error("HDHomeRun is unable to tune into channel because it cannot be reached '{}' => ", channel, e);
@@ -488,11 +516,14 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             case ATSC_HDHOMERUN:
                 try {
                     if (tvChannel != null) {
-                        logger.info("Tuning '{}'.", tvChannel.getChannel());
-                        tuner.setVirtualChannel(tvChannel.getChannel());
+                        if (device.isLegacy()) {
+                            legacyTuneChannel(channel);
+                        } else {
+                            tuner.setVirtualChannel(tvChannel.getChannel());
+                        }
                     } else {
                         // This is in case the lineup doesn't have the channel requested.
-                        tuner.setVirtualChannel(channel);
+                        tuner.setVirtualChannel(dotChannel);
                     }
                 } catch (IOException e) {
                     logger.error("HDHomeRun is unable to tune into channel because it cannot be reached '{}' => ", channel, e);
@@ -515,8 +546,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         modulation = "auto";
                     }
 
-                    String frequency = tvChannel.getFrequency();
-                    if (frequency == null) {
+                    int frequency = tvChannel.getFrequency();
+                    if (frequency <= 0) {
                         logger.error("The channel '{}' does not have a frequency on the lineup '{}'.", channel, encoderLineup);
                         return logger.exit(false);
                     }
@@ -591,8 +622,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
         if (monitorThread == null || monitorThread != Thread.currentThread()) {
-            // If we are buffering this can create too much backlog and overruns the file based buffer.
-            //if (bufferSize == 0) {
+
             try {
                 newConsumer.setProgram(tuner.getProgram());
 
@@ -621,7 +651,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 logger.debug("HDHomeRun is unable to get program because the thread was interrupted => ", e);
                 return logger.exit(false);
             }
-            //}
 
             logger.info("Configuring and starting the new SageTV consumer...");
 
@@ -734,7 +763,124 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         monitorThread.start();
     }
 
-    public void updateChannelMapping(String channel) {
+    private boolean legacyTuneChannel(String channel) {
+        TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+
+        if (tvChannel != null && tvChannel.getFrequency() > 0 && Util.isNullOrEmpty(tvChannel.getProgram())) {
+            try {
+                tuner.setChannel("auto", tvChannel.getFrequency(), false);
+                tuner.setProgram(tvChannel.getProgram());
+
+                return true;
+            } catch (IOException e) {
+                logger.error("Unable to set channel and program on HDHomeRun capture device because it cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to set channel and program on HDHomeRun capture device because the command did not work => ", e);
+            }
+        }
+
+        int firstDash = channel.indexOf("-");
+
+        if (firstDash > 1) {
+            logger.error("legacyTuneChannel: Channel has an unexpected format: '{}'", channel);
+            return false;
+        }
+
+        String channelString = channel.substring(0, firstDash - 1);
+        String programName = channel.substring(firstDash + 1).replace("-", ".");
+
+        int channelNumber;
+
+        try {
+            channelNumber = Integer.parseInt(channelString);
+        } catch (NumberFormatException e) {
+            logger.error("legacyTuneChannel: Unable to parse the value '{}' into an int => ", channelString, e);
+            return false;
+        }
+
+        int fChannel;
+
+        switch (encoderDeviceType) {
+            case ATSC_HDHOMERUN:
+                if (channelNumber <= 1 || channelNumber > Frequencies.CHANNELS_8VSB.length) {
+                    logger.error("legacyTuneChannel: The channel number {} is not a valid ATSC channel.");
+                    return false;
+                }
+
+                fChannel = Frequencies.CHANNELS_8VSB[channelNumber].FREQUENCY;
+                break;
+
+            default:
+                logger.error("legacyTuneChannel: The device type {} is not supported for legacy tuning.", encoderDeviceType);
+                return false;
+        }
+
+        logger.info("legacyTuneChannel: Using the frequency {}.", fChannel);
+
+        try {
+            tuner.setChannel("auto", fChannel, false);
+        } catch (IOException e) {
+            logger.error("Unable to set channel on HDHomeRun capture device because it cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to set channel on HDHomeRun capture device because the command did not work => ", e);
+        }
+
+        int attempt = 0;
+        int attemptLimit = 500;
+
+        while(attempt++ < attemptLimit) {
+            if (attempt > 250) {
+                logger.info("Program search attempt {} of {}.", attempt, attemptLimit);
+            }
+
+            try {
+                HDHomeRunStreamInfo streamInfo = tuner.getStreamInfo();
+
+                if (streamInfo == null) {
+                    continue;
+                }
+
+                logger.debug("Searching for program '{}'...", programName);
+
+                for (String program : streamInfo.getPrograms()) {
+                    if (program.contains(programName)) {
+                        int firstColon = program.indexOf(":");
+
+                        // We need at least one character or we don't have anything to select.
+                        if (firstColon <= 1) {
+                            logger.error("Unable to determine program from '{}'.", program);
+                            continue;
+                        }
+
+                        String programString = program.substring(0, firstColon - 1);
+
+                        tuner.setProgram(programString);
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                logger.error("Unable to get available programs on HDHomeRun capture device because it cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to get available programs on HDHomeRun capture device because the command did not work => ", e);
+            }
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                logger.info("Interrupted while waiting for programs to become available => ", e);
+                return false;
+            }
+
+            if (Thread.currentThread().isInterrupted()) {
+                logger.info("Interrupted while waiting for programs to become available.");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void updateChannelMapping(String channel) {
 
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
@@ -750,7 +896,24 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 if (split.length > 1 && split[split.length - 1].length() > 3) {
                     tvChannel.setModulation(split[0].toUpperCase());
 
-                    tvChannel.setFrequency(split[split.length - 1]);
+                    tvChannel.setFrequency(Integer.valueOf(split[split.length - 1]));
+                }
+
+                if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
+                    int fChannel = Frequencies.getChannelForFrequency(
+                            FrequencyType._8VSB,
+                            tvChannel.getFrequency());
+
+                    String remap = tvChannel.getChannelRemap();
+                    int firstDash = remap.indexOf("-");
+                    int secondDash = remap.lastIndexOf("-");
+
+                    // Verify that we haven't already done this and that the expected format is
+                    // already in place.
+                    if (firstDash > -1 && firstDash == secondDash) {
+                        remap = String.valueOf(fChannel) + "-" + remap;
+                        tvChannel.setChannelRemap(remap);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -833,9 +996,9 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     tuner.clearTarget();
                 }
             } catch (IOException e) {
-                logger.error("Unable to stop HDHomeRun Prime capture device because it cannot be reached => ", e);
+                logger.error("Unable to stop HDHomeRun capture device because it cannot be reached => ", e);
             } catch (GetSetException e) {
-                logger.error("Unable to stop HDHomeRun Prime capture device because the command did not work => ", e);
+                logger.error("Unable to stop HDHomeRun capture device because the command did not work => ", e);
             }
 
             // Only remove the external lock if we are not performing an offline activity.

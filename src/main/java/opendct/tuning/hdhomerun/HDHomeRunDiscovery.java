@@ -51,14 +51,6 @@ public class HDHomeRunDiscovery implements Runnable {
         rxPacket = new HDHomeRunPacket();
     }
 
-    public HDHomeRunDiscovery(InetAddress broadcastAddress, int broadcastPort) {
-        this.BROADCAST_ADDRESS = broadcastAddress;
-        this.BROADCAST_PORT = broadcastPort;
-        BROADCAST_SOCKET = new InetSocketAddress(BROADCAST_ADDRESS, BROADCAST_PORT);
-        txPacket = new HDHomeRunPacket();
-        rxPacket = new HDHomeRunPacket();
-    }
-
     public void start(HDHomeRunDiscoverer discoverer) throws IOException {
         if (sendThread != null && !sendThread.isAlive()) {
             logger.warn("Already listening for HDHomeRun devices on port {}", BROADCAST_PORT);
@@ -81,7 +73,6 @@ public class HDHomeRunDiscovery implements Runnable {
         sendThread.setName("HDHomeRunDiscoverySend-" + sendThread.getId());
 
         datagramChannel = DatagramChannel.open();
-        datagramChannel.socket().bind(new InetSocketAddress(BROADCAST_PORT));
         datagramChannel.socket().setBroadcast(true);
         datagramChannel.socket().setReceiveBufferSize(1000000);
 

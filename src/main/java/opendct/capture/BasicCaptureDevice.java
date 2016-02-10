@@ -441,7 +441,13 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         }
 
         if (scanChannelIndex < scanChannels.length) {
-            return scanChannels[scanChannelIndex++].getChannel();
+            String returnChannel = scanChannels[scanChannelIndex++].getChannelRemap();
+
+            if (returnChannel == null) {
+                returnChannel = scanChannels[scanChannelIndex++].getChannel();
+            }
+
+            return returnChannel;
         }
 
         return "ERROR";

@@ -41,9 +41,9 @@ public interface TVChannel {
 
     public int getSignalStrength();
 
-    public void setFrequency(String frequency);
+    public void setFrequency(int frequency);
 
-    public String getFrequency();
+    public int getFrequency();
 
     public void setProgram(String program);
 

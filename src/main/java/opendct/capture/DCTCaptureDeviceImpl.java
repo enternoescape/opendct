@@ -484,7 +484,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
                 TVChannel refChannel = ChannelManager.getChannel(device.getChannelLineup(), tvChannel.getChannel());
 
-                if (refChannel != null && !Util.isNullOrEmpty(refChannel.getFrequency()) &&
+                if (refChannel != null && refChannel.getFrequency() > 0 &&
                         !Util.isNullOrEmpty(refChannel.getProgram())) {
 
                     tvChannel.setModulation(refChannel.getModulation());
@@ -624,7 +624,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         if (split.length > 1 && split[split.length - 1].length() > 3) {
                             tvChannel.setModulation(split[0].toUpperCase());
 
-                            tvChannel.setFrequency(split[split.length - 1]);
+                            tvChannel.setFrequency(Integer.parseInt(split[split.length - 1]));
                         }
                     }
                 } catch (Exception e) {
@@ -657,7 +657,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
                 String frequency = tunerAction.SERVICE_ACTIONS.queryActionVariable("Frequency");
                 if (frequency != null) {
-                    tvChannel.setFrequency(frequency);
+                    try {
+                        tvChannel.setFrequency(Integer.parseInt(frequency));
+                    } catch (NumberFormatException e) {
+                        logger.error("Unable to parse frequency '{}' to integer => {}", frequency, e);
+                    }
                 }
 
                 String program = muxAction.SERVICE_ACTIONS.queryActionVariable("ProgramNumber");
@@ -755,8 +759,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         modulation = "qam256";
                     }
 
-                    String frequency = tvChannel.getFrequency();
-                    if (frequency == null) {
+                    int frequency = tvChannel.getFrequency();
+                    if (frequency <= -1) {
                         logger.error("The channel '{}' does not have a frequency on the lineup '{}'.", channel, encoderLineup);
                         return logger.exit(false);
                     }
@@ -1062,7 +1066,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 qamChannel = new TVChannelImpl(channel, "Unknown");
             }
 
-            if (Util.isNullOrEmpty(qamChannel.getFrequency()) || Util.isNullOrEmpty(qamChannel.getProgram())) {
+            if (qamChannel.getFrequency() < 0 || Util.isNullOrEmpty(qamChannel.getProgram())) {
                 autoMap(qamChannel);
             }
         }
@@ -1437,7 +1441,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 } else {
                     try {
                         InfiniTVTuning.tuneProgram(
-                                new TVChannelImpl("0", "0", "QAM256", "0", "65535", "0", false),
+                                new TVChannelImpl("0", "0", "QAM256", -1, "65535", "0", false),
                                 encoderIPAddress,
                                 encoderNumber,
                                 25);

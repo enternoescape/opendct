@@ -41,6 +41,7 @@ public class DeviceLoaderImpl implements DeviceLoader {
 
         try {
             CaptureDevice captureDevice = discovery.loadCaptureDevice(details.getId());
+
             SageTVManager.addCaptureDevice(captureDevice);
 
             DiscoveredDeviceParent parent = discovery.getDeviceParentDetails(details.getParentId());

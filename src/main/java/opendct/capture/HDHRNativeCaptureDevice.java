@@ -201,6 +201,9 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         logger.debug("Getting a port for incoming RTP data...");
         rtpLocalPort = Config.getFreeRTSPPort(encoderName);
 
+        // =========================================================================================
+        // Print out diagnostic information for troubleshooting.
+        // =========================================================================================
         logger.info("Encoder Manufacturer: '{}'," +
                 " Number: {}," +
                 " Remote IP: '{}'," +

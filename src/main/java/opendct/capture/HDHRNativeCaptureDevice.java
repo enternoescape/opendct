@@ -880,12 +880,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         return true;
     }
 
-    private void updateChannelMapping(String channel) {
+    private String updateChannelMapping(String channel) {
 
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
         if (tvChannel == null) {
-            return;
+            return channel;
         }
 
         try {
@@ -927,6 +927,143 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         }
 
         ChannelManager.updateChannel(encoderLineup, tvChannel);
+
+        return tvChannel.getChannelRemap();
+    }
+
+    private int programIndex = -1;
+    private int scanChannelIndex = 2;
+    private boolean channelScanFirstZero = true;
+
+    @Override
+    public String scanChannelInfo(String channel) {
+        String returnValue = "ERROR";
+
+        switch (encoderDeviceType) {
+            case ATSC_HDHOMERUN:
+                if (!device.isLegacy()) {
+                    String nextChannel = super.scanChannelInfo(channel);
+
+                    int firstDash = nextChannel.indexOf("-");
+                    int secondDash = nextChannel.lastIndexOf("-");
+
+                    if (firstDash > -1 && firstDash == secondDash) {
+                        try {
+                            tuner.setVirtualChannel(nextChannel.replace("-", "."));
+                        } catch (IOException e) {
+                            logger.error("Unable to set virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
+                        } catch (GetSetException e) {
+                            logger.error("Unable to set virtual channel on HDHomeRun capture device because the command did not work => ", e);
+                        }
+
+                        nextChannel = updateChannelMapping(nextChannel);
+
+                        try {
+                            tuner.clearVirtualChannel();
+                        } catch (IOException e) {
+                            logger.error("Unable to clear virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
+                        } catch (GetSetException e) {
+                            logger.error("Unable to clear virtual channel on HDHomeRun capture device because the command did not work => ", e);
+                        }
+                    }
+
+                    return nextChannel;
+                }
+
+                if (channel.equals("-1")) {
+                    scanChannelIndex = 2;
+                    programIndex = -1;
+                    channelScanFirstZero = true;
+                    return "OK";
+                }
+
+                if (channelScanFirstZero) {
+                    channelScanFirstZero = false;
+                    return "OK";
+                }
+
+                while (true) {
+                    if (programIndex > -1) {
+                        if (scanChannelIndex++ > Frequencies.CHANNELS_8VSB.length) {
+                            return "ERROR";
+                        }
+
+                        try {
+                            tuner.setChannel("auto", Frequencies.CHANNELS_8VSB[scanChannelIndex].FREQUENCY, false);
+                        } catch (IOException e) {
+                            logger.error("Unable to set virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
+                        } catch (GetSetException e) {
+                            logger.error("Unable to set virtual channel on HDHomeRun capture device because the command did not work => ", e);
+                        }
+
+                        int timeout = 12;
+                        while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
+                            try {
+                                Thread.sleep(250);
+                            } catch (InterruptedException e) {
+                                return "ERROR";
+                            }
+
+                            try {
+                                if (tuner.getStatus().SIGNAL_PRESENT) {
+                                    break;
+                                }
+                            } catch (IOException e) {
+                                logger.error("Unable to get signal present on HDHomeRun capture device because it cannot be reached => ", e);
+                            } catch (GetSetException e) {
+                                logger.error("Unable to get signal present on HDHomeRun capture device because the command did not work => ", e);
+                            }
+                        }
+                    }
+
+                    HDHomeRunStreamInfo streamInfo = null;
+                    int timeout = 12;
+                    while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
+                        try {
+                            streamInfo = tuner.getStreamInfo();
+
+                            if (streamInfo != null && streamInfo.getPrograms().length > 0) {
+                                break;
+                            }
+                        } catch (IOException e) {
+                            logger.error("Unable to get programs on HDHomeRun capture device because it cannot be reached => ", e);
+                        } catch (GetSetException e) {
+                            logger.error("Unable to get programs on HDHomeRun capture device because the command did not work => ", e);
+                        }
+
+                        try {
+                            Thread.sleep(250);
+                        } catch (InterruptedException e) {
+                            return "ERROR";
+                        }
+                    }
+
+                    if (streamInfo != null) {
+                        String programs[] = streamInfo.getPrograms();
+
+                        programIndex++;
+
+                        for (int i = 0; i < programs.length; i++) {
+                            if (i < programIndex) {
+                                continue;
+                            }
+
+                            String split[] = programs[i].split(" ");
+
+                            if (split.length < 3) {
+                                programIndex++;
+                                continue;
+                            }
+
+                            return scanChannelIndex + "-" + split[1].replace(".", "-");
+                        }
+
+                        programIndex = -1;
+                    }
+                }
+        }
+
+        return returnValue;
     }
 
     @Override

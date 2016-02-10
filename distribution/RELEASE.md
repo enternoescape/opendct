@@ -294,3 +294,5 @@
 > *Improved ClearQAM auto-mapping from HDHomeRun DCT by tuning performance.
 
 > *Internal: Improved HDHomeRun discovery and capture device logging.
+
+> *Internal: Removed continuity check for PID 0 from logs.

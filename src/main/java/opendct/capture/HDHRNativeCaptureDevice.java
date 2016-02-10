@@ -27,10 +27,7 @@ import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.hdhomerun.*;
-import opendct.tuning.hdhomerun.returns.HDHomeRunFeatures;
-import opendct.tuning.hdhomerun.returns.HDHomeRunStatus;
-import opendct.tuning.hdhomerun.returns.HDHomeRunStreamInfo;
-import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
+import opendct.tuning.hdhomerun.returns.*;
 import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -201,6 +198,9 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         logger.debug("Getting a port for incoming RTP data...");
         rtpLocalPort = Config.getFreeRTSPPort(encoderName);
 
+        // =========================================================================================
+        // Print out diagnostic information for troubleshooting.
+        // =========================================================================================
         logger.info("Encoder Manufacturer: '{}'," +
                 " Number: {}," +
                 " Remote IP: '{}'," +
@@ -308,7 +308,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     }
 
     @Override
-    public boolean getChannelInfoOffline(TVChannel tvChannel) {
+    public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         logger.entry(tvChannel);
 
         if (isLocked() || isExternalLocked()) {
@@ -330,32 +330,35 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             int offlineDetectionMinBytes = 10528; //HDHomeRunDiscoverer.getOfflineDetectionMinBytes();
             int timeout = 8; //HDHomeRunDiscoverer.getOfflineDetectionSeconds();
 
-            CopyProtection copyProtection = getCopyProtection();
-            while ((copyProtection == CopyProtection.NONE ||
-                    copyProtection == CopyProtection.UNKNOWN) &&
-                    timeout-- > 0) {
+            if (!skipCCI) {
+                CopyProtection copyProtection = getCopyProtection();
+                while ((copyProtection == CopyProtection.NONE ||
+                        copyProtection == CopyProtection.UNKNOWN) &&
+                        timeout-- > 0) {
 
-                if (isLocked()) {
-                    stopEncoding();
-                    return logger.exit(false);
+                    if (isLocked()) {
+                        stopEncoding();
+                        return logger.exit(false);
+                    }
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        return logger.exit(false);
+                    }
+
+                    copyProtection = getCopyProtection();
                 }
 
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    return logger.exit(false);
+                tvChannel.setCci(copyProtection);
+                if (copyProtection == CopyProtection.COPY_FREELY || copyProtection == CopyProtection.NONE) {
+                    tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
+                } else {
+                    tvChannel.setTunable(false);
                 }
-
-                copyProtection = getCopyProtection();
             }
 
-            tvChannel.setCci(copyProtection);
             tvChannel.setSignalStrength(getSignalStrength());
-            if (copyProtection == CopyProtection.COPY_FREELY || copyProtection == CopyProtection.NONE) {
-                tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
-            } else {
-                tvChannel.setTunable(false);
-            }
 
             try {
                 String frequency = tuner.getChannel();
@@ -382,8 +385,22 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 try {
                     HDHomeRunVStatus status = tuner.getVirtualChannelStatus();
                     tvChannel.setTunable(!status.NOT_AVAILABLE && !status.COPY_PROTECTED && !status.NOT_SUBSCRIBED);
-                } catch (Exception e) {
-                    logger.error("Unable to get status from HDHomeRun => ", e);
+                } catch (IOException e) {
+                    logger.error("Unable to get virtual channel status from HDHomeRun because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to get virtual channel status from HDHomeRun because the command did not work => ", e);
+
+                    // Try one more time to see if anything actually recorded.
+                    tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
+                }
+            } else {
+                try {
+                    HDHomeRunStatus status = tuner.getStatus();
+                    tvChannel.setTunable(status.SIGNAL_PRESENT);
+                } catch (IOException e) {
+                    logger.error("Unable to get signal presence from HDHomeRun because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to get signal presence from HDHomeRun because the command did not work => ", e);
 
                     // Try one more time to see if anything actually recorded.
                     tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
@@ -418,7 +435,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
             // This will automatically create channels for channels that SageTV requests.
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN && tvChannel == null) {
-                String vfChannel = channel.substring(0, secondIndex - 1);
+                String vfChannel = channel.substring(0, firstIndex - 1);
                 String vChannel = channel.substring(firstIndex + 1);
 
                 tvChannel = ChannelManager.getChannel(encoderLineup, vChannel);
@@ -535,14 +552,20 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 break;
             case QAM_HDHOMERUN:
                 if (tvChannel == null) {
-                    logger.error("The channel '{}' does not exist on the lineup '{}'.", channel, encoderLineup);
-                    return logger.exit(false);
+                    tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, new TVChannelImpl(channel, channel));
+
+                    if (tvChannel == null) {
+                        logger.error("Unable to tune channel because no references were found for this channel number.");
+                        return logger.exit(false);
+                    }
+
+                    logger.error("Added the channel '{}' to the lineup '{}'.", channel, encoderLineup);
                 }
 
                 try {
                     String modulation = tvChannel.getModulation();
                     if (modulation == null) {
-                        logger.warn("The channel '{}' does not have a modulation on the lineup '{}'. Using QAM256.", channel, encoderLineup);
+                        logger.debug("The channel '{}' does not have a modulation on the lineup '{}'. Using auto.", channel, encoderLineup);
                         modulation = "auto";
                     }
 
@@ -752,6 +775,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     if (getRecordedBytes() != 0 && firstPass) {
                         firstPass = false;
                         logger.info("Streamed first {} bytes.", getRecordedBytes());
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(getTunerStatusString());
+                        }
                     }
                 }
 
@@ -842,19 +869,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                 logger.debug("Searching for program '{}'...", programName);
 
-                for (String program : streamInfo.getPrograms()) {
-                    if (program.contains(programName)) {
-                        int firstColon = program.indexOf(":");
+                for (HDHomeRunProgram program : streamInfo.getProgramsParsed()) {
+                    if (program.PROGRAM != null && program.CHANNEL != null && program.CHANNEL.equals(programName)) {
 
-                        // We need at least one character or we don't have anything to select.
-                        if (firstColon <= 1) {
-                            logger.error("Unable to determine program from '{}'.", program);
-                            continue;
-                        }
-
-                        String programString = program.substring(0, firstColon - 1);
-
-                        tuner.setProgram(programString);
+                        tuner.setProgram(program.PROGRAM);
                         break;
                     }
                 }
@@ -1022,7 +1040,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         try {
                             streamInfo = tuner.getStreamInfo();
 
-                            if (streamInfo != null && streamInfo.getPrograms().length > 0) {
+                            if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
                                 break;
                             }
                         } catch (IOException e) {
@@ -1039,7 +1057,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     }
 
                     if (streamInfo != null) {
-                        String programs[] = streamInfo.getPrograms();
+                        String programs[] = streamInfo.getProgramsRaw();
 
                         programIndex++;
 

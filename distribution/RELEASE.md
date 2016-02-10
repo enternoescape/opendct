@@ -284,3 +284,19 @@
 
 > *HDHomeRun ATSC channel detection now works for non-legacy devices. Legacy may work, but is 
 > untested. After running the channel scan, you will need to clear remapped channels for the lineup.
+
+#### 0.4.23-Beta
+> *Fixed blind ATSC tuning.
+
+> *Minor improvements to HDHomeRun network interface acquisition.
+
+> *Better handling of upload id connection problems.
+
+> *FFmpeg now loads asynchronously as early as possible in startup. This results in devices becoming
+> ready up to 5 seconds sooner.
+
+> *Improved ClearQAM auto-mapping from HDHomeRun DCT by tuning performance.
+
+> *Internal: Improved HDHomeRun discovery and capture device logging.
+
+> *Internal: Removed continuity check from 0 to 1 for PID 0 from logs.

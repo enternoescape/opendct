@@ -377,7 +377,7 @@ public class OfflineChannelScan {
 
                         if (!captureDevice.isLocked()) {
                             logger.info("Scanning the channel '{}' ({}).", channel.getChannel(), channel.getName());
-                            result = captureDevice.getChannelInfoOffline(channel);
+                            result = captureDevice.getChannelInfoOffline(channel, false);
                         } else {
                             // If the device is locked, it's not really fair to call this a failure.
                             retry++;

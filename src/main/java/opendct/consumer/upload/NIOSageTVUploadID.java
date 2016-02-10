@@ -103,6 +103,8 @@ public class NIOSageTVUploadID {
             try {
                 sendMessage("CLOSE");
             } catch (IOException e) {
+                logger.debug("Unable to gracefully close connection => ", e);
+            } finally {
                 currentServerSocket = null;
             }
         }
@@ -209,7 +211,7 @@ public class NIOSageTVUploadID {
             // This way you can alternate between overloads if somehow that's useful.
             autoOffset = offset + slice.remaining();
 
-            String returnValue = null;
+            boolean returnValue = false;
 
             while (true) {
                 try {
@@ -218,6 +220,8 @@ public class NIOSageTVUploadID {
                         int sentBytes = socketChannel.write(slice);
                         logger.trace("Transferred {} stream bytes to SageTV server. {} bytes remaining.", sentBytes, slice.remaining());
                     }
+
+                    returnValue = true;
 
                     break;
                 } catch (IOException e) {
@@ -237,7 +241,7 @@ public class NIOSageTVUploadID {
                 }
             }
 
-            return logger.exit(returnValue != null && returnValue.equals("OK"));
+            return logger.exit(returnValue);
         }
     }
 
@@ -274,7 +278,7 @@ public class NIOSageTVUploadID {
             currentServerSocket = null;
         }
 
-        return logger.exit(response != null && response.equals("OK") ? true : false);
+        return logger.exit(response != null && response.equals("OK"));
     }
 
     private void sendMessage(String message) throws IOException {
@@ -304,7 +308,7 @@ public class NIOSageTVUploadID {
     }
 
     private String waitForMessage() throws IOException {
-        logger.entry(socketChannel);
+        logger.entry();
         messageInBuilder.setLength(0);
 
         // This should keep stale messages from coming in.
@@ -353,7 +357,7 @@ public class NIOSageTVUploadID {
             throw new IOException("No response from SageTV after 2 seconds.");
         }
 
-        logger.warn("Unable to receive '{}' because the socket has not been initialized.");
+        logger.warn("Unable to receive because the socket has not been initialized.");
         throw new IOException("The socket is not available.");
     }
 }

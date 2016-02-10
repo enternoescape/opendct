@@ -173,7 +173,7 @@ public class HDHomeRunDiscovery implements Runnable {
                     while (txPacket.BUFFER.hasRemaining()) {
                         try {
                             if (discoverer.isWaitingForDevices()) {
-                                logger.info("Sending HDHomeRun discovery packet length {} on {}...", txPacket.BUFFER.limit(), BROADCAST_SOCKET[i].getAddress().getHostAddress());
+                                logger.info("Broadcasting HDHomeRun discovery packet to {}...", BROADCAST_SOCKET[i]);
                             }
 
                             datagramChannels[i].send(txPacket.BUFFER, BROADCAST_SOCKET[i]);
@@ -237,7 +237,7 @@ public class HDHomeRunDiscovery implements Runnable {
         protected int listenIndex = -1;
 
         public void run() {
-            logger.info("HDHomeRun discovery receive thread {} started.", listenIndex);
+            logger.info("HDHomeRun discovery receive thread for {} broadcast started.", BROADCAST_SOCKET[listenIndex]);
 
             final char recvBase64EncodeTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
 
@@ -365,7 +365,7 @@ public class HDHomeRunDiscovery implements Runnable {
                         }
 
                         try {
-                            discoverer.addDevices(device);
+                            discoverer.addDevice(device);
                         } catch (Exception e) {
                             logger.error("Unable to add new HDHomeRun capture device => ", e);
                         }
@@ -377,12 +377,12 @@ public class HDHomeRunDiscovery implements Runnable {
                 }
             }
 
-            logger.info("HDHomeRun discovery receive thread stopped.");
+            logger.info("HDHomeRun discovery receive thread for {} broadcast stopped.", BROADCAST_SOCKET[listenIndex]);
         }
     }
 
     public static InetAddress[] getBroadcast() {
-        NetworkInterface[] networkInterfaces = NetworkPowerEventManger.POWER_EVENT_LISTENER.getInterfaces();
+        NetworkInterface[] networkInterfaces = NetworkPowerEventManger.getInterfaces();
         ArrayList<InetAddress> addresses = new ArrayList<>();
 
         for (NetworkInterface networkInterface : networkInterfaces) {

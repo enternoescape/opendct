@@ -16,6 +16,8 @@
 
 package opendct.util;
 
+import opendct.config.Config;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -275,5 +277,34 @@ public class Util {
                 outputChannel.close();
             }
         }
+    }
+
+    /**
+     * Returns a filename that did not exist based on the desired filename.
+     * <p/>
+     * This is done by appending a number to the end of the filename until the file doesn't exist.
+     * This method is thread-safe in that it will not allow another thread to be told it can use the
+     * same file.
+     *
+     * @param path This is the directory the file is to be created in.
+     * @param prepend This is the start of the filename we want to based the new filename on.
+     * @param append This is the end of the filename we want to based the new filename on.
+     * @return A filename that has been touched.
+     */
+    public synchronized static File getFileNotExist(String path, String prepend, String append) {
+        for (int i = 0; i < Integer.MAX_VALUE; i++) {
+            File newFile = new File(path + Config.DIR_SEPARATOR + prepend + i + append);
+
+            if (!newFile.exists()) {
+                try {
+                    newFile.createNewFile();
+                    return newFile;
+                } catch (IOException e) {
+
+                }
+            }
+        }
+
+        return null;
     }
 }

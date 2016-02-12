@@ -305,3 +305,19 @@
 > *Fixed legacy HDHomeRun ATSC tuning.
 
 > *Improved responsiveness for low bit-rate channels when stopping.
+
+#### 0.4.25-Beta
+> *Upgrades now automatically create a backup of the opendct.properties file on first start. Since
+> this is the first release to actually make these kinds of backups, the first backup will not know
+> what the last version was, so the backup filename will just have a number attached.
+
+> *Internal: Added configuration file versioning for future use. This number should be incremented
+> whenever a property default has been changed and you would like everyone to use the new default.
+> It must always be incremented when any property changes to another format. The conversion from the
+> old format to the new format must be automatic if possible. Only change property formats when
+> absolutely necessary. Be sure to at least mention the change in the log as INFO and it might also
+> be nice to post a useful message for the web interface if the change might cause previously
+> unexpected behavior. 
+
+> *Internal: Handling of wrapper.log file sizes is now managed and also included in the cleanup as
+> a last resort if the disk space goes below the specified threshold.

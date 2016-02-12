@@ -39,9 +39,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
+    public static final int VERSION_CONFIG = 1;
+
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 24;
+    public static final int VERSION_BUILD = 25;
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -144,6 +146,40 @@ public class Config {
             logger.info("'{}' was not found. A new configuration file will be created with that name on the next save.", filename);
         }
 
+        // This way the behavior can be overridden, but it will not be obvious how to do it.
+        if ("true".equals(properties.getProperty("version.program.backup", "true"))) {
+
+            if (properties.getProperty("version.program", "upgrade").equals("upgrade")) {
+                properties.setProperty("version.program", "upgrade");
+            }
+
+            if (!properties.getProperty("version.program", VERSION).equals(VERSION)) {
+                File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION) + "-", "");
+
+                if (newFileName == null) {
+                    logger.error("Unable to make a copy of opendct.properties on upgrade.");
+                    // Only try to do this once. This is not an issue that merits restarting
+                    // the JVM.
+                } else {
+                    try {
+                        Util.copyFile(new File(filename), newFileName, true);
+                    } catch (IOException e) {
+                        logger.error("Unable to make a copy of opendct.properties on upgrade => ", e);
+                    }
+                }
+
+                properties.setProperty("version.program", VERSION);
+            }
+        }
+
+        if ("true".equals(properties.getProperty("version.config.backup", "true"))) {
+            if (properties.getProperty("version.config", "").equals("")) {
+                properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+            }
+
+            // This is for future required configuration upgrades.
+        }
+
         //If we are doing a config only run, set this variable since it will get queried a lot.
         Config.isConfigOnly = CommandLine.isConfigOnly();
 
@@ -223,8 +259,41 @@ public class Config {
 
         long retainDays = days * 86400000;
 
+        File wrapperLog = new File(CommandLine.getLogDir() + DIR_SEPARATOR + "wrapper.log");
+        File wrapperLogOld = new File(CommandLine.getLogDir() + DIR_SEPARATOR + "wrapper.log.old");
+
         File logDir = new File(CommandLine.getLogDir() + DIR_SEPARATOR + "archive");
         File files[] = logDir.listFiles();
+
+        if (wrapperLog.exists() && wrapperLog.length() > 8388608) {
+            try {
+                Util.copyFile(wrapperLog, wrapperLogOld, true);
+
+                if (wrapperLog.delete()) {
+                    logger.info("Rotated log file '{}' to '{}' because it is greater than 8388608 bytes.",
+                            wrapperLog.getName(), wrapperLogOld.getName());
+                } else {
+                    logger.info("Unable to rotate log file '{}' that is greater than 8388608" +
+                            " bytes.",
+                            wrapperLog.getName());
+                }
+
+            } catch (IOException e) {
+                logger.error("Unable to rotate log file '{}' => ", wrapperLog.getName(), e);
+            }
+
+            if (wrapperLog.length() > 16777216) {
+                if (wrapperLog.delete()) {
+                    logger.info("Deleted log file '{}' because a copy to '{}' could not be" +
+                            " created and because it is greater than 16777216 bytes.",
+                            wrapperLog.getName(), wrapperLogOld.getName());
+                } else {
+                    logger.info("Unable to delete log file '{}' that is greater than 16777216" +
+                                    " bytes.",
+                            wrapperLog.getName());
+                }
+            }
+        }
 
         if (files == null || files.length == 0) {
             return;
@@ -248,6 +317,19 @@ public class Config {
             files = logDir.listFiles();
 
             if (files == null || files.length == 0) {
+                if (wrapperLog.exists()) {
+                    if (wrapperLog.delete()) {
+                        logger.info("Removed log file '{}' because free disk space is below {}" +
+                                " bytes.",
+                                wrapperLog.getName(), minFreeSpace);
+                    } else {
+                        logger.info("Unable to remove log file '{}' that is contributing to the" +
+                                " free disk space being below {} bytes.",
+                                wrapperLog.getName(),
+                                minFreeSpace);
+                    }
+                }
+
                 return;
             }
 
@@ -256,8 +338,10 @@ public class Config {
                     logger.info("Removed log file '{}' because free disk space is below {} bytes.",
                             file.getName(), minFreeSpace);
                 } else {
-                    logger.info("Unable to remove log file '{}' that is contributing to the free disk space being below {} bytes.",
-                            file.getName(), minFreeSpace);
+                    logger.info("Unable to remove log file '{}' that is contributing to the free" +
+                            " disk space being below {} bytes.",
+                            file.getName(),
+                            minFreeSpace);
                 }
 
                 if (logDir.getFreeSpace() < minFreeSpace) {

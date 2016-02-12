@@ -112,10 +112,10 @@ public class Main {
                 long startTime = System.currentTimeMillis();
                 logger.info("FFmpeg loading...");
 
-                // FFmpeg takes a while to initialize, it is accessed now to reduce delays. Creating this
-                // immediately disposed object can reduce the first device load time by up to 5 seconds.
-                // This should not wait until the first time a device is tuned since it will add a very
-                // measurable delay.
+                // FFmpeg takes a while to initialize, it is accessed now to reduce delays. Creating
+                // this immediately disposed object can reduce the first device load time by up to 5
+                // seconds. This should not wait until the first time a device is tuned since it
+                // will add a very measurable delay.
                 new FFmpegSageTVConsumerImpl();
 
                 long endTime = System.currentTimeMillis();

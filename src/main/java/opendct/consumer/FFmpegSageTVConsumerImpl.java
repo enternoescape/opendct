@@ -584,12 +584,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             int numBytesWritten = 0;
 
-            if (!consumer.isInterrupted()) {
-                numBytesWritten = consumer.writeBuffer(bytePtr, 0, numBytesRequested);
+            numBytesWritten = consumer.writeBuffer(bytePtr, 0, numBytesRequested);
 
-                if (consumer.logger.isTraceEnabled()) {
-                    consumer.logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
-                }
+            if (consumer.logger.isTraceEnabled()) {
+                consumer.logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
             }
 
             if (numBytesWritten < 0) {

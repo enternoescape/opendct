@@ -105,11 +105,15 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
         if (message.endsWith("Invalid frame dimensions 0x0.") ||
-                // We handle this message by increasing probe sizes based on the currently available data.
+                // We handle this message by increasing probe sizes based on the currently available
+                // data.
                 message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
                 // This is the PAT packet and sometimes it doesn't get incremented which makes
                 // FFmpeg unhappy.
                 message.endsWith("Continuity check failed for pid 0 expected 1 got 0") ||
+                // This happens when the buffer gets really behind. The video output never appears
+                // to be affected by this notification, but it generates a lot of log entries.
+                message.endsWith(" > 10000000: forcing output") ||
                 message.endsWith("is not set in estimate_timings_from_pts") ||
                 // Seen in H.264 stream init. It means a key frame has not be processed yet. A
                 // key frame can take over 5 seconds in some situations to arrive.

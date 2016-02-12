@@ -172,10 +172,13 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     public void run() {
         logger.entry();
         if (running.getAndSet(true)) {
-            throw new IllegalThreadStateException("FFmpeg consumer is already running.");
+            logger.error("FFmpeg consumer is already running.");
+            return;
         }
 
-        stateMessage = "Detecting stream...";
+        logger.info("FFmpeg consumer thread is now running.");
+
+        stateMessage = "Opening file...";
         stalled = false;
         streaming = false;
 
@@ -194,8 +197,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
         try {
             avioCtxOutput = allocIoContext("output");
-
-            logger.info("FFmpeg consumer thread is now running.");
 
             if (currentUploadID > 0) {
                 boolean ableToWrite = false;
@@ -248,8 +249,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     }
 
                     if (isInterrupted()) {
-                        logger.info("Interrupted while attempting to start writting via upload id.");
-                        return;
+                        throw new InterruptedIOException("Interrupted while attempting to start writting via upload id.");
                     }
                 }
             } else if (currentFileOutputStream != null) {
@@ -257,8 +257,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             } else if (consumeToNull) {
                 logger.debug("Consuming to a null output.");
             } else {
-                throw new IllegalThreadStateException(
-                        "FFmpeg consumer does not have a file or UploadID to use.");
+                throw new Exception("FFmpeg consumer does not have a file or UploadID to use.");
             }
 
             long startTime = System.currentTimeMillis();
@@ -298,7 +297,11 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 remuxRtpPackets();
             }
         } catch (Exception e) {
-            logger.error("FFmpeg consumer was closed by an unexpected exception => ", e);
+            if (e instanceof InterruptedException) {
+                logger.debug("FFmpeg consumer was interrupted => ", e);
+            } else {
+                logger.error("FFmpeg consumer was closed by an unexpected exception => ", e);
+            }
         } finally {
             logger.info("FFmpeg consumer thread is stopping.");
 
@@ -548,33 +551,22 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         public int call(Pointer opaque, BytePointer buf, int bufSize) {
             FFmpegSageTVConsumerImpl consumer = instanceMap.get(opaque);
 
-            int nBytes = 0;
+            int nBytes = -1;
 
-            if (!consumer.isInterrupted()) {
-                try {
-                    int bytesReceivedCount = 0;
+            try {
+                ByteBuffer readBuffer = buf.position(0).limit(bufSize).asBuffer();
 
-                    ByteBuffer readBuffer = buf.position(0).limit(bufSize).asBuffer();
+                nBytes = consumer.seekableBuffer.read(readBuffer);
 
-                    while (readBuffer.hasRemaining() && !consumer.isInterrupted()) {
-                        bytesReceivedCount += consumer.seekableBuffer.read(readBuffer);
-                    }
-
-                    nBytes = bytesReceivedCount;
-                } catch (InterruptedException e) {
-                    consumer.ffmpegInterrupted = true;
-                    consumer.seekableBuffer.close();
-                    consumer.logger.debug("FFmpeg consumer was interrupted while reading by an exception => ", e);
-                    nBytes = 0;
-                } catch (Exception e) {
-                    consumer.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
-                    nBytes = 0;
-                }
-            } else {
+            } catch (InterruptedException e) {
+                consumer.ffmpegInterrupted = true;
                 consumer.seekableBuffer.close();
+                consumer.logger.debug("FFmpeg consumer was interrupted while reading by an exception => ", e);
+            } catch (Exception e) {
+                consumer.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
             }
 
-            if (nBytes == 0) {
+            if (nBytes == -1) {
                 consumer.logger.info("Returning AVERROR_EOF in readCallback.call()");
                 return AVERROR_EOF;
             }
@@ -592,12 +584,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             int numBytesWritten = 0;
 
-            if (!consumer.isInterrupted()) {
-                numBytesWritten = consumer.writeBuffer(bytePtr, 0, numBytesRequested);
+            numBytesWritten = consumer.writeBuffer(bytePtr, 0, numBytesRequested);
 
-                if (consumer.logger.isTraceEnabled()) {
-                    consumer.logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
-                }
+            if (consumer.logger.isTraceEnabled()) {
+                consumer.logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
             }
 
             if (numBytesWritten < 0) {

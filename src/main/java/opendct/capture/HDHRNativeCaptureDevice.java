@@ -165,7 +165,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             logger.error("Unable to get channel map from HDHomeRun because the command did not work => ", e);
         }
 
-        if (device.isLegacy()) {
+        if (isTuneLegacy()) {
             // This way we don't end up with a device that doesn't have a lineup.xml file becoming the primary source.
             setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase() + "_legacy"));
         } else {
@@ -175,7 +175,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
             ChannelLineup newChannelLineup;
 
-            if (device.isLegacy()) {
+            if (isTuneLegacy()) {
                 // There are no sources to available on legacy devices.
                 newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.STATIC, device.getIpAddress().getHostAddress());
             } else {
@@ -533,8 +533,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             case ATSC_HDHOMERUN:
                 try {
                     if (tvChannel != null) {
-                        if (device.isLegacy()) {
-                            legacyTuneChannel(channel);
+                        if (isTuneLegacy()) {
+                            if (!legacyTuneChannel(channel)) {
+                                return logger.exit(false);
+                            }
                         } else {
                             tuner.setVirtualChannel(tvChannel.getChannel());
                         }
@@ -793,7 +795,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     private boolean legacyTuneChannel(String channel) {
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
-        if (tvChannel != null && tvChannel.getFrequency() > 0 && Util.isNullOrEmpty(tvChannel.getProgram())) {
+        if (tvChannel != null && tvChannel.getFrequency() > 0 && !Util.isNullOrEmpty(tvChannel.getProgram())) {
             try {
                 tuner.setChannel("auto", tvChannel.getFrequency(), false);
                 tuner.setProgram(tvChannel.getProgram());
@@ -808,12 +810,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         int firstDash = channel.indexOf("-");
 
-        if (firstDash > 1) {
+        if (firstDash < 1) {
             logger.error("legacyTuneChannel: Channel has an unexpected format: '{}'", channel);
             return false;
         }
 
-        String channelString = channel.substring(0, firstDash - 1);
+        String channelString = channel.substring(0, firstDash);
         String programName = channel.substring(firstDash + 1).replace("-", ".");
 
         int channelNumber;
@@ -853,26 +855,41 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         }
 
         int attempt = 0;
-        int attemptLimit = 500;
+        int attemptLimit = 30;
+        boolean programSelected = false;
 
-        while(attempt++ < attemptLimit) {
-            if (attempt > 250) {
+        while(!programSelected && attempt++ < attemptLimit) {
+
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                logger.info("Interrupted while waiting for programs to become available => ", e);
+                return false;
+            }
+
+            if (attempt > 25) {
                 logger.info("Program search attempt {} of {}.", attempt, attemptLimit);
             }
 
             try {
                 HDHomeRunStreamInfo streamInfo = tuner.getStreamInfo();
 
-                if (streamInfo == null) {
+                if (streamInfo == null || streamInfo.getProgramsRaw().length == 0) {
                     continue;
                 }
 
-                logger.debug("Searching for program '{}'...", programName);
+                if (attempt > 35) {
+                    logger.info("Searching for channel '{}' program in '{}'...", programName, streamInfo.getProgramsRaw());
+                } else {
+                    logger.debug("Searching for channel '{}' program in '{}'...", programName, streamInfo.getProgramsRaw());
+                }
 
                 for (HDHomeRunProgram program : streamInfo.getProgramsParsed()) {
                     if (program.PROGRAM != null && program.CHANNEL != null && program.CHANNEL.equals(programName)) {
 
+                        logger.info("Found '{}' in '{}' out of '{}'.", programName, program, streamInfo.getProgramsRaw());
                         tuner.setProgram(program.PROGRAM);
+                        programSelected = true;
                         break;
                     }
                 }
@@ -882,20 +899,13 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 logger.error("Unable to get available programs on HDHomeRun capture device because the command did not work => ", e);
             }
 
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                logger.info("Interrupted while waiting for programs to become available => ", e);
-                return false;
-            }
-
             if (Thread.currentThread().isInterrupted()) {
                 logger.info("Interrupted while waiting for programs to become available.");
                 return false;
             }
         }
 
-        return true;
+        return programSelected;
     }
 
     private String updateChannelMapping(String channel) {
@@ -959,7 +969,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         switch (encoderDeviceType) {
             case ATSC_HDHOMERUN:
-                if (!device.isLegacy()) {
+                if (!isTuneLegacy()) {
                     String nextChannel = super.scanChannelInfo(channel);
 
                     int firstDash = nextChannel.indexOf("-");
@@ -1248,6 +1258,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         }
 
         return returnValue;
+    }
+
+    public boolean isTuneLegacy() {
+        return device.isLegacy() ||
+                encoderDeviceType != CaptureDeviceType.DCT_HDHOMERUN &&
+                        HDHomeRunDiscoverer.getAlwaysTuneLegacy();
     }
 
     @Override

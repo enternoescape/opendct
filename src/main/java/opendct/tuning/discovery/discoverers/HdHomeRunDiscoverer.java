@@ -55,6 +55,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static IntegerDeviceOption broadcastInterval;
     private static StringDeviceOption ignoreModels;
     private static StringDeviceOption ignoreDeviceIds;
+    private static BooleanDeviceOption alwaysTuneLegacy;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -166,6 +167,17 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                     "Prevent specific HDHomeRun devices by ID from being detected and loaded."
             );
 
+            alwaysTuneLegacy = new BooleanDeviceOption(
+                    Config.getBoolean("hdhr.always_tune_legacy", false),
+                    false,
+                    "Always Tune in Legacy Mode",
+                    "hdhr.always_tune_legacy",
+                    "This tells the program to only tune HDHomeRun devices in legacy mode. The" +
+                            " only devices that will always ignore this request are Digital Cable" +
+                            " Tuners that have a CableCARD inserted since it would turn them into" +
+                            " a ClearQAM device."
+            );
+
             Config.mapDeviceOptions(
                     deviceOptions,
                     retunePolling,
@@ -174,7 +186,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                     hdhrLock,
                     controlRetryCount,
                     ignoreModels,
-                    ignoreDeviceIds
+                    ignoreDeviceIds,
+                    alwaysTuneLegacy
             );
         } catch (DeviceOptionException e) {
             logger.error("Unable to configure device options for HDHomeRunDiscoverer => ", e);
@@ -567,5 +580,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static String[] getIgnoreDeviceIds() {
         return ignoreDeviceIds.getArrayValue();
+    }
+
+    public static boolean getAlwaysTuneLegacy() {
+        return alwaysTuneLegacy.getBoolean();
     }
 }

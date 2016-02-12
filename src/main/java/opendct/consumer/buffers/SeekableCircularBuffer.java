@@ -202,6 +202,11 @@ public class SeekableCircularBuffer {
                 return;
             }
 
+            // Once the buffer is closed, we turn off writing.
+            if (closed) {
+                return;
+            }
+
             internalWrite(bytes, offset, length);
         }
     }

@@ -68,4 +68,13 @@ public class HDHomeRunProgram {
         CHANNEL = !Util.isNullOrEmpty(channel) ? channel : null;
         CALLSIGN = !Util.isNullOrEmpty(callsign) ? callsign : null;
     }
+
+    @Override
+    public String toString() {
+        return "HDHomeRunProgram{" +
+                "PROGRAM='" + PROGRAM + '\'' +
+                ", CHANNEL='" + CHANNEL + '\'' +
+                ", CALLSIGN='" + CALLSIGN + '\'' +
+                '}';
+    }
 }

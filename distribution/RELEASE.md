@@ -286,7 +286,7 @@
 > untested. After running the channel scan, you will need to clear remapped channels for the lineup.
 
 #### 0.4.23-Beta
-> *Fixed blind ATSC tuning.
+> *Fixed blind HDHomeRun ATSC tuning.
 
 > *Minor improvements to HDHomeRun network interface acquisition.
 
@@ -300,3 +300,8 @@
 > *Internal: Improved HDHomeRun discovery and capture device logging.
 
 > *Internal: Removed continuity check from 0 to 1 for PID 0 from logs.
+
+#### 0.4.24-Beta
+> *Fixed legacy HDHomeRun ATSC tuning.
+
+> *Improved responsiveness for low bit-rate channels when stopping.

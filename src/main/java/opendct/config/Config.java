@@ -44,7 +44,7 @@ public class Config {
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
     public static final int VERSION_BUILD = 25;
-    public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
+    public static final String VERSION_PROGRAM = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
     private static final Object getRTSPPort = new Object();
@@ -146,6 +146,17 @@ public class Config {
             logger.info("'{}' was not found. A new configuration file will be created with that name on the next save.", filename);
         }
 
+        //If we are doing a config only run, set this variable since it will get queried a lot.
+        Config.isConfigOnly = CommandLine.isConfigOnly();
+
+        if ("true".equals(properties.getProperty("version.first_run", "false"))) {
+            properties.remove("version.first_run");
+            properties.setProperty("version.program", VERSION_PROGRAM);
+            properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+
+            return logger.exit(true);
+        }
+
         // This way the behavior can be overridden, but it will not be obvious how to do it.
         if ("true".equals(properties.getProperty("version.program.backup", "true"))) {
 
@@ -153,8 +164,8 @@ public class Config {
                 properties.setProperty("version.program", "upgrade");
             }
 
-            if (!properties.getProperty("version.program", VERSION).equals(VERSION)) {
-                File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION) + "-", "");
+            if (!properties.getProperty("version.program", VERSION_PROGRAM).equals(VERSION_PROGRAM)) {
+                File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
 
                 if (newFileName == null) {
                     logger.error("Unable to make a copy of opendct.properties on upgrade.");
@@ -168,7 +179,7 @@ public class Config {
                     }
                 }
 
-                properties.setProperty("version.program", VERSION);
+                properties.setProperty("version.program", VERSION_PROGRAM);
             }
         }
 
@@ -179,9 +190,6 @@ public class Config {
 
             // This is for future required configuration upgrades.
         }
-
-        //If we are doing a config only run, set this variable since it will get queried a lot.
-        Config.isConfigOnly = CommandLine.isConfigOnly();
 
         return logger.exit(true);
     }

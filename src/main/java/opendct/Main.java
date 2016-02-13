@@ -39,7 +39,7 @@ public class Main {
     private static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) throws Exception {
-        logger.info("Starting OpenDCT {}...", Config.VERSION);
+        logger.info("Starting OpenDCT {}...", Config.VERSION_PROGRAM);
 
         Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
             @Override

@@ -80,19 +80,19 @@ public class CommandLine {
             commandLine = commandLineParser.parse(options, args);
         } catch (ParseException e) {
             logger.fatal("Unable to parse command line arguments => {}{}", Config.NEW_LINE, Config.NEW_LINE, e);
-            helpFormatter.printHelp("java -jar opendct-" + Config.VERSION + ".jar", options, true);
+            helpFormatter.printHelp("java -jar opendct-" + Config.VERSION_PROGRAM + ".jar", options, true);
             return logger.exit(false);
         }
 
         if (hasOption("help")) {
-            helpFormatter.printHelp("java -jar opendct-" + Config.VERSION + ".jar", options, true);
+            helpFormatter.printHelp("java -jar opendct-" + Config.VERSION_PROGRAM + ".jar", options, true);
             return logger.exit(false);
         }
 
         // Check for any parameters missing other needed parameters.
         if (hasOption("config-only") && !hasOption("run-seconds")) {
             logger.fatal("Config only requires the parameter --run-seconds to be defined.");
-            helpFormatter.printHelp("java -jar opendct-" + Config.VERSION + ".jar", options, true);
+            helpFormatter.printHelp("java -jar opendct-" + Config.VERSION_PROGRAM + ".jar", options, true);
             return logger.exit(false);
         }
 

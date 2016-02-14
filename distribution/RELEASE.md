@@ -307,6 +307,29 @@
 > *Improved responsiveness for low bit-rate channels when stopping.
 
 #### 0.4.25-Beta
+> *Channel scans now mostly work regardless of how many channels are returned. Note that there can
+> still be mapping issues depending on what channel number SageTV has decided to use for the
+> provided channel.
+
+> *HDHomeRun ATSC/QAM devices will use an HTTP URL when available. This should help with overall
+> stream integrity. This behavior can be turned off by changing the value of hdhr.allow_http_tuning
+> to false.
+
+> *HDHomeRun Extend devices can use a transcoding profile when an HTTP URL is available. The profile
+> can be set by changing the value of hdhr.extend_transcode_profile to a valid profile. 
+>
+> Transcode Profiles:
+>    * heavy: transcode to AVC with the same resolution, frame-rate, and interlacing as the
+>    original stream. For example 1080i60 AVC 1080i60, 720p60 AVC 720p60.
+>    * mobile: trancode to AVC progressive not exceeding 1280x720 30fps.
+>    * internet720: transcode to low bitrate AVC progressive not exceeding 1280x720 30fps.
+>    * internet480: transcode to low bitrate AVC progressive not exceeding 848x480 30fps for
+>    16:9 content, not exceeding 640x480 30fps for 4:3 content.
+>    * internet360: transcode to low bitrate AVC progressive not exceeding 640x360 30fps for
+>    16:9 content, not exceeding 480x360 30fps for 4:3 content.
+>    * internet240: transcode to low bitrate AVC progressive not exceeding 432x240 30fps for
+>    16:9 content, not exceeding 320x240 30fps for 4:3 content.
+
 > *Upgrades now automatically create a backup of the opendct.properties file on first start. Since
 > this is the first release to actually make these kinds of backups, the first backup will not know
 > what the last version was, so the backup filename will just have a number attached.

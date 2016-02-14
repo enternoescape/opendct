@@ -21,9 +21,9 @@ import opendct.channel.TVChannel;
 import opendct.config.Config;
 import opendct.consumer.FFmpegSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
-import opendct.producer.SageTVProducer;
 import opendct.sagetv.SageTVManager;
 import opendct.sagetv.SageTVPoolManager;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,7 +34,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public abstract class BasicCaptureDevice implements CaptureDevice {
     private final Logger logger = LogManager.getLogger(BasicCaptureDevice.class);
 
-    protected SageTVProducer sageTVProducerRunnable = null;
     protected SageTVConsumer sageTVConsumerRunnable = null;
     protected Thread sageTVConsumerThread;
     protected final ReentrantReadWriteLock sageTVConsumerLock = new ReentrantReadWriteLock();
@@ -412,17 +411,20 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     }
 
     private int scanChannelIndex = 0;
+    private int scanIncrement = 20;
     private TVChannel scanChannels[];
     private boolean channelScanFirstZero = true;
 
     /**
      * This pulls from the last offline channel scan data. If an offline scan has never happened,
-     * this will return that none of the channels are tunable.
+     * this will likely return that none of the channels are tunable.
      *
      * @param channel The index of the tunable channel being requested.
+     * @param combine This will return all of the tunable channels in one large semi-colon delimited
+     *                string. SageTV will accept the data in this format in one request.
      * @return The next channel that is tunable or ERROR if we are at the end of the list.
      */
-    public String scanChannelInfo(String channel) {
+    public String scanChannelInfo(String channel, boolean combine) {
         if (scanChannels == null) {
             scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
         }
@@ -432,6 +434,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             scanChannelIndex = 0;
             channelScanFirstZero = true;
 
+            if (scanChannels.length > 0) {
+                scanIncrement = scanChannels.length / 79;
+            }
+
             return "OK";
         }
 
@@ -440,14 +446,42 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             return "OK";
         }
 
-        if (scanChannelIndex < scanChannels.length) {
-            String returnChannel = scanChannels[scanChannelIndex++].getChannelRemap();
+        if (!combine) {
+            if (scanChannelIndex < scanChannels.length) {
+                String returnChannel = scanChannels[scanChannelIndex].getChannelRemap();
 
-            if (returnChannel == null) {
-                returnChannel = scanChannels[scanChannelIndex++].getChannel();
+                if (returnChannel == null) {
+                    returnChannel = scanChannels[scanChannelIndex].getChannel();
+                }
+
+                scanChannelIndex += 1;
+
+                return returnChannel;
+            }
+        } else if (scanChannelIndex < scanChannels.length) {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            while (scanChannelIndex < scanChannels.length) {
+                String returnChannel = scanChannels[scanChannelIndex].getChannelRemap();
+
+                if (Util.isNullOrEmpty(returnChannel)) {
+                    returnChannel = scanChannels[scanChannelIndex].getChannel();
+                }
+
+                scanChannelIndex += 1;
+
+                stringBuilder.append(returnChannel).append(";");
+
+                if (scanChannelIndex % scanIncrement == 0) {
+                    break;
+                }
             }
 
-            return returnChannel;
+            if (stringBuilder.length() > 0) {
+                stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+            }
+
+            return stringBuilder.toString();
         }
 
         return "ERROR";

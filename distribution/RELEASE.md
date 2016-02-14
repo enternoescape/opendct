@@ -307,6 +307,10 @@
 > *Improved responsiveness for low bit-rate channels when stopping.
 
 #### 0.4.25-Beta
+> *Channel scans now mostly work regardless of how many channels are returned. Note that there can
+> still be mapping issues depending on what channel number SageTV has decided to use for the
+> provided channel.
+
 > *HDHomeRun ATSC/QAM devices will use an HTTP URL when available. This should help with overall
 > stream integrity. This behavior can be turned off by changing the value of hdhr.allow_http_tuning
 > to false.

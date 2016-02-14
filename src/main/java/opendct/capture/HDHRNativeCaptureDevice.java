@@ -1029,6 +1029,11 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             // Change the tuner to a specific tuner instead of just picking whatever is available.
             tunerUrl = tunerUrl.replace("/auto/", "/tuner" + tuner.TUNER_NUMBER + "/");
 
+            // Support for transcode.
+            if (!Util.isNullOrEmpty(transcodeProfile)) {
+                tunerUrl += "?transcode=" + transcodeProfile;
+            }
+
             returnValue = httpServices.startProducing(encoderName, httpProducer, newConsumer, tuneUrl);
         }
 

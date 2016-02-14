@@ -22,6 +22,7 @@ import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
+import opendct.producer.HTTPProducer;
 import opendct.producer.RTPProducer;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
@@ -35,7 +36,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -55,6 +59,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     private final ConcurrentHashMap<String, DeviceOption> deviceOptions;
     private BooleanDeviceOption forceExternalUnlock;
     private boolean offlineScan;
+
+    private HTTPCaptureDeviceServices httpServices;
+    private HTTPProducer httpProducer;
+    private boolean httpProducing;
 
     /**
      * Create a new HDHomeRun capture device.
@@ -170,6 +178,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase() + "_legacy"));
         } else {
             setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
+            httpServices = new HTTPCaptureDeviceServices();
         }
 
         if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
@@ -198,6 +207,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         logger.debug("Getting a port for incoming RTP data...");
         rtpLocalPort = Config.getFreeRTSPPort(encoderName);
 
+        httpProducing = false;
+
         // =========================================================================================
         // Print out diagnostic information for troubleshooting.
         // =========================================================================================
@@ -217,7 +228,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 encoderLineup,
                 offlineScan,
                 rtpLocalPort);
-
     }
 
     @Override
@@ -419,6 +429,13 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     @Override
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress) {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+
+        tuningThread = Thread.currentThread();
+
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            monitorThread.interrupt();
+        }
+
         long startTime = System.currentTimeMillis();
         boolean scanOnly = false;
 
@@ -447,10 +464,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 try {
                     int fChannel = Integer.parseInt(vfChannel);
 
-                    if (fChannel < 2 || fChannel > Frequencies.CHANNELS_8VSB.length ) {
+                    if (fChannel < 2 || fChannel > Frequencies.US_BCAST.length ) {
                         logger.error("The channel number {} is not a valid ATSC channel number.", fChannel);
                     } else {
-                        tvChannel.setFrequency(Frequencies.CHANNELS_8VSB[fChannel].FREQUENCY);
+                        tvChannel.setFrequency(Frequencies.US_BCAST[fChannel].FREQUENCY);
                     }
                 } catch (NumberFormatException e) {
                     logger.error("Unable to parse '{}' into int => ", vfChannel, e);
@@ -470,29 +487,33 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             scanOnly = true;
         }
 
-        // Only lock the HDHomeRun is this device is locked too. This will prevent any offline
-        // activities from taking the tuner away from outside programs.
-        if (isLocked()) {
-            int timeout = 5;
-            while (!setExternalLock(true) && !Thread.currentThread().isInterrupted()) {
-                if (timeout-- < 0) {
-                    logger.error("Locking HDHomeRun device failed after 5 attempts.");
-                    return logger.exit(false);
-                }
+        if (!httpProducing) {
+            // Only lock the HDHomeRun is this device is locked too. This will prevent any offline
+            // activities from taking the tuner away from outside programs.
+            if (isLocked()) {
+                int timeout = 5;
+                while (!setExternalLock(true) && !Thread.currentThread().isInterrupted()) {
+                    if (timeout-- < 0) {
+                        logger.error("Locking HDHomeRun device failed after 5 attempts.");
+                        return logger.exit(false);
+                    }
 
-                logger.warn("Unable to lock HDHomeRun device.");
+                    logger.warn("Unable to lock HDHomeRun device.");
 
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    return logger.exit(false);
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        return logger.exit(false);
+                    }
                 }
             }
-        }
 
-        // The producer and consumer methods are requested to not block. If they don't shut down in
-        // time, it will be caught and handled later. This gives us a small gain in speed.
-        stopProducing(false);
+            // The producer and consumer methods are requested to not block. If they don't shut down in
+            // time, it will be caught and handled later. This gives us a small gain in speed.
+            stopProducing(false);
+         } else {
+            httpServices.stopProducing(true);
+        }
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
         if (monitorThread == null || monitorThread != Thread.currentThread()) {
@@ -517,7 +538,11 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             case DCT_HDHOMERUN:
                 try {
                     if (tvChannel != null) {
-                        tuner.setVirtualChannel(tvChannel.getChannel());
+                        httpProducing = tuneUrl(tvChannel, HDHomeRunDiscoverer.getTranscodeProfile(), newConsumer);
+
+                        if (!httpProducing) {
+                            tuner.setVirtualChannel(tvChannel.getChannel());
+                        }
                     } else {
                         // This is in case the lineup doesn't have the channel requested.
                         tuner.setVirtualChannel(dotChannel);
@@ -538,7 +563,11 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                 return logger.exit(false);
                             }
                         } else {
-                            tuner.setVirtualChannel(tvChannel.getChannel());
+                            httpProducing = tuneUrl(tvChannel, HDHomeRunDiscoverer.getTranscodeProfile(), newConsumer);
+
+                            if (!httpProducing) {
+                                tuner.setVirtualChannel(tvChannel.getChannel());
+                            }
                         }
                     } else {
                         // This is in case the lineup doesn't have the channel requested.
@@ -561,7 +590,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         return logger.exit(false);
                     }
 
-                    logger.error("Added the channel '{}' to the lineup '{}'.", channel, encoderLineup);
+                    logger.info("Added the channel '{}' to the lineup '{}'.", channel, encoderLineup);
                 }
 
                 try {
@@ -624,25 +653,27 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 return logger.exit(false);
         }
 
-        logger.info("Configuring and starting the new RTP producer...");
+        if (!httpProducing) {
+            logger.info("Configuring and starting the new RTP producer...");
 
-        if (!startProducing(newRTPProducer, newConsumer, rtpStreamRemoteIP, rtpLocalPort)) {
-            logger.error("The producer thread using the implementation '{}' failed to start.",
-                    newRTPProducer.getClass().getSimpleName());
+            if (!startProducing(newRTPProducer, newConsumer, rtpStreamRemoteIP, rtpLocalPort)) {
+                logger.error("The producer thread using the implementation '{}' failed to start.",
+                        newRTPProducer.getClass().getSimpleName());
 
-            return logger.exit(false);
-        }
+                return logger.exit(false);
+            }
 
-        rtpLocalPort = newRTPProducer.getLocalPort();
+            rtpLocalPort = newRTPProducer.getLocalPort();
 
-        try {
-            tuner.setTarget("rtp://" + discoveredDeviceParent.getLocalAddress().getHostAddress() + ":" + rtpLocalPort);
-        } catch (IOException e) {
-            logger.error("HDHomeRun is unable to start RTP because the device could not be reached => ", e);
-            return logger.exit(false);
-        } catch (GetSetException e) {
-            logger.error("HDHomeRun is unable to start RTP because the command did not work => ", e);
-            return logger.exit(false);
+            try {
+                tuner.setTarget("rtp://" + discoveredDeviceParent.getLocalAddress().getHostAddress() + ":" + rtpLocalPort);
+            } catch (IOException e) {
+                logger.error("HDHomeRun is unable to start RTP because the device could not be reached => ", e);
+                return logger.exit(false);
+            } catch (GetSetException e) {
+                logger.error("HDHomeRun is unable to start RTP because the command did not work => ", e);
+                return logger.exit(false);
+            }
         }
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
@@ -665,6 +696,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                     if (tuningThread != Thread.currentThread()) {
                         stopProducing(false);
+                        logger.info("tuningThread != Thread.currentThread()");
                         return logger.exit(false);
                     }
                 }
@@ -707,6 +739,17 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         return logger.exit(true);
     }
 
+    private boolean isProducerStalled() {
+        if (httpProducing && httpProducer != null) {
+            return httpProducer.isStalled();
+        } else if (rtpProducerRunnable != null) {
+            return rtpProducerRunnable.isStalled();
+        }
+
+        // This should not be happening.
+        return false;
+    }
+
     private void monitorTuning(final String channel, final String originalFilename, final String originalEncodingQuality, final long bufferSize, final int originalUploadID, final InetAddress remoteAddress) {
         if (monitorThread != null && monitorThread != Thread.currentThread()) {
             monitorThread.interrupt();
@@ -719,7 +762,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                 TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
-                updateChannelMapping(channel);
+                tvChannel = updateChannelMapping(tvChannel);
 
                 int timeout = 0;
                 boolean firstPass = true;
@@ -739,7 +782,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         return;
                     }
 
-                    if (rtpProducerRunnable.isStalled() && !Thread.currentThread().isInterrupted()) {
+                    if (isProducerStalled() && !Thread.currentThread().isInterrupted()) {
                         String filename = originalFilename;
                         String encodingQuality = originalEncodingQuality;
                         int uploadID = originalUploadID;
@@ -831,12 +874,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         switch (encoderDeviceType) {
             case ATSC_HDHOMERUN:
-                if (channelNumber <= 1 || channelNumber > Frequencies.CHANNELS_8VSB.length) {
+                if (channelNumber <= 1 || channelNumber > Frequencies.US_BCAST.length) {
                     logger.error("legacyTuneChannel: The channel number {} is not a valid ATSC channel.");
                     return false;
                 }
 
-                fChannel = Frequencies.CHANNELS_8VSB[channelNumber].FREQUENCY;
+                fChannel = Frequencies.US_BCAST[channelNumber].FREQUENCY;
                 break;
 
             default:
@@ -908,12 +951,105 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         return programSelected;
     }
 
-    private String updateChannelMapping(String channel) {
+    public boolean tuneUrl(TVChannel channel, String transcodeProfile, SageTVConsumer newConsumer) {
+        if (isTuneLegacy() ||
+                Util.isNullOrEmpty(channel.getUrl()) ||
+                !HDHomeRunDiscoverer.getAllowHttpTuning()) {
 
-        TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+            return false;
+        }
+
+        /*
+        Reference: http://www.silicondust.com/hdhomerun/hdhomerun_http_development.pdf
+
+        Transcode Profiles:
+            • heavy: transcode to AVC with the same resolution, frame-rate, and interlacing as the
+            original stream. For example 1080i60 AVC 1080i60, 720p60 AVC 720p60.
+            • mobile: trancode to AVC progressive not exceeding 1280x720 30fps.
+            • internet720: transcode to low bitrate AVC progressive not exceeding 1280x720 30fps.
+            • internet480: transcode to low bitrate AVC progressive not exceeding 848x480 30fps for
+            16:9 content, not exceeding 640x480 30fps for 4:3 content.
+            • internet360: transcode to low bitrate AVC progressive not exceeding 640x360 30fps for
+            16:9 content, not exceeding 480x360 30fps for 4:3 content.
+            • internet240: transcode to low bitrate AVC progressive not exceeding 432x240 30fps for
+            16:9 content, not exceeding 320x240 30fps for 4:3 content.
+         */
+
+        ChannelLineup lineup = ChannelManager.getChannelLineup(encoderLineup);
+
+        String tunerUrl;
+
+        //  Change the IP address to match the tuner we are actually trying to use.
+        tunerUrl = channel.getUrl().replace("http://" + lineup.getAddress(), "http://" + device.getIpAddress().getHostAddress());
+
+        // Change the tuner to a specific tuner instead of just picking whatever is available.
+        tunerUrl = tunerUrl.replace("/auto/", "/tuner" + tuner.TUNER_NUMBER + "/");
+
+        // Support for transcode.
+        if (!Util.isNullOrEmpty(transcodeProfile)) {
+            tunerUrl += "?transcode=" + transcodeProfile;
+        }
+
+        URL tuneUrl;
+
+        try {
+            tuneUrl = new URL(tunerUrl);
+        } catch (MalformedURLException e) {
+            logger.error("'{}' does not appear to be a valid URL => ", tunerUrl, e);
+            return false;
+        }
+
+        httpProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
+
+        try {
+            tuner.clearLockkey();
+        } catch (IOException e) {
+            logger.error("Unable to clear lock on HDHomeRun capture device because it cannot be reached => ", e);
+            return false;
+        } catch (GetSetException e) {
+            logger.error("Unable to clear lock HDHomeRun capture device because the command did not work => ", e);
+            return false;
+        }
+
+        boolean returnValue = true;
+
+        if (!httpServices.startProducing(encoderName, httpProducer, newConsumer, tuneUrl)) {
+            ChannelManager.updateChannelLineup(lineup);
+
+            channel = ChannelManager.getChannel(encoderLineup, channel.getChannel());
+
+            if (channel == null) {
+                logger.warn("The lineup was updated and now the channel doesn't exist.");
+                return false;
+            }
+
+            //  Change the IP address to match the tuner we are actually trying to use.
+            tunerUrl = channel.getUrl().replace("http://" + lineup.getAddress(), "http://" + device.getIpAddress().getHostAddress());
+
+            // Change the tuner to a specific tuner instead of just picking whatever is available.
+            tunerUrl = tunerUrl.replace("/auto/", "/tuner" + tuner.TUNER_NUMBER + "/");
+
+            // Support for transcode.
+            if (!Util.isNullOrEmpty(transcodeProfile)) {
+                tunerUrl += "?transcode=" + transcodeProfile;
+            }
+
+            returnValue = httpServices.startProducing(encoderName, httpProducer, newConsumer, tuneUrl);
+        }
+
+        return returnValue;
+    }
+
+    /**
+     * Updates the modulation, frequency and program stored on the channel lineup.
+     *
+     * @param tvChannel The channel to update.
+     * @return The channel updated.
+     */
+    private TVChannel updateChannelMapping(TVChannel tvChannel) {
 
         if (tvChannel == null) {
-            return channel;
+            return tvChannel;
         }
 
         try {
@@ -927,21 +1063,27 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     tvChannel.setFrequency(Integer.valueOf(split[split.length - 1]));
                 }
 
-                if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
-                    int fChannel = Frequencies.getChannelForFrequency(
-                            FrequencyType._8VSB,
-                            tvChannel.getFrequency());
+                switch (encoderDeviceType) {
+                    case ATSC_HDHOMERUN:
+                        int fChannel = Frequencies.getChannelForFrequency(
+                                FrequencyType.US_BCAST,
+                                tvChannel.getFrequency());
 
-                    String remap = tvChannel.getChannelRemap();
-                    int firstDash = remap.indexOf("-");
-                    int secondDash = remap.lastIndexOf("-");
+                        String remap = tvChannel.getChannelRemap();
+                        int firstDash = remap.indexOf("-");
+                        int secondDash = remap.lastIndexOf("-");
 
-                    // Verify that we haven't already done this and that the expected format is
-                    // already in place.
-                    if (firstDash > -1 && firstDash == secondDash) {
-                        remap = String.valueOf(fChannel) + "-" + remap;
-                        tvChannel.setChannelRemap(remap);
-                    }
+                        // Verify that we haven't already done this and that the expected format is
+                        // already in place.
+                        if (firstDash > -1 && firstDash == secondDash) {
+                            remap = String.valueOf(fChannel) + "-" + remap;
+                            tvChannel.setChannelRemap(remap);
+                        }
+
+                        break;
+                    case DCT_HDHOMERUN:
+                    case QAM_HDHOMERUN:
+                        break;
                 }
             }
         } catch (Exception e) {
@@ -956,10 +1098,9 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         ChannelManager.updateChannel(encoderLineup, tvChannel);
 
-        return tvChannel.getChannelRemap();
+        return tvChannel;
     }
 
-    private int programIndex = -1;
     private int scanChannelIndex = 2;
     private boolean channelScanFirstZero = true;
 
@@ -970,7 +1111,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         switch (encoderDeviceType) {
             case ATSC_HDHOMERUN:
                 if (!isTuneLegacy()) {
-                    String nextChannel = super.scanChannelInfo(channel);
+                    String nextChannel = super.scanChannelInfo(channel, false);
 
                     int firstDash = nextChannel.indexOf("-");
                     int secondDash = nextChannel.lastIndexOf("-");
@@ -984,7 +1125,11 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                             logger.error("Unable to set virtual channel on HDHomeRun capture device because the command did not work => ", e);
                         }
 
-                        nextChannel = updateChannelMapping(nextChannel);
+                        TVChannel tvChannel = updateChannelMapping(ChannelManager.getChannel(encoderLineup, nextChannel));
+
+                        if (tvChannel != null) {
+                            nextChannel = tvChannel.getChannelRemap();
+                        }
 
                         try {
                             tuner.clearVirtualChannel();
@@ -1000,7 +1145,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                 if (channel.equals("-1")) {
                     scanChannelIndex = 2;
-                    programIndex = -1;
                     channelScanFirstZero = true;
                     return "OK";
                 }
@@ -1010,85 +1154,80 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     return "OK";
                 }
 
-                while (true) {
-                    if (programIndex > -1) {
-                        if (scanChannelIndex++ > Frequencies.CHANNELS_8VSB.length) {
-                            return "ERROR";
-                        }
+                int timeout = 12;
 
-                        try {
-                            tuner.setChannel("auto", Frequencies.CHANNELS_8VSB[scanChannelIndex].FREQUENCY, false);
-                        } catch (IOException e) {
-                            logger.error("Unable to set virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
-                        } catch (GetSetException e) {
-                            logger.error("Unable to set virtual channel on HDHomeRun capture device because the command did not work => ", e);
-                        }
+                if (scanChannelIndex++ > Frequencies.US_BCAST.length) {
+                    return "ERROR";
+                }
 
-                        int timeout = 12;
-                        while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
-                            try {
-                                Thread.sleep(250);
-                            } catch (InterruptedException e) {
-                                return "ERROR";
-                            }
+                try {
+                    tuner.setChannel("auto", Frequencies.US_BCAST[scanChannelIndex].FREQUENCY, false);
+                } catch (IOException e) {
+                    logger.error("Unable to set virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to set virtual channel on HDHomeRun capture device because the command did not work => ", e);
+                }
 
-                            try {
-                                if (tuner.getStatus().SIGNAL_PRESENT) {
-                                    break;
-                                }
-                            } catch (IOException e) {
-                                logger.error("Unable to get signal present on HDHomeRun capture device because it cannot be reached => ", e);
-                            } catch (GetSetException e) {
-                                logger.error("Unable to get signal present on HDHomeRun capture device because the command did not work => ", e);
-                            }
-                        }
+                while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
+                    try {
+                        Thread.sleep(250);
+                    } catch (InterruptedException e) {
+                        return "ERROR";
                     }
 
-                    HDHomeRunStreamInfo streamInfo = null;
-                    int timeout = 12;
-                    while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
-                        try {
-                            streamInfo = tuner.getStreamInfo();
-
-                            if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
-                                break;
-                            }
-                        } catch (IOException e) {
-                            logger.error("Unable to get programs on HDHomeRun capture device because it cannot be reached => ", e);
-                        } catch (GetSetException e) {
-                            logger.error("Unable to get programs on HDHomeRun capture device because the command did not work => ", e);
+                    try {
+                        if (tuner.getStatus().SIGNAL_PRESENT) {
+                            break;
                         }
-
-                        try {
-                            Thread.sleep(250);
-                        } catch (InterruptedException e) {
-                            return "ERROR";
-                        }
-                    }
-
-                    if (streamInfo != null) {
-                        String programs[] = streamInfo.getProgramsRaw();
-
-                        programIndex++;
-
-                        for (int i = 0; i < programs.length; i++) {
-                            if (i < programIndex) {
-                                continue;
-                            }
-
-                            String split[] = programs[i].split(" ");
-
-                            if (split.length < 3) {
-                                programIndex++;
-                                continue;
-                            }
-
-                            return scanChannelIndex + "-" + split[1].replace(".", "-");
-                        }
-
-                        programIndex = -1;
+                    } catch (IOException e) {
+                        logger.error("Unable to get signal present on HDHomeRun capture device because it cannot be reached => ", e);
+                    } catch (GetSetException e) {
+                        logger.error("Unable to get signal present on HDHomeRun capture device because the command did not work => ", e);
                     }
                 }
+
+
+                HDHomeRunStreamInfo streamInfo = null;
+
+                timeout = 12;
+                while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
+                    try {
+                        streamInfo = tuner.getStreamInfo();
+
+                        if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
+                            break;
+                        }
+                    } catch (IOException e) {
+                        logger.error("Unable to get programs on HDHomeRun capture device because it cannot be reached => ", e);
+                    } catch (GetSetException e) {
+                        logger.error("Unable to get programs on HDHomeRun capture device because the command did not work => ", e);
+                    }
+
+                    try {
+                        Thread.sleep(250);
+                    } catch (InterruptedException e) {
+                        return "ERROR";
+                    }
+                }
+
+                if (streamInfo != null) {
+                    HDHomeRunProgram programs[] = streamInfo.getProgramsParsed();
+
+                    StringBuilder stringBuilder = new StringBuilder();
+
+                    for (HDHomeRunProgram program : programs) {
+                        stringBuilder.append(scanChannelIndex).append("-").append(program.CHANNEL.replace(".", "-")).append(";");
+                    }
+
+                    // Remove the extra ;.
+                    if (stringBuilder.length() > 0) {
+                        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+                    }
+
+                    return stringBuilder.toString();
+                }
+
+                return "";
         }
 
         return returnValue;
@@ -1150,23 +1289,29 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 monitorThread.interrupt();
             }
 
+            if (httpProducing) {
+                httpServices.stopProducing(false);
+                httpProducer = null;
+            }
+
             super.stopEncoding();
 
             try {
-                if (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN) {
-                    tuner.clearVirtualChannel();
-                    tuner.clearTarget();
-                } else if (encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
-                    tuner.clearChannel();
-                    tuner.clearTarget();
+                if (httpProducing) {
+                    tuner.forceClearLockkey();
+                    httpProducing = false;
                 }
+
+                tuner.clearChannel();
+                tuner.clearTarget();
             } catch (IOException e) {
                 logger.error("Unable to stop HDHomeRun capture device because it cannot be reached => ", e);
             } catch (GetSetException e) {
                 logger.error("Unable to stop HDHomeRun capture device because the command did not work => ", e);
             }
 
-            // Only remove the external lock if we are not performing an offline activity.
+            // Only remove the external lock if we are not performing an offline activity. This also
+            // prevents the device from possibly being forced to be unlocked.
             if (isLocked()) {
                 setExternalLock(false);
             }
@@ -1181,6 +1326,11 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         if (monitorThread != null && monitorThread != Thread.currentThread()) {
             monitorThread.interrupt();
+        }
+
+        if (httpProducing) {
+            httpServices.stopProducing(false);
+            httpProducer = null;
         }
 
         try {
@@ -1260,10 +1410,81 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         return returnValue;
     }
 
-    public boolean isTuneLegacy() {
+    private boolean isTuneLegacy() {
         return device.isLegacy() ||
                 encoderDeviceType != CaptureDeviceType.DCT_HDHOMERUN &&
                         HDHomeRunDiscoverer.getAlwaysTuneLegacy();
+    }
+
+    private static final HashSet<String> updateLineups = new HashSet<>();
+
+    private static void updateAllChannelMappings(final HDHRNativeCaptureDevice captureDevice, final Logger logger, boolean async) {
+
+        synchronized (updateLineups) {
+            int currentLock = 0;
+            try {
+                currentLock = captureDevice.tuner.isLockedByThisComputer();
+            } catch (IOException e) {
+                logger.error("Unable to get if this computer has a lock on HDHomeRun capture device because it cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to get if this computer has a lock on HDHomeRun capture device because the command did not work => ", e);
+            }
+
+            if (currentLock == -1 || currentLock == 1) {
+                if (updateLineups.contains(captureDevice.encoderLineup)) {
+                    return;
+                }
+            } else {
+                return;
+            }
+
+            updateLineups.add(captureDevice.encoderLineup);
+        }
+
+        Runnable updateChannels = new Runnable() {
+            @Override
+            public void run() {
+                TVChannel tvChannels[] = ChannelManager.getChannelList(captureDevice.encoderLineup, true, true);
+
+                long startTime = System.currentTimeMillis();
+
+                for (TVChannel tvChannel : tvChannels) {
+                    try {
+                        captureDevice.tuner.setVirtualChannel(tvChannel.getChannel());
+                    } catch (IOException e) {
+                        logger.error("Unable to set virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
+                    } catch (GetSetException e) {
+                        logger.error("Unable to set virtual channel on HDHomeRun capture device because the command did not work => ", e);
+                    }
+
+                    captureDevice.updateChannelMapping(tvChannel);
+                }
+
+                try {
+                    captureDevice.tuner.clearVirtualChannel();
+                } catch (IOException e) {
+                    logger.error("Unable to clear virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to clear virtual channel on HDHomeRun capture device because the command did not work => ", e);
+                }
+
+                long endTime = System.currentTimeMillis();
+                logger.info("Channel map update completed in {}ms.", endTime - startTime);
+
+                synchronized (updateLineups) {
+                    updateLineups.remove(captureDevice.encoderLineup);
+                }
+            }
+        };
+
+
+        if (async) {
+            Thread updateChannelsThread = new Thread(updateChannels);
+            updateChannelsThread.setName("HDHomeRunUpdateChannels-" + updateChannelsThread.getId() + ":" + captureDevice.encoderName);
+            updateChannelsThread.start();
+        } else {
+            updateChannels.run();
+        }
     }
 
     @Override

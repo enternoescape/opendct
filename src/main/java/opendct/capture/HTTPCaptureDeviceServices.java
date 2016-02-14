@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 The OpenDCT Authors. All Rights Reserved
+ * Copyright 2016 The OpenDCT Authors. All Rights Reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,44 +28,35 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/*
-This incorporates a lot of very basic functionality that might be
-otherwise duplicated between RTP capture devices.
- */
-public abstract class HTTPCaptureDevice extends BasicCaptureDevice implements CaptureDevice {
-    private final Logger logger = LogManager.getLogger(HTTPCaptureDevice.class);
+public class HTTPCaptureDeviceServices {
+    private final Logger logger = LogManager.getLogger(HTTPCaptureDeviceServices.class);
 
-    protected URL httpURL;
+    protected URL httpURL[];
     protected HTTPProducer httpProducerRunnable = null;
     protected Thread httpProducerThread = null;
     protected final ReentrantReadWriteLock httpProducerLock = new ReentrantReadWriteLock(true);
 
     /**
-     * Create a new RTP capture device.
+     * Start receiving HTTP content from a single or list of URL's.
+     * <p/>
+     * All provided URL's are assumed to be the same content. They should be provided in order of
+     * preference.
      *
-     * @param deviceParentName This is the name of the device containing this capture device. This
-     *                         is used for identifying groupings of devices.
-     * @param deviceName       This name is used to uniquely identify this capture device. The encoder
-     *                         version is defaulted to 3.0.
-     * @throws CaptureDeviceIgnoredException If the configuration indicates that this device should
-     *                                       not be loaded, this exception will be thrown.
-     */
-    public HTTPCaptureDevice(String deviceParentName, String deviceName) throws CaptureDeviceIgnoredException {
-        super(deviceParentName, deviceName);
-    }
-
-    /**
-     * Start receiving RTP content on a specific port.
-     *
+     * @param encoderName  This is the name of the network encoder calling this method. This is used
+     *                     for naming the thread.
+     * @param encoderLineup This is the name of the lineup to be updated automatically if the URL's
+     *                   appear to be stale.
      * @param httpProducer   This is the producer to be used to receive the HTTP stream.
      * @param sageTVConsumer This is the consumer to be used to write the accumulated data from this
      *                       producer.
-     * @param httpURL        This is the URL source of the stream.
+     * @param httpURL        This is the URL sources of the stream. This must be a minimum of one
+     *                       URL. Additional URL's can be provided for failover.
      * @return <i>true</i> if the producer was able to start.
      */
-    protected Boolean startProducing(HTTPProducer httpProducer,
+    public boolean startProducing(String encoderName,
+                                     HTTPProducer httpProducer,
                                      SageTVConsumer sageTVConsumer,
-                                     URL httpURL) {
+                                     URL... httpURL) {
 
         logger.entry(httpProducer, sageTVConsumer, httpURL);
 
@@ -85,25 +76,24 @@ public abstract class HTTPCaptureDevice extends BasicCaptureDevice implements Ca
                 try {
                     this.httpURL = httpURL;
 
-                    sageTVProducerRunnable = httpProducer;
                     httpProducerRunnable = httpProducer;
                     httpProducerRunnable.setConsumer(sageTVConsumer);
                     httpProducerRunnable.setSourceUrls(httpURL);
 
                     httpProducerThread = new Thread(httpProducerRunnable);
-                    httpProducerThread.setName(httpProducerRunnable.getClass().getSimpleName() + "-" + sageTVConsumerThread.getId() + ":" + encoderName);
+                    httpProducerThread.setName(httpProducerRunnable.getClass().getSimpleName() + "-" + httpProducerThread.getId() + ":" + encoderName);
                     httpProducerThread.start();
 
                     returnValue = true;
                 } catch (IOException e) {
                     logger.error("Unable to open the URL '{}'. Attempt number {}. => ", httpURL, retryCount, e);
                 } catch (Exception e) {
-                    logger.error("Unable to start producing RTP from the URL {} => ", httpURL, e);
+                    logger.error("Unable to start producing HTTP from the URL {} => ", httpURL, e);
                     returnValue = false;
                     break;
                 }
 
-                if (retryCount++ > 5) {
+                if (retryCount++ >= 2) {
                     returnValue = false;
                     break;
                 }
@@ -117,16 +107,23 @@ public abstract class HTTPCaptureDevice extends BasicCaptureDevice implements Ca
         return logger.exit(returnValue);
     }
 
-    // Use factory methods like this one to get interfaces so it can be customized via the
-    // properties file.
-    protected HTTPProducer getNewHTTPProducer() {
+    /**
+     * Get a new HTTP producer per the configuration.
+     *
+     * @return A new HTTP producer.
+     */
+    public HTTPProducer getNewHTTPProducer(String propertiesDeviceParent) {
         return Config.getHTTProducer(
                 propertiesDeviceParent + "http.producer",
-                Config.getString("rtp.new.default_producer_impl",
+                Config.getString("http.new.default_producer_impl",
                         HTTPProducerImpl.class.getName()));
     }
 
-    // It is entirely possible for the object to become null from the start thread.
+    /**
+     * Is the producer running?
+     *
+     * @return <i>true</i> if the producer is still running.
+     */
     public Boolean isProducing() {
         logger.entry();
 
@@ -155,7 +152,7 @@ public abstract class HTTPCaptureDevice extends BasicCaptureDevice implements Ca
      * @param wait Set this <i>true</i> if you want to wait for the consumer to completely stop.
      * @return <i>false</i> if blocking the consumer was interrupted.
      */
-    protected boolean stopProducing(boolean wait) {
+    public boolean stopProducing(boolean wait) {
         logger.entry();
 
         boolean returnValue = true;
@@ -193,20 +190,5 @@ public abstract class HTTPCaptureDevice extends BasicCaptureDevice implements Ca
 
 
         return logger.exit(returnValue);
-    }
-
-    @Override
-    public void stopEncoding() {
-        logger.entry();
-
-        stopProducing(false);
-        super.stopEncoding();
-
-        logger.exit();
-    }
-
-    // Stop the capture device from streaming and stop the encoder threads.
-    public void stopDevice() {
-        stopEncoding();
     }
 }

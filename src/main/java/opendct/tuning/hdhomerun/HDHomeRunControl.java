@@ -331,7 +331,7 @@ public class HDHomeRunControl {
                         }
 
                         if (bytesNeeded > returnBytes) {
-                            logger.debug("bytesNeeded: {} > returnBytes: {}");
+                            logger.debug("bytesNeeded: {} > returnBytes: {}", bytesNeeded, returnBytes);
                         } else {
                             break;
                         }

@@ -672,6 +672,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 if (program != null) {
                     tvChannel.setProgram(program);
                 }
+
+                // Try one more time to see if anything actually recorded.
+                tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
             }
 
             stopEncoding();
@@ -1743,6 +1746,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         return logger.exit(stringBuilder.toString());
     }
 
+    @Override
+    public String scanChannelInfo(String channel) {
+        return super.scanChannelInfo(channel, true);
+    }
 
     private void subscriptionCleanup() {
         logger.entry();

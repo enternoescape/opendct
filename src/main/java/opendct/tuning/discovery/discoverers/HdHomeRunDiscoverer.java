@@ -56,6 +56,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static StringDeviceOption ignoreModels;
     private static StringDeviceOption ignoreDeviceIds;
     private static BooleanDeviceOption alwaysTuneLegacy;
+    private static BooleanDeviceOption allowHttpTuning;
+    private static StringDeviceOption transcodeProfile;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -178,6 +180,27 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                             " a ClearQAM device."
             );
 
+            allowHttpTuning = new BooleanDeviceOption(
+                    Config.getBoolean("hdhr.allow_http_tuning", true),
+                    false,
+                    "Allow HTTP Tuning",
+                    "hdhr.allow_http_tuning",
+                    "This will allow the HTTP URL to be used instead of RTP if a URL is available" +
+                            " for the requested channel. This will allow for hardware transcoding" +
+                            " on models that support it and higher reliability of the transport" +
+                            " stream. Depending on how SageTV has channels mapped, sometimes a" +
+                            " URL will not be located and RTP will be used instead."
+            );
+
+            transcodeProfile = new StringDeviceOption(
+                    Config.getString("hdhr.extend_transcode_profile", ""),
+                    false,
+                    "Transcode Profile",
+                    "hdhr.extend_transcode_profile",
+                    "This is the profile to be used for all tuners that support hardware" +
+                            " transcoding."
+            );
+
             Config.mapDeviceOptions(
                     deviceOptions,
                     retunePolling,
@@ -187,7 +210,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                     controlRetryCount,
                     ignoreModels,
                     ignoreDeviceIds,
-                    alwaysTuneLegacy
+                    alwaysTuneLegacy,
+                    allowHttpTuning,
+                    transcodeProfile
             );
         } catch (DeviceOptionException e) {
             logger.error("Unable to configure device options for HDHomeRunDiscoverer => ", e);
@@ -584,5 +609,13 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static boolean getAlwaysTuneLegacy() {
         return alwaysTuneLegacy.getBoolean();
+    }
+
+    public static boolean getAllowHttpTuning() {
+        return allowHttpTuning.getBoolean();
+    }
+
+    public static String getTranscodeProfile() {
+        return transcodeProfile.getValue();
     }
 }

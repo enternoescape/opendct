@@ -420,8 +420,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      * this will likely return that none of the channels are tunable.
      *
      * @param channel The index of the tunable channel being requested.
-     * @param combine This will return all of the tunable channels in one large semi-colon delimited
-     *                string. SageTV will accept the data in this format in one request.
+     * @param combine This will return all of the tunable channels across 79 large semi-colon
+     *                delimited string. SageTV will accept the data in this format in one request.
      * @return The next channel that is tunable or ERROR if we are at the end of the list.
      */
     public String scanChannelInfo(String channel, boolean combine) {

@@ -797,8 +797,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
 
                         logger.error("No data was streamed. Copy protection status is '{}' and signal strength is {}. Re-tuning channel...", getCopyProtection(), getSignalStrength());
-                        if (logger.isDebugEnabled()) {
-                            logger.debug(getTunerStatusString());
+                        if (logger.isInfoEnabled()) {
+                            logger.info(getTunerStatusString());
                         }
 
                         boolean tuned = false;
@@ -821,8 +821,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         firstPass = false;
                         logger.info("Streamed first {} bytes.", getRecordedBytes());
 
-                        if (logger.isDebugEnabled()) {
-                            logger.debug(getTunerStatusString());
+                        if (logger.isInfoEnabled()) {
+                            logger.info(getTunerStatusString());
                         }
                     }
                 }

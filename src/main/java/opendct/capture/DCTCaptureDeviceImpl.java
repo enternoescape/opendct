@@ -1386,8 +1386,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
 
                         logger.error("No data was streamed. Copy protection status is '{}' and signal strength is {}. Re-tuning channel...", getCopyProtection(), getSignalStrength());
-                        if (logger.isDebugEnabled()) {
-                            logger.debug(getTunerStatusString());
+                        if (logger.isInfoEnabled()) {
+                            logger.info(getTunerStatusString());
                         }
 
                         boolean tuned = false;
@@ -1409,6 +1409,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                     if (getRecordedBytes() != 0 && firstPass) {
                         firstPass = false;
                         logger.info("Streamed first {} bytes.", getRecordedBytes());
+
+                        if (logger.isInfoEnabled()) {
+                            logger.info(getTunerStatusString());
+                        }
                     }
                 }
 

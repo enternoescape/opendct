@@ -135,7 +135,7 @@ public class Frequencies {
         US_BCAST[51] = new Frequency(FrequencyType.US_BCAST, 51, 692000000, 698000000);
 
 
-        US_CABLE = new Frequency[158];
+        US_CABLE = new Frequency[159];
 
         // Mapping the channels directly with the index number.
         US_CABLE[0] = null;

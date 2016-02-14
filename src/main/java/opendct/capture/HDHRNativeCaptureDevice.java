@@ -464,10 +464,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 try {
                     int fChannel = Integer.parseInt(vfChannel);
 
-                    if (fChannel < 2 || fChannel > Frequencies.CHANNELS_8VSB.length ) {
+                    if (fChannel < 2 || fChannel > Frequencies.US_BCAST.length ) {
                         logger.error("The channel number {} is not a valid ATSC channel number.", fChannel);
                     } else {
-                        tvChannel.setFrequency(Frequencies.CHANNELS_8VSB[fChannel].FREQUENCY);
+                        tvChannel.setFrequency(Frequencies.US_BCAST[fChannel].FREQUENCY);
                     }
                 } catch (NumberFormatException e) {
                     logger.error("Unable to parse '{}' into int => ", vfChannel, e);
@@ -874,12 +874,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         switch (encoderDeviceType) {
             case ATSC_HDHOMERUN:
-                if (channelNumber <= 1 || channelNumber > Frequencies.CHANNELS_8VSB.length) {
+                if (channelNumber <= 1 || channelNumber > Frequencies.US_BCAST.length) {
                     logger.error("legacyTuneChannel: The channel number {} is not a valid ATSC channel.");
                     return false;
                 }
 
-                fChannel = Frequencies.CHANNELS_8VSB[channelNumber].FREQUENCY;
+                fChannel = Frequencies.US_BCAST[channelNumber].FREQUENCY;
                 break;
 
             default:
@@ -1066,7 +1066,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 switch (encoderDeviceType) {
                     case ATSC_HDHOMERUN:
                         int fChannel = Frequencies.getChannelForFrequency(
-                                FrequencyType._8VSB,
+                                FrequencyType.US_BCAST,
                                 tvChannel.getFrequency());
 
                         String remap = tvChannel.getChannelRemap();
@@ -1156,12 +1156,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                 int timeout = 12;
 
-                if (scanChannelIndex++ > Frequencies.CHANNELS_8VSB.length) {
+                if (scanChannelIndex++ > Frequencies.US_BCAST.length) {
                     return "ERROR";
                 }
 
                 try {
-                    tuner.setChannel("auto", Frequencies.CHANNELS_8VSB[scanChannelIndex].FREQUENCY, false);
+                    tuner.setChannel("auto", Frequencies.US_BCAST[scanChannelIndex].FREQUENCY, false);
                 } catch (IOException e) {
                     logger.error("Unable to set virtual channel on HDHomeRun capture device because it cannot be reached => ", e);
                 } catch (GetSetException e) {

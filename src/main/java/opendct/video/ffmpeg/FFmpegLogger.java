@@ -31,6 +31,7 @@ import static org.bytedeco.javacpp.avutil.av_log_format_line;
 
 public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     public static final boolean linuxLogging = Config.getBoolean("consumer.ffmpeg.linux_logging", false);
+    public static final boolean limitLogging = Config.getBoolean("consumer.ffmpeg.limit_logging", true);
 
     int[] printPrefix = new int[]{1};
     StringBuilder lineBuf = new StringBuilder();
@@ -104,7 +105,8 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         String message = trim(bytes);
 
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
-        if (message.endsWith("Invalid frame dimensions 0x0.") ||
+        if (!limitLogging && (
+                message.endsWith("Invalid frame dimensions 0x0.") ||
                 // We handle this message by increasing probe sizes based on the currently available
                 // data.
                 message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
@@ -123,7 +125,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 message.endsWith("decode_slice_header error") ||
                 // Seen when writing MPEG-PS. This basically means the file being created will
                 // potentially not play on a hardware DVD player which is not really a concern.
-                message.contains(" buffer underflow st=")) {
+                message.contains(" buffer underflow st="))) {
 
             return;
         }

@@ -307,6 +307,8 @@
 > *Improved responsiveness for low bit-rate channels when stopping.
 
 #### 0.4.25-Beta
+> *Removed 'non monotonically increasing dts to muxer' handling for this release only.
+
 > *Channel scans now mostly work regardless of how many channels are returned. Note that there can
 > still be mapping issues depending on what channel number SageTV has decided to use for the
 > provided channel.

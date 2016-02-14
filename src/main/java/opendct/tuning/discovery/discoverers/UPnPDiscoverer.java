@@ -83,7 +83,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
             );
 
             offlineDetectionSeconds = new IntegerDeviceOption(
-                    Config.getInteger("upnp.dct.wait_for_offline_detection_s", 8),
+                    Config.getInteger("upnp.dct.wait_for_offline_detection_s", 18),
                     false,
                     "Offline Channel Detection Seconds",
                     "upnp.dct.wait_for_offline_detection_s",

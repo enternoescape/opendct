@@ -108,7 +108,6 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
                     this.rtpLocalPort = localPort;
                     this.rtpStreamRemoteIP = remoteIP;
 
-                    sageTVProducerRunnable = rtpProducer;
                     rtpProducerRunnable = rtpProducer;
                     rtpProducerRunnable.setConsumer(sageTVConsumer);
                     rtpProducerRunnable.setStreamingSocket(remoteIP, this.rtpLocalPort);

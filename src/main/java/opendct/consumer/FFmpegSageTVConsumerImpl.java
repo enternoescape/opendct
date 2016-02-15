@@ -1132,12 +1132,36 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 // It causes av_interleaved_write_frame to return error code -22 which we log as:
                 //    Error -22 while writing packet at input stream offset 420932.
                 // So to avoid these two errors av_interleaved_write_frame is only called if the decompression timestamp has changed.
+                // ^Old solution for this situation. [js]
                 //
-                /*long dts = pkt.dts();
-                boolean dtsChanged = dts != lastDtsByStreamIndex[outputStreamIndex];
-                lastDtsByStreamIndex[outputStreamIndex] = dts;
+                // Some streams will provide a dts value that's less than the last value; not just
+                // equal to it. Sometimes they don't even have a dts value. The new way of handling
+                // this situation is taking the last dts timestamp and adding one to it. This is
+                // similar to what recent copies of FFmpeg will do when run from the command line.
+                // This change was needed because sometimes when we discard these problem frames,
+                // the result is video corruption.
+                // [js]
+                long dts = pkt.dts();
 
-                if (dtsChanged) {*/
+                if (dts == AV_NOPTS_VALUE) {
+                    lastDtsByStreamIndex[outputStreamIndex] += 1;
+                    pkt.dts(lastDtsByStreamIndex[outputStreamIndex]);
+
+                } else if (lastDtsByStreamIndex[outputStreamIndex] >= dts) {
+                    long newDts = lastDtsByStreamIndex[outputStreamIndex] + 1;
+
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("{} is >= {}. Incrementing dts frame to {}.", lastDtsByStreamIndex[outputStreamIndex], dts, newDts);
+                    }
+
+                    pkt.dts(newDts);
+                    lastDtsByStreamIndex[outputStreamIndex] = newDts;
+                } else {
+                    lastDtsByStreamIndex[outputStreamIndex] = dts;
+                }
+
+
+                //if (dtsChanged) {
                 AVStream avStreamIn = avfCtxInput.streams(inputStreamIndex);
                 AVStream avStreamOut = avfCtxOutput.streams(outputStreamIndex);
 

@@ -346,3 +346,6 @@
 
 > *Internal: Handling of wrapper.log file sizes is now managed and also included in the cleanup as
 > a last resort if the disk space goes below the default 1GB threshold.
+
+#### 0.4.26-Beta
+> *Enhanced handling of dts non-monotonic situations.

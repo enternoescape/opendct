@@ -1151,7 +1151,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     long newDts = lastDtsByStreamIndex[outputStreamIndex] + 1;
 
                     if (logger.isDebugEnabled()) {
-                        logger.debug("{} is >= {}. Incrementing dts frame to {}.", lastDtsByStreamIndex[outputStreamIndex], dts, newDts);
+                        logger.debug("{} >= {}. Incrementing dts timestamp to {}.", lastDtsByStreamIndex[outputStreamIndex], dts, newDts);
                     }
 
                     pkt.dts(newDts);

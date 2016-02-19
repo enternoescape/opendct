@@ -53,3 +53,6 @@
 #### 0.3.16-Stable
 > *Backported: Fixed an unreliable timeout issue with the re-tuning monitoring thread under the
 > right conditions.
+
+#### 0.3.17-Stable
+> *Upped UDP recieve packet size to 65508.

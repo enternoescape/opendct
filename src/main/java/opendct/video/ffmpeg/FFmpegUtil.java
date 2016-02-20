@@ -17,21 +17,276 @@
 package opendct.video.ffmpeg;
 
 import opendct.config.Config;
-import org.bytedeco.javacpp.BytePointer;
-import org.bytedeco.javacpp.IntPointer;
-import org.bytedeco.javacpp.avformat;
-import org.bytedeco.javacpp.avformat.AVChapter;
-import org.bytedeco.javacpp.avformat.AVFormatContext;
-import org.bytedeco.javacpp.avformat.AVProgram;
-import org.bytedeco.javacpp.avformat.AVStream;
+import opendct.config.ConfigBag;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.bytedeco.javacpp.*;
+import org.bytedeco.javacpp.avformat.*;
 import org.bytedeco.javacpp.avutil.*;
 
-import static org.bytedeco.javacpp.avcodec.avcodec_string;
-import static org.bytedeco.javacpp.avformat.AVFMT_SHOW_IDS;
+import static org.bytedeco.javacpp.avcodec.*;
+import static org.bytedeco.javacpp.avfilter.avfilter_register_all;
+import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
+import static org.bytedeco.javacpp.swscale.SWS_BILINEAR;
+import static org.bytedeco.javacpp.swscale.sws_getContext;
 
 public abstract class FFmpegUtil {
+    private static final Logger logger = LogManager.getLogger(FFmpegUtil.class);
+
+    public static final FFmpegLogger logCallback = new FFmpegLogger();
+    private static final Object isInitSync = new Object();
+    private static boolean isInit = false;
+
+    public static final int EAGAIN = -11;
+    public static final int ENOMEM = -12;
+    public static final int NO_STREAM_IDX = -1;
+    public static final String FFMPEG_INIT_INTERRUPTED = "FFmpeg initialization was interrupted.";
+    public static final String TRYING_AGAIN = " Trying again with an extended probe.";
     private static final boolean LOG_STREAM_DETAILS_FOR_ALL_PROGRAMS = Config.getBoolean("consumer.ffmpeg.log_stream_details_for_all_programs", false);
+
+    /**
+     * Initialize all one time FFmpeg common configuration.
+     * <p/>
+     * Additional calls to this method will just return without doing anything. This method is
+     * thread-safe.
+     */
+    public static void initAll() {
+
+        // This will prevent this method from causing a pileup of waiting threads once everything is
+        // one time configured. The sync is needed to make sure that nothing that requires this
+        // configuration is allowed to proceed until they are configured.
+        if (isInit) {
+            return;
+        }
+
+        synchronized (isInitSync) {
+            if (!isInit) {
+                av_log_set_callback(logCallback);
+
+                av_register_all();
+                avfilter_register_all();
+                avcodec_register_all();
+
+                isInit = true;
+            }
+        }
+    }
+
+    public static boolean findAllStreamsForDesiredProgram(AVFormatContext ic, int desiredProgram) {
+        int numPrograms = ic.nb_programs();
+
+        for (int programIndex = 0; programIndex < numPrograms; programIndex++) {
+            if ( ic.programs(programIndex).id() == desiredProgram) {
+                AVProgram program = ic.programs(programIndex);
+                IntPointer streamIndexArray = program.stream_index();
+                int streamIndexArrayLength = program.nb_stream_indexes();
+                boolean foundAllCodecs = true;
+
+                for (int streamIndexArrayIndex = 0; streamIndexArrayIndex < streamIndexArrayLength; streamIndexArrayIndex++) {
+                    int streamIndex = streamIndexArray.get(streamIndexArrayIndex);
+                    AVStream st = ic.streams(streamIndex);
+                    avcodec.AVCodecContext avctx = st.codec();
+                    int codecType = avctx.codec_type();
+                    if (codecType == AVMEDIA_TYPE_AUDIO && (avctx.channels() == 0 || avctx.sample_rate() == 0)) {
+                        logger.info("Audio stream " + streamIndex + " has no channels or no sample rate.");
+                        foundAllCodecs = false;
+                    }
+                    else if (codecType == AVMEDIA_TYPE_VIDEO && (avctx.width() == 0 || avctx.height() == 0)) {
+                        logger.info("Video stream " + streamIndex + " has no width or no height.");
+                        foundAllCodecs = false;
+                    }
+                }
+
+                return foundAllCodecs;
+            }
+        }
+
+        return false;
+    }
+
+    public static avcodec.AVCodecContext getCodecContext(AVStream inputStream) {
+        avcodec.AVCodecContext codecCtxInput = inputStream.codec();
+        int codecType = codecCtxInput.codec_type();
+        boolean isStreamValid =
+                (codecType == AVMEDIA_TYPE_AUDIO || codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_SUBTITLE) &&
+                        ((codecType != AVMEDIA_TYPE_VIDEO || (codecCtxInput.width() != 0 && codecCtxInput.height() != 0)) &&
+                                (codecType != AVMEDIA_TYPE_AUDIO || codecCtxInput.channels() != 0));
+
+        return isStreamValid ? codecCtxInput : null;
+    }
+
+    public static int findBestAudioStream(AVFormatContext inputContext) {
+        int preferredAudio = -1;
+        int maxChannels = 0;
+        int maxFrames = 0;
+        boolean hasAudio = false;
+        int numStreams = inputContext.nb_streams();
+
+        for (int streamIndex = 0; streamIndex < numStreams; streamIndex++) {
+            AVStream stream = inputContext.streams(streamIndex);
+            avcodec.AVCodecContext codec = stream.codec();
+            // AVDictionaryEntry lang = av_dict_get( stream.metadata(), "language", (PointerPointer<AVDictionaryEntry>) null, 0);
+
+            if (codec.codec_type() == AVMEDIA_TYPE_AUDIO) {
+                hasAudio = true;
+                int cChannels = codec.channels();
+                int cFrames = stream.codec_info_nb_frames();
+
+                if (cChannels > maxChannels || (cChannels == maxChannels && cFrames > maxFrames)) {
+                    maxChannels = cChannels;
+                    maxFrames = cFrames;
+                    preferredAudio = streamIndex;
+                }
+            }
+        }
+
+        if (hasAudio && preferredAudio == -1) {
+            preferredAudio = av_find_best_stream(inputContext, AVMEDIA_TYPE_AUDIO, -1, -1, (PointerPointer<avcodec.AVCodec>) null, 0);
+        }
+
+        return preferredAudio;
+    }
+
+    public static AVStream addCopyStreamToContext(AVFormatContext outputContext, avcodec.AVCodecContext codecCtxInput) {
+        AVStream avsOutput = avformat_new_stream(outputContext, codecCtxInput.codec());
+
+        if (avsOutput == null) {
+            logger.error("Could not allocate stream");
+            return null;
+        }
+
+        avcodec.AVCodecContext codecCtxOutput = avsOutput.codec();
+
+        if (avcodec_copy_context(codecCtxOutput, codecCtxInput) < 0) {
+            logger.error("Failed to copy context from input to output stream codec context");
+            return null;
+        }
+
+        //
+        // This prevents FFmpeg messages like this: Ignoring attempt to set invalid timebase 1/0 for st:1
+        //
+        avsOutput.time_base(av_add_q(codecCtxInput.time_base(), av_make_q(0, 1)));
+
+        codecCtxOutput.codec_tag(0);
+
+        if ((outputContext.oformat().flags() & AVFMT_GLOBALHEADER) != 0) {
+            codecCtxOutput.flags(codecCtxOutput.flags() | CODEC_FLAG_GLOBAL_HEADER);
+        }
+
+        avsOutput.id(outputContext.nb_streams() - 1);
+
+        return avsOutput;
+    }
+
+    /**
+     * Adds a stream with transcoding for a video or audio stream.
+     *
+     * @param ctx This is the FFmpeg context to update.
+     * @param stream_id This is the stream to be added
+     * @param profile This is a properties file containing the desired settings.
+     * @return The new AVStream if successful.
+     */
+    public static AVStream addTranscodeVideoStreamToContext(FFmpegContext ctx, int stream_id, ConfigBag profile) {
+        AVStream out_stream = avformat_new_stream(ctx.avfCtxOutput, null);
+
+        if (out_stream == null) {
+            logger.error("Could not allocate output stream");
+            return null;
+        }
+
+        AVStream in_stream = ctx.avfCtxInput.streams(stream_id);
+
+        AVCodecContext dec_ctx = in_stream.codec();
+        AVCodecContext enc_ctx = out_stream.codec();
+
+        int decoderCodecType = dec_ctx.codec_type();
+
+        if (decoderCodecType != AVMEDIA_TYPE_VIDEO
+                && decoderCodecType != AVMEDIA_TYPE_AUDIO) {
+            logger.error("Transcoding only supports video and audio types.");;
+            return null;
+        }
+
+        AVCodec encoder = null;
+        AVDictionary dict = new AVDictionary(null);
+
+        if (decoderCodecType == AVMEDIA_TYPE_VIDEO) {
+            encoder = avcodec_find_encoder(AV_CODEC_ID_MPEG2VIDEO);
+
+            if (encoder == null) {
+                logger.fatal("Necessary video encoder not found");
+                return null;
+            }
+
+            enc_ctx.height(720);
+            enc_ctx.width(1280);
+
+            // take first format from list of supported formats
+            enc_ctx.sample_aspect_ratio(dec_ctx.sample_aspect_ratio());
+            enc_ctx.pix_fmt(encoder.pix_fmts().get(0));
+
+            // video time_base can be set to whatever is handy and supported by encoder
+            enc_ctx.time_base(dec_ctx.time_base());
+
+            enc_ctx.framerate(dec_ctx.framerate());
+
+            enc_ctx.bit_rate(14 * 1000 * 1000);
+
+            enc_ctx.gop_size(15);
+            enc_ctx.max_b_frames(2);
+            av_dict_set(dict, "me_method", "epzs", 0);
+
+
+            // Determine required buffer size and allocate buffer
+            int numBytes = avpicture_get_size(enc_ctx.pix_fmt(),
+                    enc_ctx.width(), enc_ctx.height());
+            BytePointer buffer = new BytePointer(av_malloc(numBytes));
+
+            ctx.swsCtx[stream_id] = sws_getContext(dec_ctx.width(), dec_ctx.height(),
+                    dec_ctx.pix_fmt(), enc_ctx.width(), enc_ctx.height(),
+                    enc_ctx.pix_fmt(), SWS_BILINEAR, null, null, (DoublePointer) null);
+
+            // Assign appropriate parts of buffer to image planes in swsFrame
+            // Note that swsFrame is an AVFrame, but AVFrame is a superset
+            // of AVPicture
+            avpicture_fill(new AVPicture(ctx.swsFrame[stream_id] = av_frame_alloc()), buffer, enc_ctx.pix_fmt(),
+                    enc_ctx.width(), enc_ctx.height());
+
+        } else {
+            encoder = avcodec_find_encoder(dec_ctx.codec_id());
+
+            if (encoder == null) {
+                logger.fatal("Necessary audio encoder not found");
+                return null;
+            }
+
+            enc_ctx.sample_rate(dec_ctx.sample_rate());
+            enc_ctx.channel_layout(dec_ctx.channel_layout());
+            enc_ctx.channels(av_get_channel_layout_nb_channels(enc_ctx.channel_layout()));
+                /* take first format from list of supported formats */
+            enc_ctx.sample_fmt(encoder.sample_fmts().get(0));
+
+            enc_ctx.time_base().num(1);
+            enc_ctx.time_base().den(enc_ctx.sample_rate());
+        }
+
+        int ret = avcodec_open2(enc_ctx, encoder, dict);
+        av_dict_free(dict);
+
+        if (ret < 0) {
+            logger.error("Cannot open video encoder for stream #{}. Error {}.", in_stream.id(), ret);
+            return null;
+        }
+
+        if ((ctx.avfCtxOutput.oformat().flags() & AVFMT_GLOBALHEADER) != 0) {
+            enc_ctx.flags(enc_ctx.flags() | CODEC_FLAG_GLOBAL_HEADER);
+        }
+
+        out_stream.id(ctx.avfCtxOutput.nb_streams() - 1);
+
+        return out_stream;
+    }
 
     /**
      * Dump the AVFormatContext info like AVFormat.av_dump_format() does.

@@ -20,13 +20,13 @@ import opendct.channel.ChannelManager;
 import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
-import opendct.consumer.FFmpegSageTVConsumerImpl;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.DiscoveryManager;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.upnp.UpnpManager;
+import opendct.video.ffmpeg.FFmpegUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -116,7 +116,7 @@ public class Main {
                 // this immediately disposed object can reduce the first device load time by up to 5
                 // seconds. This should not wait until the first time a device is tuned since it
                 // will add a very measurable delay.
-                new FFmpegSageTVConsumerImpl();
+                FFmpegUtil.initAll();
 
                 long endTime = System.currentTimeMillis();
                 logger.info("FFmpeg loaded in {}ms.", endTime - startTime);

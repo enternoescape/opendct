@@ -104,8 +104,16 @@ public class SeekableCircularBuffer {
         return noWrap;
     }
 
-    public int getBufferSize() {
+    public int getCurrentBufferSize() {
         return buffer.length;
+    }
+
+    public int getBufferMinSize() {
+        return resizeBufferIncrement;
+    }
+
+    public int getBufferMaxSize() {
+        return maxBufferSize;
     }
 
     public void waitForBytes() throws InterruptedException {

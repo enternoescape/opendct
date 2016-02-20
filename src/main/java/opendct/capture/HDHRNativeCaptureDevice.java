@@ -1020,6 +1020,15 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
             if (channel == null) {
                 logger.warn("The lineup was updated and now the channel doesn't exist.");
+
+                try {
+                    tuner.setLockkey(device.getIpAddress());
+                } catch (IOException e) {
+                    logger.error("Unable to set lock on HDHomeRun capture device because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to set lock HDHomeRun capture device because the command did not work => ", e);
+                }
+
                 return false;
             }
 
@@ -1035,6 +1044,16 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             }
 
             returnValue = httpServices.startProducing(encoderName, httpProducer, newConsumer, tuneUrl);
+        }
+
+        if (!returnValue) {
+            try {
+                tuner.setLockkey(device.getIpAddress());
+            } catch (IOException e) {
+                logger.error("Unable to set lock on HDHomeRun capture device because it cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to set lock HDHomeRun capture device because the command did not work => ", e);
+            }
         }
 
         return returnValue;

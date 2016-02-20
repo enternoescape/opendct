@@ -19,7 +19,6 @@ package opendct.consumer;
 import opendct.config.Config;
 import opendct.consumer.buffers.FFmpegCircularBuffer;
 import opendct.consumer.upload.NIOSageTVUploadID;
-import opendct.video.ffmpeg.FFmpegLogger;
 import opendct.video.ffmpeg.FFmpegUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,10 +29,7 @@ import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.javacpp.avformat.*;
 import org.bytedeco.javacpp.avformat.AVIOInterruptCB.Callback_Pointer;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InterruptedIOException;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -149,7 +145,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
     private static ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl> instanceMap = new ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl>();
     private static final AtomicLong callbackAddress = new AtomicLong(0);
-    private static final FFmpegLogger logCallback = new FFmpegLogger();
 
     public static final String FFMPEG_INIT_INTERRUPTED = "FFmpeg initialization was interrupted.";
     public static final int NO_STREAM_IDX = -1;
@@ -165,8 +160,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private int[] streamMap;
 
     static {
-        av_register_all();
-        av_log_set_callback(logCallback);
+        FFmpegUtil.initAll();
     }
 
     public void run() {
@@ -719,6 +713,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                                 }
                             }
 
+                            currentFile.force(true);
                             switchFile = false;
                             switchMonitor.notifyAll();
 
@@ -745,13 +740,46 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     }
                 }
 
+                // According to many sources, if the file is deleted an IOException will not be
+                // thrown. This handles the possible scenario. This also means previously written
+                // data is now lost.
+                if (!new File(currentRecordingFilename).exists()) {
+                    try {
+                        currentFile.close();
+                    } catch (Exception e) {
+                        logger.debug("Exception while closing missing file => ");
+                    }
+
+                    while (!isInterrupted()) {
+                        try {
+                            currentFileOutputStream = new FileOutputStream(currentRecordingFilename);
+                            currentFile = currentFileOutputStream.getChannel();
+                            bytesStreamed.set(0);
+                            logger.warn("The file '{}' is missing and was re-created.");
+                        } catch (Exception e) {
+                            logger.error("The file '{}' is missing and cannot be re-created => ",
+                                    currentRecordingFilename, e);
+
+                            Thread.sleep(500);
+
+                            // Continue to re-try until interrupted.
+                        }
+                    }
+                }
+
+                long currentBytes = 0;
+
                 while (streamBuffer.hasRemaining()) {
                     int savedSize = currentFile.write(streamBuffer);
 
-                    if (bytesStreamed.addAndGet(savedSize) > initBufferedData) {
+                    currentBytes = bytesStreamed.addAndGet(savedSize);
+
+                    if (currentBytes > initBufferedData) {
                         synchronized (streamingMonitor) {
                             streamingMonitor.notifyAll();
                         }
+                    } else {
+                        currentFile.force(true);
                     }
 
                     if (stvRecordBufferSize > 0 && stvRecordBufferPos.get() >
@@ -761,7 +789,9 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     }
                     stvRecordBufferPos.set(currentFile.position());
                 }
+
                 streamBuffer.clear();
+                currentFileOutputStream.flush();
             } else {
                 synchronized (streamingMonitor) {
                     streamingMonitor.notifyAll();
@@ -779,7 +809,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             seekableBuffer.close();
             return logger.exit(-1);
         } catch (IOException e) {
-            logger.debug("Consumer created an IO exception => ", e);
+            logger.warn("Consumer created an IO exception => ", e);
 
             // Setting the interrupt for FFmpeg or the JVM might crash.
             ffmpegInterrupted = true;
@@ -1118,7 +1148,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
         logger.debug("remuxing RTP packets");
 
-        while (!isInterrupted() && av_read_frame(avfCtxInput, pkt) >= 0) {
+        while (av_read_frame(avfCtxInput, pkt) >= 0) {
             boolean freePacket = true;
             logger.trace("Read a frame");
 
@@ -1201,6 +1231,8 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 av_free_packet(pkt); // This call also sets the pkt.data(null) and pkt.size(0)
             }
         }
+
+        av_write_trailer(avfCtxOutput);
     }
 
     private void logPacket(AVFormatContext fmt_ctx, AVPacket pkt, String tag) {

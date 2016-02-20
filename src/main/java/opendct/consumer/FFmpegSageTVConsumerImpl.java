@@ -743,7 +743,9 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 // According to many sources, if the file is deleted an IOException will not be
                 // thrown. This handles the possible scenario. This also means previously written
                 // data is now lost.
-                if (!new File(currentRecordingFilename).exists()) {
+                File recordingFile = new File(currentRecordingFilename);
+
+                if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0) ) {
                     try {
                         currentFile.close();
                     } catch (Exception e) {

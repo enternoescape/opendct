@@ -54,6 +54,9 @@
 > *Backported: Fixed an unreliable timeout issue with the re-tuning monitoring thread under the
 > right conditions.
 
+#### 0.3.17-Stable
+> *Upped UDP recieve packet size to 65508.
+
 #### 0.4.0-Beta
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
@@ -346,3 +349,9 @@
 
 > *Internal: Handling of wrapper.log file sizes is now managed and also included in the cleanup as
 > a last resort if the disk space goes below the default 1GB threshold.
+
+#### 0.4.26-Beta
+> *Enhanced handling of dts non-monotonic situations.
+
+> *Direct file writing in the FFmpeg consumer now forces the data to disk on each write and verifies
+> that the file has not been deleted.

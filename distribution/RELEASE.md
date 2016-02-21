@@ -355,3 +355,7 @@
 
 > *Direct file writing in the FFmpeg consumer now forces the data to disk on each write and verifies
 > that the file has not been deleted.
+
+#### 0.4.27-Beta
+> *Direct file writing now uses a tunable propterty that is set to flush every 1MB instead of every
+> time FFmpeg uses the write callback. The property name is consumer.ffmpeg.min_direct_flush_size.

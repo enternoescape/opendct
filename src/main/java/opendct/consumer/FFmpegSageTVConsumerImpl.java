@@ -87,10 +87,17 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             Math.max(Config.getInteger("consumer.ffmpeg.rw_buffer_size", 20680), 10340);
 
     // This is the smallest amount of data that will be transferred to the SageTV server.
-    private final int minUploadIDTransfer =
+    private final int minDirectFlush =
             Math.max(
                     Config.getInteger("consumer.ffmpeg.min_upload_id_transfer_size", 20680),
                     RW_BUFFER_SIZE
+            );
+
+    // This is the smallest amount of data that will be flushed to the SageTV server.
+    private final int minUploadIDTransfer =
+            Math.max(
+                    Config.getInteger("consumer.ffmpeg.min_direct_flush_size", 1048576),
+                    0
             );
 
     private final int ffmpegThreadPriority =
@@ -106,6 +113,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     // values otherwise. Don't ever forget to set this value and increment it correctly. This is
     // crucial to playback in SageTV.
     private AtomicLong bytesStreamed = new AtomicLong(0);
+    private long bytesFlushCounter = 0;
 
     private FileChannel currentFile = null;
     private FileOutputStream currentFileOutputStream = null;
@@ -740,31 +748,36 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     }
                 }
 
-                // According to many sources, if the file is deleted an IOException will not be
-                // thrown. This handles the possible scenario. This also means previously written
-                // data is now lost.
-                File recordingFile = new File(currentRecordingFilename);
+                if (bytesFlushCounter >= minDirectFlush) {
+                    currentFileOutputStream.flush();
+                    bytesFlushCounter = 0;
 
-                if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0) ) {
-                    try {
-                        currentFile.close();
-                    } catch (Exception e) {
-                        logger.debug("Exception while closing missing file => ");
-                    }
+                    // According to many sources, if the file is deleted an IOException will not be
+                    // thrown. This handles the possible scenario. This also means previously
+                    // written data is now lost.
+                    File recordingFile = new File(currentRecordingFilename);
 
-                    while (!isInterrupted()) {
+                    if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0) ) {
                         try {
-                            currentFileOutputStream = new FileOutputStream(currentRecordingFilename);
-                            currentFile = currentFileOutputStream.getChannel();
-                            bytesStreamed.set(0);
-                            logger.warn("The file '{}' is missing and was re-created.");
+                            currentFile.close();
                         } catch (Exception e) {
-                            logger.error("The file '{}' is missing and cannot be re-created => ",
-                                    currentRecordingFilename, e);
+                            logger.debug("Exception while closing missing file => ");
+                        }
 
-                            Thread.sleep(500);
+                        while (!isInterrupted()) {
+                            try {
+                                currentFileOutputStream = new FileOutputStream(currentRecordingFilename);
+                                currentFile = currentFileOutputStream.getChannel();
+                                bytesStreamed.set(0);
+                                logger.warn("The file '{}' is missing and was re-created.");
+                            } catch (Exception e) {
+                                logger.error("The file '{}' is missing and cannot be re-created => ",
+                                        currentRecordingFilename, e);
 
-                            // Continue to re-try until interrupted.
+                                Thread.sleep(500);
+
+                                // Continue to re-try until interrupted.
+                            }
                         }
                     }
                 }
@@ -774,14 +787,13 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 while (streamBuffer.hasRemaining()) {
                     int savedSize = currentFile.write(streamBuffer);
 
+                    bytesFlushCounter += savedSize;
                     currentBytes = bytesStreamed.addAndGet(savedSize);
 
                     if (currentBytes > initBufferedData) {
                         synchronized (streamingMonitor) {
                             streamingMonitor.notifyAll();
                         }
-                    } else {
-                        currentFile.force(true);
                     }
 
                     if (stvRecordBufferSize > 0 && stvRecordBufferPos.get() >
@@ -793,7 +805,6 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 }
 
                 streamBuffer.clear();
-                currentFileOutputStream.flush();
             } else {
                 synchronized (streamingMonitor) {
                     streamingMonitor.notifyAll();

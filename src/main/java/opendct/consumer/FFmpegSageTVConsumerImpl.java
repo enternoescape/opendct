@@ -87,14 +87,14 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             Math.max(Config.getInteger("consumer.ffmpeg.rw_buffer_size", 20680), 10340);
 
     // This is the smallest amount of data that will be transferred to the SageTV server.
-    private final int minDirectFlush =
+    private final int minUploadIDTransfer =
             Math.max(
                     Config.getInteger("consumer.ffmpeg.min_upload_id_transfer_size", 20680),
                     RW_BUFFER_SIZE
             );
 
     // This is the smallest amount of data that will be flushed to the SageTV server.
-    private final int minUploadIDTransfer =
+    private final int minDirectFlush =
             Math.max(
                     Config.getInteger("consumer.ffmpeg.min_direct_flush_size", 1048576),
                     0

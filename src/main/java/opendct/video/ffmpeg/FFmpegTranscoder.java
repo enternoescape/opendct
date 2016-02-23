@@ -274,7 +274,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 }
 
                 if (got_frame[0] != 0) {
-                    interFrames += frame.interlaced_frame();
+                    int interlaced = frame.interlaced_frame();;
+                    interFrames += interlaced;
+                    frameLimit += interlaced;
                 }
 
                 av_frame_free(frame);
@@ -282,14 +284,13 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 if (interFrames >= interThresh) {
                     return true;
-                } else if (totalFrames++ <= frameLimit) {
+                } else if (totalFrames++ >= frameLimit) {
                     break;
                 }
             }
         } catch (FFmpegException e) {
             logger.error("Deinterlace detection exception => ", e);
         } finally {
-            ctx.avfCtxInput.pb().position(0);
             avcodec_close(ctx.videoCodecCtx);
         }
 
@@ -726,11 +727,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
             if (codecType == AVMEDIA_TYPE_VIDEO) {
                 //filter_spec = "null"; /* passthrough (dummy) filter for video */
-                //filter_spec = "yadif=mode=2, scale=w='trunc(oh*a/16)*16':h='min(720\\,ih)':interl=0:flags=bilinear, format=pix_fmts=yuv420p, setpts=0.5*PTS";
+                filter_spec = "yadif=mode=2, scale=w='trunc(oh*a/16)*16':h='min(720\\,ih)':interl=0:flags=bilinear, format=pix_fmts=yuv420p, setpts=0.5*PTS";
                 //filter_spec = "yadif=mode=2, format=pix_fmts=yuv420p, setpts=0.5*PTS";
                 //filter_spec = "kerndeint=map=1, format=pix_fmts=yuv420p, scale=w=1280:h=720, setpts=0.5*PTS";
 
-                filter_spec = "idet";
+                //filter_spec = "idet";
             } else {
                 filter_spec = "anull"; /* passthrough (dummy) filter for audio */
             }

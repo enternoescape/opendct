@@ -28,8 +28,6 @@ import static org.bytedeco.javacpp.avcodec.*;
 import static org.bytedeco.javacpp.avfilter.avfilter_register_all;
 import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
-import static org.bytedeco.javacpp.swscale.SWS_BILINEAR;
-import static org.bytedeco.javacpp.swscale.sws_getContext;
 
 public abstract class FFmpegUtil {
     private static final Logger logger = LogManager.getLogger(FFmpegUtil.class);
@@ -55,7 +53,7 @@ public abstract class FFmpegUtil {
 
         // This will prevent this method from causing a pileup of waiting threads once everything is
         // one time configured. The sync is needed to make sure that nothing that requires this
-        // configuration is allowed to proceed until they are configured.
+        // configuration is allowed to proceed until everything is registered.
         if (isInit) {
             return;
         }
@@ -64,12 +62,21 @@ public abstract class FFmpegUtil {
             if (!isInit) {
                 av_log_set_callback(logCallback);
 
-                av_register_all();
-                avfilter_register_all();
                 avcodec_register_all();
+                avfilter_register_all();
+                av_register_all();
 
                 isInit = true;
             }
+        }
+    }
+
+    public void printAvailableHWAccel() {
+        logger.info("HW Acceleration:");
+        AVHWAccel accel = av_hwaccel_next(null);
+        while (accel != null) {
+            logger.info("accel: {}", accel.name().getString());
+            accel = av_hwaccel_next(accel);
         }
     }
 
@@ -208,19 +215,21 @@ public abstract class FFmpegUtil {
             return null;
         }
 
-        AVCodec encoder = null;
-        AVDictionary dict = new AVDictionary(null);
+        AVCodec encoder;
+        AVDictionary dict = ctx.encoderDicts[stream_id] = new AVDictionary(null);
 
         if (decoderCodecType == AVMEDIA_TYPE_VIDEO) {
-            encoder = avcodec_find_encoder(AV_CODEC_ID_MPEG2VIDEO);
+            encoder = ctx.encoderCodecs[stream_id] = avcodec_find_encoder(AV_CODEC_ID_H264);
 
             if (encoder == null) {
                 logger.fatal("Necessary video encoder not found");
                 return null;
             }
 
-            enc_ctx.height(720);
-            enc_ctx.width(1280);
+            // These 3 groupings are all set to match the source and may be overridden depending on
+            // what filters are used later on.
+            enc_ctx.height(dec_ctx.height());
+            enc_ctx.width(dec_ctx.width());
 
             // take first format from list of supported formats
             enc_ctx.sample_aspect_ratio(dec_ctx.sample_aspect_ratio());
@@ -228,33 +237,27 @@ public abstract class FFmpegUtil {
 
             // video time_base can be set to whatever is handy and supported by encoder
             enc_ctx.time_base(dec_ctx.time_base());
-
             enc_ctx.framerate(dec_ctx.framerate());
 
-            enc_ctx.bit_rate(14 * 1000 * 1000);
-
-            enc_ctx.gop_size(15);
+            //MPEG-2
+            /*enc_ctx.gop_size(15);
             enc_ctx.max_b_frames(2);
-            av_dict_set(dict, "me_method", "epzs", 0);
+            av_dict_set(dict, "me_method", "epzs", 0);*/
 
+            //H.264
+            av_dict_set(dict, "profile", "high", 0);
+            av_dict_set(dict, "level", "4.0", 0);
+            av_dict_set(dict, "preset", "veryfast", 0);
+            av_dict_set(dict, "tune", "fastdecode,zerolatency", 0);
+            av_dict_set(dict, "crf", "23", 0);
 
-            // Determine required buffer size and allocate buffer
-            int numBytes = avpicture_get_size(enc_ctx.pix_fmt(),
-                    enc_ctx.width(), enc_ctx.height());
-            BytePointer buffer = new BytePointer(av_malloc(numBytes));
-
-            ctx.swsCtx[stream_id] = sws_getContext(dec_ctx.width(), dec_ctx.height(),
-                    dec_ctx.pix_fmt(), enc_ctx.width(), enc_ctx.height(),
-                    enc_ctx.pix_fmt(), SWS_BILINEAR, null, null, (DoublePointer) null);
-
-            // Assign appropriate parts of buffer to image planes in swsFrame
-            // Note that swsFrame is an AVFrame, but AVFrame is a superset
-            // of AVPicture
-            avpicture_fill(new AVPicture(ctx.swsFrame[stream_id] = av_frame_alloc()), buffer, enc_ctx.pix_fmt(),
-                    enc_ctx.width(), enc_ctx.height());
-
+            enc_ctx.bit_rate(245760 * 20);
+            enc_ctx.me_cmp(1);
+            enc_ctx.me_range(16);
+            enc_ctx.qmin(15);
+            enc_ctx.qmax(30);
         } else {
-            encoder = avcodec_find_encoder(dec_ctx.codec_id());
+            encoder = ctx.encoderCodecs[stream_id] = avcodec_find_encoder(dec_ctx.codec_id());
 
             if (encoder == null) {
                 logger.fatal("Necessary audio encoder not found");
@@ -263,21 +266,24 @@ public abstract class FFmpegUtil {
 
             enc_ctx.sample_rate(dec_ctx.sample_rate());
             enc_ctx.channel_layout(dec_ctx.channel_layout());
-            enc_ctx.channels(av_get_channel_layout_nb_channels(enc_ctx.channel_layout()));
-                /* take first format from list of supported formats */
+            enc_ctx.channels(av_get_channel_layout_nb_channels(dec_ctx.channel_layout()));
+
+            // take first format from list of supported formats
             enc_ctx.sample_fmt(encoder.sample_fmts().get(0));
 
             enc_ctx.time_base().num(1);
-            enc_ctx.time_base().den(enc_ctx.sample_rate());
+            enc_ctx.time_base().den(dec_ctx.sample_rate());
         }
 
-        int ret = avcodec_open2(enc_ctx, encoder, dict);
+        // If the codec is opened here, it will need to be re-opened later if the filter graph ++
+        // changes the output format in any way.
+        /*int ret = avcodec_open2(enc_ctx, encoder, dict);
         av_dict_free(dict);
 
         if (ret < 0) {
             logger.error("Cannot open video encoder for stream #{}. Error {}.", in_stream.id(), ret);
             return null;
-        }
+        }*/
 
         if ((ctx.avfCtxOutput.oformat().flags() & AVFMT_GLOBALHEADER) != 0) {
             enc_ctx.flags(enc_ctx.flags() | CODEC_FLAG_GLOBAL_HEADER);

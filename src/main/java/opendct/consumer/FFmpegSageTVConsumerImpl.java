@@ -1174,7 +1174,8 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 //    Application provided invalid, non monotonically increasing dts to muxer in stream 1: 1344770579 >= 1344770579
                 // It causes av_interleaved_write_frame to return error code -22 which we log as:
                 //    Error -22 while writing packet at input stream offset 420932.
-                // So to avoid these two errors av_interleaved_write_frame is only called if the decompression timestamp has changed.
+                // So to avoid these two errors av_interleaved_write_frame is only called if the
+                // decompression timestamp has changed.
                 // ^Old solution for this situation. [js]
                 //
                 // Some streams will provide a dts value that's less than the last value; not just
@@ -1182,62 +1183,55 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 // this situation is taking the last dts timestamp and adding one to it. This is
                 // similar to what recent copies of FFmpeg will do when run from the command line.
                 // This change was needed because sometimes when we discard these problem frames,
-                // the result is video corruption.
-                // [js]
+                // the result is video corruption. [js]
+                //
+                // Returned to old behavior since it turns out that missing these frames was not the
+                // source of video corruption. The program will discard anything that's <= to the
+                // last dts and frames that do not have a dts value instead of just checking for the
+                // same dts. [js]
                 long dts = pkt.dts();
+                boolean dtsChanged = true;
 
-                if (dts == AV_NOPTS_VALUE) {
-                    lastDtsByStreamIndex[outputStreamIndex] += 1;
-                    pkt.dts(lastDtsByStreamIndex[outputStreamIndex]);
-
-                } else if (lastDtsByStreamIndex[outputStreamIndex] >= dts) {
-                    long newDts = lastDtsByStreamIndex[outputStreamIndex] + 1;
-
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("{} >= {}. Incrementing dts timestamp to {}.", lastDtsByStreamIndex[outputStreamIndex], dts, newDts);
-                    }
-
-                    pkt.dts(newDts);
-                    lastDtsByStreamIndex[outputStreamIndex] = newDts;
+                if (dts == AV_NOPTS_VALUE || lastDtsByStreamIndex[outputStreamIndex] >= dts) {
+                    dtsChanged = false;
                 } else {
                     lastDtsByStreamIndex[outputStreamIndex] = dts;
                 }
 
+                if (dtsChanged) {
+                    AVStream avStreamIn = avfCtxInput.streams(inputStreamIndex);
+                    AVStream avStreamOut = avfCtxOutput.streams(outputStreamIndex);
 
-                //if (dtsChanged) {
-                AVStream avStreamIn = avfCtxInput.streams(inputStreamIndex);
-                AVStream avStreamOut = avfCtxOutput.streams(outputStreamIndex);
+                    if (logger.isTraceEnabled()) {
+                        logPacket(avfCtxInput, pkt, "in");
+                    }
 
-                if (logger.isTraceEnabled()) {
-                    logPacket(avfCtxInput, pkt, "in");
-                }
+                    long oldPos = pkt.pos();
+                    AVRational timeBaseIn = avStreamIn.time_base();
+                    AVRational timeBaseOut = avStreamOut.time_base();
 
-                long oldPos = pkt.pos();
-                AVRational timeBaseIn = avStreamIn.time_base();
-                AVRational timeBaseOut = avStreamOut.time_base();
+                    pkt.pts(av_rescale_q_rnd(pkt.pts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                    pkt.dts(av_rescale_q_rnd(pkt.dts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                    pkt.duration((int) av_rescale_q(pkt.duration(), timeBaseIn, timeBaseOut));
+                    pkt.stream_index(outputStreamIndex);
+                    pkt.pos(-1);
 
-                pkt.pts(av_rescale_q_rnd(pkt.pts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                pkt.dts(av_rescale_q_rnd(pkt.dts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                pkt.duration((int) av_rescale_q(pkt.duration(), timeBaseIn, timeBaseOut));
-                pkt.stream_index(outputStreamIndex);
-                pkt.pos(-1);
+                    if (logger.isTraceEnabled()) {
+                        logPacket(avfCtxOutput, pkt, "out");
+                    }
 
-                if (logger.isTraceEnabled()) {
-                    logPacket(avfCtxOutput, pkt, "out");
-                }
+                    int ret = av_interleaved_write_frame(avfCtxOutput, pkt);
 
-                int ret = av_interleaved_write_frame(avfCtxOutput, pkt);
+                    freePacket = false; // av_interleaved_write_frame has taken ownership of this packet so don't free it below.
 
-                freePacket = false; // av_interleaved_write_frame has taken ownership of this packet so don't free it below.
-
-                if (ret != 0) {
-                    logger.error("Error {} while writing packet at input stream offset {}.", ret, oldPos);
-                }
-                /*} else {
+                    if (ret != 0) {
+                        logger.error("Error {} while writing packet at input stream offset {}.", ret, oldPos);
+                    }
+                } else {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Read frame with same dts as last frame. Skipping this frame. dts = {}", dts);
                     }
-                }*/
+                }
             }
 
             if (freePacket) {

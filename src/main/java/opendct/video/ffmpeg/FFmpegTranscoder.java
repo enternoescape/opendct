@@ -46,21 +46,23 @@ import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.*;
 
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static opendct.video.ffmpeg.FFmpegUtil.*;
 import static org.bytedeco.javacpp.avcodec.*;
 import static org.bytedeco.javacpp.avfilter.*;
 import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
-import static org.bytedeco.javacpp.swscale.sws_scale;
 
 public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private static final Logger logger = LogManager.getLogger(FFmpegTranscoder.class);
 
     private static boolean trancodeOnInterlace = true;
 
-    private AtomicLong totalVideoFrames = new AtomicLong(0);
+    private boolean assumtionInterlaceDetection = false;
+    private boolean fastInterlaceDetection = false;
+    private long lastDtsByStreamIndex[] = new long[0];
+    private AtomicInteger encodedFrames[] = new AtomicInteger[0];
     private long startTime = 0;
 
 
@@ -72,13 +74,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         private avfilter.AVFilterContext buffersink_ctx;
         private avfilter.AVFilterContext buffersrc_ctx;
         private avfilter.AVFilterGraph filter_graph;
-
-        private int height;
-        private int width;
     }
 
     @Override
     public void initStreamOutput(FFmpegContext ctx, String outputFilename) throws FFmpegException, InterruptedException {
+        int ret;
+        this.ctx = ctx;
 
         logger.info("Initializing FFmpeg transcoder stream output.");
 
@@ -92,24 +93,42 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         ctx.allocAvfContainerOutputContext(outputFilename);
 
         //TODO: Base this on an actual content check.
-        if (ctx.videoCodecCtx != null && (ctx.videoCodecCtx.height() == 1080 || ctx.videoCodecCtx.height() == 480)) {
+        if (ctx.videoCodecCtx != null && (ctx.videoCodecCtx.height() != 721)) {
             interlaced = true;
         }
 
         int numInputStreams = ctx.avfCtxInput.nb_streams();
 
+        lastDtsByStreamIndex = new long[numInputStreams];
+        Arrays.fill(lastDtsByStreamIndex, Integer.MIN_VALUE);
+
         ctx.streamMap = new int[numInputStreams];
         Arrays.fill(ctx.streamMap, NO_STREAM_IDX);
 
-        ctx.transcodeMap = new boolean[numInputStreams];
-        Arrays.fill(ctx.transcodeMap, false); // It should be this by default, but let's not assume.
+        ctx.encodeMap = new boolean[numInputStreams];
+        Arrays.fill(ctx.encodeMap, false); // It should be this by default, but let's not assume.
 
-        ctx.swsCtx = new swscale.SwsContext[numInputStreams];
-        ctx.swsFrame = new AVFrame[numInputStreams];
-        filter_ctx = new FilteringContext[numInputStreams];
+        ctx.encoderCodecs = new AVCodec[numInputStreams];
+        ctx.encoderDicts = new AVDictionary[numInputStreams];
+
+        encodedFrames = new AtomicInteger[numInputStreams];
+
+        for (int i = 0; i < encodedFrames.length; i++) {
+            encodedFrames[i] = new AtomicInteger(0);
+        }
+
+        if (ctx.isInterrupted()) {
+            throw new InterruptedException(FFMPEG_INIT_INTERRUPTED);
+        }
+
+        interlaced = fastDeinterlaceDetection();
+
+        if (ctx.isInterrupted()) {
+            throw new InterruptedException(FFMPEG_INIT_INTERRUPTED);
+        }
 
         if (trancodeOnInterlace && interlaced) {
-            int ret = avcodec_open2(ctx.videoCodecCtx,
+            ret = avcodec_open2(ctx.videoCodecCtx,
                     avcodec_find_decoder(ctx.videoCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
 
             if (ret < 0) {
@@ -117,7 +136,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             }
 
             if ((ctx.videoStream = addTranscodeVideoStreamToContext(ctx, ctx.preferredVideo, new ConfigBag("mpeg2", "ffvideo", false))) == null) {
-                throw new FFmpegException("Could not find a video stream", -1);
+
+                // If transcoding is not possible, we will just copy it.
+                logger.warn("Unable to set up transcoding. The stream will be copied.");
+                if ((ctx.videoStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.videoCodecCtx)) == null) {
+                    throw new FFmpegException("Could not find a video stream", -1);
+                }
+            } else {
+                ctx.encodeMap[ctx.preferredVideo] = true;
             }
         } else {
             if ((ctx.videoStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.videoCodecCtx)) == null) {
@@ -130,7 +156,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
 
         ctx.streamMap[ctx.preferredVideo] = ctx.videoStream.id();
-        ctx.transcodeMap[ctx.preferredVideo] = trancodeOnInterlace && interlaced;
         ctx.streamMap[ctx.preferredAudio] = ctx.audioStream.id();
 
         for (int idx = 0; idx < numInputStreams; ++idx) {
@@ -153,24 +178,122 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             throw new InterruptedException(FFMPEG_INIT_INTERRUPTED);
         }
 
+        filter_ctx = new FilteringContext[numInputStreams];
+
+        if ((ret = initFilters()) < 0) {
+            throw new FFmpegException("initFilters: Unable to allocate filters.", ret);
+        }
+
         ctx.dumpOutputFormat();
 
-        ctx.allocIoOutputContext();
+        ctx.allocIoOutputContext(ctx.FFMPEG_WRITER);
 
         if (ctx.isInterrupted()) {
+            deallocFilterGraphs();
             throw new InterruptedException(FFMPEG_INIT_INTERRUPTED);
         }
 
         logger.debug("Writing header");
 
-        int ret = avformat_write_header(ctx.avfCtxOutput, (PointerPointer<avutil.AVDictionary>) null);
+        ret = avformat_write_header(ctx.avfCtxOutput, (PointerPointer<avutil.AVDictionary>) null);
         if (ret < 0) {
+            deallocFilterGraphs();
             throw new FFmpegException("Error while writing header to file '" + outputFilename + "'", ret);
         }
 
-        this.ctx = ctx;
-
         logger.info("Initialized FFmpeg transcoder stream output.");
+    }
+
+    private void deallocFilterGraphs() {
+        if (ctx == null || filter_ctx == null) {
+            return;
+        }
+
+        // The filter graphs have been allocated, so we need to de-allocate it before returning
+        // from an interrupt.
+        int nbStreams = ctx.avfCtxInput.nb_streams();
+
+        for (int i = 0; i < nbStreams; i++) {
+            if (filter_ctx != null && filter_ctx[i].filter_graph != null)
+                avfilter_graph_free(filter_ctx[i].filter_graph);
+        }
+    }
+
+    private boolean fastDeinterlaceDetection() throws FFmpegException {
+        int ret = avcodec_open2(ctx.videoCodecCtx,
+                avcodec_find_decoder(ctx.videoCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
+
+        if (ret < 0) {
+            throw new FFmpegException("Failed to open decoder for stream #" + ctx.preferredVideo, ret);
+        }
+
+        AVPacket packet = new AVPacket();
+        packet.data(null);
+        packet.size(0);
+        int got_frame[] = new int[] { 0 };
+        AVFrame frame;
+
+        int frameLimit = 60;
+        int totalFrames = 0;
+        int interThresh = 30;
+        int interFrames = 0;
+
+        try {
+            while(!ctx.isInterrupted()) {
+                ret = av_read_frame(ctx.avfCtxInput, packet);
+                if (ret < 0) {
+                    break;
+                }
+
+                int inputStreamIndex = packet.stream_index();
+
+                if (inputStreamIndex >= ctx.streamMap.length ||
+                        inputStreamIndex != ctx.preferredVideo) {
+
+                    av_packet_unref(packet);
+                    continue;
+                }
+
+                av_packet_rescale_ts(packet,
+                        ctx.avfCtxInput.streams(inputStreamIndex).time_base(),
+                        ctx.avfCtxInput.streams(inputStreamIndex).codec().time_base());
+
+                frame = av_frame_alloc();
+                if (frame == null) {
+                    throw new FFmpegException("av_frame_alloc: Unable to allocate frame.", -1);
+                }
+
+                ret = avcodec_decode_video2(ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
+                        got_frame, packet);
+
+                if (ret < 0) {
+                    av_frame_free(frame);
+                    av_packet_unref(packet);
+                    logger.error("Decoding failed");
+                    continue;
+                }
+
+                if (got_frame[0] != 0) {
+                    interFrames += frame.interlaced_frame();
+                }
+
+                av_frame_free(frame);
+                av_packet_unref(packet);
+
+                if (interFrames >= interThresh) {
+                    return true;
+                } else if (totalFrames++ <= frameLimit) {
+                    break;
+                }
+            }
+        } catch (FFmpegException e) {
+            logger.error("Deinterlace detection exception => ", e);
+        } finally {
+            ctx.avfCtxInput.pb().position(0);
+            avcodec_close(ctx.videoCodecCtx);
+        }
+
+        return false;
     }
 
     @Override
@@ -181,16 +304,15 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         packet.data(null);
         packet.size(0);
 
-        int streamIndex;
+        int inputStreamIndex;
         int type;
         int got_frame[] = new int[] { 0 };
 
-        AVFrame frame = av_frame_alloc();
+        // This needs to start out null or Java complains about the cleanup.
+        AVFrame frame = null;
 
         try {
-            if ((ret = initFilters()) < 0) {
-                throw new FFmpegException("Unable to allocate filters.", ret);
-            }
+            startTime = System.currentTimeMillis();
 
             while (true) {
 
@@ -199,54 +321,70 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     break;
                 }
 
-                streamIndex = packet.stream_index();
+                inputStreamIndex = packet.stream_index();
+                int outputStreamIndex;
 
-                if (streamIndex >= ctx.streamMap.length ||
-                        ctx.streamMap[streamIndex] == NO_STREAM_IDX) {
+                if (inputStreamIndex >= ctx.streamMap.length ||
+                        (outputStreamIndex = ctx.streamMap[inputStreamIndex]) == NO_STREAM_IDX) {
 
                     av_packet_unref(packet);
                     continue;
                 }
 
-                type = ctx.avfCtxInput.streams(streamIndex).codec().codec_type();
-                logger.trace("Demuxer gave frame of streamIndex {}",
-                        streamIndex);
+                // Some streams will provide a dts value that's less than the last value; not just
+                // equal to it. Sometimes they don't even have a dts value. The new way of handling
+                // this situation is taking the last dts timestamp and adding one to it. This is
+                // similar to what recent copies of FFmpeg will do when run from the command line.
+                // This change was needed because sometimes when we discard these problem frames,
+                // the result is video corruption.
+                long dts = packet.dts();
 
-                if (filter_ctx[streamIndex].filter_graph != null) {
+                if (dts == AV_NOPTS_VALUE || lastDtsByStreamIndex[outputStreamIndex] >= dts) {
+                    av_packet_unref(packet);
+                    continue;
+                } else {
+                    lastDtsByStreamIndex[outputStreamIndex] = dts;
+                }
+
+                type = ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type();
+                logger.trace("Demuxer gave frame of streamIndex {}",
+                        inputStreamIndex);
+
+                if (filter_ctx[inputStreamIndex].filter_graph != null) {
 
                     logger.trace("Going to re-encode & filter the frame");
 
                     frame = av_frame_alloc();
                     if (frame == null) {
-                        throw new FFmpegException("av_frame_alloc: Unable to allocate frame.", -1);
+                        throw new FFmpegException("av_frame_alloc: Unable to allocate frame.", ENOMEM);
                     }
 
                     av_packet_rescale_ts(packet,
-                            ctx.avfCtxInput.streams(streamIndex).time_base(),
-                            ctx.avfCtxInput.streams(streamIndex).codec().time_base());
+                            ctx.avfCtxInput.streams(inputStreamIndex).time_base(),
+                            ctx.avfCtxInput.streams(inputStreamIndex).codec().time_base());
 
                     if (type == AVMEDIA_TYPE_VIDEO) {
-                        ret = avcodec_decode_video2(ctx.avfCtxInput.streams(streamIndex).codec(), frame,
+                        ret = avcodec_decode_video2(ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
                                 got_frame, packet);
                     } else {
-                        ret = avcodec_decode_audio4(ctx.avfCtxInput.streams(streamIndex).codec(), frame,
+                        ret = avcodec_decode_audio4(ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
                                 got_frame, packet);
                     }
 
                     if (ret < 0) {
                         av_frame_free(frame);
+                        av_packet_unref(packet);
                         logger.error("Decoding failed");
                         continue;
                     }
 
                     if (got_frame[0] != 0) {
                         frame.pts(av_frame_get_best_effort_timestamp(frame));
-                        ret = filterEncodeWriteFrame(frame, streamIndex);
+                        ret = filterEncodeWriteFrame(frame, inputStreamIndex);
                         av_frame_free(frame);
 
                         if (ret < 0) {
                             logger.error("Error from filterEncodeWriteFrame: {}", ret);
-                            continue;
                             //throw new FFmpegException("Error from filterEncodeWriteFrame.", ret);
                         }
                     } else {
@@ -255,10 +393,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 } else {
                     // remux this frame without re-encoding
                     av_packet_rescale_ts(packet,
-                            ctx.avfCtxInput.streams(streamIndex).time_base(),
-                            ctx.avfCtxOutput.streams(ctx.streamMap[streamIndex]).time_base());
+                            ctx.avfCtxInput.streams(inputStreamIndex).time_base(),
+                            ctx.avfCtxOutput.streams(outputStreamIndex).time_base());
 
-                    packet.stream_index(ctx.streamMap[streamIndex]);
+                    packet.stream_index(ctx.streamMap[inputStreamIndex]);
 
                     ret = av_interleaved_write_frame(ctx.avfCtxOutput, packet);
 
@@ -272,10 +410,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
             int nbStreams = ctx.avfCtxInput.nb_streams();
 
-        /* flush filters and encoders */
+            // flush filters and encoders
             for (int i = 0; i < nbStreams; i++) {
 
-            /* flush filter */
+                // flush filter
                 if (filter_ctx[i].filter_graph == null)
                     continue;
 
@@ -336,9 +474,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     private int initFilter(FilteringContext fctx, avcodec.AVCodecContext dec_ctx,
-                           avcodec.AVCodecContext enc_ctx, final String filter_spec) throws FFmpegException {
+                           avcodec.AVCodecContext enc_ctx, final String filter_spec,
+                           AVCodec encoder, AVDictionary dict) throws FFmpegException {
 
         int ret = 0;
+        int decCodecType;
         avfilter.AVFilter buffersrc;
         avfilter.AVFilter buffersink;
         avfilter.AVFilterContext buffersrc_ctx;
@@ -348,53 +488,55 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         avfilter.AVFilterGraph filter_graph = avfilter_graph_alloc();
 
         try {
+            decCodecType = dec_ctx.codec_type();
 
             if (outputs == null || inputs == null || filter_graph == null) {
                 throw new FFmpegException("Not enough memory available", ENOMEM);
             }
 
-            if (dec_ctx.codec_type() == AVMEDIA_TYPE_VIDEO) {
+            if (decCodecType == AVMEDIA_TYPE_VIDEO) {
                 buffersrc = avfilter_get_by_name("buffer");
                 buffersink = avfilter_get_by_name("buffersink");
                 if (buffersrc == null || buffersink == null) {
                     throw new FFmpegException("Filtering source or sink element not found", AVERROR_UNKNOWN);
                 }
 
-            /*String parameters = String.format(
-                    "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:frame_rate=%d/%d:pixel_aspect=%d/%d",
-                    dec_ctx.width(), dec_ctx.height(), dec_ctx.pix_fmt(),
-                    dec_ctx.time_base().num(), dec_ctx.time_base().den(),
-                    dec_ctx.framerate().num(), dec_ctx.framerate().den(),
-                    dec_ctx.sample_aspect_ratio().num(), dec_ctx.sample_aspect_ratio().den());*/
-
                 String parameters = String.format(
+                        "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:frame_rate=%d/%d:pixel_aspect=%d/%d",
+                        dec_ctx.width(), dec_ctx.height(), dec_ctx.pix_fmt(),
+                        dec_ctx.time_base().num(), dec_ctx.time_base().den(),
+                        dec_ctx.framerate().num(), dec_ctx.framerate().den(),
+                        dec_ctx.sample_aspect_ratio().num(), dec_ctx.sample_aspect_ratio().den());
+
+                /*String parameters = String.format(
                         "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
                         dec_ctx.width(), dec_ctx.height(), dec_ctx.pix_fmt(),
                         dec_ctx.time_base().num(), dec_ctx.time_base().den(),
                         dec_ctx.framerate().num(), dec_ctx.framerate().den(),
                         dec_ctx.sample_aspect_ratio().num(),
-                        dec_ctx.sample_aspect_ratio().den());
+                        dec_ctx.sample_aspect_ratio().den());*/
 
-                ret = avfilter_graph_create_filter(buffersrc_ctx = new AVFilterContext(null), buffersrc, "in",
-                        parameters, null, filter_graph);
+                ret = avfilter_graph_create_filter(buffersrc_ctx = new AVFilterContext(null),
+                        buffersrc, "in", parameters, null, filter_graph);
                 if (ret < 0) {
                     throw new FFmpegException("Cannot create buffer source", ret);
                 }
 
-                ret = avfilter_graph_create_filter(buffersink_ctx = new AVFilterContext(null), buffersink, "out",
-                        null, null, filter_graph);
+                ret = avfilter_graph_create_filter(buffersink_ctx = new AVFilterContext(null),
+                        buffersink, "out", null, null, filter_graph);
                 if (ret < 0) {
                     throw new FFmpegException("Cannot create buffer sink", ret);
                 }
 
                 BytePointer setBin = new BytePointer(4);
                 setBin.asByteBuffer().putInt(enc_ctx.pix_fmt());
-                av_opt_set_bin(buffersink_ctx, "pix_fmts", setBin, 4, AV_OPT_SEARCH_CHILDREN);
+                ret = av_opt_set_bin(buffersink_ctx, "pix_fmts", setBin, 4, AV_OPT_SEARCH_CHILDREN);
 
                 if (ret < 0) {
-                    throw new FFmpegException("Cannot set output pixel format", ret);
+                    throw new FFmpegException("Cannot set pixel format", ret);
                 }
-            } else if (dec_ctx.codec_type() == AVMEDIA_TYPE_AUDIO) {
+
+            } else if (decCodecType == AVMEDIA_TYPE_AUDIO) {
                 buffersrc = avfilter_get_by_name("abuffer");
                 buffersink = avfilter_get_by_name("abuffersink");
                 if (buffersrc == null || buffersink == null) {
@@ -484,20 +626,75 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             fctx.buffersink_ctx = buffersink_ctx;
             fctx.filter_graph = filter_graph;
 
+
+            AVFilterContext outFilterContext = avfilter_graph_get_filter(filter_graph, "out");
+
+            if (outFilterContext == null) {
+                throw new FFmpegException("avfilter_graph_get_filter: Unable to get 'out' filter.", AVERROR_UNKNOWN);
+            }
+
+            int outFilterInputs = outFilterContext.nb_inputs();
+
+            if (outFilterInputs == 1) {
+                if (decCodecType == AVMEDIA_TYPE_VIDEO) {
+                    int height;
+                    int width;
+                    int format;
+                    AVRational ar;
+                    AVRational fr;
+
+                    if (logger.isDebugEnabled()) {
+                        height = enc_ctx.height();
+                        width = enc_ctx.width();
+                        format = enc_ctx.pix_fmt();
+                        ar = enc_ctx.sample_aspect_ratio();
+                        fr = enc_ctx.framerate();
+
+                        logger.debug("Before filter: h:{} w:{} f:{} a:{}/{} r:{}/{}",
+                                height, width, format, ar.num(), ar.den(), fr.num(), fr.den());
+                    }
+
+                    AVFilterLink input = outFilterContext.inputs(0);
+                    input = outFilterContext.inputs(0);
+                    height = input.h();
+                    width = input.w();
+                    format = input.format();
+                    ar = input.sample_aspect_ratio();
+                    fr = input.frame_rate();
+
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("After filter: h:{} w:{} f:{} a:{}/{} r:{}/{}",
+                                height, width, format, ar.num(), ar.den(), fr.num(), fr.den());
+                    }
+
+                    enc_ctx.height(height);
+                    enc_ctx.width(width);
+                    enc_ctx.pix_fmt(format);
+                    enc_ctx.sample_aspect_ratio(ar);
+                    enc_ctx.framerate(fr);
+
+                    ret = avcodec_open2(enc_ctx, encoder, dict);
+                    av_dict_free(dict);
+
+                    if (ret < 0) {
+                        logger.error("Cannot open video encoder. Error {}.", ret);
+                    }
+                }
+            } else {
+                throw new FFmpegException("nb_inputs: 'out' filter has " + outFilterInputs + " inputs.", AVERROR_UNKNOWN);
+            }
+
         } catch (FFmpegException e) {
             if (filter_graph != null) {
                 avfilter_graph_free(filter_graph);
             }
+            throw e;
         } finally {
-            endInitFilter(inputs, outputs);
+            avfilter_inout_free(inputs);
+            avfilter_inout_free(outputs);
         }
 
         return ret;
-    }
-
-    protected void endInitFilter(AVFilterInOut inputs, AVFilterInOut outputs) {
-        avfilter_inout_free(inputs);
-        avfilter_inout_free(outputs);
     }
 
     private int initFilters() throws FFmpegException {
@@ -516,7 +713,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
             codecType = ctx.avfCtxInput.streams(i).codec().codec_type();
 
-            if ( !ctx.transcodeMap[i] || !(
+            if ( !ctx.encodeMap[i] || !(
                     codecType == AVMEDIA_TYPE_AUDIO ||
                     codecType == AVMEDIA_TYPE_VIDEO)) {
 
@@ -528,19 +725,19 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             filter_ctx[i].filter_graph = new AVFilterGraph();
 
             if (codecType == AVMEDIA_TYPE_VIDEO) {
-                filter_spec = "null"; /* passthrough (dummy) filter for video */
-                //filter_spec = "yadif=mode=1, scale=w=1280:h=720, setpts=0.5*PTS";
-                //filter_spec = "yadif=mode=1, setpts=0.5*PTS";
-                filter_spec = "yadif=mode=2, scale=w=1280:h=720, setpts=0.5*PTS";
+                //filter_spec = "null"; /* passthrough (dummy) filter for video */
+                //filter_spec = "yadif=mode=2, scale=w='trunc(oh*a/16)*16':h='min(720\\,ih)':interl=0:flags=bilinear, format=pix_fmts=yuv420p, setpts=0.5*PTS";
+                //filter_spec = "yadif=mode=2, format=pix_fmts=yuv420p, setpts=0.5*PTS";
+                //filter_spec = "kerndeint=map=1, format=pix_fmts=yuv420p, scale=w=1280:h=720, setpts=0.5*PTS";
 
-                filter_ctx[i].width = 720;
-                filter_ctx[i].height = 1280;
+                filter_spec = "idet";
             } else {
                 filter_spec = "anull"; /* passthrough (dummy) filter for audio */
             }
 
             ret = initFilter(filter_ctx[i], ctx.avfCtxInput.streams(i).codec(),
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec(), filter_spec);
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec(), filter_spec,
+                    ctx.encoderCodecs[i], ctx.encoderDicts[i]);
 
             if (ret != 0) {
                 return ret;
@@ -559,19 +756,20 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             got_frame = new int[] { 0 };
         }
 
-        logger.info("Encoding frame");
+        logger.trace("Encoding frame");
     /* encode filtered frame */
         enc_pkt.data(null);
         enc_pkt.size(0);
         av_init_packet(enc_pkt);
 
         int codecType = ctx.avfCtxInput.streams(stream_index).codec().codec_type();
+        AVCodecContext avCodec = ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]).codec();
 
         if (codecType == AVMEDIA_TYPE_VIDEO) {
-            ret = avcodec_encode_video2(ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]).codec(), enc_pkt,
+            ret = avcodec_encode_video2(avCodec, enc_pkt,
                     filt_frame, got_frame);
         } else if (codecType == AVMEDIA_TYPE_AUDIO) {
-            ret = avcodec_encode_audio2(ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]).codec(), enc_pkt,
+            ret = avcodec_encode_audio2(avCodec, enc_pkt,
                     filt_frame, got_frame);
         }
 
@@ -585,15 +783,25 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             return 0;
         }
 
-    /* prepare packet for muxing */
+        // prepare packet for muxing
         enc_pkt.stream_index(ctx.streamMap[stream_index]);
         av_packet_rescale_ts(enc_pkt,
                 ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]).codec().time_base(),
                 ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]).time_base());
 
-        logger.debug("Muxing frame");
-    /* mux encoded frame */
+        logger.trace("Muxing frame");
+
+        // mux encoded frame
         ret = av_interleaved_write_frame(ctx.avfCtxOutput, enc_pkt);
+
+        if (encodedFrames[stream_index].addAndGet(1) == 1000) {
+            long endTime = System.currentTimeMillis();
+            if (startTime != endTime) {
+                logger.debug("FPS: {}", (double)encodedFrames[stream_index].get() / (double)((endTime - startTime) / 1000));
+            }
+            encodedFrames[stream_index].set(0);
+            startTime = endTime;
+        }
         return ret;
     }
 
@@ -602,7 +810,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         AVFrame filt_frame;
         int got_frame[] = new int[] { 0 };
 
-        logger.info("Pushing decoded frame to filters");
+        logger.trace("Pushing decoded frame to filters");
     /* push the decoded frame into the filtergraph */
         ret = av_buffersrc_add_frame_flags(filter_ctx[stream_index].buffersrc_ctx,
                 frame, 0);
@@ -620,7 +828,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 break;
             }
 
-            logger.info("Pulling filtered frame from filters");
+            logger.trace("Pulling filtered frame from filters");
             ret = av_buffersink_get_frame(filter_ctx[stream_index].buffersink_ctx,
                     filt_frame);
 
@@ -635,19 +843,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 av_frame_free(filt_frame);
                 break;
-            }
-
-            if (stream_index == ctx.preferredVideo) {
-                AVCodecContext enc_ctx = ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]).codec();
-
-                // This converts the image to the correct pixel format before encoding. Without this
-                // step, MPEG-2 encoded video looks terrible.
-                sws_scale(ctx.swsCtx[stream_index], filt_frame.data(), filt_frame.linesize(), 0,
-                        enc_ctx.height(), ctx.swsFrame[stream_index].data(), ctx.swsFrame[stream_index].linesize());
-
-                // This only copies the data from the scaled frame back. This way we don't need to
-                // keep re-allocating the swscaler target frame.
-                av_frame_copy(filt_frame, ctx.swsFrame[stream_index]);
             }
 
             filt_frame.pict_type(AV_PICTURE_TYPE_NONE);
@@ -676,7 +871,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
 
         while (true) {
-            logger.info("Flushing stream #{} encoder", stream_index);
+            logger.debug("Flushing stream #{} encoder", stream_index);
             ret = encodeWriteFrame(null, stream_index, got_frame);
 
             if (ret < 0) {

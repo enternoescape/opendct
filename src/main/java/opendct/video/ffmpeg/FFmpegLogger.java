@@ -125,7 +125,9 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 message.endsWith("decode_slice_header error") ||
                 // Seen when writing MPEG-PS. This basically means the file being created will
                 // potentially not play on a hardware DVD player which is not really a concern.
-                message.contains(" buffer underflow st="))) {
+                message.contains(" buffer underflow st=")) ||
+                // In debug mode, H.264 transcoding will display every single frame.
+                (message.startsWith("[libx264") && message.endsWith("bytes"))) {
 
             return;
         }

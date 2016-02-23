@@ -16,6 +16,8 @@
 
 package opendct.video.ffmpeg;
 
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -27,10 +29,10 @@ public interface FFmpegWriter {
      * Return -1 to tell FFmpegContext to stop writing.
      *
      * @param data The data to be written.
-     * @param file This number is an index that corresponds with the file to be written. This allows
-     *             the callback to output to multiple files or to switch to a new file.
      * @return The number of bytes written. This should match the limit on the data to be written.
      * @throws IOException
      */
-    public int write(ByteBuffer data, int file) throws IOException;
+    public int write(ByteBuffer data) throws IOException;
+
+    public Logger getLogger();
 }

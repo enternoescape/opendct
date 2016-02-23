@@ -219,7 +219,7 @@ public class InfiniTVTuning {
             return logger.exit(false);
         }
 
-        try {
+        /*try {
             String currentIP = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "diag", "Streaming_IP");
             String currentPort = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "diag", "Streaming_Port");
             String playback = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "av", "TransportState");
@@ -233,7 +233,7 @@ public class InfiniTVTuning {
             }
         } catch (IOException e) {
             logger.error("Unable to get the current ip address, transport state and streaming port => {}", e);
-        }
+        }*/
 
         String instanceId = "instance_id=" + String.valueOf(tunerNumber - 1);
 

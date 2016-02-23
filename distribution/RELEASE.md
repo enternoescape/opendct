@@ -357,5 +357,16 @@
 > that the file has not been deleted.
 
 #### 0.4.27-Beta
-> *Direct file writing now uses a tunable propterty that is set to flush every 1MB instead of every
+> *Direct file writing now uses a tunable property that is set to flush every 1MB instead of every
 > time FFmpeg uses the write callback. The property name is consumer.ffmpeg.min_direct_flush_size.
+
+#### 0.4.28-Beta
+> *Changed InfiniTV HTTP tuning to not leave RTSP stream open on STOP. The timing in the code based 
+> on response time from the tuner makes it look like it's faster to leave it open, but after looking
+> at total tuning time, it looks like it's the same amount of time.
+
+> *dts non-monotonic frames are dropped again. After looking at the results of leaving the frames
+> in, it appears to create more problems than it helps.
+
+> *Internal: Transcoding logic is completely functional currently using hard-coded presets. It is
+> not currently selectable, but the code is there.

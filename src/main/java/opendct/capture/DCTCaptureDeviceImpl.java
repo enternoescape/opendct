@@ -1439,7 +1439,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
             if (isHttpTune()) {
                 // This will silence the RTP stream, but keep it turned on.
-                if (cableCardPresent) {
+                /*if (cableCardPresent) {
                     try {
                         InfiniTVTuning.tuneVChannel("0", encoderIPAddress, encoderNumber, 5);
                     } catch (InterruptedException e) {
@@ -1460,7 +1460,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                         logger.warn("Stopping InfiniTV device was interrupted => ", e);
                         return;
                     }
-                }
+                }*/
+
+                InfiniTVTuning.stopRTSP(encoderIPAddress, encoderNumber);
             } else if (isHDHRTune()) {
                 try {
                     if (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN) {

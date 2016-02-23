@@ -245,17 +245,67 @@ public abstract class FFmpegUtil {
             av_dict_set(dict, "me_method", "epzs", 0);*/
 
             //H.264
-            av_dict_set(dict, "profile", "high", 0);
-            av_dict_set(dict, "level", "4.0", 0);
-            av_dict_set(dict, "preset", "veryfast", 0);
-            av_dict_set(dict, "tune", "fastdecode,zerolatency", 0);
-            av_dict_set(dict, "crf", "23", 0);
+            av_dict_set(dict, "profile", "baseline", 0);
+            av_dict_set(dict, "level", "3.1", 0);
+            //av_dict_set(dict, "profile", "high", 0);
+            //av_dict_set(dict, "level", "4.0", 0);
+            //av_dict_set(dict, "preset", "veryfast", 0);
+            //av_dict_set(dict, "tune", "fastdecode,zerolatency", 0);
+            //av_dict_set(dict, "crf", "23", 0);
 
-            enc_ctx.bit_rate(245760 * 20);
+            av_dict_set(dict, "cabac", "0", 0);
+            av_dict_set(dict, "ref", "1", 0);
+            av_dict_set(dict, "deblock", "1:0:0", 0);
+            av_dict_set(dict, "analyse", "0x1:0x111", 0);
+            av_dict_set(dict, "me", "dia", 0);
+            av_dict_set(dict, "subme", "4", 0);
+            av_dict_set(dict, "psy", "1", 0);
+            av_dict_set(dict, "psy_rd", "1.00:0.00", 0);
+            av_dict_set(dict, "mixed_ref", "0", 0);
+            av_dict_set(dict, "me_range", "16", 0);
+            av_dict_set(dict, "chroma_me", "1", 0);
+            av_dict_set(dict, "trellis", "0", 0);
+            av_dict_set(dict, "8x8dct", "0", 0);
+            av_dict_set(dict, "cqm", "0", 0);
+            av_dict_set(dict, "deadzone", "21,11", 0);
+            av_dict_set(dict, "fast_pskip", "1", 0);
+            av_dict_set(dict, "chroma_qp_offset", "0", 0);
+            av_dict_set(dict, "threads", "2", 0);
+            av_dict_set(dict, "lookahead_threads", "1", 0);
+            av_dict_set(dict, "sliced_threads", "0", 0);
+            av_dict_set(dict, "nr", "0", 0);
+            av_dict_set(dict, "decimate", "1", 0);
+            av_dict_set(dict, "interlaced", "0", 0);
+            av_dict_set(dict, "bluray_compat", "0", 0);
+            av_dict_set(dict, "constrained_intra", "0", 0);
+            av_dict_set(dict, "bframes", "0", 0);
+            av_dict_set(dict, "weightp", "0", 0);
+            av_dict_set(dict, "keyint", "18", 0);
+            av_dict_set(dict, "keyint_min", "10", 0);
+            av_dict_set(dict, "scenecut", "40", 0);
+            av_dict_set(dict, "intra_refresh", "0", 0);
+            av_dict_set(dict, "rc_lookahead", "0", 0);
+            av_dict_set(dict, "rc", "cbr", 0);
+            av_dict_set(dict, "mbtree", "0", 0);
+            av_dict_set(dict, "bitrate", "3200", 0);
+            av_dict_set(dict, "ratetol", "1.0", 0);
+            av_dict_set(dict, "qcomp", "0.60", 0);
+            av_dict_set(dict, "qpmin", "0", 0);
+            av_dict_set(dict, "qpmax", "69", 0);
+            av_dict_set(dict, "qpstep", "4", 0);
+            av_dict_set(dict, "vbv_maxrate", "3200", 0);
+            av_dict_set(dict, "vbv_bufsize", "3200", 0);
+            av_dict_set(dict, "nal_hrd", "none", 0);
+            av_dict_set(dict, "filler", "0", 0);
+            av_dict_set(dict, "ip_ratio", "1.41", 0);
+            av_dict_set(dict, "aq", "1:1.00", 0);
+
+
+            enc_ctx.bit_rate(3200000);
             enc_ctx.me_cmp(1);
             enc_ctx.me_range(16);
-            enc_ctx.qmin(15);
-            enc_ctx.qmax(30);
+            enc_ctx.qmin(0); //15
+            enc_ctx.qmax(69); //30
         } else {
             encoder = ctx.encoderCodecs[stream_id] = avcodec_find_encoder(dec_ctx.codec_id());
 

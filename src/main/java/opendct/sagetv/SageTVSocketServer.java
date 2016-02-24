@@ -18,12 +18,16 @@ package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
 import opendct.config.ExitCode;
+import opendct.power.NetworkPowerEventManger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
 
 public class SageTVSocketServer implements Runnable {
     private final Logger logger = LogManager.getLogger(SageTVSocketServer.class);
@@ -32,13 +36,16 @@ public class SageTVSocketServer implements Runnable {
     private Thread socketServerThread;
     private final Object listeningLock = new Object();
 
+    // Every unique IP address that connects to this program is placed in this list for one time
+    // operations.
+    private static HashSet<InetAddress> registeredRemoteIps = new HashSet<>();
     private ServerSocket serverSocket = null;
 
     // This is to support V1.0 capture devices. This will not always be the actual capture device
     // SageTV will request on this port.
-    private CaptureDevice captureDevice = null;
+    private CaptureDevice captureDevice;
 
-    private volatile int listenPort = 0;
+    private volatile int listenPort;
 
     public SageTVSocketServer(Integer listenPort, CaptureDevice captureDevice) {
         this.listenPort = listenPort;
@@ -172,6 +179,29 @@ public class SageTVSocketServer implements Runnable {
                 requestThread = new Thread(new SageTVRequestHandler(socket, captureDevice));
                 requestThread.setName("SageTVRequestHandler-" + requestThread.getId() + ":Unknown-" + listenPort);
                 requestThread.start();
+
+
+                InetAddress remoteAddress = socket.getInetAddress();
+
+                // This will keep this task from being performed constantly on connection. It only
+                // needs to be done once.
+                if (!registeredRemoteIps.contains(remoteAddress)) {
+                    if (remoteAddress instanceof Inet4Address) {
+                        try {
+                            NetworkPowerEventManger.POWER_EVENT_LISTENER.addDependentInterface(
+                                    remoteAddress);
+
+                        } catch (Exception e) {
+                            logger.debug("Unable to register a local interface for the" +
+                                            " external IP address {}. Will not try again => ",
+                                    socket.getInetAddress(), e);
+                        }
+                    } else {
+                        logger.warn("IPv6 connection detected. This is an untested configuration.");
+                    }
+
+                    registeredRemoteIps.add(socket.getInetAddress());
+                }
 
             } catch (IOException e) {
                 if (listening) {

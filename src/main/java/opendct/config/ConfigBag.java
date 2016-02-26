@@ -808,6 +808,83 @@ public class ConfigBag {
     }
 
     /**
+     * Returns all properties for each common root key in an array of respective a HashMaps.
+     * <p/>
+     * The root key will be removed from the returned key values in the returned HashMaps. The
+     * HashMap array will be in the same order as the requested root keys.
+     *
+     * @param rootKeys These are the root values to be searched for in properties. If you do not
+     *                 want all of the returned keys to start with a period (.), you must include
+     *                 the period in this parameter.
+     * @return Returns an array of HashMaps containing all of the respective values found. If no
+     *         values were found, the respective HashMaps will be empty.
+     */
+    public HashMap<String, String>[] getAllByRootKey(String... rootKeys) {
+
+        HashMap<String, String>[] returnValues = new HashMap[rootKeys.length];
+
+        for (int i = 0; i < returnValues.length; i++) {
+            returnValues[i] = new HashMap<>();
+        }
+
+        Enumeration names = properties.propertyNames();
+
+        while (names.hasMoreElements()) {
+            String key = (String) names.nextElement();
+
+            for (int i = 0; i < returnValues.length; i++) {
+                if (key.startsWith(rootKeys[i])) {
+                    String value = properties.getProperty(key);
+
+                    returnValues[i].put(key.substring(rootKeys[i].length()), value);
+                }
+            }
+        }
+
+        return returnValues;
+    }
+
+    /**
+     * Returns all properties for each common root key in an the same HashMap.
+     * <p/>
+     * The root key will be removed from the returned key values in the returned HashMap. The
+     * HashMap will be overwrite entries in the same order as the requested root keys.
+     *
+     * @param rootKeys These are the root values to be searched for in properties. If you do not
+     *                 want all of the returned keys to start with a period (.), you must include
+     *                 the period in this parameter.
+     * @return Returns a HashMap containing all of the values found. If no values were found, the
+     *         HashMap will be empty.
+     */
+    public HashMap<String, String> mergeAllByRootKeys(String... rootKeys) {
+
+        HashMap<String, String> returnValue = new HashMap<>();
+
+        for (String rootKey : rootKeys) {
+            for (Map.Entry<Object, Object> name : properties.entrySet()) {
+                String key = (String) name.getKey();
+
+                if (key.startsWith(rootKey)) {
+                    String putKey = key.substring(rootKey.length());
+                    String value = (String) name.getValue();
+
+                    if (logger.isDebugEnabled()) {
+                        String oldValue = returnValue.get(putKey);
+                        if (oldValue != null) {
+                            logger.debug("'{}' overrides '{}' from '{}' to '{}'", rootKey, putKey, oldValue, value);
+                        }
+                    }
+
+
+                    returnValue.put(putKey, value);
+                }
+            }
+        }
+
+        return returnValue;
+    }
+
+    /**
      * Removes all properties with a common root key.
      *
      * @param rootKey This is the root value to use for removal.

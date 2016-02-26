@@ -97,7 +97,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final int minDirectFlush =
             Math.max(
                     Config.getInteger("consumer.ffmpeg.min_direct_flush_size", 1048576),
-                    0
+                    -1
             );
 
     private final int ffmpegThreadPriority =
@@ -748,7 +748,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     }
                 }
 
-                if (bytesFlushCounter >= minDirectFlush) {
+                if (minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush) {
                     currentFileOutputStream.flush();
                     bytesFlushCounter = 0;
 

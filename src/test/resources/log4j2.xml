@@ -17,5 +17,14 @@
         <Root level="DEBUG">
             <AppenderRef level="DEBUG" ref="Console"/>
         </Root>
+        <Logger name="ffmpeg.libx264" level="INFO" additivity="false">
+            <AppenderRef level="INFO" ref="Console"/>
+        </Logger>
+        <Logger name="ffmpeg.mpegts" level="INFO" additivity="false">
+            <AppenderRef level="INFO" ref="Console"/>
+        </Logger>
+        <Logger name="ffmpeg.h264" level="INFO" additivity="false">
+            <AppenderRef level="INFO" ref="Console"/>
+        </Logger>
     </Loggers>
 </Configuration>

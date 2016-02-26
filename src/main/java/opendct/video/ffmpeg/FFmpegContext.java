@@ -63,11 +63,14 @@ public class FFmpegContext {
     protected int preferredVideo;
     protected int preferredAudio;
 
-    // These are freed on av_close_input_file.
+    // These are freed on avformat_close_input.
     protected AVStream videoStream;
     protected AVStream audioStream;
     protected AVCodecContext videoCodecCtx;
     protected AVCodecContext audioCodecCtx;
+
+    protected FFmpegProfile encodeProfile;
+    protected HashMap<String, String> videoEncodeSettings;
 
     // Used for returning increasing probe sizes so we don't probe more than we need to probe.
     private final Object nativeSync = new Object();
@@ -153,6 +156,8 @@ public class FFmpegContext {
         encodeMap = new boolean[0];
         encoderCodecs = new AVCodec[0];
         encoderDicts = new AVDictionary[0];
+        encodeProfile = null;
+        videoEncodeSettings = new HashMap<>();
     }
 
     public static FFmpegContext getContext(Pointer opaque) {
@@ -196,6 +201,10 @@ public class FFmpegContext {
         }
 
         return returnValue;
+    }
+
+    public void setEncodeProfile(FFmpegProfile profile) {
+        encodeProfile = profile;
     }
 
     private Pointer setWriterContext(FFmpegWriter writer) {
@@ -720,7 +729,13 @@ public class FFmpegContext {
     public void deallocInputContext() {
         if (avfCtxInput != null && !avfCtxInput.isNull()) {
             avformat_close_input(avfCtxInput);
+
+            // These are all de-allocated when avformat_close_input is called.
             avfCtxInput = null;
+            videoCodecCtx = null;
+            videoStream = null;
+            audioCodecCtx = null;
+            audioStream = null;
         }
     }
 

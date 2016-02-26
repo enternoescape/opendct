@@ -94,7 +94,7 @@ public class SageTVRequestHandler implements Runnable {
         logger.entry();
 
         if (captureDevice != null) {
-            setThreadName(null, captureDevice.getEncoderName());
+            setThreadName("Unknown", captureDevice.getEncoderName());
         }
 
         try {

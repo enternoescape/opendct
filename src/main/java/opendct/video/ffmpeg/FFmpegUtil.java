@@ -17,7 +17,6 @@
 package opendct.video.ffmpeg;
 
 import opendct.config.Config;
-import opendct.config.ConfigBag;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.*;
@@ -194,7 +193,7 @@ public abstract class FFmpegUtil {
      * @param profile This is a properties file containing the desired settings.
      * @return The new AVStream if successful.
      */
-    public static AVStream addTranscodeVideoStreamToContext(FFmpegContext ctx, int stream_id, ConfigBag profile) {
+    public static AVStream addTranscodeVideoStreamToContext(FFmpegContext ctx, int stream_id, FFmpegProfile profile) {
         AVStream out_stream = avformat_new_stream(ctx.avfCtxOutput, null);
 
         if (out_stream == null) {
@@ -237,7 +236,13 @@ public abstract class FFmpegUtil {
 
             // video time_base can be set to whatever is handy and supported by encoder
             enc_ctx.time_base(dec_ctx.time_base());
+
             enc_ctx.framerate(dec_ctx.framerate());
+
+            // These are needed for the re-muxer to not complain.
+            out_stream.time_base(in_stream.time_base());
+            out_stream.avg_frame_rate(in_stream.avg_frame_rate());
+            out_stream.r_frame_rate(in_stream.r_frame_rate());
 
             //MPEG-2
             /*enc_ctx.gop_size(15);
@@ -245,15 +250,15 @@ public abstract class FFmpegUtil {
             av_dict_set(dict, "me_method", "epzs", 0);*/
 
             //H.264
-            av_dict_set(dict, "profile", "baseline", 0);
-            av_dict_set(dict, "level", "3.1", 0);
-            //av_dict_set(dict, "profile", "high", 0);
-            //av_dict_set(dict, "level", "4.0", 0);
-            //av_dict_set(dict, "preset", "veryfast", 0);
-            //av_dict_set(dict, "tune", "fastdecode,zerolatency", 0);
-            //av_dict_set(dict, "crf", "23", 0);
-
-            av_dict_set(dict, "cabac", "0", 0);
+            //av_dict_set(dict, "profile", "baseline", 0);
+            //av_dict_set(dict, "level", "3.1", 0);
+            /*av_dict_set(dict, "profile", "high", 0);
+            av_dict_set(dict, "level", "4.1", 0);
+            av_dict_set(dict, "preset", "veryfast", 0);
+            av_dict_set(dict, "tune", "fastdecode,zerolatency", 0);
+            av_dict_set(dict, "crf", "20", 0);
+*/
+            /*av_dict_set(dict, "cabac", "0", 0);
             av_dict_set(dict, "ref", "1", 0);
             av_dict_set(dict, "deblock", "1:0:0", 0);
             av_dict_set(dict, "analyse", "0x1:0x111", 0);
@@ -269,11 +274,11 @@ public abstract class FFmpegUtil {
             av_dict_set(dict, "cqm", "0", 0);
             av_dict_set(dict, "deadzone", "21,11", 0);
             av_dict_set(dict, "fast_pskip", "1", 0);
-            av_dict_set(dict, "chroma_qp_offset", "0", 0);
-            av_dict_set(dict, "threads", "2", 0);
-            av_dict_set(dict, "lookahead_threads", "1", 0);
-            av_dict_set(dict, "sliced_threads", "0", 0);
-            av_dict_set(dict, "nr", "0", 0);
+            av_dict_set(dict, "chroma_qp_offset", "0", 0);*/
+            /*av_dict_set(dict, "threads", "2", 0);
+            av_dict_set(dict, "lookahead_threads", "1", 0);*/
+            //av_dict_set(dict, "sliced_threads", "0", 0);
+            /*av_dict_set(dict, "nr", "0", 0);
             av_dict_set(dict, "decimate", "1", 0);
             av_dict_set(dict, "interlaced", "0", 0);
             av_dict_set(dict, "bluray_compat", "0", 0);
@@ -286,26 +291,37 @@ public abstract class FFmpegUtil {
             av_dict_set(dict, "intra_refresh", "0", 0);
             av_dict_set(dict, "rc_lookahead", "0", 0);
             av_dict_set(dict, "rc", "cbr", 0);
-            av_dict_set(dict, "mbtree", "0", 0);
-            av_dict_set(dict, "bitrate", "3200", 0);
-            av_dict_set(dict, "ratetol", "1.0", 0);
-            av_dict_set(dict, "qcomp", "0.60", 0);
-            av_dict_set(dict, "qpmin", "0", 0);
-            av_dict_set(dict, "qpmax", "69", 0);
+            av_dict_set(dict, "mbtree", "0", 0);*/
+            //av_dict_set(dict, "bitrate", "3200", 0);
+            //av_dict_set(dict, "ratetol", "1.0", 0);
+
+            /*av_dict_set(dict, "qpmin", "10", 0);
+            av_dict_set(dict, "qpmax", "51", 0);
             av_dict_set(dict, "qpstep", "4", 0);
             av_dict_set(dict, "vbv_maxrate", "3200", 0);
-            av_dict_set(dict, "vbv_bufsize", "3200", 0);
+            av_dict_set(dict, "vbv_bufsize", "3200", 0);*//*
             av_dict_set(dict, "nal_hrd", "none", 0);
             av_dict_set(dict, "filler", "0", 0);
             av_dict_set(dict, "ip_ratio", "1.41", 0);
-            av_dict_set(dict, "aq", "1:1.00", 0);
+            av_dict_set(dict, "aq", "1:1.00", 0);*/
+            //av_dict_set(dict, "force_cfr", "1", 0);
+            //av_dict_set(dict, "b", "3200000", 0);
+            //av_dict_set(dict, "qcomp", "0.60", 0);
+            //av_dict_set(dict, "qp", "0", 0);
 
-
-            enc_ctx.bit_rate(3200000);
+            /*enc_ctx.ticks_per_frame(4);
+            //enc_ctx.max_b_frames(8);
+            enc_ctx.bit_rate(6400000);
             enc_ctx.me_cmp(1);
             enc_ctx.me_range(16);
             enc_ctx.qmin(0); //15
-            enc_ctx.qmax(69); //30
+            enc_ctx.qmax(69); //30*/
+
+            int w = dec_ctx.width();
+            int h = dec_ctx.height();
+
+            ctx.videoEncodeSettings = profile.getVideoEncoderMap(w, h, encoder);
+            FFmpegProfileManager.confVideoEncoder(ctx.videoEncodeSettings, enc_ctx, dict);
         } else {
             encoder = ctx.encoderCodecs[stream_id] = avcodec_find_encoder(dec_ctx.codec_id());
 
@@ -323,6 +339,11 @@ public abstract class FFmpegUtil {
 
             enc_ctx.time_base().num(1);
             enc_ctx.time_base().den(dec_ctx.sample_rate());
+
+            // These are needed for the re-muxer to not complain.
+            out_stream.time_base(in_stream.time_base());
+            out_stream.avg_frame_rate(in_stream.avg_frame_rate());
+            out_stream.r_frame_rate(in_stream.r_frame_rate());
         }
 
         // If the codec is opened here, it will need to be re-opened later if the filter graph ++

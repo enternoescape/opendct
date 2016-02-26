@@ -368,5 +368,14 @@
 > *dts non-monotonic frames are dropped again. After looking at the results of leaving the frames
 > in, it appears to create more problems than it helps.
 
-> *Internal: Transcoding logic is completely functional currently using hard-coded presets. It is
-> not currently selectable, but the code is there.
+> *FFmpeg write flushing can be disabled by setting consumer.ffmpeg.min_direct_flush_size to -1.
+
+> *Resume logic now includes waiting for all network interfaces that SageTV communicates on. Before 
+> it only waited for network interfaces that had capture devices on them.
+
+> *Fixed firewall script for Ubuntu.
+
+> *Internal: FFmpeg Logging will now de-duplicate log entries and can filter by parent context.
+
+> *Internal: Fixed a logging issue whereby a listening thread can have 'null' when the name should
+> be 'Unknown.'

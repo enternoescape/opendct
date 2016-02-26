@@ -24,21 +24,60 @@ import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.avutil;
 import org.bytedeco.javacpp.avutil.Callback_Pointer_int_String_Pointer;
 
-import static org.bytedeco.javacpp.avutil.av_log_format_line;
+import java.util.Arrays;
 
-//import org.bytedeco.javacpp.PointerPointer;
-//import org.bytedeco.javacpp.avutil.AVClass;
+import static org.bytedeco.javacpp.avutil.av_log_format_line;
 
 public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     public static final boolean linuxLogging = Config.getBoolean("consumer.ffmpeg.linux_logging", false);
     public static final boolean limitLogging = Config.getBoolean("consumer.ffmpeg.limit_logging", true);
+    public static final boolean threadRename = Config.getBoolean("consumer.ffmpeg.thread_rename_logging", false);
+    public static final boolean enhancedLogging = Config.getBoolean("consumer.ffmpeg.enhanced_logging", true);
 
-    int[] printPrefix = new int[]{1};
-    StringBuilder lineBuf = new StringBuilder();
+    private volatile int repeated = 0;
+    private volatile String lastMessage;
+    private final static String FFMPEG = "ffmpeg";
+    private int[] printPrefix = new int[]{1};
+    private byte[] bytes = new byte[1024];
 
     @Override
     public void call(Pointer source, int level, String formatStr, Pointer params) {
-        String className = "ffmpeg"; // TODO: get the class by something like this: getString( (new PointerPointer<AVClass>( source )).get( AVClass.class ).class_name(), 100 );
+        String className = FFMPEG;
+        String message = null;
+        String initMessage = null;
+
+        Arrays.fill(bytes, (byte)0);
+
+        // This is not the greatest way to better manage logging, but the C++ code behind this is
+        // very fast compared to making multiple calls back and forth to get the customization we
+        // are looking for.
+        if (enhancedLogging && source != null) {
+            if (Config.IS_WINDOWS || Config.IS_LINUX && linuxLogging) {
+                av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
+                initMessage = trim(bytes);
+                message = initMessage;
+
+                if (lastMessage != null && lastMessage.equals(initMessage)) {
+                    repeated += 1;
+                    return;
+                }
+
+                if (message.startsWith("[")) {
+                    int end = message.indexOf(" @ ");
+                    if (end > 0) {
+                        className = "ffmpeg." + message.substring(1, end);
+                        if (threadRename && message.length() > end + 3 + 18) {
+                            end += 3;
+                            Thread.currentThread().setName(message.substring(end, end + 16));
+                            message = message.substring(end + 18);
+                        } else {
+                            message = "[" + message.substring(end + 3);
+                        }
+                    }
+                }
+            }
+        }
+
         Logger logger = LogManager.getLogger(className);
         Level configuredLogLevel = logger.getLevel();
 
@@ -96,16 +135,27 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             return;
         }
 
-        byte[] bytes = new byte[1024];
 
-        if (Config.IS_WINDOWS || Config.IS_LINUX && linuxLogging) {
+        if (message == null && (Config.IS_WINDOWS || Config.IS_LINUX && linuxLogging)) {
+
             av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
+            initMessage = trim(bytes);
+
+            if (lastMessage != null && lastMessage.equals(initMessage)) {
+                repeated += 1;
+                return;
+            }
+
+            message = initMessage;
         }
 
-        String message = trim(bytes);
+        switch (className) {
+            case "libx264":
+
+        }
 
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
-        if (limitLogging && (
+        if (limitLogging && message != null && (
                 message.endsWith("Invalid frame dimensions 0x0.") ||
                 // We handle this message by increasing probe sizes based on the currently available
                 // data.
@@ -125,13 +175,18 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 message.endsWith("decode_slice_header error") ||
                 // Seen when writing MPEG-PS. This basically means the file being created will
                 // potentially not play on a hardware DVD player which is not really a concern.
-                message.contains(" buffer underflow st=")) ||
-                // In debug mode, H.264 transcoding will display every single frame.
-                (message.startsWith("[libx264") && message.endsWith("bytes"))) {
+                message.contains(" buffer underflow st="))) {
+
 
             return;
         }
 
+        if (repeated > 0) {
+            logger.info("Last message repeated {} time{}.", repeated, repeated > 1 ? "s" : "");
+            repeated = 0;
+        }
+
+        lastMessage = initMessage;
         logger.log(callLogLevel, message);
     }
 

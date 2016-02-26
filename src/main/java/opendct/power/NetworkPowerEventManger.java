@@ -26,6 +26,7 @@ import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.net.*;
 import java.util.*;
 
@@ -134,7 +135,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         return returnValues;
     }
 
-    public synchronized void addDependentInterface(String interfaceName) throws IllegalArgumentException {
+    public synchronized void addDependentInterface(String interfaceName) throws IOException {
         logger.entry(interfaceName);
 
         String interfaceLower = interfaceName.toLowerCase();
@@ -145,7 +146,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             getNetworkInterfaces(false);
 
             if (!currentInterfaceNames.contains(interfaceLower)) {
-                throw new IllegalArgumentException("The interface '" + interfaceLower + "' does not exist on this computer.");
+                throw new IOException("The interface '" + interfaceLower + "' does not exist on this computer.");
             }
         }
 
@@ -154,7 +155,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         logger.exit();
     }
 
-    public synchronized void addDependentInterface(InetAddress remoteAddress) throws IllegalArgumentException {
+    public synchronized void addDependentInterface(InetAddress remoteAddress) throws IOException {
         logger.entry(remoteAddress);
 
         NetworkInterface networkInterface = null;
@@ -165,7 +166,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         }
 
         if (networkInterface == null) {
-            throw new IllegalArgumentException("An interface on the same subnet as '" + remoteAddress.getHostAddress() + "' does not exist on this computer.");
+            throw new IOException("An interface on the same subnet as '" + remoteAddress.getHostAddress() + "' does not exist on this computer.");
         }
 
         addDependentInterface(networkInterface.getName());

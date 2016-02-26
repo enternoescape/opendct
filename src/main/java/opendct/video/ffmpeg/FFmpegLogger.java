@@ -32,6 +32,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     public static final boolean linuxLogging = Config.getBoolean("consumer.ffmpeg.linux_logging", false);
     public static final boolean limitLogging = Config.getBoolean("consumer.ffmpeg.limit_logging", true);
     public static final boolean threadRename = Config.getBoolean("consumer.ffmpeg.thread_rename_logging", false);
+    public static final boolean enhancedLogging = Config.getBoolean("consumer.ffmpeg.enhanced_logging", true);
 
     private volatile int repeated = 0;
     private volatile String lastMessage;
@@ -50,7 +51,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         // This is not the greatest way to better manage logging, but the C++ code behind this is
         // very fast compared to making multiple calls back and forth to get the customization we
         // are looking for.
-        if (source != null) {
+        if (enhancedLogging && source != null) {
             if (Config.IS_WINDOWS || Config.IS_LINUX && linuxLogging) {
                 av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
                 initMessage = trim(bytes);
@@ -139,6 +140,12 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
             av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
             initMessage = trim(bytes);
+
+            if (lastMessage != null && lastMessage.equals(initMessage)) {
+                repeated += 1;
+                return;
+            }
+
             message = initMessage;
         }
 

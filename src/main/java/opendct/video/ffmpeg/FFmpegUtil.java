@@ -23,6 +23,8 @@ import org.bytedeco.javacpp.*;
 import org.bytedeco.javacpp.avformat.*;
 import org.bytedeco.javacpp.avutil.*;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.bytedeco.javacpp.avcodec.*;
 import static org.bytedeco.javacpp.avfilter.avfilter_register_all;
 import static org.bytedeco.javacpp.avformat.*;
@@ -509,7 +511,7 @@ public abstract class FFmpegUtil {
             buf.append('(').append(lang.value().getString()).append(')');
         }
 
-        buf.append(String.format(", %d, %d/%d: %s", st.codec_info_nb_frames(), st.time_base().num(), st.time_base().den(), new String(bytes).trim()));
+        buf.append(String.format(", %d, %d/%d: %s", st.codec_info_nb_frames(), st.time_base().num(), st.time_base().den(), new String(bytes, StandardCharsets.UTF_8).trim()));
 
         if (st.sample_aspect_ratio().num() != 0 && // default
                 av_cmp_q(st.sample_aspect_ratio(), st.codec().sample_aspect_ratio()) != 0) {

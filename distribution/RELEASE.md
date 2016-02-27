@@ -379,3 +379,6 @@
 
 > *Internal: Fixed a logging issue whereby a listening thread can have 'null' when the name should
 > be 'Unknown.'
+
+#### 0.4.29-Beta
+

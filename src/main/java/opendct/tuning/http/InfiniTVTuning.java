@@ -22,7 +22,10 @@ import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -299,13 +302,7 @@ public class InfiniTVTuning {
             postParameters.deleteCharAt(postParameters.length() - 1);
         }
 
-        byte postBytes[];
-        try {
-            postBytes = postParameters.toString().getBytes(Config.STD_BYTE);
-        } catch (UnsupportedEncodingException e) {
-            logger.error("Unable to convert '{}' into bytes.", postParameters.toString());
-            return logger.exit(false);
-        }
+        byte postBytes[] = postParameters.toString().getBytes(Config.STD_BYTE);
 
         URL url = null;
         try {
@@ -334,7 +331,7 @@ public class InfiniTVTuning {
         }
 
         httpURLConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        httpURLConnection.setRequestProperty("charset", Config.STD_BYTE.toLowerCase());
+        httpURLConnection.setRequestProperty("charset", "utf-8");
         httpURLConnection.setRequestProperty("Content-Length", String.valueOf(postBytes.length));
 
         DataOutputStream dataOutputStream = null;

@@ -33,6 +33,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.net.InetAddress;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,7 +45,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 28;
+    public static final int VERSION_BUILD = 29;
     public static final String VERSION_PROGRAM = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -65,7 +67,7 @@ public class Config {
     private static final String configFileName = "opendct.properties";
 
     // We should be using this any time we are converting text to bytes.
-    public static final String STD_BYTE = "UTF-8";
+    public static final Charset STD_BYTE = StandardCharsets.UTF_8;
 
     private static String directory;
 

@@ -24,6 +24,7 @@ import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.avutil;
 import org.bytedeco.javacpp.avutil.Callback_Pointer_int_String_Pointer;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import static org.bytedeco.javacpp.avutil.av_log_format_line;
@@ -191,7 +192,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     }
 
     String trim(byte[] bytes) {
-        String message = new String(bytes);
+        String message = new String(bytes, StandardCharsets.UTF_8);
         int len = message.length();
 
         while (len > 0 && message.charAt(len - 1) <= ' ') {
@@ -200,24 +201,4 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         return len < message.length() ? message.substring(0, len) : message;
     }
-//
-//    public String getString( BytePointer bytePtr, int maxLen )
-//    {
-//        byte[] buffer = new byte[ 16 ];
-//        int i = 0, j = bytePtr.position();
-//        while ( ( buffer[ i ] = bytePtr.position( j ).get() ) != 0 && i < maxLen )
-//        {
-//            i++;
-//            j++;
-//            if ( i >= buffer.length )
-//            {
-//                byte[] newbuffer = new byte[ 2 * buffer.length ];
-//                System.arraycopy( buffer, 0, newbuffer, 0, buffer.length );
-//                buffer = newbuffer;
-//            }
-//        }
-//        byte[] newbuffer = new byte[ i ];
-//        System.arraycopy( buffer, 0, newbuffer, 0, i );
-//        return new String( newbuffer );
-//    }
 }

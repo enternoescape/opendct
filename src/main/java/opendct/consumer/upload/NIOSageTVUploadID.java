@@ -310,6 +310,7 @@ public class NIOSageTVUploadID {
     private String waitForMessage() throws IOException {
         logger.entry();
         messageInBuilder.setLength(0);
+        byte toString[] = new byte[1];
 
         // This should keep stale messages from coming in.
         if (System.currentTimeMillis() > messageInTimeout) {
@@ -341,7 +342,8 @@ public class NIOSageTVUploadID {
                             logger.info("Received message from SageTV server '{}'", returnString);
                             return logger.exit(returnString);
                         } else {
-                            messageInBuilder.append(new String(new byte[]{readChar}, Config.STD_BYTE));
+                            toString[0] = readChar;
+                            messageInBuilder.append(new String(toString, Config.STD_BYTE));
                         }
                     }
                 } else {

@@ -35,18 +35,23 @@
             <AppenderRef level="DEBUG" ref="RollingFile"/>
         </Root>
         <Logger name="opendct.consumer.upload" level="DEBUG" additivity="false">
+            <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>
         <Logger name="opendct.consumer.buffers" level="DEBUG" additivity="false">
+            <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>
         <Logger name="ffmpeg.libx264" level="INFO" additivity="false">
+            <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>
         <Logger name="ffmpeg.mpegts" level="INFO" additivity="false">
+            <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>
         <Logger name="ffmpeg.h264" level="INFO" additivity="false">
+            <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>
     </Loggers>

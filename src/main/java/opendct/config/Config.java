@@ -19,6 +19,7 @@ package opendct.config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.FFmpegSageTVConsumerImpl;
+import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.RawSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
@@ -828,6 +829,8 @@ public class Config {
             returnValue = new RawSageTVConsumerImpl();
         } else if (clientName.endsWith(FFmpegSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegSageTVConsumerImpl();
+        } else if (clientName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
+            returnValue = new FFmpegTransSageTVConsumerImpl();
         } else {
             try {
                 returnValue = (SageTVConsumer) Class.forName(clientName).newInstance();

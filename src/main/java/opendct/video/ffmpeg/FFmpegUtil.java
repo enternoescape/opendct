@@ -23,6 +23,8 @@ import org.bytedeco.javacpp.*;
 import org.bytedeco.javacpp.avformat.*;
 import org.bytedeco.javacpp.avutil.*;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.bytedeco.javacpp.avcodec.*;
 import static org.bytedeco.javacpp.avfilter.avfilter_register_all;
 import static org.bytedeco.javacpp.avformat.*;
@@ -114,10 +116,14 @@ public abstract class FFmpegUtil {
     public static avcodec.AVCodecContext getCodecContext(AVStream inputStream) {
         avcodec.AVCodecContext codecCtxInput = inputStream.codec();
         int codecType = codecCtxInput.codec_type();
+        int codecWidth = codecCtxInput.width();
+        int codecHeight = codecCtxInput.height();
+        int codecChannels = codecCtxInput.channels();
+
         boolean isStreamValid =
                 (codecType == AVMEDIA_TYPE_AUDIO || codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_SUBTITLE) &&
-                        ((codecType != AVMEDIA_TYPE_VIDEO || (codecCtxInput.width() != 0 && codecCtxInput.height() != 0)) &&
-                                (codecType != AVMEDIA_TYPE_AUDIO || codecCtxInput.channels() != 0));
+                        ((codecType != AVMEDIA_TYPE_VIDEO || (codecWidth != 0 && codecHeight != 0)) &&
+                                (codecType != AVMEDIA_TYPE_AUDIO || codecChannels != 0));
 
         return isStreamValid ? codecCtxInput : null;
     }
@@ -218,7 +224,7 @@ public abstract class FFmpegUtil {
         AVDictionary dict = ctx.encoderDicts[stream_id] = new AVDictionary(null);
 
         if (decoderCodecType == AVMEDIA_TYPE_VIDEO) {
-            encoder = ctx.encoderCodecs[stream_id] = avcodec_find_encoder(AV_CODEC_ID_H264);
+            encoder = ctx.encoderCodecs[stream_id] = profile.getVideoEncoderCodec(dec_ctx.codec());
 
             if (encoder == null) {
                 logger.fatal("Necessary video encoder not found");
@@ -249,78 +255,10 @@ public abstract class FFmpegUtil {
             enc_ctx.max_b_frames(2);
             av_dict_set(dict, "me_method", "epzs", 0);*/
 
-            //H.264
-            //av_dict_set(dict, "profile", "baseline", 0);
-            //av_dict_set(dict, "level", "3.1", 0);
-            /*av_dict_set(dict, "profile", "high", 0);
-            av_dict_set(dict, "level", "4.1", 0);
-            av_dict_set(dict, "preset", "veryfast", 0);
-            av_dict_set(dict, "tune", "fastdecode,zerolatency", 0);
-            av_dict_set(dict, "crf", "20", 0);
-*/
-            /*av_dict_set(dict, "cabac", "0", 0);
-            av_dict_set(dict, "ref", "1", 0);
-            av_dict_set(dict, "deblock", "1:0:0", 0);
-            av_dict_set(dict, "analyse", "0x1:0x111", 0);
-            av_dict_set(dict, "me", "dia", 0);
-            av_dict_set(dict, "subme", "4", 0);
-            av_dict_set(dict, "psy", "1", 0);
-            av_dict_set(dict, "psy_rd", "1.00:0.00", 0);
-            av_dict_set(dict, "mixed_ref", "0", 0);
-            av_dict_set(dict, "me_range", "16", 0);
-            av_dict_set(dict, "chroma_me", "1", 0);
-            av_dict_set(dict, "trellis", "0", 0);
-            av_dict_set(dict, "8x8dct", "0", 0);
-            av_dict_set(dict, "cqm", "0", 0);
-            av_dict_set(dict, "deadzone", "21,11", 0);
-            av_dict_set(dict, "fast_pskip", "1", 0);
-            av_dict_set(dict, "chroma_qp_offset", "0", 0);*/
-            /*av_dict_set(dict, "threads", "2", 0);
-            av_dict_set(dict, "lookahead_threads", "1", 0);*/
-            //av_dict_set(dict, "sliced_threads", "0", 0);
-            /*av_dict_set(dict, "nr", "0", 0);
-            av_dict_set(dict, "decimate", "1", 0);
-            av_dict_set(dict, "interlaced", "0", 0);
-            av_dict_set(dict, "bluray_compat", "0", 0);
-            av_dict_set(dict, "constrained_intra", "0", 0);
-            av_dict_set(dict, "bframes", "0", 0);
-            av_dict_set(dict, "weightp", "0", 0);
-            av_dict_set(dict, "keyint", "18", 0);
-            av_dict_set(dict, "keyint_min", "10", 0);
-            av_dict_set(dict, "scenecut", "40", 0);
-            av_dict_set(dict, "intra_refresh", "0", 0);
-            av_dict_set(dict, "rc_lookahead", "0", 0);
-            av_dict_set(dict, "rc", "cbr", 0);
-            av_dict_set(dict, "mbtree", "0", 0);*/
-            //av_dict_set(dict, "bitrate", "3200", 0);
-            //av_dict_set(dict, "ratetol", "1.0", 0);
-
-            /*av_dict_set(dict, "qpmin", "10", 0);
-            av_dict_set(dict, "qpmax", "51", 0);
-            av_dict_set(dict, "qpstep", "4", 0);
-            av_dict_set(dict, "vbv_maxrate", "3200", 0);
-            av_dict_set(dict, "vbv_bufsize", "3200", 0);*//*
-            av_dict_set(dict, "nal_hrd", "none", 0);
-            av_dict_set(dict, "filler", "0", 0);
-            av_dict_set(dict, "ip_ratio", "1.41", 0);
-            av_dict_set(dict, "aq", "1:1.00", 0);*/
-            //av_dict_set(dict, "force_cfr", "1", 0);
-            //av_dict_set(dict, "b", "3200000", 0);
-            //av_dict_set(dict, "qcomp", "0.60", 0);
-            //av_dict_set(dict, "qp", "0", 0);
-
-            /*enc_ctx.ticks_per_frame(4);
-            //enc_ctx.max_b_frames(8);
-            enc_ctx.bit_rate(6400000);
-            enc_ctx.me_cmp(1);
-            enc_ctx.me_range(16);
-            enc_ctx.qmin(0); //15
-            enc_ctx.qmax(69); //30*/
-
-            int w = dec_ctx.width();
+            /*int w = dec_ctx.width();
             int h = dec_ctx.height();
 
-            ctx.videoEncodeSettings = profile.getVideoEncoderMap(w, h, encoder);
+            ctx.videoEncodeSettings = profile.getVideoEncoderMap(w, h, encoder);*/
             FFmpegProfileManager.confVideoEncoder(ctx.videoEncodeSettings, enc_ctx, dict);
         } else {
             encoder = ctx.encoderCodecs[stream_id] = avcodec_find_encoder(dec_ctx.codec_id());
@@ -509,7 +447,7 @@ public abstract class FFmpegUtil {
             buf.append('(').append(lang.value().getString()).append(')');
         }
 
-        buf.append(String.format(", %d, %d/%d: %s", st.codec_info_nb_frames(), st.time_base().num(), st.time_base().den(), new String(bytes).trim()));
+        buf.append(String.format(", %d, %d/%d: %s", st.codec_info_nb_frames(), st.time_base().num(), st.time_base().den(), new String(bytes, StandardCharsets.UTF_8).trim()));
 
         if (st.sample_aspect_ratio().num() != 0 && // default
                 av_cmp_q(st.sample_aspect_ratio(), st.codec().sample_aspect_ratio()) != 0) {

@@ -20,6 +20,7 @@ import opendct.channel.ChannelManager;
 import opendct.channel.TVChannel;
 import opendct.config.Config;
 import opendct.consumer.FFmpegSageTVConsumerImpl;
+import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
 import opendct.sagetv.SageTVManager;
 import opendct.sagetv.SageTVPoolManager;
@@ -154,6 +155,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         canSwitch = Config.getBoolean(propertiesDeviceRoot + "fast_network_encoder_switch", sageTVConsumerRunnable.canSwitch());
         canEncodeFilename = sageTVConsumerRunnable.acceptsFilename();
         canEncodeUploadID = sageTVConsumerRunnable.acceptsUploadID();
+
+        // Populates the transcode quality field.
+        getTranscodeQuality();
 
         lastChannel = Config.getString(propertiesDeviceRoot + "last_channel", "-1");
         encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
@@ -614,7 +618,13 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             setLastChannel(channel);
             sageTVConsumerRunnable.setChannel(channel);
             sageTVConsumerRunnable.setRecordBufferSize(recordBufferSize);
-            sageTVConsumerRunnable.setEncodingQuality(recordEncodingQuality);
+
+            // TODO: Present the network encoder as an analog device so quality can be selected from within SageTV.
+            if (sageTVConsumer instanceof FFmpegTransSageTVConsumerImpl) {
+                sageTVConsumerRunnable.setEncodingQuality(getTranscodeQuality());
+            } else {
+                sageTVConsumerRunnable.setEncodingQuality(recordEncodingQuality);
+            }
             sageTVConsumerThread = new Thread(sageTVConsumerRunnable);
             sageTVConsumerThread.setName(sageTVConsumerRunnable.getClass().getSimpleName() + "-" + sageTVConsumerThread.getId() + ":" + encoderName);
             sageTVConsumerThread.start();
@@ -636,7 +646,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      */
     protected SageTVConsumer getNewSageTVConsumer() {
         return Config.getSageTVConsumer(
-                propertiesDeviceParent + "consumer",
+                propertiesDeviceRoot + "consumer",
                 Config.getString("sagetv.new.default_consumer_impl",
                         FFmpegSageTVConsumerImpl.class.getName()));
     }
@@ -648,9 +658,21 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      */
     protected SageTVConsumer getNewChannelScanSageTVConsumer() {
         return Config.getSageTVConsumer(
-                propertiesDeviceParent + "channel_scan_consumer",
+                propertiesDeviceRoot + "channel_scan_consumer",
                 Config.getString("sagetv.new.default_channel_scan_consumer_impl",
                         FFmpegSageTVConsumerImpl.class.getName()));
+    }
+
+    /**
+     * Get the preferred transcode profile per the preferences in properties.
+     *
+     * @return The preferred transcode profile.
+     */
+    protected String getTranscodeQuality() {
+        return Config.getString(
+                propertiesDeviceRoot + "transcode_profile",
+                Config.getString("sagetv.new.default_transcode_profile",
+                        ""));
     }
 
     /**

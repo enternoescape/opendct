@@ -34,5 +34,17 @@ public interface FFmpegWriter {
      */
     public int write(ByteBuffer data) throws IOException;
 
+    /**
+     * Closes the file/connection.
+     */
+    public void closeFile();
+
+    /**
+     * Get the logger for the writer.
+     * <p/>
+     * This is only used if there is a problem sent back from the writer.
+     *
+     * @return The desired logger instance.
+     */
     public Logger getLogger();
 }

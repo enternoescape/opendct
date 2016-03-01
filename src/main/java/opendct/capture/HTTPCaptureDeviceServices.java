@@ -44,8 +44,6 @@ public class HTTPCaptureDeviceServices {
      *
      * @param encoderName  This is the name of the network encoder calling this method. This is used
      *                     for naming the thread.
-     * @param encoderLineup This is the name of the lineup to be updated automatically if the URL's
-     *                   appear to be stale.
      * @param httpProducer   This is the producer to be used to receive the HTTP stream.
      * @param sageTVConsumer This is the consumer to be used to write the accumulated data from this
      *                       producer.
@@ -61,8 +59,7 @@ public class HTTPCaptureDeviceServices {
         logger.entry(httpProducer, sageTVConsumer, httpURL);
 
         boolean returnValue = false;
-        int retryCount = 0;
-
+        
         //In case we left the last producer running.
         if (!stopProducing(true)) {
             logger.warn("Waiting for producer thread to exit was interrupted.");
@@ -72,34 +69,23 @@ public class HTTPCaptureDeviceServices {
         httpProducerLock.writeLock().lock();
 
         try {
-            while (!returnValue) {
-                try {
-                    this.httpURL = httpURL;
+            this.httpURL = httpURL;
 
-                    httpProducerRunnable = httpProducer;
-                    httpProducerRunnable.setConsumer(sageTVConsumer);
-                    httpProducerRunnable.setSourceUrls(httpURL);
+            httpProducerRunnable = httpProducer;
+            httpProducerRunnable.setConsumer(sageTVConsumer);
+            httpProducerRunnable.setSourceUrls(httpURL);
 
-                    httpProducerThread = new Thread(httpProducerRunnable);
-                    httpProducerThread.setName(httpProducerRunnable.getClass().getSimpleName() + "-" + httpProducerThread.getId() + ":" + encoderName);
-                    httpProducerThread.start();
+            httpProducerThread = new Thread(httpProducerRunnable);
+            httpProducerThread.setName(httpProducerRunnable.getClass().getSimpleName() + "-" + httpProducerThread.getId() + ":" + encoderName);
+            httpProducerThread.start();
 
-                    returnValue = true;
-                } catch (IOException e) {
-                    logger.error("Unable to open the URL '{}'. Attempt number {}. => ", httpURL, retryCount, e);
-                } catch (Exception e) {
-                    logger.error("Unable to start producing HTTP from the URL {} => ", httpURL, e);
-                    returnValue = false;
-                    break;
-                }
-
-                if (retryCount++ >= 2) {
-                    returnValue = false;
-                    break;
-                }
-            }
+            returnValue = true;
+        } catch (IOException e) {
+            logger.error("Unable to open the URL '{}'. => ", httpURL, e);
+            returnValue = false;
         } catch (Exception e) {
             logger.error("startProducing created an unexpected exception => ", e);
+                returnValue = false;
         } finally {
             httpProducerLock.writeLock().unlock();
         }

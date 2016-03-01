@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
+
+import org.apache.tools.ant.filters.FixCrLfFilter
 import org.gradle.internal.os.OperatingSystem
-import org.apache.tools.ant.filters.*
 
 plugins {
     id "nebula.ospackage" version "3.3.0"
@@ -176,6 +177,11 @@ ospackage {
         include 'opendct.properties'
         fileType CONFIG | NOREPLACE
         into '/etc/opendct/conf'
+    }
+
+    from('transcode') {
+        include '*.properties'
+        into '/etc/opendct/conf/transcode'
     }
 
     into linuxInstallPath
@@ -341,6 +347,12 @@ def sourceWin() {
         from 'src/main/resources'
         include 'opendct.properties'
         into winWixConfig
+    }
+
+    copy {
+        from 'transcode'
+        include '*.properties'
+        into "${winWixConfig}/transcode"
     }
 }
 

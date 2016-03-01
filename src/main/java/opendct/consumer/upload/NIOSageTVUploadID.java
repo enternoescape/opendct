@@ -175,10 +175,6 @@ public class NIOSageTVUploadID {
      * @throws IOException If there was a problem writing the bytes to the to the SageTV server socket.
      */
     public void uploadAutoBuffered(long limit, ByteBuffer byteBuffer) throws IOException {
-        /*if (autoOffset > limit) {
-            autoOffset = 0;
-        }*/
-
         if (byteBuffer.remaining() > limit - autoOffset) {
             ByteBuffer slice = byteBuffer.slice();
             slice.limit((int) (limit - autoOffset));
@@ -310,6 +306,7 @@ public class NIOSageTVUploadID {
     private String waitForMessage() throws IOException {
         logger.entry();
         messageInBuilder.setLength(0);
+        byte toString[] = new byte[1];
 
         // This should keep stale messages from coming in.
         if (System.currentTimeMillis() > messageInTimeout) {
@@ -341,7 +338,8 @@ public class NIOSageTVUploadID {
                             logger.info("Received message from SageTV server '{}'", returnString);
                             return logger.exit(returnString);
                         } else {
-                            messageInBuilder.append(new String(new byte[]{readChar}, Config.STD_BYTE));
+                            toString[0] = readChar;
+                            messageInBuilder.append(new String(toString, Config.STD_BYTE));
                         }
                     }
                 } else {

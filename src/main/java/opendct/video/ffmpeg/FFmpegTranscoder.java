@@ -40,12 +40,13 @@
 
 package opendct.video.ffmpeg;
 
+import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.*;
 
 import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static opendct.video.ffmpeg.FFmpegUtil.*;
@@ -57,12 +58,18 @@ import static org.bytedeco.javacpp.avutil.*;
 public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private static final Logger logger = LogManager.getLogger(FFmpegTranscoder.class);
 
-    private static boolean trancodeOnInterlace = true;
-    private static ConcurrentHashMap<String, String> jobsMap = new ConcurrentHashMap<>();
-    private static int transcodeLimit = 2;
+    private boolean switching = false;
+    private long switchTimeout = 0;
+    private FFmpegWriter newWriter = null;
+    private String newFilename = null;
+    private final Object switchLock = new Object();
 
-    private boolean assumptiveInterlaceDetection = false;
-    private boolean fastInterlaceDetection = false;
+    private static HashMap<Pointer, Integer> permissionMap = new HashMap<>();
+    private static int permissionWeight = 0;
+    private static int transcodeLimit =
+            Config.getInteger("consumer.ffmpeg.transcode_limit",
+                    (Runtime.getRuntime().availableProcessors() - 1) * 2);
+
     private long lastDtsByStreamIndex[] = new long[0];
     private AtomicInteger encodedFrames[] = new AtomicInteger[0];
     private long startTime = 0;
@@ -72,39 +79,102 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private FilteringContext filter_ctx[];
 
     private class FilteringContext {
-        private avfilter.AVFilterContext buffersink_ctx;
-        private avfilter.AVFilterContext buffersrc_ctx;
-        private avfilter.AVFilterGraph filter_graph;
+        private AVFilterContext buffersink_ctx;
+        private AVFilterContext buffersrc_ctx;
+        private AVFilterGraph filter_graph;
     }
 
-    public static synchronized boolean getTranscodePermission(String encoderName, String token) {
-        String desiredEncoder = jobsMap.get(encoderName);
+    /**
+     * Request permission to use transcoding resources.
+     *
+     * @param opaque A unique pointer for the requesting FFmpeg context.
+     * @param weight The assigned weight to the transcoding job.
+     * @return <i>true</i> if the transcoding is allowed to proceed.
+     */
+    public static synchronized boolean getTranscodePermission(Pointer opaque, int weight) {
+        if (opaque == null) {
+            return false;
+        }
+
+        Integer checkWeight = permissionMap.get(opaque);
 
         // The capture device is asking for permission, but the transcode limit has been reached.
         // The stream can only be remuxed now.
-        if (desiredEncoder == null && jobsMap.size() >= transcodeLimit) {
+        if (checkWeight == null && permissionWeight + weight > transcodeLimit) {
             return false;
+        } else if (checkWeight != null) {
+            returnTranscodePermission(opaque);
+
+            if (permissionWeight + weight > transcodeLimit) {
+                return false;
+            }
         }
 
-        // A capture device that already has permission has returned, but has a different token.
-        // This is not the same transcode job; permission denied. This is to make sure that capture
-        // devices are returning permissions and only doing one transcode job per authorization.
-        if (desiredEncoder != null && !desiredEncoder.equals(token)) {
-            return false;
-        }
-
-        jobsMap.put(encoderName, token);
+        permissionWeight += weight;
+        permissionMap.put(opaque, weight);
         return true;
     }
 
-    public static synchronized void returnTranscodePermission(String encoderName) {
-        if (encoderName != null) {
-            jobsMap.remove(encoderName);
+    public static synchronized void returnTranscodePermission(Pointer opaque) {
+        if (opaque == null) {
+            return;
+        }
+
+        Integer weight = permissionMap.get(opaque);
+
+        if (weight != null) {
+            permissionWeight -= weight;
+            permissionMap.remove(opaque);
         }
     }
 
+    public boolean switchOutput(String newFilename, FFmpegWriter writer) {
+        synchronized (switchLock) {
+            logger.info("SWITCH started.");
+
+            this.newFilename = newFilename;
+            newWriter = writer;
+            switchTimeout = System.currentTimeMillis() + 10000;
+            switching = true;
+
+
+            while (switching && !ctx.isInterrupted()) {
+                try {
+                    switchLock.wait(500);
+
+                    // The timeout will also manage a situation whereby this is called and
+                    // the other end is not currently running.
+                    if (switching && System.currentTimeMillis() > switchTimeout) {
+                        logger.warn("SWITCH timed out.");
+                        return false;
+                    }
+                } catch (InterruptedException e) {
+                    logger.info("SWITCH wait was interrupted.");
+                }
+            }
+        }
+
+        return true;
+    }
+
     @Override
-    public void initStreamOutput(FFmpegContext ctx, String outputFilename) throws FFmpegException, InterruptedException {
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer) throws FFmpegException, InterruptedException {
+        initStreamOutput(ctx, outputFilename, writer, true);
+    }
+
+    /**
+     * Initialize output stream after detection has already been performed.
+     *
+     * @param ctx The FFmpeg context with inputs populated from input stream detection.
+     * @param outputFilename The name of the file that will be written. This is only a hint to the
+     *                       muxer about what file format is desired.
+     * @param writer The writer to be used for output.
+     * @param firstRun If <i>false</i> this will skip various things such as interlace detection and
+     *                 displaying the input stream information.
+     * @throws FFmpegException This is thrown if there are any problems that cannot be handled.
+     * @throws InterruptedException This is thrown if initialization is is interrupted.
+     */
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer, boolean firstRun) throws FFmpegException, InterruptedException {
         int ret;
         this.ctx = ctx;
 
@@ -114,7 +184,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             throw new InterruptedException(FFMPEG_INIT_INTERRUPTED);
         }
 
-        ctx.dumpInputFormat();
+        if (firstRun) {
+            ctx.dumpInputFormat();
+        }
 
         // Creates the output container and AVFormatContext.
         ctx.allocAvfContainerOutputContext(outputFilename);
@@ -133,23 +205,79 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         ctx.encoderCodecs = new AVCodec[numInputStreams];
         ctx.encoderDicts = new AVDictionary[numInputStreams];
 
-        encodedFrames = new AtomicInteger[numInputStreams];
+        if (firstRun) {
+            encodedFrames = new AtomicInteger[numInputStreams];
 
-        for (int i = 0; i < encodedFrames.length; i++) {
-            encodedFrames[i] = new AtomicInteger(0);
+            for (int i = 0; i < encodedFrames.length; i++) {
+                encodedFrames[i] = new AtomicInteger(0);
+            }
         }
 
         if (ctx.isInterrupted()) {
             throw new InterruptedException(FFMPEG_INIT_INTERRUPTED);
         }
 
-        interlaced = ctx.encodeProfile.canInterlaceDetect() && fastDeinterlaceDetection();
+        int videoHeight;
+        int videoWidth;
+
+        if (ctx.videoCodecCtx != null) {
+            videoHeight = ctx.videoCodecCtx.height();
+            videoWidth = ctx.videoCodecCtx.width();
+        } else {
+            videoHeight = 0;
+            videoWidth = 0;
+        }
+
+        if (firstRun) {
+            if (ctx.encodeProfile != null && ctx.videoCodecCtx != null && ctx.preferredVideo > NO_STREAM_IDX) {
+                ctx.videoEncodeSettings = ctx.encodeProfile.getVideoEncoderMap(
+                        videoWidth,
+                        videoHeight,
+                        ctx.encodeProfile.getVideoEncoderCodec(
+                                avcodec_find_decoder(ctx.videoCodecCtx.codec_id())));
+
+                // Remove the encoder profile if we cannot get permission to transcode. This will
+                // prevent any possible future attempts.
+                String weightStr = ctx.videoEncodeSettings.get("encode_weight");
+
+                if (weightStr == null) {
+                    weightStr = "null";
+                }
+
+                int weight = 2;
+                try {
+                    weight = Integer.parseInt(weightStr);
+                } catch (NumberFormatException e ) {
+                    logger.error("Unable to parse '{}' into an integer, using the default {}.",
+                            weightStr, weight);
+                }
+
+                if (!getTranscodePermission(ctx.OPAQUE, weight)) {
+                    ctx.encodeProfile = null;
+                }
+            } else {
+                // Everything needed to make a correct decision is not available. Remux only.
+                logger.warn("ctx.videoCodecCtx was null or there was no preferred video when" +
+                        " trying to get permission to transcode. Remuxing instead.");
+                ctx.encodeProfile = null;
+            }
+
+            interlaced = ctx.encodeProfile != null &&
+                    ctx.encodeProfile.canInterlaceDetect(videoHeight, videoWidth) &&
+                    fastDeinterlaceDetection();
+        }
 
         if (ctx.isInterrupted()) {
             throw new InterruptedException(FFMPEG_INIT_INTERRUPTED);
         }
 
-        if (ctx.encodeProfile.canTranscodeVideo(interlaced, avcodec_get_name(ctx.videoCodecCtx.codec_id()).getString())) {
+        if (ctx.encodeProfile != null &&
+                ctx.encodeProfile.canTranscodeVideo(
+                        interlaced,
+                        avcodec_get_name(ctx.videoCodecCtx.codec_id()).getString(),
+                        videoHeight,
+                        videoWidth)) {
+
             ret = avcodec_open2(ctx.videoCodecCtx,
                     avcodec_find_decoder(ctx.videoCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
 
@@ -208,7 +336,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         ctx.dumpOutputFormat();
 
-        ctx.allocIoOutputContext(ctx.FFMPEG_WRITER);
+        ctx.allocIoOutputContext(writer);
 
         if (ctx.isInterrupted()) {
             deallocFilterGraphs();
@@ -224,6 +352,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
 
         logger.info("Initialized FFmpeg transcoder stream output.");
+        firstRun = false;
     }
 
     private void deallocFilterGraphs() {
@@ -241,7 +370,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
     }
 
-    private void logPacket(AVFormatContext fmt_ctx, AVPacket pkt, String tag) {
+    private static void logPacket(AVFormatContext fmt_ctx, AVPacket pkt, String tag) {
         if (logger.isTraceEnabled()) {
             AVRational tb = fmt_ctx.streams(pkt.stream_index()).time_base();
 
@@ -254,11 +383,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
     }
 
-    private String av_ts2str(long pts) {
+    public static String av_ts2str(long pts) {
         return pts == AV_NOPTS_VALUE ? "NOPTS" : Long.toString(pts);
     }
 
-    private String av_ts2timestr(long pts, AVRational tb) {
+    public static String av_ts2timestr(long pts, AVRational tb) {
         return pts == AV_NOPTS_VALUE ? "NOPTS" : String.format("%.6g", av_q2d(tb) * pts);
     }
 
@@ -277,14 +406,17 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int got_frame[] = new int[] { 0 };
         AVFrame frame;
 
-        // This is is the absolute frame limit. Once this number is reached the method will return
-        // that this is not interlaced content.
-        int absFrameLimit = 80;
+
         // This number will increase as interlaced flags are found. If no frames are found after 60
         // frames, we give up.
-        int frameLimit = 60;
+        int frameLimit = 90;
+
+        // This is is the absolute frame limit. Once this number is reached the method will return
+        // that this is not interlaced content.
+        int absFrameLimit = frameLimit * 2;
+
         int totalFrames = 0;
-        int interThresh = 15;
+        int interThresh = 3;
         int interFrames = 0;
 
         try {
@@ -292,7 +424,13 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 ctx.SEEK_BUFFER.setNoWrap(true);
             }
 
+            long stopTime = System.currentTimeMillis() + 1000;
+
             while(!ctx.isInterrupted()) {
+                if (System.currentTimeMillis() > stopTime) {
+                    break;
+                }
+
                 ret = av_read_frame(ctx.avfCtxInput, packet);
                 if (ret < 0) {
                     if (ret != AVERROR_EOF) {
@@ -325,6 +463,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         stream.time_base(),
                         stream.codec().time_base());
 
+                logger.debug("Decoding video frame {} for interlace detection. {} frames interlaced.", totalFrames, interFrames);
+
                 ret = avcodec_decode_video2(stream.codec(), frame,
                         got_frame, packet);
 
@@ -351,6 +491,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 av_packet_unref(packet);
 
                 if (interFrames >= interThresh) {
+                    logger.info("Content is interlaced.");
                     return true;
                 } else if (totalFrames++ >= frameLimit || totalFrames >= absFrameLimit) {
                     break;
@@ -360,7 +501,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             logger.error("Deinterlace detection exception => ", e);
         } finally {
             avcodec_close(ctx.videoCodecCtx);
-            //avio_seek(ctx.avfCtxInput.pb(), 0, 0);
+
+            /*if (interFrames < interThresh) {
+                // Return to the start.
+                avio_seek(ctx.avfCtxInput.pb(), 0, 0);
+            }*/
+
             if (ctx.SEEK_BUFFER != null) {
                 ctx.SEEK_BUFFER.setNoWrap(false);
             }
@@ -370,8 +516,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     @Override
-    public void streamOutput() throws FFmpegException {
+    public synchronized void streamOutput() throws FFmpegException {
         int ret = 0;
+
+        int switchFlag = -1;
 
         AVPacket packet = new AVPacket();
         packet.data(null);
@@ -390,7 +538,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             startTime = System.currentTimeMillis();
 
             while (true) {
-
                 ret = av_read_frame(ctx.avfCtxInput, packet);
                 if (ret < 0) {
                     break;
@@ -418,6 +565,33 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     lastDtsByStreamIndex[outputStreamIndex] = dts;
                 }
 
+                if (switching && inputStreamIndex == ctx.preferredVideo) {
+
+                    switchFlag = packet.flags() & AV_PKT_FLAG_KEY;
+
+                    // Check if we are at least on a flagged video key frame. Then switch before the
+                    // frame is actually processed. This ensures that if we are muxing, we are
+                    // starting with hopefully an I frame and if we are transcoding this is likely a
+                    // good transition point.
+                    if (switchFlag > 0 || System.currentTimeMillis() >= switchTimeout) {
+                        logger.debug("Video key frame flag: {}", switchFlag);
+
+                        try {
+                            switchStreamOutput();
+                        } catch (InterruptedException e) {
+                            logger.debug("Switching was interrupted.");
+                            break;
+                        }
+                        switching = false;
+
+                        synchronized (switchLock) {
+                            switchLock.notifyAll();
+                        }
+
+                        logger.info("SWITCH successful: {}ms.", System.currentTimeMillis() - (switchTimeout - 10000));
+                    }
+                }
+
                 iavStream = ctx.avfCtxInput.streams(inputStreamIndex);
                 iavCodecContext = iavStream.codec();
                 type = iavStream.codec().codec_type();
@@ -443,10 +617,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     logPacket(ctx.avfCtxInput, packet, "trans-dec-out");
 
                     if (type == AVMEDIA_TYPE_VIDEO) {
-                        ret = avcodec_decode_video2(ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
+                        ret = avcodec_decode_video2(
+                                ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
                                 got_frame, packet);
                     } else {
-                        ret = avcodec_decode_audio4(ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
+                        ret = avcodec_decode_audio4(
+                                ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
                                 got_frame, packet);
                     }
 
@@ -516,12 +692,78 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
             av_write_trailer(ctx.avfCtxOutput);
         } finally {
+            returnTranscodePermission(ctx.OPAQUE);
+
             // Cleanup.
             endStreamOutput(packet, frame);
             logger.info("FFmpeg transcoder ended with code {}", ret);
         }
     }
 
+    private void switchStreamOutput() throws FFmpegException, InterruptedException {
+        int ret;
+        int numInputStreams = ctx.avfCtxInput.nb_streams();
+
+        // flush filters and encoders
+        for (int i = 0; i < numInputStreams; i++) {
+
+            // flush filter
+            if (filter_ctx[i].filter_graph == null)
+                continue;
+
+            ret = filterEncodeWriteFrame(null, i);
+
+            if (ret < 0) {
+                logger.error("Flushing filter failed: {}", ret);
+            }
+
+            /* flush encoder */
+            ret = flushEncoder(i);
+            if (ret < 0) {
+                logger.error("Flushing encoder failed: {}", ret);
+            }
+        }
+
+        av_write_trailer(ctx.avfCtxOutput);
+
+        if (ctx.isInterrupted()) {
+            return;
+        }
+
+        int nbStreams = ctx.avfCtxInput.nb_streams();
+
+        for (int i = 0; i < nbStreams; i++) {
+
+            if (ctx.streamMap != null &&
+                    ctx.streamMap.length > i &&
+                    ctx.streamMap[i] != NO_STREAM_IDX &&
+                    ctx.avfCtxOutput != null &&
+                    ctx.avfCtxOutput.nb_streams() > i &&
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i]) != null &&
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec() != null) {
+
+                avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
+            }
+
+            if (filter_ctx != null &&
+                    filter_ctx.length > i &&
+                    filter_ctx[i].filter_graph != null) {
+
+                avfilter_graph_free(filter_ctx[i].filter_graph);
+            }
+
+        }
+
+        if (ctx.avfCtxOutput != null && (ctx.avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0) {
+            avio_closep(ctx.avfCtxOutput.pb());
+        }
+
+        avformat_free_context(ctx.avfCtxOutput);
+        ctx.avfCtxOutput = null;
+        ctx.avioCtxOutput = null;
+
+        initStreamOutput(ctx, newFilename, newWriter, false);
+    }
 
     private void endStreamOutput(AVPacket packet, AVFrame frame) {
         av_packet_unref(packet);
@@ -532,16 +774,23 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         for (int i = 0; i < nbStreams; i++) {
             avcodec_close(ctx.avfCtxInput.streams(i).codec());
 
-
-            if (ctx.streamMap[i] != NO_STREAM_IDX && ctx.avfCtxOutput != null &&
+            if (ctx.streamMap != null &&
+                    ctx.streamMap.length > i &&
+                    ctx.streamMap[i] != NO_STREAM_IDX &&
+                    ctx.avfCtxOutput != null &&
                     ctx.avfCtxOutput.nb_streams() > i &&
                     ctx.avfCtxOutput.streams(ctx.streamMap[i]) != null &&
                     ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec() != null) {
+
                 avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
             }
 
-            if (filter_ctx != null && filter_ctx[i].filter_graph != null)
+            if (filter_ctx != null &&
+                    filter_ctx.length > i &&
+                    filter_ctx[i].filter_graph != null) {
+
                 avfilter_graph_free(filter_ctx[i].filter_graph);
+            }
 
         }
 
@@ -554,11 +803,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         avformat_free_context(ctx.avfCtxOutput);
         ctx.avfCtxOutput = null;
         ctx.avioCtxOutput = null;
-
     }
 
-    private int initFilter(FilteringContext fctx, avcodec.AVCodecContext dec_ctx,
-                           avcodec.AVCodecContext enc_ctx, final String filter_spec,
+    private int initFilter(FilteringContext fctx, AVCodecContext dec_ctx,
+                           AVCodecContext enc_ctx, AVStream out_stream, String filter_spec,
                            AVCodec encoder, AVDictionary dict) throws FFmpegException {
 
         int ret = 0;
@@ -734,7 +982,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         ar = enc_ctx.sample_aspect_ratio();
                         fr = enc_ctx.framerate();
                         tb = enc_ctx.time_base();
-                        //tb = rational;
 
                         logger.debug("Before filter: h:{} w:{} fmt:{} ar:{}/{} fr:{}/{} tb:{}/{}",
                                 height, width, format, ar.num(), ar.den(), fr.num(), fr.den(), tb.num(), tb.den());
@@ -746,7 +993,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     format = input.format();
                     ar = input.sample_aspect_ratio();
                     fr = input.frame_rate();
-                    tb = input.time_base();
+                    tb = input.time_base(); //av_inv_q(fr);
 
                     if (logger.isDebugEnabled()) {
                         logger.debug("After filter: h:{} w:{} fmt:{} ar:{}/{} fr:{}/{} tb: {}/{}",
@@ -759,6 +1006,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     enc_ctx.sample_aspect_ratio(ar);
                     enc_ctx.framerate(fr);
                     enc_ctx.time_base(tb);
+
+                    //out_stream.avg_frame_rate(fr);
+                    //out_stream.r_frame_rate(fr);
+                    //out_stream.time_base(tb);
 
                     ret = avcodec_open2(enc_ctx, encoder, dict);
                     av_dict_free(dict);
@@ -812,19 +1063,37 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             filter_ctx[i].filter_graph = new AVFilterGraph();
 
             if (codecType == AVMEDIA_TYPE_VIDEO) {
-                //filter_spec = "null"; /* passthrough (dummy) filter for video */
-                //filter_spec = "idet, yadif=mode=2:deint=interlaced, scale=w='trunc(oh*a/16)*16':h='min(720\\,ih)':interl=0:flags=bilinear, format=pix_fmts=yuv420p";
-                filter_spec = "yadif=mode=2, scale=w='trunc(oh*a/16)*16':h='min(640\\,ih)':interl=0:flags=bilinear, format=pix_fmts=yuv420p";
-                //filter_spec = "yadif=mode=3, format=pix_fmts=yuv420p";
-                //filter_spec = "kerndeint=map=1, format=pix_fmts=yuv420p, scale=w=1280:h=720, setpts=0.5*PTS";
-
                 //filter_spec = "idet";
+
+                if (interlaced) {
+                    filter_spec = ctx.videoEncodeSettings.get("deinterlace_filter");
+                } else {
+                    filter_spec = ctx.videoEncodeSettings.get("progressive_filter");
+                }
+
+                if (filter_spec == null) {
+                    filter_spec = "fps=fps=opendct_fps:round=near";
+                    logger.warn("No filter was specified. Using 'fps=fps=opendct_fps:round=near'." +
+                            " To avoid this message, set 'deinterlace_filter' and" +
+                            " 'progressive_filter' to 'null' or 'fps=fps=opendct_fps:round=near'" +
+                            " in the profile.");
+                } else {
+                    //opendct_fps
+                    if (filter_spec.contains("opendct_")) {
+                        int num = ctx.avfCtxInput.streams(i).codec().framerate().num();
+                        int den = ctx.avfCtxInput.streams(i).codec().framerate().den();
+
+                        filter_spec = filter_spec.replace("opendct_fps", num + "/" + den);
+                        filter_spec = filter_spec.replace("opendct_dfps", (num * 2) + "/" + den);
+                    }
+                }
             } else {
                 filter_spec = "anull"; /* passthrough (dummy) filter for audio */
             }
 
             ret = initFilter(filter_ctx[i], ctx.avfCtxInput.streams(i).codec(),
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec(), filter_spec,
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec(),
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i]), filter_spec,
                     ctx.encoderCodecs[i], ctx.encoderDicts[i]);
 
             if (ret != 0) {

@@ -131,6 +131,7 @@ public class HDHomeRunPacket {
     }
 
     public void putTagLengthValue(HDHomeRunPacketTag tag, String value) {
+        // This charset is not globally defined because it will never change.
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
         BUFFER.put(tag.MASK);
         putVariableLength(bytes.length + 1);

@@ -90,7 +90,9 @@ public class HTTPProducerImpl implements HTTPProducer {
 
             if (selectedURL++ == lastURL) {
                 selectedURL = 0;
-                throw new IOException("Unable to connect to any of the provided addresses.");
+                if (!isThread) {
+                    throw new IOException("Unable to connect to any of the provided addresses.");
+                }
             }
 
             if (lastURL >= urls.length) {

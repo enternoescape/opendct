@@ -72,7 +72,9 @@ public class FFmpegStreamDetection {
      *                               contexts created by this function will already be de-allocated
      *                               before the exception is returned.
      */
-    public static boolean detectStreams(FFmpegContext ctx, String nativeFilename, String error[]) throws IllegalStateException {
+    public static boolean detectStreams(FFmpegContext ctx, String nativeFilename, String error[]) throws FFmpegException {
+
+        long startTime = System.currentTimeMillis();
 
         if (error == null || error.length == 0) {
             // Nothing will return in this case, but this also means we don't need to check for this
@@ -102,22 +104,20 @@ public class FFmpegStreamDetection {
             // Although the AVIOContext does not need to be allocated/freed for each probe it is done so the counters
             // for bytes read, seeks done, etc are reset.
             //
-
-            switch (ctx.inputFileMode) {
-                case FFmpegContext.FILE_MODE_MPEGTS:
-                    ctx.allocInputIoTsFormatContext();
-
-                    break;
-                case FFmpegContext.FILE_MODE_NATIVE:
-                    ctx.allocInputFormatNativeContext(nativeFilename, null);
-                    break;
-                default:
-                    error[0] = "Invalid file input mode selected: " + ctx.inputFileMode;
-                    return false;
-            }
-
-            if (ctx.isInterrupted()) {
-                error[0] = FFMPEG_INIT_INTERRUPTED;
+            try {
+                switch (ctx.inputFileMode) {
+                    case FFmpegContext.FILE_MODE_MPEGTS:
+                        ctx.allocInputIoTsFormatContext();
+                        break;
+                    case FFmpegContext.FILE_MODE_NATIVE:
+                        ctx.allocInputFormatNativeContext(nativeFilename, null);
+                        break;
+                    default:
+                        error[0] = "Invalid file input mode selected: " + ctx.inputFileMode;
+                        return false;
+                }
+            } catch (FFmpegException e) {
+                logger.error("Unable to start stream detection => ", e);
                 return false;
             }
 
@@ -137,6 +137,11 @@ public class FFmpegStreamDetection {
             ret = avformat_open_input(ctx.avfCtxInput, ctx.inputFilename, null, null);
             if (ret != 0) {
                 error[0] = "avformat_open_input returned error code " + ret;
+                return false;
+            }
+
+            if (ctx.isInterrupted()) {
+                error[0] = FFMPEG_INIT_INTERRUPTED;
                 return false;
             }
 
@@ -232,6 +237,9 @@ public class FFmpegStreamDetection {
         }
 
         ctx.SEEK_BUFFER.setNoWrap(false);
+
+        long endTime = System.currentTimeMillis();
+        logger.debug("FFmpeg stream detection done in {}ms,", endTime - startTime);
 
         return true;
     }

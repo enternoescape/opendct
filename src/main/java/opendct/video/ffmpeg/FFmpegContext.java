@@ -35,7 +35,7 @@ import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
 
 public class FFmpegContext {
-    private final Logger logger = LogManager.getLogger(FFmpegContext.class);
+    private static final Logger logger = LogManager.getLogger(FFmpegContext.class);
 
     private final static ReentrantReadWriteLock contextLock = new ReentrantReadWriteLock();
     private final static HashMap<Pointer, FFmpegContext> contextMap = new HashMap<>();
@@ -44,7 +44,7 @@ public class FFmpegContext {
     public final Pointer OPAQUE;
     private Pointer writerOpaque;
 
-    public final FFmpegWriter FFMPEG_WRITER;
+    //private FFmpegWriter writer;
     public final StringBuilder DUMP_BUFFER;
     public final FFmpegCircularBuffer SEEK_BUFFER;
     public final FFmpegStreamProcessor STREAM_PROCESSOR;
@@ -68,6 +68,7 @@ public class FFmpegContext {
     protected AVStream audioStream;
     protected AVCodecContext videoCodecCtx;
     protected AVCodecContext audioCodecCtx;
+    protected AVRational videoFramerate;
 
     protected FFmpegProfile encodeProfile;
     protected HashMap<String, String> videoEncodeSettings;
@@ -101,12 +102,11 @@ public class FFmpegContext {
      * @param rwBufferSize The native buffer size to be used for reading and writing. This value
      *                     will be overridden to 10340 if it is less than 10340.
      */
-    public FFmpegContext(int bufferSize, int rwBufferSize, FFmpegStreamProcessor streamProcessor, FFmpegWriter writer) {
+    public FFmpegContext(int bufferSize, int rwBufferSize, FFmpegStreamProcessor streamProcessor) {
        this(
                new FFmpegCircularBuffer(bufferSize < 2246948 ? 2246948 : bufferSize),
                rwBufferSize < 10340 ? 10340 : rwBufferSize,
-               streamProcessor,
-               writer
+               streamProcessor
        );
     }
 
@@ -118,10 +118,9 @@ public class FFmpegContext {
      * @param rwBufferSize The native buffer size to be used for reading and writing. This value
      *                     will be overridden to 10340 if it is less than 10340.
      */
-    public FFmpegContext(FFmpegCircularBuffer seekBuffer, int rwBufferSize, FFmpegStreamProcessor streamProcessor, FFmpegWriter writer) {
+    public FFmpegContext(FFmpegCircularBuffer seekBuffer, int rwBufferSize, FFmpegStreamProcessor streamProcessor) {
         disposed = false;
 
-        FFMPEG_WRITER = writer;
         SEEK_BUFFER = seekBuffer;
         STREAM_PROCESSOR = streamProcessor;
         OPAQUE = setContext();
@@ -138,7 +137,7 @@ public class FFmpegContext {
 
         nativeFileProbeLimit = 0;
         nativeLastProbeSize = 0;
-        nativeIncrement = 1123474;
+        nativeIncrement = 2246948;
 
         inputFileMode = SEEK_BUFFER != null ? FILE_MODE_MPEGTS : FILE_MODE_NATIVE;
         inputFilename = null;
@@ -151,6 +150,7 @@ public class FFmpegContext {
         audioStream = null;
         videoCodecCtx = null;
         audioCodecCtx = null;
+        videoFramerate = new AVRational();
 
         streamMap = new int[0];
         encodeMap = new boolean[0];
@@ -251,6 +251,13 @@ public class FFmpegContext {
         return isInterrupted;
     }
 
+    /**
+     * Sets the FFmpeg interrupt flag to stop processing.
+     */
+    public void interrupt() {
+        interrupted = true;
+    }
+
     protected static final avformat.AVIOInterruptCB.Callback_Pointer interruptCallback = new InterruptCallable();
 
     protected static class InterruptCallable extends avformat.AVIOInterruptCB.Callback_Pointer {
@@ -295,17 +302,20 @@ public class FFmpegContext {
 
             int nBytes = -1;
 
-            try {
-                ByteBuffer readBuffer = buf.position(0).limit(bufSize).asBuffer();
+            if (!context.isInterrupted()) {
+                try {
+                    ByteBuffer readBuffer = buf.position(0).limit(bufSize).asBuffer();
 
-                nBytes = context.SEEK_BUFFER.read(readBuffer);
-            } catch (Exception e) {
-                if (e instanceof InterruptedException) {
-                    context.interrupted = true;
-                    context.SEEK_BUFFER.close();
-                    context.logger.debug("FFmpeg consumer was interrupted while reading.");
-                } else {
-                    context.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
+                    nBytes = context.SEEK_BUFFER.read(readBuffer);
+
+                } catch (Exception e) {
+                    if (e instanceof InterruptedException) {
+                        context.interrupted = true;
+                        context.SEEK_BUFFER.close();
+                        context.logger.debug("FFmpeg consumer was interrupted while reading.");
+                    } else {
+                        context.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
+                    }
                 }
             }
 
@@ -325,7 +335,6 @@ public class FFmpegContext {
         @Override
         public int call(Pointer opaque, BytePointer buf, int bufSize) {
             FFmpegWriter context = getWriterContext(opaque);
-            Logger logger = context.getLogger();
 
             int numBytesWritten = 0;
 
@@ -335,23 +344,23 @@ public class FFmpegContext {
                 //TODO: Add file switching mechanism.
                 numBytesWritten = context.write(writeBuffer);
             } catch (IOException e) {
+                Logger logger = context.getLogger();
                 if (logger != null) {
                     logger.error("'{}' experienced an IOException => ", context.getClass(), e);
                 }
             } catch (Exception e) {
+                Logger logger = context.getLogger();
                 if (logger != null) {
                     logger.error("'{}' experienced an unhandled exception => ", context.getClass(), e);
                 }
             }
 
-            if (logger != null && logger.isTraceEnabled()) {
+            if (logger.isTraceEnabled()) {
                 logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", bufSize, numBytesWritten);
             }
 
             if (numBytesWritten < 0) {
-                if (logger != null) {
-                    logger.info("Returning AVERROR_EOF in writeCallback.call()");
-                }
+                logger.info("Returning AVERROR_EOF in writeCallback.call()");
                 return AVERROR_EOF;
             }
 
@@ -363,8 +372,8 @@ public class FFmpegContext {
     public void setProbeData(String filename) {
         if (filename != null && (inputFilename == null || !inputFilename.equals(filename))) {
             long fileLength = new File(filename).length();
-            nativeFileProbeLimit = fileLength > 20971520 ? 20971520 : (int) fileLength;
-            nativeIncrement = 1123474;
+            nativeFileProbeLimit = fileLength > 41943040 ? 41943040 : (int) fileLength;
+            nativeIncrement = 2246948;
 
             inputFilename = filename;
         }
@@ -431,7 +440,7 @@ public class FFmpegContext {
      * @return <i>true</i> if all required streams are available. If <i>false</i> is returned, all
      *         allocated resources will already be de-allocated.
      */
-    public boolean initTsStream() {
+    public boolean initTsStream(String filename) {
         if (SEEK_BUFFER == null) return false;
         inputFileMode = FILE_MODE_MPEGTS;
 
@@ -439,7 +448,7 @@ public class FFmpegContext {
 
         while (!isInterrupted()) {
             try {
-                if (!FFmpegStreamDetection.detectStreams(this, null, error)) {
+                if (!FFmpegStreamDetection.detectStreams(this, filename, error)) {
                     if (!isInterrupted()) {
                         logger.error("initTsStream: {}", error[0]);
 
@@ -452,9 +461,7 @@ public class FFmpegContext {
                         return false;
                     }
                 }
-
-                //allocAvfContainerOutputContext(outputFilename, desiredProgram);
-            } catch (IllegalStateException e) {
+            } catch (FFmpegException e) {
                 logger.error("initTsStream: {} => ", error[0], e);
                 return false;
             }
@@ -489,7 +496,7 @@ public class FFmpegContext {
                 // This is a static file and nothing will change between passes, so stop here.
                 return false;
             }
-        } catch (IllegalStateException e) {
+        } catch (FFmpegException e) {
             logger.error("initNativeFile: {} => ", error[0], e);
             return false;
         }
@@ -512,21 +519,21 @@ public class FFmpegContext {
      * @throws IllegalStateException Thrown if any of the contexts cannot be allocated. AVIOContext
      *                               and AVIOContext contexts are de-allocated on exception.
      */
-    protected void allocInputIoTsFormatContext() throws IllegalStateException {
+    protected void allocInputIoTsFormatContext() throws FFmpegException {
         deallocInputContext();
 
         avioCtxInput = allocIoContext(OPAQUE, readCallback, null, seekCallback);
 
-        if (avfCtxInput == null) {
+        if (avioCtxInput == null) {
             deallocInputContext();
-            throw new IllegalStateException("FFmpeg input AVIOContext could not be allocated.");
+            throw new FFmpegException("FFmpeg input AVIOContext could not be allocated.", -1);
         }
 
         avfCtxInput = avformat_alloc_context();
 
         if (avfCtxInput == null) {
             deallocInputContext();
-            throw new IllegalStateException("FFmpeg input AVFormatContext could not be allocated.");
+            throw new FFmpegException("FFmpeg input AVFormatContext could not be allocated.", -1);
         }
 
         avfCtxInput.pb(avioCtxInput);
@@ -550,25 +557,18 @@ public class FFmpegContext {
      * @throws IllegalStateException Thrown if any of the contexts cannot be allocated. AVIOContext
      *                               and AVIOContext contexts are de-allocated on exception.
      */
-    protected void allocInputFormatNativeContext(String filename, AVDictionary dict) throws IllegalStateException {
+    protected void allocInputFormatNativeContext(String filename, AVDictionary dict) throws FFmpegException {
         deallocInputContext();
 
         int ret;
 
-        //avfCtxInput = avformat_alloc_context();
         avfCtxInput = new AVFormatContext(null);
 
         ret = avformat_open_input(avfCtxInput, filename, null, dict);
         if (ret < 0) {
             deallocInputContext();
-            throw new IllegalStateException("Cannot open input file. Error " + ret);
+            throw new FFmpegException("Cannot open input file.", ret);
         }
-
-        /*ret = avformat_find_stream_info(avfCtxInput, (PointerPointer<AVDictionary>) null);
-        if (ret < 0) {
-            deallocInputContext();
-            throw new IllegalStateException("Cannot find stream information. Error " + ret);
-        }*/
 
         avfCtxInput.interrupt_callback(interruptCB);
         avioCtxInput = avfCtxInput.pb();
@@ -607,7 +607,7 @@ public class FFmpegContext {
      * @throws IllegalStateException Thrown if any of the contexts cannot be allocated. AVIOContext
      *                               context is de-allocated on exception.
      */
-    public void allocAvfContainerOutputContext(String filename) throws IllegalStateException {
+    public void allocAvfContainerOutputContext(String filename) throws FFmpegException {
         avfCtxOutput = new AVFormatContext(null);
 
         outputFilename = filename != null ? filename : "output.ts";
@@ -624,7 +624,7 @@ public class FFmpegContext {
         if (ret < 0) {
             deallocOutputContext();
             outputFilename = null;
-            throw new IllegalStateException("avformat_alloc_output_context2 returned error code " + ret);
+            throw new FFmpegException("avformat_alloc_output_context2 returned error code ", ret);
         }
     }
 
@@ -657,6 +657,8 @@ public class FFmpegContext {
             throw new FFmpegException("FFmpeg output AVIOContext could not be allocated.", -1);
         }
 
+        writerOpaque = opaque;
+
         avfCtxOutput.pb(avioCtxOutput);
         avfCtxOutput.interrupt_callback(interruptCB);
     }
@@ -664,7 +666,7 @@ public class FFmpegContext {
     /**
      * Allocates a custom writer that will not be de-allocated by this context.
      * <p/>
-     * When this AVFormatContext is de-allocated, don't forget to remove it from the writer hashmap
+     * When this AVFormatContext is de-allocated, don't forget to remove it from the writer HashMap
      * or it may never be garbage collected.
      *
      * @param writer The writer implementation.
@@ -709,7 +711,13 @@ public class FFmpegContext {
             return null;
         }
 
-        AVIOContext avioCtx = avio_alloc_context(new BytePointer(ptr), RW_BUFFER_SIZE, AVIO_FLAG_WRITE, opaque, readCallback, writeCallback, seekCallback);
+        AVIOContext avioCtx;
+
+        if (writeCallback == null) {
+            avioCtx = avio_alloc_context(new BytePointer(ptr), RW_BUFFER_SIZE, 0, opaque, readCallback, null, seekCallback);
+        } else {
+            avioCtx = avio_alloc_context(new BytePointer(ptr), RW_BUFFER_SIZE, AVIO_FLAG_WRITE, opaque, readCallback, writeCallback, seekCallback);
+        }
 
         if (avioCtx.isNull()) {
             av_free(ptr);
@@ -770,6 +778,14 @@ public class FFmpegContext {
     public synchronized void deallocAll() {
         deallocInputContext();
         deallocOutputContext();
+    }
+
+    public int getProgram() {
+        return desiredProgram;
+    }
+
+    public void setProgram(int desiredProgram) {
+        this.desiredProgram = desiredProgram;
     }
 
     /**

@@ -19,6 +19,7 @@ package opendct.config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.FFmpegSageTVConsumerImpl;
+import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.RawSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
@@ -33,6 +34,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.net.InetAddress;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,7 +46,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 28;
+    public static final int VERSION_BUILD = 29;
     public static final String VERSION_PROGRAM = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -65,7 +68,7 @@ public class Config {
     private static final String configFileName = "opendct.properties";
 
     // We should be using this any time we are converting text to bytes.
-    public static final String STD_BYTE = "UTF-8";
+    public static final Charset STD_BYTE = StandardCharsets.UTF_8;
 
     private static String directory;
 
@@ -188,10 +191,52 @@ public class Config {
                 properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
             }
 
-            // This is for future required configuration upgrades.
+            // Upgrade config if the version is behind.
+            //int configVersion = getInteger("version.config", VERSION_CONFIG);
+            //configUpgradeCleanup(configVersion);
+            //properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
         }
 
         return logger.exit(true);
+    }
+
+    private static void configUpgradeCleanup(int configVersion) {
+        // Do not use break. That way the changes will cascade.
+
+        HashSet<String> removeEntries = new HashSet<>();
+
+        switch (configVersion) {
+            case 1:
+                logger.info("Upgrading to config version 2...");
+
+                logger.info("Removing hdhr.always_force_lockkey key. It is now per capture device.");
+                properties.remove("hdhr.always_force_lockkey");
+
+                for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                    String key = (String)entry.getKey();
+
+                    if (key.startsWith("sagetv.device.parent.") && key.endsWith(".consumer")) {
+                        logger.info("Removing {} key. It is now per capture device.", key);
+                        removeEntries.add(key);
+                    } else if (key.startsWith("sagetv.device.parent.") && key.endsWith(".channel_scan_consumer")) {
+                        logger.info("Removing {} key. It is now per capture device.", key);
+                        removeEntries.add(key);
+                    }
+                }
+        }
+
+        Properties propertiesMigrate = properties;
+        properties = new Properties();
+        for (Map.Entry<Object, Object> entry : propertiesMigrate.entrySet()) {
+            String key = (String)entry.getKey();
+            String value = (String)entry.getValue();
+
+            if (removeEntries.contains(key)) {
+                continue;
+            }
+
+            properties.setProperty(key, value);
+        }
     }
 
     public static synchronized void clearConfig() {
@@ -826,6 +871,8 @@ public class Config {
             returnValue = new RawSageTVConsumerImpl();
         } else if (clientName.endsWith(FFmpegSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegSageTVConsumerImpl();
+        } else if (clientName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
+            returnValue = new FFmpegTransSageTVConsumerImpl();
         } else {
             try {
                 returnValue = (SageTVConsumer) Class.forName(clientName).newInstance();

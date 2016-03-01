@@ -82,9 +82,10 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     5000000
             );
 
-    // This value cannot go any lower than 10240. Lower values always result in stream corruption.
+    // This value cannot go any lower than 65536. Lower values result in stream corruption when the
+    // RTP packets are larger than the buffer size.
     private final int RW_BUFFER_SIZE =
-            Math.max(Config.getInteger("consumer.ffmpeg.rw_buffer_size", 20680), 10340);
+            Math.max(Config.getInteger("consumer.ffmpeg.rw_buffer_size", 262144), 65536);
 
     // This is the smallest amount of data that will be transferred to the SageTV server.
     private final int minUploadIDTransfer =
@@ -761,7 +762,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                         try {
                             currentFile.close();
                         } catch (Exception e) {
-                            logger.debug("Exception while closing missing file => ");
+                            logger.debug("Exception while closing missing file => ", e);
                         }
 
                         while (!isInterrupted()) {

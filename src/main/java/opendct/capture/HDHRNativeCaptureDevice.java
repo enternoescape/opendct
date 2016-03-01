@@ -488,7 +488,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         }
 
         if (!httpProducing) {
-            // Only lock the HDHomeRun is this device is locked too. This will prevent any offline
+            // Only lock the HDHomeRun if this device is locked too. This will prevent any offline
             // activities from taking the tuner away from outside programs.
             if (isLocked()) {
                 int timeout = 5;
@@ -566,7 +566,14 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                             httpProducing = tuneUrl(tvChannel, HDHomeRunDiscoverer.getTranscodeProfile(), newConsumer);
 
                             if (!httpProducing) {
-                                tuner.setVirtualChannel(tvChannel.getChannel());
+                                try {
+                                    tuner.setVirtualChannel(dotChannel);
+                                } catch (GetSetException e) {
+                                    logger.debug("Unable to set virtual channel. Trying legacy tuning. => ", e);
+                                    if (!legacyTuneChannel(channel)) {
+                                        return logger.exit(false);
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -614,35 +621,13 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                     tuner.setChannel(modulation, frequency, false);
 
-                    boolean foundProgram = false;
+                    tuner.setProgram(program);
 
-                    for (int i = 0; i < 20; i++) {
-                        try {
-                            tuner.setProgram(program);
-                            foundProgram = true;
-                        } catch (GetSetException e) {
-                            logger.debug("HDHomeRun device returned an error => ", e);
-                        }
-
-                        if (foundProgram) {
-                            break;
-                        }
-
-                        Thread.sleep(50);
-                    }
-
-                    if (!foundProgram) {
-                        logger.error("The frequency '{}' does not have the program on the lineup '{}'.", frequency, encoderLineup);
-                        return logger.exit(false);
-                    }
                 } catch (IOException e) {
                     logger.error("HDHomeRun is unable to tune into channel because it cannot be reached => ", e);
                     return logger.exit(false);
                 } catch (GetSetException e) {
                     logger.error("HDHomeRun is unable to tune into channel because the command did not work => ", e);
-                    return logger.exit(false);
-                } catch (InterruptedException e) {
-                    logger.debug("Interrupted while trying to tune into channel => ", e);
                     return logger.exit(false);
                 }
 

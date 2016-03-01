@@ -351,7 +351,7 @@
 > a last resort if the disk space goes below the default 1GB threshold.
 
 #### 0.4.26-Beta
-> *Enhanced handling of dts non-monotonic situations.
+> *Enhanced handling of DTS non-monotonic situations.
 
 > *Direct file writing in the FFmpeg consumer now forces the data to disk on each write and verifies
 > that the file has not been deleted.
@@ -365,7 +365,7 @@
 > on response time from the tuner makes it look like it's faster to leave it open, but after looking
 > at total tuning time, it looks like it's the same amount of time.
 
-> *dts non-monotonic frames are dropped again. After looking at the results of leaving the frames
+> *DTS non-monotonic frames are dropped again. After looking at the results of leaving the frames
 > in, it appears to create more problems than it helps.
 
 > *FFmpeg write flushing can be disabled by setting consumer.ffmpeg.min_direct_flush_size to -1.
@@ -375,10 +375,40 @@
 
 > *Fixed firewall script for Ubuntu.
 
-> *Internal: FFmpeg Logging will now de-duplicate log entries and can filter by parent context.
+> *Internal: FFmpeg logging will now de-duplicate log entries and can filter by parent context.
 
 > *Internal: Fixed a logging issue whereby a listening thread can have 'null' when the name should
 > be 'Unknown.'
 
 #### 0.4.29-Beta
+> *The FFmpeg read/write transfer buffer size (consumer.ffmpeg.rw_buffer_size) is now 262144 bytes
+> by default with a minimum size of 65536. Values less than the maximum RTP packet size received 
+> occasionally cause continuity problems for an unknown reason that might be related to why they
+> come in a non-standard RTP frame size from the tuner.
 
+> *The consumer is now set per capture device. After running OpenDCT for about 30 seconds and then
+> stopping it. Change sagetv.device.<unique_id>.consumer to 
+> opendct.consumer.FFmpegTransSageTVConsumerImpl on the capture devices that you want to use the new
+> software transcoding feature for that capture device.
+
+> *Software transcoding is now available as an experimental feature. Change
+> sagetv.device.<unique_id>.consumer to opendct.consumer.FFmpegTransSageTVConsumerImpl to enable it.
+> The transcoding profiles are per capture device and are not set by default. When no transcoding
+> profile is set, the stream is only remuxed. 
+
+> *Set the software transcoding profile by changing sagetv.device.<unique_id>.transcode_profile to
+> one of the available profiles are stored under C:\ProgramData\OpenDCT\config\transcode on Windows
+> and /etc/opendct/conf/transcode on Linux. See profile_example.properties for help on how you can
+> create your own. Do not include the .properties extension when setting the profile.
+ 
+> *Software transcoding will limit by weight the number of live transcodes at one time. The value of
+> consumer.ffmpeg.transcode_limit is by default your ((total CPU core count) - 1) * 2. In all
+> packaged profiles content that does not have a height of 480 has a weight of 2. This might need
+> to be adjusted on computers with HyperThreading enabled.
+ 
+> *HTTP failover to RTP is more responsive for non-Prime HDHomeRun devices.
+
+> *Added forcing unlocking for non-Prime HDHomeRun devices if the device is locked by the IP address
+> being used to access the device. HTTP tuning can cause the device to be locked by the local IP
+> address, but will not unlock or allow it to be changed even though we are on the correct IP
+> address.

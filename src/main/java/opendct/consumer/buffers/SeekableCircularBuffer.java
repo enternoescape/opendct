@@ -118,10 +118,22 @@ public class SeekableCircularBuffer {
 
     public void waitForBytes() throws InterruptedException {
         synchronized (readMonitor) {
-            while (readIndex == writeIndex && !closed) {
+            while (readIndex == writeIndex && !closed && !overflow) {
                 readMonitor.wait(500);
             }
+
+            readMonitor.notifyAll();
         }
+    }
+
+    public void writeBlocked(byte bytes[], int offset, int length) throws ArrayIndexOutOfBoundsException, InterruptedException {
+        synchronized (readMonitor) {
+            while (!closed && writeAvailable() - length <= 0) {
+                readMonitor.wait(100);
+            }
+        }
+
+        write(bytes, offset, length);
     }
 
     /**
@@ -139,6 +151,11 @@ public class SeekableCircularBuffer {
 
         // This technically shouldn't be happening.
         if (length == 0) {
+            return;
+        }
+
+        // Once the buffer is closed, we turn off writing.
+        if (closed) {
             return;
         }
 
@@ -207,11 +224,6 @@ public class SeekableCircularBuffer {
 
                 processQueue();
 
-                return;
-            }
-
-            // Once the buffer is closed, we turn off writing.
-            if (closed) {
                 return;
             }
 

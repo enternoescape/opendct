@@ -19,11 +19,12 @@ package opendct.video.ffmpeg;
 import opendct.config.ConfigBag;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bytedeco.javacpp.avcodec.*;
+import org.bytedeco.javacpp.avcodec.AVCodec;
 
 import java.util.HashMap;
 
-import static org.bytedeco.javacpp.avcodec.*;
+import static org.bytedeco.javacpp.avcodec.avcodec_find_encoder_by_name;
+import static org.bytedeco.javacpp.avcodec.avcodec_get_name;
 
 public class FFmpegProfile extends ConfigBag {
     private final Logger logger = LogManager.getLogger(FFmpegProfile.class);
@@ -42,13 +43,15 @@ public class FFmpegProfile extends ConfigBag {
 
     private boolean alwaysReload;
     private String friendlyName;
-    private boolean videoDisabled;
-    private boolean audioDisabled;
+    private String description;
+    private boolean profileDisabled;
 
     private boolean interlacedOnly;
     private boolean interlaceDetect;
     private boolean videoAlwaysTranscode;
     private boolean audioAlwaysTranscode;
+    private int gtHeight;
+    private int gtWidth;
 
     private String videoDefaultCodec;
     private String audioDefaultCodec;
@@ -84,14 +87,17 @@ public class FFmpegProfile extends ConfigBag {
         // If this is set wrong there's a good change other things are wrong.
         alwaysReload = getBoolean(generalConf + "always_reload", true);
         friendlyName = getString(generalConf + "friendly_name", friendlyName);
-        videoDisabled = getBoolean(videoConf + "t.disable", true);
-        audioDisabled = getBoolean(audioConf + "t.disable", true);
+        profileDisabled = getBoolean(generalConf + "disable", true);
+        description = getString(generalConf + "description", friendlyName);
+
+        gtHeight = getInteger(videoConf + "t.allow_gt_h", 0);
+        gtWidth = getInteger(videoConf + "t.allow_gt_w", 0);
         interlacedOnly = getBoolean(videoConf + "t.deinterlace_only", true);
         interlaceDetect = getBoolean(videoConf + "t.deinterlace_detect", true);
         videoAlwaysTranscode = getBoolean(videoConf + "t.always", false);
         audioAlwaysTranscode = getBoolean(audioConf + "t.always", false);
 
-        videoDefaultCodec = getString(videoConf + "e.default_codec", "h264");
+        videoDefaultCodec = getString(videoConf + "e.default_codec", "libx264");
         if (!alwaysReload && avcodec_find_encoder_by_name(videoDefaultCodec) == null) {
             logger.error("'{}' is not a valid video codec. Using the default '{}'.",
                     videoDefaultCodec, failsafeVideoCodec);
@@ -123,19 +129,74 @@ public class FFmpegProfile extends ConfigBag {
         audioEncoderMap = maps[5];
     }
 
-    public boolean canInterlaceDetect() {
-        return interlaceDetect;
+    /**
+     * Used by stream detection to determine if detection of interlaced content should be performed.
+     *
+     * @param height The height of the incoming video.
+     * @param width The width of the incoming video.
+     * @return <i>true</i> if it makes sense to run deinterlace detection.
+     */
+    public boolean canInterlaceDetect(int height, int width) {
+        return !profileDisabled && interlaceDetect && gtHeight < height && gtWidth < width;
     }
 
-    public boolean canTranscodeVideo(boolean interlaced, String decoderCodec) {
-        return videoAlwaysTranscode ||
-                videoTranscodeMap.get(decoderCodec) != null ||
-                (interlacedOnly && interlaced);
+    public boolean canTranscodeVideo(boolean interlaced, String decoderCodec, int height, int width) {
+        if (profileDisabled) {
+            logger.debug("canTranscodeVideo: Profile disabled." +
+                    " interlaced: {}, decoderCodec: {}, height: {}, width: {}",
+                    interlaced, decoderCodec, height, width);
+            return false;
+        }
+
+        if (videoAlwaysTranscode) {
+            logger.debug("canTranscodeVideo: Always transcode." +
+                            " interlaced: {}, decoderCodec: {}, height: {}, width: {}",
+                    interlaced, decoderCodec, height, width);
+            return true;
+        }
+
+        if (gtHeight >= height) {
+            logger.debug("canTranscodeVideo: Height is too small." +
+                            " interlaced: {}, decoderCodec: {}, height: {} < {}, width: {}",
+                    interlaced, decoderCodec, height, gtHeight, width);
+            return false;
+        }
+
+        if (gtWidth >= width) {
+            logger.debug("canTranscodeVideo: Width is too small." +
+                            " interlaced: {}, decoderCodec: {}, height: {}, width: {} < {}",
+                    interlaced, decoderCodec, height, width, gtWidth);
+            return false;
+        }
+
+        String desiredCodec = videoTranscodeMap.get(decoderCodec);
+        if (desiredCodec != null) {
+            logger.debug("canTranscodeVideo: Codec is to be transcoded to {}." +
+                            " interlaced: {}, decoderCodec: {}, height: {}, width: {}",
+                    desiredCodec, interlaced, decoderCodec, height, width);
+            return true;
+        }
+
+        if (interlacedOnly && interlaced) {
+            logger.debug("canTranscodeVideo: Video is interlaced." +
+                            " interlaced: true, decoderCodec: {}, height: {}, width: {}",
+                    decoderCodec, height, width);
+            return true;
+        }
+
+        logger.debug("canTranscodeVideo: No rules matched for transcoding." +
+                        " interlaced: {}, decoderCodec: {}, height: {}, width: {}",
+                interlaced, decoderCodec, height, width);
+
+        return false;
     }
 
     public AVCodec getVideoEncoderCodec(AVCodec decoderCodec) {
+        if (decoderCodec == null) return null;
+
         // Get the default codec for the desired destination.
-        String encoderCodec = videoTranscodeMap.get(avcodec_get_name(decoderCodec.id()).getString());
+        String decoderCodecName = avcodec_get_name(decoderCodec.id()).getString();
+        String encoderCodec = videoTranscodeMap.get(decoderCodecName);
 
         if (encoderCodec == null) {
             encoderCodec = videoDefaultCodec;
@@ -148,7 +209,7 @@ public class FFmpegProfile extends ConfigBag {
 
         // First, if the codec is to be remapped, try the non-default preferred codec.
         if (preferedCodec != null) {
-            returnCodec = avcodec_find_decoder_by_name(preferedCodec);
+            returnCodec = avcodec_find_encoder_by_name(preferedCodec);
         }
 
         // Second, if there isn't a preferred codec or the preferred codec doesn't exist, try the
@@ -159,7 +220,7 @@ public class FFmpegProfile extends ConfigBag {
                         preferedCodec, videoDefaultCodec);
             }
 
-            returnCodec = avcodec_find_decoder_by_name(encoderCodec);
+            returnCodec = avcodec_find_encoder_by_name(encoderCodec);
         }
 
         // Third, if the default fails, a codec that is known to always be available is used.
@@ -167,7 +228,7 @@ public class FFmpegProfile extends ConfigBag {
             logger.error("'{}' is not a valid video codec. Replacing with the failsafe '{}'.",
                     encoderCodec, failsafeVideoCodec);
 
-            returnCodec = avcodec_find_decoder_by_name(failsafeVideoCodec);
+            returnCodec = avcodec_find_encoder_by_name(failsafeVideoCodec);
         }
 
         // A null value can still potentially be returned, so it should be checked for on returns

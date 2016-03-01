@@ -18,7 +18,10 @@ package opendct.video.ffmpeg;
 
 public interface FFmpegStreamProcessor {
 
-    public void initStreamOutput(FFmpegContext ctx, String outputFilename) throws FFmpegException, InterruptedException;
+    public boolean switchOutput(String newFilename, FFmpegWriter writer) throws FFmpegException;
+
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer)
+            throws FFmpegException, InterruptedException;
 
     public void streamOutput() throws FFmpegException;
 }

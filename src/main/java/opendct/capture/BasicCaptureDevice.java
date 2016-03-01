@@ -156,6 +156,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         canEncodeFilename = sageTVConsumerRunnable.acceptsFilename();
         canEncodeUploadID = sageTVConsumerRunnable.acceptsUploadID();
 
+        // Populates the transcode quality field.
+        getTranscodeQuality();
+
         lastChannel = Config.getString(propertiesDeviceRoot + "last_channel", "-1");
         encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
 
@@ -669,7 +672,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return Config.getString(
                 propertiesDeviceRoot + "transcode_profile",
                 Config.getString("sagetv.new.default_transcode_profile",
-                        "profile_example"));
+                        ""));
     }
 
     /**

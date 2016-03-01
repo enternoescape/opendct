@@ -393,7 +393,13 @@ public class HDHomeRunTuner {
             return;
         }
 
-        set("lockkey", String.valueOf(Math.abs(lockkeyAddress.hashCode())));
+        if (isLockedByThisComputer() == 1) {
+            // There are situations whereby you can end up being on the correct IP address, but
+            // still be unable to do anything.
+            forceClearLockkey();
+        }
+
+        set("lockkey", String.valueOf(Math.abs(lockkeyAddress.hashCode())), Math.abs(lockkeyAddress.hashCode()));
 
         currentLockkey = Math.abs(lockkeyAddress.hashCode());
     }
@@ -413,7 +419,13 @@ public class HDHomeRunTuner {
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
     public void setLockkey(int lockkey) throws IOException, GetSetException {
-        set("lockkey", String.valueOf(Math.abs(lockkey)));
+        if (isLockedByThisComputer() == 1) {
+            // There are situations whereby you can end up being on the correct IP address, but
+            // still be unable to do anything.
+            forceClearLockkey();
+        }
+
+        set("lockkey", String.valueOf(Math.abs(lockkey)), Math.abs(lockkey));
 
         currentLockkey = Math.abs(lockkey);
     }

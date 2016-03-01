@@ -191,10 +191,52 @@ public class Config {
                 properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
             }
 
-            // This is for future required configuration upgrades.
+            // Upgrade config if the version is behind.
+            //int configVersion = getInteger("version.config", VERSION_CONFIG);
+            //configUpgradeCleanup(configVersion);
+            //properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
         }
 
         return logger.exit(true);
+    }
+
+    private static void configUpgradeCleanup(int configVersion) {
+        // Do not use break. That way the changes will cascade.
+
+        HashSet<String> removeEntries = new HashSet<>();
+
+        switch (configVersion) {
+            case 1:
+                logger.info("Upgrading to config version 2...");
+
+                logger.info("Removing hdhr.always_force_lockkey key. It is now per capture device.");
+                properties.remove("hdhr.always_force_lockkey");
+
+                for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                    String key = (String)entry.getKey();
+
+                    if (key.startsWith("sagetv.device.parent.") && key.endsWith(".consumer")) {
+                        logger.info("Removing {} key. It is now per capture device.", key);
+                        removeEntries.add(key);
+                    } else if (key.startsWith("sagetv.device.parent.") && key.endsWith(".channel_scan_consumer")) {
+                        logger.info("Removing {} key. It is now per capture device.", key);
+                        removeEntries.add(key);
+                    }
+                }
+        }
+
+        Properties propertiesMigrate = properties;
+        properties = new Properties();
+        for (Map.Entry<Object, Object> entry : propertiesMigrate.entrySet()) {
+            String key = (String)entry.getKey();
+            String value = (String)entry.getValue();
+
+            if (removeEntries.contains(key)) {
+                continue;
+            }
+
+            properties.setProperty(key, value);
+        }
     }
 
     public static synchronized void clearConfig() {

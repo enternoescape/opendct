@@ -175,10 +175,6 @@ public class NIOSageTVUploadID {
      * @throws IOException If there was a problem writing the bytes to the to the SageTV server socket.
      */
     public void uploadAutoBuffered(long limit, ByteBuffer byteBuffer) throws IOException {
-        /*if (autoOffset > limit) {
-            autoOffset = 0;
-        }*/
-
         if (byteBuffer.remaining() > limit - autoOffset) {
             ByteBuffer slice = byteBuffer.slice();
             slice.limit((int) (limit - autoOffset));

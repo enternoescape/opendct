@@ -51,8 +51,23 @@ public class FFmpegProfileManager {
         }
     }
 
+    /**
+     * Get a profile if it exists.
+     * <p/>
+     * This will also reload the profile from disk if the profile is set to reload on demand.
+     *
+     * @param profile The name of the profile.
+     * @return The profile oor <i>null</i> if the profile doesn't exist.
+     */
     public static FFmpegProfile getEncoderProfile(String profile) {
-        return profiles.get(profile);
+        FFmpegProfile returnValue = profiles.get(profile);
+
+        if (returnValue != null) {
+            // If it is set to not reload, this will return immediately.
+            returnValue.reload();
+        }
+
+        return returnValue;
     }
 
     /**
@@ -71,61 +86,67 @@ public class FFmpegProfileManager {
             String key = setting.getKey();
             String value = setting.getValue();
 
-            if (key.startsWith("dict") && key.length() > 4) {
-                String setKey = key.substring(4);
-                iValue = av_dict_set(dict, setKey, value, 0);
-                if (iValue < 0) {
-                    logger.error("av_dict_set: Error {} while trying to add '{}' with the value '{}'", iValue, setKey, value);
-                }
-            } else {
-                try {
-                    switch (key) {
-                        case "bit_rate":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.bit_rate(iValue);
-                            break;
-                        case "rc_max_rate":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.rc_max_rate(iValue);
-                            break;
-                        case "rc_min_rate":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.rc_min_rate(iValue);
-                            break;
-                        case "me_cmp":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.me_cmp(iValue);
-                            break;
-                        case "me_range":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.me_range(iValue);
-                            break;
-                        case "qmin":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.qmin(iValue);
-                            break;
-                        case "qmax":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.qmax(iValue);
-                            break;
-                        case "gop_size":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.gop_size(iValue);
-                            break;
-                        case "trellis":
-                            iValue = Integer.parseInt(value);
-                            encoderContext.trellis(iValue);
-                            break;
-                        case "deinterlace_filter":
-                        case "progressive_filter":
-                            break;
-                        default:
+
+            try {
+                switch (key) {
+                    case "bit_rate":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.bit_rate(iValue);
+                        break;
+                    case "rc_max_rate":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.rc_max_rate(iValue);
+                        break;
+                    case "rc_min_rate":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.rc_min_rate(iValue);
+                        break;
+                    case "me_cmp":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.me_cmp(iValue);
+                        break;
+                    case "me_range":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.me_range(iValue);
+                        break;
+                    case "qmin":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.qmin(iValue);
+                        break;
+                    case "qmax":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.qmax(iValue);
+                        break;
+                    case "gop_size":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.gop_size(iValue);
+                        break;
+                    case "trellis":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.trellis(iValue);
+                        break;
+                    case "max_b_frames":
+                        iValue = Integer.parseInt(value);
+                        encoderContext.max_b_frames(iValue);
+                        break;
+                    case "deinterlace_filter":
+                    case "progressive_filter":
+                    case "encode_weight":
+                        break;
+                    default:
+                        if (key.startsWith("dict") && key.length() > 4) {
+                            String setKey = key.substring(5);
+                            iValue = av_dict_set(dict, setKey, value, 0);
+                            if (iValue < 0) {
+                                logger.error("av_dict_set: Error {} while trying to add '{}' with the value '{}'", iValue, setKey, value);
+                            }
+                        } else {
                             logger.warn("'{}' was not set to '{}' because it is not an available option.",
                                     key, value);
-                    }
-                } catch (NumberFormatException e) {
-                    logger.error("'{}' could not be parsed into a number for '{}'.", value, key);
+                        }
                 }
+            } catch (NumberFormatException e) {
+                logger.error("'{}' could not be parsed into a number for '{}'.", value, key);
             }
         }
 

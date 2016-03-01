@@ -34,8 +34,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -89,7 +87,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             );
 
     private int uploadIDPort = Config.getInteger("consumer.ffmpeg.upload_id_port", 7818);
-    private final long initBufferedData = 1048576;
+    private final long initBufferedData = 786432;
+
+    private volatile boolean switching = false;
 
     private String currentRecordingQuality;
     private boolean consumeToNull;
@@ -270,6 +270,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     public boolean switchStreamToUploadID(String filename, long bufferSize, int uploadId) {
         stvRecordBufferSize = bufferSize;
 
+        switching = true;
+
         try {
             switchWriter = new FFmpegUploadIDWriter(uploadSocketAddress, filename, uploadId);
 
@@ -285,6 +287,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         } catch (FFmpegException e) {
             logger.error("Unable to SWITCH output to '{}' via upload ID {} => ", filename, uploadId, e);
             return false;
+        } finally {
+            switching = false;
         }
 
         return true;
@@ -293,6 +297,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     @Override
     public boolean switchStreamToFilename(String filename, long bufferSize) {
         stvRecordBufferSize = bufferSize;
+
+        switching = true;
 
         try {
             switchWriter = new FFmpegDirectWriter(filename);
@@ -308,6 +314,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         } catch (FFmpegException e) {
             logger.error("Unable to SWITCH output to '{}' => ", filename, e);
             return false;
+        } finally {
+            switching = false;
         }
 
         return true;
@@ -458,7 +466,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     public class FFmpegDirectWriter implements FFmpegWriter {
         long bytesFlushCounter;
 
-        Future<Integer> future;
+        //Future<Integer> future;
         BlockingQueue<ByteBuffer> buffers;
         CompletionHandler<Integer, Object> handler;
         AsynchronousFileChannel asyncFileChannel;
@@ -467,11 +475,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         boolean firstWrite;
 
         public FFmpegDirectWriter(final String filename) throws IOException {
-            future = null;
+            //future = null;
             buffers = new ArrayBlockingQueue<ByteBuffer>(3);
 
-            buffers.add(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
-            buffers.add(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
             buffers.add(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
 
             asyncFileChannel = AsynchronousFileChannel.open(Paths.get(filename), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
@@ -485,7 +491,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 @Override
                 public void completed(Integer result, Object attachment) {
 
-                    bytesStreamed.addAndGet(result);
+                    long currentBytes = bytesStreamed.addAndGet(result);
+
+                    if (currentBytes > initBufferedData) {
+                        synchronized (streamingMonitor) {
+                            streamingMonitor.notifyAll();
+                        }
+                    }
 
                     try {
                         buffers.put((ByteBuffer)attachment);
@@ -514,7 +526,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 firstWrite = false;
             }
 
-            while (future != null && future.isDone()) {
+            /*while (future != null && future.isDone()) {
                 try {
                     future.get();
                 } catch (InterruptedException e) {
@@ -526,11 +538,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 if (future.isDone()) {
                     future = null;
                 }
-            }
+            }*/
 
             int bytesToStream = data.remaining();
 
-            if (minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush) {
+            if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush) || switching) {
                 try {
                     asyncFileChannel.force(true);
                 } catch (IOException e) {
@@ -599,19 +611,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                 asyncFileChannel.write(writeBuffer, autoOffset, writeBuffer, handler);
             } catch (InterruptedException e) {
-                future = asyncFileChannel.write(data, autoOffset);
+                //future = asyncFileChannel.write(data, autoOffset);
+                return -1;
             }
 
             autoOffset += savedSize;
-
             bytesFlushCounter += savedSize;
-            long currentBytes = bytesStreamed.addAndGet(savedSize);
-
-            if (currentBytes > initBufferedData) {
-                synchronized (streamingMonitor) {
-                    streamingMonitor.notifyAll();
-                }
-            }
 
             return bytesToStream;
         }

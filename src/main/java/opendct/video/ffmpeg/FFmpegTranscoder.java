@@ -256,10 +256,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     ctx.encodeProfile = null;
                 }
             } else {
-                // Everything needed to make a correct decision is not available. Remux only.
-                logger.warn("ctx.videoCodecCtx was null or there was no preferred video when" +
-                        " trying to get permission to transcode. Remuxing instead.");
-                ctx.encodeProfile = null;
+                if (ctx.encodeProfile != null) {
+                    // Everything needed to make a correct decision is not available. Remux only.
+                    logger.warn("ctx.videoCodecCtx was null or there was no preferred video when" +
+                            " trying to get permission to transcode. Remuxing instead.");
+                    ctx.encodeProfile = null;
+                }
             }
 
             interlaced = ctx.encodeProfile != null &&
@@ -353,6 +355,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         logger.info("Initialized FFmpeg transcoder stream output.");
         firstRun = false;
+
     }
 
     private void deallocFilterGraphs() {

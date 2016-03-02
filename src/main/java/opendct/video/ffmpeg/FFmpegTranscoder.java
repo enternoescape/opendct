@@ -355,7 +355,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         logger.info("Initialized FFmpeg transcoder stream output.");
         firstRun = false;
-
     }
 
     private void deallocFilterGraphs() {

@@ -25,6 +25,8 @@ public class Frequency {
 
     /**
      * Create a new frequency.
+     * <p/>
+     * FREQUENCY is calculated as the average of the provided low frequency and the high frequency.
      *
      * @param standard The video standard that should be in use on this frequency.
      * @param channel The channel number associated with this frequency.

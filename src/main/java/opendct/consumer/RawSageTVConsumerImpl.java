@@ -17,6 +17,8 @@
 package opendct.consumer;
 
 import opendct.config.Config;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.SeekableCircularBuffer;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.java.VideoUtil;
@@ -587,6 +589,17 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
      */
     public boolean isStreaming(long timeout) {
         return !stalled;
+    }
+
+
+    @Override
+    public DeviceOption[] getOptions() {
+        return new DeviceOption[0];
+    }
+
+    @Override
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+
     }
 }
 

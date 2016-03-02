@@ -29,15 +29,6 @@ import static org.bytedeco.javacpp.avutil.*;
 public class FFmpegStreamDetection {
     private static final Logger logger = LogManager.getLogger(FFmpegStreamDetection.class);
 
-    // This is the smallest probe size allowed.
-    private static long minProbeSize = FFmpegConfig.getMinProbeSize();
-
-    // This is the smallest probe duration allowed.
-    private static long minAnalyzeDuration = FFmpegConfig.getMinAnalyseDuration();
-
-    // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
-    private static long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
-
     /**
      * Detect at least one video and all audio streams for a program.
      * <p/>
@@ -60,6 +51,15 @@ public class FFmpegStreamDetection {
     public static boolean detectStreams(FFmpegContext ctx, String nativeFilename, String error[]) throws FFmpegException {
 
         long startTime = System.currentTimeMillis();
+
+        // This is the smallest probe size allowed.
+        final long minProbeSize = FFmpegConfig.getMinProbeSize();
+
+        // This is the smallest probe duration allowed.
+        final long minAnalyzeDuration = FFmpegConfig.getMinAnalyseDuration();
+
+        // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
+        final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
 
         if (error == null || error.length == 0) {
             // Nothing will return in this case, but this also means we don't need to check for this
@@ -227,29 +227,5 @@ public class FFmpegStreamDetection {
         logger.debug("FFmpeg stream detection done in {}ms,", endTime - startTime);
 
         return true;
-    }
-
-    public static long getMinProbeSize() {
-        return minProbeSize;
-    }
-
-    public static void setMinProbeSize(long minProbeSize) {
-        FFmpegStreamDetection.minProbeSize = minProbeSize;
-    }
-
-    public static long getMinAnalyzeDuration() {
-        return minAnalyzeDuration;
-    }
-
-    public static void setMinAnalyzeDuration(long minAnalyzeDuration) {
-        FFmpegStreamDetection.minAnalyzeDuration = minAnalyzeDuration;
-    }
-
-    public static long getMaxAnalyzeDuration() {
-        return maxAnalyzeDuration;
-    }
-
-    public static void setMaxAnalyzeDuration(long maxAnalyzeDuration) {
-        FFmpegStreamDetection.maxAnalyzeDuration = maxAnalyzeDuration;
     }
 }

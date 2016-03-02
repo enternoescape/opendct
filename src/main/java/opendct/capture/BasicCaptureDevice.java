@@ -23,7 +23,6 @@ import opendct.consumer.FFmpegSageTVConsumerImpl;
 import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
 import opendct.sagetv.SageTVManager;
-import opendct.sagetv.SageTVPoolManager;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -165,6 +164,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
         offlineChannelScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
+        //encoderLineup must be configured elsewhere or the lineup name will be "unknown."
+
         logger.exit();
     }
 
@@ -305,14 +306,14 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
     /**
      * Sets the current encoder merit value and saves it.
+     * <p/>
+     * Don't forget to call SageTVPoolManager.resortMerits(encoderPoolName) to resort the merits.
      *
      * @param merit New merit value.
      */
     public void setMerit(int merit) {
         Config.setInteger("encoder_merit", merit);
         encoderMerit = merit;
-
-        SageTVPoolManager.resortMerits(encoderPoolName);
     }
 
     /**
@@ -326,14 +327,15 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
     /**
      * Sets the current encoder pool value and saves it.
+     * <p/>
+     * Do not forget to call SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName)
+     * after changing this value or the the capture device will remain in the old pool.
      *
      * @param poolName The new name of the tuner pool.
      */
     public void setEncoderPoolName(String poolName) {
         Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
         encoderPoolName = poolName;
-
-        SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName);
     }
 
     /**
@@ -350,6 +352,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      * <p/>
      * This is currently a per parent setting, so if this value is changed here, on restart, it will
      * be changed for all devices on this parent device.
+     * <p/>
+     * Don't forget to add this capture device to the offline scanning pool or it will not be used
+     * for offline scanning.
      *
      * @param offlineChannelScan <i>true</i> to enable offline channel scanning.
      */
@@ -516,13 +521,23 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return "ERROR";
     }
 
+    /**
+     * Get the name of the channel lineup for this encoder.
+     *
+     * @return The name of the channel lineup in use on this encoder.
+     */
     public String getChannelLineup() {
         return encoderLineup;
     }
 
+    /**
+     * Set the name of the channel lineup for this encoder.
+     *
+     * @param lineup The name of the channel Lineup.
+     */
     public void setChannelLineup(String lineup) {
-        encoderLineup = lineup;
-        Config.setString(propertiesDeviceParent + "lineup", lineup.toLowerCase());
+        encoderLineup = lineup.toLowerCase();
+        Config.setString(propertiesDeviceParent + "lineup", encoderLineup);
     }
 
     /**
@@ -538,7 +553,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     public boolean switchEncoding(String channel, String filename, long recordBufferSize) {
         logger.entry();
         if (!canSwitch) {
-            logger.error("'{}' was requested to switch, but the consumer thread does not support it.", BasicCaptureDevice.class.toString());
+            logger.error("'{}' was requested to switch, but the consumer thread" +
+                    " does not support it.", BasicCaptureDevice.class.toString());
             return logger.exit(false);
         }
 
@@ -554,7 +570,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 recordingStartTime.getAndSet(System.currentTimeMillis());
                 recordLastFilename = filename;
             } else {
-                logger.error("'{}' was requested to switch, but the consumer thread is null.", BasicCaptureDevice.class.toString());
+                logger.error("'{}' was requested to switch, but the consumer thread is null.",
+                        BasicCaptureDevice.class.toString());
                 returnValue = false;
             }
         } finally {
@@ -582,7 +599,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     public boolean switchEncoding(String channel, String filename, long recordBufferSize, int uploadID, InetAddress remoteAddress) {
         logger.entry();
         if (!canSwitch) {
-            logger.error("'{}' was requested to switch, but the consumer thread does not support it.", BasicCaptureDevice.class.toString());
+            logger.error("'{}' was requested to switch, but the consumer thread" +
+                    " does not support it.", BasicCaptureDevice.class.toString());
             return logger.exit(false);
         }
 
@@ -599,7 +617,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 recordLastFilename = filename;
                 recordLastUploadID = uploadID;
             } else {
-                logger.error("'{}' was requested to switch, but the consumer thread is null.", BasicCaptureDevice.class.toString());
+                logger.error("'{}' was requested to switch, but the consumer thread is null.",
+                        BasicCaptureDevice.class.toString());
+
                 returnValue = false;
             }
         } finally {
@@ -651,7 +671,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 sageTVConsumerRunnable.setEncodingQuality(recordEncodingQuality);
             }
             sageTVConsumerThread = new Thread(sageTVConsumerRunnable);
-            sageTVConsumerThread.setName(sageTVConsumerRunnable.getClass().getSimpleName() + "-" + sageTVConsumerThread.getId() + ":" + encoderName);
+            sageTVConsumerThread.setName(sageTVConsumerRunnable.getClass().getSimpleName() + "-" +
+                    sageTVConsumerThread.getId() + ":" + encoderName);
+
             sageTVConsumerThread.start();
 
         } catch (Exception e) {

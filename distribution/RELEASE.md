@@ -412,3 +412,20 @@
 > being used to access the device. HTTP tuning can cause the device to be locked by the local IP
 > address, but will not unlock or allow it to be changed even though we are on the correct IP
 > address.
+
+#### 0.4.30-Beta
+> *HDHomeRun ongoing discovery only sends one packet per interval after the first 3 in a row. This
+> helps prevent the UDP traffic from being dropped because of all of the responses.
+
+> *Changed periodic flushing so it only happens if it looks like the file isn't growing.
+
+> *Changed automatic lineup creation for ATSC HDHomeRun capture devices so they create a new
+> lineup per parent device instead of per tuning type. Automatic pooling also separates ATSC capture
+> devices by parent device. This is required because some people have completely different lineups
+> between their devices of the same type.
+
+> *Internal: Moved offline scanning registration to SageTVManager.
+
+> *Internal: Cleaned up the layout of several methods.
+
+> *Internal: Added DeviceOptions to the FFmpeg consumers.

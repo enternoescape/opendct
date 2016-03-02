@@ -260,6 +260,8 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      */
     public void setOfflineChannelScan(boolean offlineChannelScan);
 
+
+
     /**
      * Returns the name of the tuner pool for this encoder.
      *
@@ -514,7 +516,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     /**
      * Change the channel lineup.
      *
-     * @param lineup The namme of the channel Lineup.
+     * @param lineup The name of the channel Lineup.
      */
     public void setChannelLineup(String lineup);
 

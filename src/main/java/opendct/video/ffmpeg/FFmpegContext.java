@@ -368,7 +368,6 @@ public class FFmpegContext {
         }
     }
 
-
     public void setProbeData(String filename) {
         if (filename != null && (inputFilename == null || !inputFilename.equals(filename))) {
             long fileLength = new File(filename).length();

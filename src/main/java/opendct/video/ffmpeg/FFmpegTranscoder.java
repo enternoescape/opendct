@@ -372,27 +372,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
     }
 
-    private static void logPacket(AVFormatContext fmt_ctx, AVPacket pkt, String tag) {
-        if (logger.isTraceEnabled()) {
-            AVRational tb = fmt_ctx.streams(pkt.stream_index()).time_base();
-
-            logger.trace(String.format("%s: pts:%s pts_time:%s dts:%s dts_time:%s duration:%s duration_time:%s stream_index:%d",
-                    tag,
-                    av_ts2str(pkt.pts()), av_ts2timestr(pkt.pts(), tb),
-                    av_ts2str(pkt.dts()), av_ts2timestr(pkt.dts(), tb),
-                    av_ts2str(pkt.duration()), av_ts2timestr(pkt.duration(), tb),
-                    pkt.stream_index()));
-        }
-    }
-
-    public static String av_ts2str(long pts) {
-        return pts == AV_NOPTS_VALUE ? "NOPTS" : Long.toString(pts);
-    }
-
-    public static String av_ts2timestr(long pts, AVRational tb) {
-        return pts == AV_NOPTS_VALUE ? "NOPTS" : String.format("%.6g", av_q2d(tb) * pts);
-    }
-
     private boolean fastDeinterlaceDetection() throws FFmpegException {
 
         int ret = avcodec_open2(ctx.videoCodecCtx,

@@ -16,7 +16,6 @@
 
 package opendct.video.ffmpeg;
 
-import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.PointerPointer;
@@ -30,28 +29,14 @@ import static org.bytedeco.javacpp.avutil.*;
 public class FFmpegStreamDetection {
     private static final Logger logger = LogManager.getLogger(FFmpegStreamDetection.class);
 
-    //TODO: Provide all of these as DeviceOptions.
-
     // This is the smallest probe size allowed.
-    private static long minProbeSize =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_probe_size", 165440),
-                    82720
-            );
+    private static long minProbeSize = FFmpegConfig.getMinProbeSize();
 
     // This is the smallest probe duration allowed.
-    private static long minAnalyzeDuration =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_analyze_duration", 165440),
-                    82720
-            );
+    private static long minAnalyzeDuration = FFmpegConfig.getMinAnalyseDuration();
 
     // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
-    private static long maxAnalyzeDuration =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.max_analyze_duration", 5000000),
-                    5000000
-            );
+    private static long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
 
     /**
      * Detect at least one video and all audio streams for a program.

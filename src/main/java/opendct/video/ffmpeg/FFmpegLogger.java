@@ -60,7 +60,9 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
                 if (message.startsWith("[")) {
                     int end = message.indexOf(" @ ");
-                    if (end > 0) {
+                    int rightBracket = message.indexOf("]");
+
+                    if (end > 0 && end < rightBracket) {
                         className = "ffmpeg." + message.substring(1, end);
                         if (threadRename && message.length() > end + 3 + 18) {
                             end += 3;

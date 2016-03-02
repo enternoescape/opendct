@@ -180,11 +180,13 @@ public class SageTVManager implements PowerEventListener {
     public static void removeCaptureDevice(int captureDeviceId) {
         logger.entry(captureDeviceId);
 
+        CaptureDevice captureDevice = null;
+
         captureDeviceNameToCaptureDeviceLock.writeLock().lock();
         captureDeviceToFilesLock.writeLock().lock();
 
         try {
-            CaptureDevice captureDevice = captureDeviceIdToCaptureDevice.get(captureDeviceId);
+            captureDevice = captureDeviceIdToCaptureDevice.get(captureDeviceId);
 
             if (captureDevice == null) {
                 logger.exit();
@@ -210,6 +212,15 @@ public class SageTVManager implements PowerEventListener {
         } finally {
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();
             captureDeviceToFilesLock.writeLock().lock();
+        }
+
+        if (captureDevice != null) {
+            ChannelManager.removeDeviceFromOfflineScan(
+                    captureDevice.getChannelLineup(),
+                    captureDevice.getEncoderName());
+
+            SageTVPoolManager.removePoolCaptureDevice(
+                    captureDevice.getEncoderName());
         }
 
         logger.exit();

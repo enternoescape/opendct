@@ -108,7 +108,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private int currentUploadID = 0;
     private long stvRecordBufferSize = 0;
     private final Object streamingMonitor = new Object();
-    private int autoOffset = 0;
     private InetSocketAddress uploadSocketAddress = null;
 
     private String stateMessage;
@@ -465,6 +464,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     public class FFmpegDirectWriter implements FFmpegWriter {
         long bytesFlushCounter;
+        long autoOffset;
 
         //Future<Integer> future;
         BlockingQueue<ByteBuffer> buffers;
@@ -484,12 +484,53 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             directFilename = filename;
             recordingFile = new File(directFilename);
 
+            autoOffset = 0;
             bytesFlushCounter = 0;
             firstWrite = false;
 
             handler = new CompletionHandler<Integer, Object>() {
                 @Override
                 public void completed(Integer result, Object attachment) {
+
+                    if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush)) {
+                        try {
+                            asyncFileChannel.force(false);
+                        } catch (IOException e) {
+                            logger.info("Unable to flush output => ", e);
+                        }
+                        bytesFlushCounter = 0;
+
+                        // According to many sources, if the file is deleted an IOException will
+                        // not be thrown. This handles the possible scenario. This also means
+                        // previously written data is now lost.
+
+                        if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0)) {
+                            try {
+                                asyncFileChannel.close();
+                            } catch (Exception e) {
+                                logger.debug("Exception while closing missing file => ", e);
+                            }
+
+                            while (!ctx.isInterrupted()) {
+                                try {
+                                    asyncFileChannel = AsynchronousFileChannel.open(Paths.get(directFilename), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+                                    bytesStreamed.set(0);
+                                    logger.warn("The file '{}' is missing and was re-created.");
+                                } catch (Exception e) {
+                                    logger.error("The file '{}' is missing and cannot be re-created => ",
+                                            directFilename, e);
+
+                                    try {
+                                        Thread.sleep(500);
+                                    } catch (InterruptedException e1) {
+                                        logger.debug("Interrupted while trying to re-create recording file.");
+                                        break;
+                                    }
+                                    // Continue to re-try until interrupted.
+                                }
+                            }
+                        }
+                    }
 
                     long currentBytes = bytesStreamed.addAndGet(result);
 
@@ -542,46 +583,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             int bytesToStream = data.remaining();
 
-            if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush) || switching) {
-                try {
-                    asyncFileChannel.force(true);
-                } catch (IOException e) {
-                    logger.info("Unable to flush output => ", e);
-                }
-                bytesFlushCounter = 0;
-
-                // According to many sources, if the file is deleted an IOException will
-                // not be thrown. This handles the possible scenario. This also means
-                // previously written data is now lost.
-
-                if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0)) {
-                    try {
-                        asyncFileChannel.close();
-                    } catch (Exception e) {
-                        logger.debug("Exception while closing missing file => ", e);
-                    }
-
-                    while (!ctx.isInterrupted()) {
-                        try {
-                            asyncFileChannel = AsynchronousFileChannel.open(Paths.get(directFilename), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-                            bytesStreamed.set(0);
-                            logger.warn("The file '{}' is missing and was re-created.");
-                        } catch (Exception e) {
-                            logger.error("The file '{}' is missing and cannot be re-created => ",
-                                    directFilename, e);
-
-                            try {
-                                Thread.sleep(500);
-                            } catch (InterruptedException e1) {
-                                logger.debug("Interrupted while trying to re-create recording file.");
-                                break;
-                            }
-                            // Continue to re-try until interrupted.
-                        }
-                    }
-                }
-            }
-
             if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + bytesToStream) {
                 ByteBuffer slice = data.slice();
                 slice.limit((int) (stvRecordBufferSize - autoOffset));
@@ -600,7 +601,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 autoOffset = 0;
             }
 
-            int savedSize = data.remaining();
+            //int savedSize = data.remaining();
 
             try {
                 ByteBuffer writeBuffer = buffers.take();
@@ -615,8 +616,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 return -1;
             }
 
-            autoOffset += savedSize;
-            bytesFlushCounter += savedSize;
+            autoOffset += bytesToStream;
+            bytesFlushCounter += bytesToStream;
 
             return bytesToStream;
         }

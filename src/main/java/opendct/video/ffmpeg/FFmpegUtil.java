@@ -178,7 +178,8 @@ public abstract class FFmpegUtil {
         //
         // This prevents FFmpeg messages like this: Ignoring attempt to set invalid timebase 1/0 for st:1
         //
-        avsOutput.time_base(av_add_q(codecCtxInput.time_base(), av_make_q(0, 1)));
+        //avsOutput.time_base(av_add_q(codecCtxInput.time_base(), av_make_q(0, 1)));
+        avsOutput.time_base(av_make_q(1, 90000));
 
         codecCtxOutput.codec_tag(0);
 

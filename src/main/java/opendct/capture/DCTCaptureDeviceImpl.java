@@ -318,12 +318,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
-        logger.debug("Initializing RTSP client...");
-        rtspClient = getNewRTSPClient();
-
-        logger.debug("Getting a port for incoming RTP data...");
-        rtpLocalPort = Config.getFreeRTSPPort(encoderName);
-
         logger.info("Encoder Manufacturer: '{}'," +
                 " Number: {}," +
                 " Remote IP: '{}'," +

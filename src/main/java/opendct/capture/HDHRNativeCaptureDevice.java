@@ -169,6 +169,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     " work => ", e);
         }
 
+        // =========================================================================================
+        // Configure channel lineup
+        // =========================================================================================
+
         if (isTuneLegacy()) {
             // This way we don't end up with a device that doesn't have a lineup.xml file becoming the primary source.
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
@@ -211,12 +215,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             ChannelManager.saveChannelLineup(encoderLineup);
 
         }
-
-        logger.debug("Initializing RTSP client...");
-        rtspClient = getNewRTSPClient();
-
-        logger.debug("Getting a port for incoming RTP data...");
-        rtpLocalPort = Config.getFreeRTSPPort(encoderName);
 
         httpProducing = false;
 

@@ -31,10 +31,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class HTTPCaptureDeviceServices {
     private final Logger logger = LogManager.getLogger(HTTPCaptureDeviceServices.class);
 
-    protected URL httpURL[];
-    protected HTTPProducer httpProducerRunnable = null;
-    protected Thread httpProducerThread = null;
-    protected final ReentrantReadWriteLock httpProducerLock = new ReentrantReadWriteLock(true);
+    private URL httpURL[];
+    private HTTPProducer httpProducerRunnable = null;
+    private Thread httpProducerThread = null;
+    private final ReentrantReadWriteLock httpProducerLock = new ReentrantReadWriteLock(true);
 
     /**
      * Start receiving HTTP content from a single or list of URL's.
@@ -176,5 +176,17 @@ public class HTTPCaptureDeviceServices {
 
 
         return logger.exit(returnValue);
+    }
+
+    public URL[] getHttpURL() {
+        return httpURL;
+    }
+
+    public HTTPProducer getHttpProducerRunnable() {
+        return httpProducerRunnable;
+    }
+
+    public Thread getHttpProducerThread() {
+        return httpProducerThread;
     }
 }

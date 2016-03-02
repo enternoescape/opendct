@@ -58,11 +58,6 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 initMessage = trim(bytes);
                 message = initMessage;
 
-                if (lastMessage != null && lastMessage.equals(initMessage)) {
-                    repeated += 1;
-                    return;
-                }
-
                 if (message.startsWith("[")) {
                     int end = message.indexOf(" @ ");
                     if (end > 0) {
@@ -149,6 +144,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
             message = initMessage;
         }
+
 
         switch (className) {
             case "libx264":

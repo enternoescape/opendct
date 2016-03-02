@@ -174,7 +174,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         // =========================================================================================
 
         if (isTuneLegacy()) {
-            // This way we don't end up with a device that doesn't have a lineup.xml file becoming the primary source.
+            // This way we don't end up with a device that doesn't have a lineup.xml file becoming
+            // the primary source.
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
                 setChannelLineup(Config.getString(
                         propertiesDeviceParent + "lineup",
@@ -200,14 +201,24 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             httpServices = new HTTPCaptureDeviceServices();
         }
 
-        if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
+        if (!ChannelManager.hasChannels(encoderLineup) &&
+                encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
+
             ChannelLineup newChannelLineup;
 
             if (isTuneLegacy()) {
                 // There are no sources to available on legacy devices.
-                newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.STATIC, device.getIpAddress().getHostAddress());
+                newChannelLineup = new ChannelLineup(
+                        encoderLineup,
+                        encoderParentName,
+                        ChannelSourceType.STATIC,
+                        device.getIpAddress().getHostAddress());
             } else {
-                newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.HDHOMERUN, device.getIpAddress().getHostAddress());
+                newChannelLineup = new ChannelLineup(
+                        encoderLineup,
+                        encoderParentName,
+                        ChannelSourceType.HDHOMERUN,
+                        device.getIpAddress().getHostAddress());
             }
 
             ChannelManager.updateChannelLineup(newChannelLineup);
@@ -1062,7 +1073,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     private TVChannel updateChannelMapping(TVChannel tvChannel) {
 
         if (tvChannel == null) {
-            return tvChannel;
+            return null;
         }
 
         try {

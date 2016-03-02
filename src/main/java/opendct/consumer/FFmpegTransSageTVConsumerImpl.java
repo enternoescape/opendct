@@ -463,24 +463,28 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public class FFmpegDirectWriter implements FFmpegWriter {
-        long bytesFlushCounter;
-        long autoOffset;
+        private volatile long bytesFlushCounter;
+        private volatile long autoOffset;
 
         //Future<Integer> future;
-        BlockingQueue<ByteBuffer> buffers;
-        CompletionHandler<Integer, Object> handler;
-        AsynchronousFileChannel asyncFileChannel;
-        String directFilename;
-        File recordingFile;
-        boolean firstWrite;
+        private BlockingQueue<ByteBuffer> buffers;
+        private CompletionHandler<Integer, Object> handler;
+        private AsynchronousFileChannel asyncFileChannel;
+        private String directFilename;
+        private File recordingFile;
+        private boolean firstWrite;
 
         public FFmpegDirectWriter(final String filename) throws IOException {
             //future = null;
-            buffers = new ArrayBlockingQueue<ByteBuffer>(3);
+            buffers = new ArrayBlockingQueue<>(3);
 
             buffers.add(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
 
-            asyncFileChannel = AsynchronousFileChannel.open(Paths.get(filename), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+            asyncFileChannel = AsynchronousFileChannel.open(
+                    Paths.get(filename),
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE);
+
             directFilename = filename;
             recordingFile = new File(directFilename);
 
@@ -492,13 +496,26 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 @Override
                 public void completed(Integer result, Object attachment) {
 
+                    try {
+                        buffers.put((ByteBuffer)attachment);
+                    } catch (InterruptedException e) {
+                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
+                    }
+
                     if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush)) {
-                        try {
-                            asyncFileChannel.force(false);
-                        } catch (IOException e) {
-                            logger.info("Unable to flush output => ", e);
-                        }
+
                         bytesFlushCounter = 0;
+
+                        // If the file should have some data, but it doesn't, flush the data to disk
+                        // to verify that the file in fact taking data.
+
+                        if (bytesStreamed.get() > 0 && recordingFile.length() == 0) {
+                            try {
+                                asyncFileChannel.force(true);
+                            } catch (IOException e) {
+                                logger.info("Unable to flush output => ", e);
+                            }
+                        }
 
                         // According to many sources, if the file is deleted an IOException will
                         // not be thrown. This handles the possible scenario. This also means
@@ -513,9 +530,14 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                             while (!ctx.isInterrupted()) {
                                 try {
-                                    asyncFileChannel = AsynchronousFileChannel.open(Paths.get(directFilename), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+                                    asyncFileChannel = AsynchronousFileChannel.open(
+                                            Paths.get(directFilename),
+                                            StandardOpenOption.WRITE,
+                                            StandardOpenOption.CREATE);
+
                                     bytesStreamed.set(0);
-                                    logger.warn("The file '{}' is missing and was re-created.");
+                                    logger.warn("The file '{}' is missing and was re-created.",
+                                            directFilename);
                                 } catch (Exception e) {
                                     logger.error("The file '{}' is missing and cannot be re-created => ",
                                             directFilename, e);
@@ -538,12 +560,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         synchronized (streamingMonitor) {
                             streamingMonitor.notifyAll();
                         }
-                    }
-
-                    try {
-                        buffers.put((ByteBuffer)attachment);
-                    } catch (InterruptedException e) {
-                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
                     }
                 }
 

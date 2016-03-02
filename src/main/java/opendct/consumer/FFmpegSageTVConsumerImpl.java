@@ -750,13 +750,20 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 }
 
                 if (minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush) {
-                    currentFileOutputStream.flush();
                     bytesFlushCounter = 0;
+
+                    File recordingFile = new File(currentRecordingFilename);
+
+                    // If the file should have some data, but it doesn't, flush the data to disk
+                    // to verify that the file in fact taking data.
+
+                    if (bytesStreamed.get() > 0 && recordingFile.length() == 0) {
+                        currentFileOutputStream.flush();
+                    }
 
                     // According to many sources, if the file is deleted an IOException will not be
                     // thrown. This handles the possible scenario. This also means previously
                     // written data is now lost.
-                    File recordingFile = new File(currentRecordingFilename);
 
                     if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0) ) {
                         try {

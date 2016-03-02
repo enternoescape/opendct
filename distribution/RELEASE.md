@@ -387,16 +387,16 @@
 > come in a non-standard RTP frame size from the tuner.
 
 > *The consumer is now set per capture device. After running OpenDCT for about 30 seconds and then
-> stopping it. Change sagetv.device.<unique_id>.consumer to 
+> stopping it. Change sagetv.device.\<unique_id\>.consumer to 
 > opendct.consumer.FFmpegTransSageTVConsumerImpl on the capture devices that you want to use the new
 > software transcoding feature for that capture device.
 
 > *Software transcoding is now available as an experimental feature. Change
-> sagetv.device.<unique_id>.consumer to opendct.consumer.FFmpegTransSageTVConsumerImpl to enable it.
+> sagetv.device.\<unique_id\>.consumer to opendct.consumer.FFmpegTransSageTVConsumerImpl to enable it.
 > The transcoding profiles are per capture device and are not set by default. When no transcoding
 > profile is set, the stream is only remuxed. 
 
-> *Set the software transcoding profile by changing sagetv.device.<unique_id>.transcode_profile to
+> *Set the software transcoding profile by changing sagetv.device.\<unique_id\>.transcode_profile to
 > one of the available profiles are stored under C:\ProgramData\OpenDCT\config\transcode on Windows
 > and /etc/opendct/conf/transcode on Linux. See profile_example.properties for help on how you can
 > create your own. Do not include the .properties extension when setting the profile.

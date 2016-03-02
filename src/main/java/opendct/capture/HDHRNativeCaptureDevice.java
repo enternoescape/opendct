@@ -58,7 +58,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
     private final ConcurrentHashMap<String, DeviceOption> deviceOptions;
     private BooleanDeviceOption forceExternalUnlock;
-    private boolean offlineScan;
 
     private HTTPCaptureDeviceServices httpServices;
     private HTTPProducer httpProducer;
@@ -99,37 +98,31 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         // =========================================================================================
         // Initialize and configure device options.
         // =========================================================================================
-        offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
         deviceOptions = new ConcurrentHashMap<>();
 
-        try {
-            forceExternalUnlock = new BooleanDeviceOption(
-                    Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false),
-                    false,
-                    "Always Force Unlock",
-                    propertiesDeviceRoot + "always_force_external_unlock",
-                    "This will allow the program to always override the HDHomeRun lock when" +
-                            " SageTV requests a channel to be tuned."
-            );
+        while(true) {
+            try {
+                forceExternalUnlock = new BooleanDeviceOption(
+                        Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false),
+                        false,
+                        "Always Force Unlock",
+                        propertiesDeviceRoot + "always_force_external_unlock",
+                        "This will allow the program to always override the HDHomeRun lock when" +
+                                " SageTV requests a channel to be tuned."
+                );
 
-            /*offlineScan = new BooleanDeviceOption(
-                    Config.getBoolean(propertiesDeviceParent + "offline_scan", false),
-                    false,
-                    "Offline Scanning",
-                    propertiesDeviceRoot + "offline_scan",
-                    "Enable this tuner to be included in offline activities that require use of" +
-                            " the tuner when SageTV is not using it. These activities mostly" +
-                            " involve channel scanning and will yield to SageTV the instant a" +
-                            " tuning request is received."
-            );*/
+                Config.mapDeviceOptions(
+                        deviceOptions,
+                        forceExternalUnlock
+                );
+            } catch (DeviceOptionException e) {
+                logger.warn("Invalid options. Reverting to defaults => ", e);
+                Config.setBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
+                continue;
+            }
 
-            Config.mapDeviceOptions(
-                    deviceOptions,
-                    forceExternalUnlock
-            );
-        } catch (DeviceOptionException e) {
-            throw new CaptureDeviceLoadException(e);
+            break;
         }
 
         // =========================================================================================
@@ -219,10 +212,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         }
 
-        if (offlineScan) {
-            ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
-        }
-
         logger.debug("Initializing RTSP client...");
         rtspClient = getNewRTSPClient();
 
@@ -248,7 +237,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 discoveredDeviceParent.getLocalAddress(),
                 (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN),
                 encoderLineup,
-                offlineScan,
+                offlineChannelScan,
                 rtpLocalPort);
     }
 

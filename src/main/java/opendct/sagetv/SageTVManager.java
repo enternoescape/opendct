@@ -18,6 +18,7 @@ package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceType;
+import opendct.channel.ChannelManager;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
@@ -153,6 +154,12 @@ public class SageTVManager implements PowerEventListener {
 
         if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
             SageTVPoolManager.resortMerits(captureDevice.getEncoderPoolName());
+        }
+
+        if (captureDevice.isOfflineChannelScan()) {
+            ChannelManager.addDeviceToOfflineScan(
+                    captureDevice.getChannelLineup(),
+                    captureDevice.getEncoderName());
         }
 
         logger.exit();

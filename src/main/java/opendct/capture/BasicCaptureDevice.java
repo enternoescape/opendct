@@ -66,6 +66,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected String encoderPoolName = "";
     protected String encoderLineup = "unknown";
 
+    protected boolean offlineChannelScan;
+
     // Pre-pend this value for saving and getting properties related to just this tuner.
     protected final String propertiesDeviceRoot;
 
@@ -161,6 +163,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         lastChannel = Config.getString(propertiesDeviceRoot + "last_channel", "-1");
         encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
+        offlineChannelScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
         logger.exit();
     }
@@ -331,6 +334,28 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         encoderPoolName = poolName;
 
         SageTVPoolManager.addPoolCaptureDevice(encoderPoolName, encoderName);
+    }
+
+    /**
+     * Is this capture device allowed to participate in offline scanning?
+     *
+     * @return <i>true</i> if it is allowed.
+     */
+    public boolean isOfflineChannelScan() {
+        return offlineChannelScan;
+    }
+
+    /**
+     * Sets the offline channel scanning mode.
+     * <p/>
+     * This is currently a per parent setting, so if this value is changed here, on restart, it will
+     * be changed for all devices on this parent device.
+     *
+     * @param offlineChannelScan <i>true</i> to enable offline channel scanning.
+     */
+    public void setOfflineChannelScan(boolean offlineChannelScan) {
+        Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
+        this.offlineChannelScan = offlineChannelScan;
     }
 
     /**

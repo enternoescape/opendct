@@ -116,6 +116,10 @@ public class HDHomeRunDevice {
         return deviceId;
     }
 
+    public String getDeviceIdHex() {
+        return Integer.toHexString(deviceId).toUpperCase();
+    }
+
     protected void setDeviceId(int deviceId) {
         this.deviceId = deviceId;
     }

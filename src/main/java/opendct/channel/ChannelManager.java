@@ -63,8 +63,8 @@ public class ChannelManager implements PowerEventListener {
     private static Thread updateThread;
     private static boolean noOfflineScan = false;
 
-    final private static boolean autoMapQamReference = Config.getBoolean("channels.qam.automap_reference_lookup", true);
-    final private static boolean autoMapQamTuning = Config.getBoolean("channels.qam.automap_tuning_lookup", false);
+    private static boolean autoMapQamReference = Config.getBoolean("channels.qam.automap_reference_lookup", true);
+    private static boolean autoMapQamTuning = Config.getBoolean("channels.qam.automap_tuning_lookup", false);
 
     /**
      * Returns the offline channel scan object for the provided name.
@@ -706,6 +706,51 @@ public class ChannelManager implements PowerEventListener {
         }
 
         logger.exit();
+    }
+
+    /**
+     * Is auto-mapping of QAM channels by reference allowed?
+     * <p/>
+     * This allows the autoDctToQamMap method to be allowed to get the frequency and program of a
+     * desired channel directly from any DCT channel lineup.
+     *
+     * @return <i>true</i> if this is allowed.
+     */
+    public static boolean isAutoMapQamReference() {
+        return autoMapQamReference;
+    }
+
+    /**
+     * Set auto-mapping of QAM channels by reference.
+     *
+     * @param autoMapQamReference <i>true</i> to allow.
+     */
+    public static void setAutoMapQamReference(boolean autoMapQamReference) {
+        Config.setBoolean("channels.qam.automap_reference_lookup", autoMapQamReference);
+        ChannelManager.autoMapQamReference = autoMapQamReference;
+    }
+
+    /**
+     * Is auto-mapping of QAM channels by tuning allowed?
+     * <p/>
+     * This allows the autoDctToQamMap method to be allowed to get the frequency and program of a
+     * desired channel directly from any DCT by tuning it into the channel. If no devices are
+     * currently available, the tuning will fail.
+     *
+     * @return <i>true</i> if this is allowed.
+     */
+    public static boolean isAutoMapQamTuning() {
+        return autoMapQamTuning;
+    }
+
+    /**
+     * Set auto-mapping of QAM channels by tuning.
+     *
+     * @param autoMapQamTuning <i>true</i> to allow.
+     */
+    public static void setAutoMapQamTuning(boolean autoMapQamTuning) {
+        Config.setBoolean("channels.qam.automap_tuning_lookup", autoMapQamTuning);
+        ChannelManager.autoMapQamTuning = autoMapQamTuning;
     }
 
     /**

@@ -153,7 +153,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 switch (channelMap) {
                     case US_BCAST:
                         encoderDeviceType = CaptureDeviceType.ATSC_HDHOMERUN;
-                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "atsc"));
+                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "atsc_" + device.getDeviceIdHex().toLowerCase()));
                         break;
 
                     case US_CABLE:
@@ -164,20 +164,42 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     case US_IRC:
                     case US_HRC:
                     case UNKNOWN:
-                        throw new CaptureDeviceLoadException("The program currently does not know how to use the channel map '" + channelMapName + "'.");
+                        throw new CaptureDeviceLoadException("The program currently does not" +
+                                " know how to use the channel map '" + channelMapName + "'.");
                 }
             }
         } catch (IOException e) {
-            logger.error("Unable to check HDHomeRun configuration because it cannot be reached => ", e);
+            logger.error("Unable to check HDHomeRun configuration because it cannot be reached => ",
+                    e);
         } catch (GetSetException e) {
-            logger.error("Unable to get channel map from HDHomeRun because the command did not work => ", e);
+            logger.error("Unable to get channel map from HDHomeRun because the command did not" +
+                    " work => ", e);
         }
 
         if (isTuneLegacy()) {
             // This way we don't end up with a device that doesn't have a lineup.xml file becoming the primary source.
-            setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase() + "_legacy"));
+            if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
+                setChannelLineup(Config.getString(
+                        propertiesDeviceParent + "lineup",
+                        String.valueOf(encoderDeviceType).toLowerCase() + "_legacy_" +
+                                device.getDeviceIdHex().toLowerCase()));
+            } else {
+                setChannelLineup(Config.getString(
+                        propertiesDeviceParent + "lineup",
+                        String.valueOf(encoderDeviceType).toLowerCase() + "_legacy"));
+            }
         } else {
-            setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
+            if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
+                setChannelLineup(Config.getString(
+                        propertiesDeviceParent + "lineup",
+                        String.valueOf(encoderDeviceType).toLowerCase() + "_" +
+                                device.getDeviceIdHex().toLowerCase()));
+            } else {
+                setChannelLineup(Config.getString(
+                        propertiesDeviceParent + "lineup",
+                        String.valueOf(encoderDeviceType).toLowerCase()));
+            }
+
             httpServices = new HTTPCaptureDeviceServices();
         }
 

@@ -35,8 +35,6 @@ public enum ChannelSourceType {
      */
     HDHOMERUN_HTTP_QAM,
     /**
-     * TODO: COPY
-     *
      * This will copy another lineup to get updates, the enable/disabled channel statuses in the
      * source lineup will not effect the enabled/disabled channels in this lineup. The address needs
      * to be the name of the lineup to copy. If the lineup to be copied does not exist, it will not

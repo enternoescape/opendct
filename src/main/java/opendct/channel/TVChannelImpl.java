@@ -244,6 +244,10 @@ public class TVChannelImpl implements TVChannel {
         changes[iIgnore] = String.valueOf(ignore);
     }
 
+    public void setUpdateAll() {
+        changes = getProperties();
+    }
+
     public String[] getAndClearUpdates() {
         String oldChanges[] = changes;
         changes = new String[12];

@@ -220,21 +220,21 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int videoHeight;
         int videoWidth;
 
-        if (ctx.videoCodecCtx != null) {
-            videoHeight = ctx.videoCodecCtx.height();
-            videoWidth = ctx.videoCodecCtx.width();
+        if (ctx.videoInCodecCtx != null) {
+            videoHeight = ctx.videoInCodecCtx.height();
+            videoWidth = ctx.videoInCodecCtx.width();
         } else {
             videoHeight = 0;
             videoWidth = 0;
         }
 
         if (firstRun) {
-            if (ctx.encodeProfile != null && ctx.videoCodecCtx != null && ctx.preferredVideo > NO_STREAM_IDX) {
+            if (ctx.encodeProfile != null && ctx.videoInCodecCtx != null && ctx.preferredVideo > NO_STREAM_IDX) {
                 ctx.videoEncodeSettings = ctx.encodeProfile.getVideoEncoderMap(
                         videoWidth,
                         videoHeight,
                         ctx.encodeProfile.getVideoEncoderCodec(
-                                avcodec_find_decoder(ctx.videoCodecCtx.codec_id())));
+                                avcodec_find_decoder(ctx.videoInCodecCtx.codec_id())));
 
                 // Remove the encoder profile if we cannot get permission to transcode. This will
                 // prevent any possible future attempts.
@@ -276,39 +276,39 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         if (ctx.encodeProfile != null &&
                 ctx.encodeProfile.canTranscodeVideo(
                         interlaced,
-                        avcodec_get_name(ctx.videoCodecCtx.codec_id()).getString(),
+                        avcodec_get_name(ctx.videoInCodecCtx.codec_id()).getString(),
                         videoHeight,
                         videoWidth)) {
 
-            ret = avcodec_open2(ctx.videoCodecCtx,
-                    avcodec_find_decoder(ctx.videoCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
+            ret = avcodec_open2(ctx.videoInCodecCtx,
+                    avcodec_find_decoder(ctx.videoInCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
 
             if (ret < 0) {
                 throw new FFmpegException("Failed to open decoder for stream #" + ctx.preferredVideo, ret);
             }
 
-            if ((ctx.videoStream = addTranscodeVideoStreamToContext(ctx, ctx.preferredVideo, ctx.encodeProfile)) == null) {
+            if ((ctx.videoOutStream = addTranscodeVideoStreamToContext(ctx, ctx.preferredVideo, ctx.encodeProfile)) == null) {
 
                 // If transcoding is not possible, we will just copy it.
                 logger.warn("Unable to set up transcoding. The stream will be copied.");
-                if ((ctx.videoStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.videoCodecCtx)) == null) {
+                if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                     throw new FFmpegException("Could not find a video stream", -1);
                 }
             } else {
                 ctx.encodeMap[ctx.preferredVideo] = true;
             }
         } else {
-            if ((ctx.videoStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.videoCodecCtx)) == null) {
+            if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                 throw new FFmpegException("Could not find a video stream", -1);
             }
         }
 
-        if ((ctx.audioStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.audioCodecCtx)) == null) {
+        if ((ctx.audioOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredAudio))) == null) {
             throw new FFmpegException("Could not find a audio stream", -1);
         }
 
-        ctx.streamMap[ctx.preferredVideo] = ctx.videoStream.id();
-        ctx.streamMap[ctx.preferredAudio] = ctx.audioStream.id();
+        ctx.streamMap[ctx.preferredVideo] = ctx.videoOutStream.id();
+        ctx.streamMap[ctx.preferredAudio] = ctx.audioOutStream.id();
 
         for (int i = 0; i < numInputStreams; ++i) {
             if (ctx.streamMap[i] != NO_STREAM_IDX) {
@@ -318,7 +318,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             AVCodecContext codecCtx = getCodecContext(ctx.avfCtxInput.streams(i));
 
             if (codecCtx != null) {
-                AVStream avsOutput = addCopyStreamToContext(ctx.avfCtxOutput, codecCtx);
+                AVStream avsOutput = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(i));
 
                 if (avsOutput != null) {
                     ctx.streamMap[i] = avsOutput.id();
@@ -374,8 +374,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
     private boolean fastDeinterlaceDetection() throws FFmpegException {
 
-        int ret = avcodec_open2(ctx.videoCodecCtx,
-                avcodec_find_decoder(ctx.videoCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
+        int ret = avcodec_open2(ctx.videoInCodecCtx,
+                avcodec_find_decoder(ctx.videoInCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
 
         if (ret < 0) {
             throw new FFmpegException("Failed to open decoder for stream #" + ctx.preferredVideo, ret);
@@ -481,7 +481,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         } catch (FFmpegException e) {
             logger.error("Deinterlace detection exception => ", e);
         } finally {
-            avcodec_close(ctx.videoCodecCtx);
+            avcodec_close(ctx.videoInCodecCtx);
 
             /*if (interFrames < interThresh) {
                 // Return to the start.

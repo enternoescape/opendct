@@ -165,10 +165,10 @@ public class FFmpegStreamDetection {
             ctx.preferredVideo = av_find_best_stream(ctx.avfCtxInput, AVMEDIA_TYPE_VIDEO, NO_STREAM_IDX, NO_STREAM_IDX, (PointerPointer<avcodec.AVCodec>) null, 0);
 
             if (ctx.preferredVideo != AVERROR_STREAM_NOT_FOUND) {
-                ctx.videoCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredVideo));
+                ctx.videoInCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredVideo));
             }
 
-            if (ctx.videoCodecCtx == null) {
+            if (ctx.videoInCodecCtx == null) {
                 if (ctx.isInterrupted()) {
                     error[0] = FFMPEG_INIT_INTERRUPTED;
                     return false;
@@ -193,10 +193,10 @@ public class FFmpegStreamDetection {
             ctx.preferredAudio = findBestAudioStream(ctx.avfCtxInput);
 
             if (ctx.preferredAudio != AVERROR_STREAM_NOT_FOUND) {
-                ctx.audioCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredAudio));
+                ctx.audioInCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredAudio));
             }
 
-            if (ctx.audioCodecCtx == null) {
+            if (ctx.audioInCodecCtx == null) {
                 if (ctx.isInterrupted()) {
                     error[0] = FFMPEG_INIT_INTERRUPTED;
                     return false;

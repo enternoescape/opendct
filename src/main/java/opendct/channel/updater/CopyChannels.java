@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package opendct.channel.http;
+package opendct.channel.updater;
 
 import opendct.channel.ChannelLineup;
 import opendct.channel.ChannelManager;
@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.ArrayList;
 
 public class CopyChannels {
-    private static final Logger logger = LogManager.getLogger(HDHomeRunChannels.class);
+    private static final Logger logger = LogManager.getLogger(CopyChannels.class);
 
     public static boolean populateChannels(ChannelLineup destLineup) {
         // The address field is supposed to correspond with another lineup name.

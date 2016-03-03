@@ -181,15 +181,18 @@ public abstract class FFmpegUtil {
         return preferredAudio;
     }
 
-    public static AVStream addCopyStreamToContext(AVFormatContext outputContext, avcodec.AVCodecContext codecCtxInput) {
-        AVStream avsOutput = avformat_new_stream(outputContext, codecCtxInput.codec());
+    public static AVStream addCopyStreamToContext(AVFormatContext outputContext, AVStream in_stream) {
 
-        if (avsOutput == null) {
+        AVCodecContext codecCtxInput = in_stream.codec();
+
+        AVStream out_stream = avformat_new_stream(outputContext, codecCtxInput.codec());
+
+        if (out_stream == null) {
             logger.error("Could not allocate stream");
             return null;
         }
 
-        avcodec.AVCodecContext codecCtxOutput = avsOutput.codec();
+        AVCodecContext codecCtxOutput = out_stream.codec();
 
         if (avcodec_copy_context(codecCtxOutput, codecCtxInput) < 0) {
             logger.error("Failed to copy context from input to output stream codec context");
@@ -200,7 +203,24 @@ public abstract class FFmpegUtil {
         // This prevents FFmpeg messages like this: Ignoring attempt to set invalid timebase 1/0 for st:1
         //
         //avsOutput.time_base(av_add_q(codecCtxInput.time_base(), av_make_q(0, 1)));
-        avsOutput.time_base(av_make_q(1, 90000));
+
+        // 90000hz is standard for most MPEG-TS streams.
+        //out_stream.time_base(av_make_q(1, 90000));
+        out_stream.time_base(in_stream.time_base());
+
+        // The language is not always available, but it's nice to have when it is.
+        AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);
+
+        if (lang != null && lang.value() != null) {
+            String language = lang.value().getString();
+            AVDictionary dict = new AVDictionary(null);
+            av_dict_set(dict, "language", language, 0);
+            out_stream.metadata(in_stream.metadata());
+        }
+
+        /*AVDictionary dict = new AVDictionary(null);
+        av_dict_copy(dict, in_stream.metadata(), 0);
+        out_stream.metadata(dict);*/
 
         codecCtxOutput.codec_tag(0);
 
@@ -208,9 +228,9 @@ public abstract class FFmpegUtil {
             codecCtxOutput.flags(codecCtxOutput.flags() | CODEC_FLAG_GLOBAL_HEADER);
         }
 
-        avsOutput.id(outputContext.nb_streams() - 1);
+        out_stream.id(outputContext.nb_streams() - 1);
 
-        return avsOutput;
+        return out_stream;
     }
 
     /**

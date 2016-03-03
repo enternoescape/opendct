@@ -64,10 +64,10 @@ public class FFmpegContext {
     protected int preferredAudio;
 
     // These are freed on avformat_close_input.
-    protected AVStream videoStream;
-    protected AVStream audioStream;
-    protected AVCodecContext videoCodecCtx;
-    protected AVCodecContext audioCodecCtx;
+    protected AVStream videoOutStream;
+    protected AVStream audioOutStream;
+    protected AVCodecContext videoInCodecCtx;
+    protected AVCodecContext audioInCodecCtx;
     protected AVRational videoFramerate;
 
     protected FFmpegProfile encodeProfile;
@@ -146,10 +146,10 @@ public class FFmpegContext {
 
         preferredVideo = -1;
         preferredAudio = -1;
-        videoStream = null;
-        audioStream = null;
-        videoCodecCtx = null;
-        audioCodecCtx = null;
+        videoOutStream = null;
+        audioOutStream = null;
+        videoInCodecCtx = null;
+        audioInCodecCtx = null;
         videoFramerate = new AVRational();
 
         streamMap = new int[0];
@@ -739,10 +739,10 @@ public class FFmpegContext {
 
             // These are all de-allocated when avformat_close_input is called.
             avfCtxInput = null;
-            videoCodecCtx = null;
-            videoStream = null;
-            audioCodecCtx = null;
-            audioStream = null;
+            videoInCodecCtx = null;
+            videoOutStream = null;
+            audioInCodecCtx = null;
+            audioOutStream = null;
         }
     }
 

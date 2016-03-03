@@ -424,7 +424,17 @@
 > devices by parent device. This is required because some people have completely different lineups
 > between their devices of the same type.
 
-> *Internal: Moved offline scanning registration to SageTVManager.
+> *The FFmpeg Transcoder will now copy the audio stream language when it is available to the remuxed
+> audio stream.
+
+> *Added new lineup update method: COPY. This will copy another lineup to get updates, the
+> tunable/ignored channel statuses in the source lineup will not effect the tunable/ignored channels 
+> in this lineup. The lineup.address property needs to be the name of the lineup to copy. If the
+> lineup to be copied does not exist, this lineup will not be updated and an error will appear in
+> the log.
+
+> *Internal: Moved offline channel scanning registration from the BasicCaptureDevice to
+> SageTVManager.
 
 > *Internal: Cleaned up the layout of several methods.
 

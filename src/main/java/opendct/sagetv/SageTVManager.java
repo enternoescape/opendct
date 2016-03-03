@@ -564,7 +564,7 @@ public class SageTVManager implements PowerEventListener {
      * @return All currently available capture devices.
      */
     public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices() {
-        return getAllSageTVCaptureDevices(null);
+        return getAllSageTVCaptureDevices(new CaptureDeviceType[0]);
     }
 
     /**
@@ -573,26 +573,35 @@ public class SageTVManager implements PowerEventListener {
      * It is not recommended to modify the capture devices returned from the method unless you know
      * what the implications your actions could have on the stability of the capture device.
      *
-     * @param captureDeviceType The device type to filter by.
+     * @param captureDeviceTypes The device type or types to filter by.
      * @return A filtered array of all currently available capture devices.
      */
-    public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices(CaptureDeviceType captureDeviceType) {
+    public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices(CaptureDeviceType... captureDeviceTypes) {
         logger.entry();
 
-        portToSocketServerLock.readLock().lock();
+        captureDeviceNameToCaptureDeviceLock.readLock().lock();
         ArrayList<CaptureDevice> captureDevices = new ArrayList<CaptureDevice>();
 
         try {
             for (Map.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {
                 CaptureDevice captureDevice = captureDeviceMap.getValue();
-                if (captureDeviceType == null || captureDevice.getEncoderDeviceType() == captureDeviceType) {
-                    captureDevices.add(captureDevice);
+
+                if (captureDevice != null) {
+                    if (captureDeviceTypes.length == 0) {
+                        captureDevices.add(captureDevice);
+                    } else {
+                        for (CaptureDeviceType captureDeviceType : captureDeviceTypes) {
+                            if (captureDevice.getEncoderDeviceType() == captureDeviceType) {
+                                captureDevices.add(captureDevice);
+                            }
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            portToSocketServerLock.readLock().unlock();
+            captureDeviceNameToCaptureDeviceLock.readLock().unlock();
         }
 
         return logger.exit(captureDevices);

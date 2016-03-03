@@ -367,7 +367,7 @@ public class HDHomeRunDiscovery implements Runnable {
                         }
 
                         try {
-                            discoverer.addDevice(device);
+                            discoverer.addCaptureDevice(device);
                         } catch (Exception e) {
                             logger.error("Unable to add new HDHomeRun capture device => ", e);
                         }

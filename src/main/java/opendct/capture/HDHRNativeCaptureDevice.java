@@ -187,7 +187,9 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         String.valueOf(encoderDeviceType).toLowerCase() + "_legacy"));
             }
         } else {
-            if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
+            if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN ||
+                    encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
+
                 setChannelLineup(Config.getString(
                         propertiesDeviceParent + "lineup",
                         String.valueOf(encoderDeviceType).toLowerCase() + "_" +
@@ -598,14 +600,21 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         }
                     } else {
                         // This is in case the lineup doesn't have the channel requested.
-                        tuner.setVirtualChannel(dotChannel);
+                        try {
+                            tuner.setVirtualChannel(dotChannel);
+                        } catch (GetSetException e) {
+                            logger.debug("Unable to set virtual channel. Trying legacy tuning. => ", e);
+                            if (!legacyTuneChannel(channel)) {
+                                return logger.exit(false);
+                            }
+                        }
                     }
                 } catch (IOException e) {
                     logger.error("HDHomeRun is unable to tune into channel because it cannot be reached '{}' => ", channel, e);
                     return logger.exit(false);
-                } catch (GetSetException e) {
+                /*} catch (GetSetException e) {
                     logger.error("HDHomeRun is unable to tune into channel because the command did not work '{}' => ", channel, e);
-                    return logger.exit(false);
+                    return logger.exit(false);*/
                 }
                 break;
             case QAM_HDHOMERUN:
@@ -639,9 +648,158 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         return logger.exit(false);
                     }
 
-                    tuner.setChannel(modulation, frequency, false);
+                    if (!isTuneLegacy() &&
+                            HDHomeRunDiscoverer.getAllowHttpTuning() &&
+                            HDHomeRunDiscoverer.getQamHttpTuningHack()) {
 
-                    tuner.setProgram(program);
+                        long qamStartTime = System.currentTimeMillis();
+                        TVChannel anyUrl = null;
+
+                        // If this channel has a URL, verify the channel will tune into the correct
+                        // frequency and program.
+                        if (!Util.isNullOrEmpty(tvChannel.getUrl())) {
+                            tuner.setVirtualChannel(tvChannel.getChannel());
+
+                            String tFrequency = tuner.getChannel();
+                            int tProgram = tuner.getProgram();
+
+                            if (!tFrequency.endsWith(String.valueOf(":" + frequency)) ||
+                                    !program.equals(String.valueOf(tProgram))) {
+
+                                tvChannel.setChannelRemap("");
+                                ChannelManager.updateChannel(encoderLineup, tvChannel);
+
+                                logger.info("The virtual channel {} no longer has the correct" +
+                                        " program and/or frequency. Finding new virtual channel.",
+                                        tvChannel.getChannel());
+
+                                tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+
+                                if (tvChannel == null) {
+                                    tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, new TVChannelImpl(channel, channel));
+                                }
+
+                                if (tvChannel == null) {
+                                    logger.error("Unable to tune channel because no references were found for this channel number.");
+                                    return logger.exit(false);
+                                }
+
+                                modulation = tvChannel.getModulation();
+                                if (modulation == null) {
+                                    logger.debug("The channel '{}' does not have a modulation on the lineup '{}'. Using auto.", channel, encoderLineup);
+                                    modulation = "auto";
+                                }
+
+                                frequency = tvChannel.getFrequency();
+                                if (frequency <= 0) {
+                                    logger.error("The channel '{}' does not have a frequency on the lineup '{}'.", channel, encoderLineup);
+                                    return logger.exit(false);
+                                }
+
+                                program = tvChannel.getProgram();
+                                if (program == null) {
+                                    logger.error("The channel '{}' does not have a program on the lineup '{}'.", channel, encoderLineup);
+                                    return logger.exit(false);
+                                }
+                            } else {
+                                anyUrl = tvChannel;
+                            }
+                        }
+
+                        if (anyUrl == null) {
+
+                            int anyChannel = 5001;
+                            anyUrl = ChannelManager.getChannel(encoderLineup, "5000");
+
+                            // This goes a lot faster than you might expect.
+                            while (anyUrl != null) {
+                                if (anyChannel % 10 == 0) {
+                                    setExternalLock(true);
+                                }
+
+                                try {
+                                    tuner.setVirtualChannel(anyUrl.getChannel());
+
+                                    String tFrequency = tuner.getChannel();
+                                    int tProgram = tuner.getProgram();
+
+                                    if (tFrequency.endsWith(String.valueOf(":" + frequency)) &&
+                                            program.equals(String.valueOf(tProgram))) {
+
+                                        anyUrl.setChannelRemap(tvChannel.getChannel());
+                                        anyUrl.setModulation(modulation);
+                                        anyUrl.setFrequency(frequency);
+                                        anyUrl.setProgram(program);
+
+                                        ChannelManager.updateChannel(encoderLineup, anyUrl);
+                                        break;
+                                    } else {
+                                        // While we have this one tuned in, let's try to match it up
+                                        // so maybe we don't need to do this often.
+
+                                        try {
+                                            String split[] = tuner.getChannel().split(":");
+
+                                            if (split.length > 1 && split[split.length - 1].length() > 3) {
+                                                String optModulation = split[0].toUpperCase();
+                                                int optFrequency = Integer.parseInt(split[split.length - 1]);
+                                                String optProgram = String.valueOf(tuner.getProgram());
+
+                                                String optChannel = ChannelManager.autoFrequencyProgramToCableChannel(this, optFrequency, optProgram);
+
+                                                if (optChannel == null) {
+                                                    continue;
+                                                }
+
+                                                anyUrl.setChannelRemap(optChannel);
+                                                anyUrl.setModulation(optModulation);
+                                                anyUrl.setFrequency(optFrequency);
+                                                anyUrl.setProgram(optProgram);
+
+                                                ChannelManager.updateChannel(encoderLineup, anyUrl);
+                                            }
+                                        } catch (NumberFormatException e) {
+                                            logger.warn("Unable to parse frequency from tuning the channel {}.", anyUrl.getChannel());
+                                        }
+                                    }
+                                } catch (GetSetException e) {
+                                    logger.error("Unable to tune the channel {}." +
+                                            " Removing channel from lineup.", anyUrl.getChannel());
+
+                                    ChannelLineup removeLineup = ChannelManager.getChannelLineup(encoderLineup);
+                                    if (removeLineup != null) {
+                                        removeLineup.removeChannel(anyUrl.getChannel());
+                                    }
+                                }
+
+                                anyUrl = ChannelManager.getChannel(encoderLineup, String.valueOf(anyChannel++));
+                            }
+                        }
+
+                        long qamEndTime = System.currentTimeMillis();
+
+                        if (anyUrl != null) {
+                            logger.info("Found QAM virtual channel {} in {}ms.", anyUrl.getChannel(),  qamEndTime - qamStartTime);
+
+                            httpProducing = tuneUrl(
+                                    anyUrl,
+                                    HDHomeRunDiscoverer.getTranscodeProfile(),
+                                    newConsumer);
+
+                        } else {
+                            logger.warn("QAM HTTP tuning hack was enabled," +
+                                    " but the lineup does not appear to contain any QAM URLs." +
+                                    " Reverting to legacy tuning. Wasted {}ms.",
+                                    qamEndTime - qamStartTime);
+                        }
+
+                    }
+
+                    if (!httpProducing) {
+                        tuner.setChannel(modulation, frequency, false);
+
+                        tuner.setProgram(program);
+                    }
 
                 } catch (IOException e) {
                     logger.error("HDHomeRun is unable to tune into channel because it cannot be reached => ", e);
@@ -1009,10 +1167,14 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         try {
             tuner.clearLockkey();
         } catch (IOException e) {
-            logger.error("Unable to clear lock on HDHomeRun capture device because it cannot be reached => ", e);
+            logger.error("Unable to clear lock on HDHomeRun capture device" +
+                    " because it cannot be reached => ", e);
+
             return false;
         } catch (GetSetException e) {
-            logger.error("Unable to clear lock HDHomeRun capture device because the command did not work => ", e);
+            logger.error("Unable to clear lock on HDHomeRun capture device" +
+                    " because the command did not work => ", e);
+
             return false;
         }
 
@@ -1029,9 +1191,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 try {
                     tuner.setLockkey(device.getIpAddress());
                 } catch (IOException e) {
-                    logger.error("Unable to set lock on HDHomeRun capture device because it cannot be reached => ", e);
+                    logger.error("Unable to set lock on HDHomeRun capture device" +
+                            " because it cannot be reached => ", e);
+
                 } catch (GetSetException e) {
-                    logger.error("Unable to set lock HDHomeRun capture device because the command did not work => ", e);
+                    logger.error("Unable to set lock HDHomeRun capture device" +
+                            " because the command did not work => ", e);
                 }
 
                 return false;

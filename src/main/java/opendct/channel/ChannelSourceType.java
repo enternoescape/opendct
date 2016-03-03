@@ -26,16 +26,6 @@ public enum ChannelSourceType {
      */
     HDHOMERUN,
     /**
-     * TODO: HDHOMERUN_HTTP_QAM
-     *
-     * When performing a channel scan on an HDHomeRun device for ClearQAM, it creates channels
-     * starting at 5000. This source type when selected and a Digital Cable Tuner is available and
-     * not in use will create re-maps of the > 5000 channels to their virtual channels according to
-     * the referenced DCT. The lineup.address property needs to be the name of the lineup to
-     * reference.
-     */
-    HDHOMERUN_HTTP_QAM,
-    /**
      * This will copy another lineup to get updates, the tunable/ignored channel statuses in the
      * source lineup will not effect the tunable/ignored channels in this lineup. The lineup.address
      * property needs to be the name of the lineup to copy. If the lineup to be copied does not

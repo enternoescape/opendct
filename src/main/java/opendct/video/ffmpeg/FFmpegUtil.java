@@ -209,14 +209,14 @@ public abstract class FFmpegUtil {
         out_stream.time_base(in_stream.time_base());
 
         // The language is not always available, but it's nice to have when it is.
-        AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);
+        /*AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);
 
         if (lang != null && lang.value() != null) {
             String language = lang.value().getString();
             AVDictionary dict = new AVDictionary(null);
             av_dict_set(dict, "language", language, 0);
             out_stream.metadata(in_stream.metadata());
-        }
+        }*/
 
         /*AVDictionary dict = new AVDictionary(null);
         av_dict_copy(dict, in_stream.metadata(), 0);

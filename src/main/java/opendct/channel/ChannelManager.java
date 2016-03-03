@@ -18,9 +18,9 @@ package opendct.channel;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceType;
-import opendct.channel.http.CopyChannels;
-import opendct.channel.http.HDHomeRunChannels;
-import opendct.channel.http.InfiniTVChannels;
+import opendct.channel.updater.CopyChannels;
+import opendct.channel.updater.http.HDHomeRunChannels;
+import opendct.channel.updater.http.InfiniTVChannels;
 import opendct.config.Config;
 import opendct.config.ConfigBag;
 import opendct.power.PowerEventListener;
@@ -441,6 +441,7 @@ public class ChannelManager implements PowerEventListener {
      */
     public static void saveChannelLineups() {
         for (Map.Entry<String, ChannelLineup> lineupMapPair : channelLineupsMap.entrySet()) {
+            logger.info("Saving the channel lineup '{}'.", lineupMapPair.getKey());
             saveChannelLineup(lineupMapPair.getKey());
         }
     }
@@ -766,7 +767,7 @@ public class ChannelManager implements PowerEventListener {
      * with the discovered frequency and program.
      *
      * @param captureDevice This is the capture device making the request. This is so we don't try
-     *                      to get the program and frequency from the device that obvious doesn't
+     *                      to get the program and frequency from the device that obviously doesn't
      *                      have it. This value can be <i>null</i> if a capture device isn't making
      *                      the request.
      * @param encoderLineup This is the lineup to update with the new program and frequency.
@@ -847,6 +848,41 @@ public class ChannelManager implements PowerEventListener {
 
         logger.info("Auto-map failed to get the frequency and program for the channel '{}'.",
                 tvChannel.getChannel());
+
+        return null;
+    }
+
+    /**
+     * Attempt to automatically map a program and frequency to a vchannel based on Digital Cable
+     * Tuner sources.
+     * <p/>
+     * This will return the first result it finds, so it is possible that it can get it wrong. It
+     * will also update the channel lineup for this encoder with the discovered frequency and program.
+     *
+     * @param captureDevice This is the capture device making the request. This is so we don't try
+     *                      to get the program and frequency from the device that obviously doesn't
+     *                      have it. This value can be <i>null</i> if a capture device isn't making
+     *                      the request.
+     * @return The new channel that matches the program and frequency or <i>null</i> if no channel
+     *         was found.
+     */
+    public static String autoFrequencyProgramToCableChannel(CaptureDevice captureDevice, int frequency, String program) {
+        ArrayList<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
+        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
+
+        for (CaptureDevice device : devices) {
+            if (device == captureDevice) {
+                continue;
+            }
+
+            TVChannel channels[] = ChannelManager.getChannelList(device.getChannelLineup(), true, true);
+
+            for (TVChannel channel : channels) {
+                if (channel.getFrequency() == frequency && channel.getProgram().equals(program)) {
+                    return channel.getChannel();
+                }
+            }
+        }
 
         return null;
     }

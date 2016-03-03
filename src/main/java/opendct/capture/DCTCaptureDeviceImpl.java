@@ -455,10 +455,9 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
         // First check if the value is already from an alternative lineup.
         ArrayList<CaptureDevice> devices =
-                SageTVManager.getAllSageTVCaptureDevices(
-                        CaptureDeviceType.DCT_INFINITV,
-                        CaptureDeviceType.DCT_HDHOMERUN,
-                        CaptureDeviceType.QAM_HDHOMERUN);
+                SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
+        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
+        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_HDHOMERUN));
 
         if (UpnpDiscoverer.getAutoMapReference()) {
             for (CaptureDevice device : devices) {

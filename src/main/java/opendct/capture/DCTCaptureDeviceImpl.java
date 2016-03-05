@@ -94,8 +94,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private String connectionManagerSourceProtocol;
     private String connectionManagerAVTransportID;
 
-    private boolean offlineScan = false;
-
     private int encoderNumber = -1;
     private boolean cableCardPresent = false;
     private String encoderIPAddress = null;
@@ -257,17 +255,12 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
             setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
-            offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
                 ChannelLineup newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.INFINITV, encoderIPAddress);
                 ChannelManager.updateChannelLineup(newChannelLineup);
                 ChannelManager.addChannelLineup(newChannelLineup, true);
                 ChannelManager.saveChannelLineup(encoderLineup);
-            }
-
-            if (offlineScan) {
-                ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
             }
 
             if (httpTune) {
@@ -299,17 +292,12 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
 
             setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", String.valueOf(encoderDeviceType).toLowerCase()));
-            offlineScan = Config.getBoolean(propertiesDeviceParent + "offline_scan", false);
 
             if (!ChannelManager.hasChannels(encoderLineup) && encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
                 ChannelLineup newChannelLineup = new ChannelLineup(encoderLineup, encoderParentName, ChannelSourceType.HDHOMERUN, encoderIPAddress);
                 ChannelManager.updateChannelLineup(newChannelLineup);
                 ChannelManager.addChannelLineup(newChannelLineup, true);
                 ChannelManager.saveChannelLineup(encoderLineup);
-            }
-
-            if (offlineScan) {
-                ChannelManager.addDeviceToOfflineScan(encoderLineup, encoderName);
             }
 
             if (isHDHRTune()) {
@@ -330,12 +318,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             }
         }
 
-        logger.debug("Initializing RTSP client...");
-        rtspClient = getNewRTSPClient();
-
-        logger.debug("Getting a port for incoming RTP data...");
-        rtpLocalPort = Config.getFreeRTSPPort(encoderName);
-
         logger.info("Encoder Manufacturer: '{}'," +
                 " Number: {}," +
                 " Remote IP: '{}'," +
@@ -350,7 +332,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 localIPAddress,
                 cableCardPresent,
                 encoderLineup,
-                offlineScan,
+                offlineChannelScan,
                 rtpLocalPort);
 
         logger.exit();
@@ -472,7 +454,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         logger.entry(tvChannel);
 
         // First check if the value is already from an alternative lineup.
-        ArrayList<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
+        ArrayList<CaptureDevice> devices =
+                SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_HDHOMERUN));
 

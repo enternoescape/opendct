@@ -88,7 +88,7 @@ public class HDHomeRunDiscovery implements Runnable {
         for (int i = 0; i < datagramChannels.length; i++ ) {
             datagramChannels[i] = DatagramChannel.open();
             datagramChannels[i].socket().setBroadcast(true);
-            datagramChannels[i].socket().setReceiveBufferSize(1000000);
+            datagramChannels[i].socket().setReceiveBufferSize(100000);
 
             ReceiveThread receiveThread = new ReceiveThread();
             receiveThread.listenIndex = i;
@@ -144,6 +144,8 @@ public class HDHomeRunDiscovery implements Runnable {
     }
 
     public void run() {
+        int retry = 3;
+
         logger.info("HDHomeRun discovery sender thread started.");
 
         txPacket.startPacket(HDHomeRunPacketType.HDHOMERUN_TYPE_DISCOVER_REQ);
@@ -163,8 +165,6 @@ public class HDHomeRunDiscovery implements Runnable {
         txPacket.BUFFER.mark();
 
         while (!Thread.currentThread().isInterrupted()) {
-            int retry = 3;
-
             while (!Thread.currentThread().isInterrupted() && retry-- > 0) {
 
                 boolean failed = false;
@@ -199,6 +199,8 @@ public class HDHomeRunDiscovery implements Runnable {
                     break;
                 }
             }
+
+            retry = 1;
 
             while (!Thread.currentThread().isInterrupted()) {
                 try {
@@ -365,7 +367,7 @@ public class HDHomeRunDiscovery implements Runnable {
                         }
 
                         try {
-                            discoverer.addDevice(device);
+                            discoverer.addCaptureDevice(device);
                         } catch (Exception e) {
                             logger.error("Unable to add new HDHomeRun capture device => ", e);
                         }

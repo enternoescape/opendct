@@ -118,7 +118,7 @@ public class SeekableCircularBuffer {
 
     public void waitForBytes() throws InterruptedException {
         synchronized (readMonitor) {
-            while (readIndex == writeIndex && !closed && !overflow) {
+            while (readIndex == writeIndex && !closed) {
                 readMonitor.wait(500);
             }
 

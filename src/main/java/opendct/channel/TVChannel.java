@@ -69,5 +69,7 @@ public interface TVChannel {
 
     public void setIgnore(boolean ignore);
 
+    public void setUpdateAll();
+
     public String[] getAndClearUpdates();
 }

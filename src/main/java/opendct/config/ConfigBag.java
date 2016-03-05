@@ -267,8 +267,9 @@ public class ConfigBag {
     public boolean getBoolean(String key, boolean defaultValue) {
         logger.entry(key, defaultValue);
 
-        boolean returnValue = defaultValue;
+        boolean returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
+
         try {
             returnValue = Boolean.valueOf(stringValue.toLowerCase());
         } catch (Exception e) {
@@ -286,8 +287,9 @@ public class ConfigBag {
     public short getShort(String key, short defaultValue) {
         logger.entry(key, defaultValue);
 
-        short returnValue = 0;
+        short returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
+
         try {
             returnValue = Short.valueOf(stringValue);
         } catch (Exception e) {
@@ -305,9 +307,9 @@ public class ConfigBag {
     public int getInteger(String key, int defaultValue) {
         logger.entry(key, defaultValue);
 
-        int returnValue = 0;
+        int returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Integer.valueOf(stringValue);
         } catch (Exception e) {
@@ -325,9 +327,9 @@ public class ConfigBag {
     public long getLong(String key, long defaultValue) {
         logger.entry(key, defaultValue);
 
-        long returnValue = 0;
+        long returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Long.valueOf(stringValue);
         } catch (Exception e) {
@@ -345,9 +347,9 @@ public class ConfigBag {
     public float getFloat(String key, float defaultValue) {
         logger.entry(key, defaultValue);
 
-        float returnValue = 0;
+        float returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Float.valueOf(stringValue);
         } catch (Exception e) {
@@ -365,9 +367,9 @@ public class ConfigBag {
     public double getDouble(String key, double defaultValue) {
         logger.entry(key, defaultValue);
 
-        double returnValue = 0;
+        double returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
-        ;
+
         try {
             returnValue = Double.valueOf(stringValue);
         } catch (Exception e) {
@@ -399,7 +401,7 @@ public class ConfigBag {
             StringBuilder mergedArray = new StringBuilder();
 
             for (String value : defaultValues) {
-                mergedArray.append(value + ",");
+                mergedArray.append(value).append(",");
             }
 
             // Remove the extra comma at the end.
@@ -459,7 +461,7 @@ public class ConfigBag {
         StringBuilder mergedArray = new StringBuilder();
 
         for (String value : values) {
-            mergedArray.append(value + ",");
+            mergedArray.append(value).append(",");
         }
 
         // Remove the extra comma at the end.
@@ -634,10 +636,10 @@ public class ConfigBag {
             // If the ranges are more than two integers apart, use a hyphen otherwise it looks a
             // little odd.
             if (end - start > 1) {
-                mergedArray.append(start + "-" + end + ",");
+                mergedArray.append(start).append("-").append(end).append(",");
                 i += end - start;
             } else {
-                mergedArray.append(start + ",");
+                mergedArray.append(start).append(",");
             }
         }
 
@@ -654,8 +656,7 @@ public class ConfigBag {
         StringBuilder mergedArray = new StringBuilder();
 
         for (long value : values) {
-            mergedArray.append(Long.toString(value));
-            mergedArray.append(",");
+            mergedArray.append(Long.toString(value)).append(",");
         }
 
         // Remove the extra comma at the end.
@@ -674,8 +675,7 @@ public class ConfigBag {
         StringBuilder mergedArray = new StringBuilder();
 
         for (Long value : values) {
-            mergedArray.append(Long.toString(value));
-            mergedArray.append(",");
+            mergedArray.append(Long.toString(value)).append(",");
         }
 
         // Remove the extra comma at the end.
@@ -699,7 +699,7 @@ public class ConfigBag {
     public InetAddress getInetAddress(String key, InetAddress defaultValue) {
         logger.entry(key, defaultValue);
 
-        InetAddress returnValue = null;
+        InetAddress returnValue;
         String stringValue = properties.getProperty(key, defaultValue.getHostAddress());
         try {
             returnValue = InetAddress.getByName(stringValue);
@@ -821,6 +821,7 @@ public class ConfigBag {
      */
     public HashMap<String, String>[] getAllByRootKey(String... rootKeys) {
 
+        @SuppressWarnings("unchecked")
         HashMap<String, String>[] returnValues = new HashMap[rootKeys.length];
 
         for (int i = 0; i < returnValues.length; i++) {

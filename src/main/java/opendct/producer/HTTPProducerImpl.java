@@ -250,7 +250,7 @@ public class HTTPProducerImpl implements HTTPProducer {
                         }
                     }
                 } catch (IOException e) {
-                    if (!(e instanceof SocketException)) {
+                    if (!(e instanceof SocketException || e.getMessage().equals("Stream closed"))) {
                         logger.warn("An exception occurred while receiving data => ", e);
                     } else {
                         logger.debug("The socket has been closed.");

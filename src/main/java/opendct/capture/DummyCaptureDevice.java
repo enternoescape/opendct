@@ -27,12 +27,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DummyCaptureDevice implements CaptureDevice {
 
-    public final String parentName;
-    public final String encoderName;
-    public final String encoderVersion;
-    public String lineup;
-    public int merit;
-    public String poolName;
+    private final String parentName;
+    private final String encoderName;
+    private final String encoderVersion;
+    private String lineup;
+    private int merit;
+    private String poolName;
+    private boolean offlineChannelScan;
 
     public DummyCaptureDevice(String parentName, String encoderName, String encoderVersion, String lineup, String tunerPool) {
         this.parentName = parentName;
@@ -40,6 +41,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         this.encoderVersion = encoderVersion;
         this.lineup = lineup;
         this.poolName = tunerPool;
+        this.offlineChannelScan = false;
         merit = 0;
     }
 
@@ -87,6 +89,16 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public void setMerit(int merit) {
         this.merit = merit;
+    }
+
+    @Override
+    public boolean isOfflineChannelScan() {
+        return offlineChannelScan;
+    }
+
+    @Override
+    public void setOfflineChannelScan(boolean offlineChannelScan) {
+        this.offlineChannelScan = offlineChannelScan;
     }
 
     public String getEncoderPoolName() {

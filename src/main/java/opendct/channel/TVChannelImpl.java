@@ -60,39 +60,39 @@ public class TVChannelImpl implements TVChannel {
             throw new Exception("The provided array does not contain all parameters required for a channel.");
         }
 
-        channel = properties[0];
-        channelRemap = properties[1];
-        tunable = Boolean.valueOf(properties[2]);
-        name = properties[3];
-        url = properties[4];
-        modulation = properties[5];
+        channel = properties[iChannel];
+        channelRemap = properties[iChannelRemap];
+        tunable = Boolean.valueOf(properties[iTunable]);
+        name = properties[iName];
+        url = properties[iURL];
+        modulation = properties[iModulation];
 
         try {
-            frequency = Util.isNullOrEmpty(properties[6]) ? -1 : Integer.valueOf(properties[6]);
+            frequency = Util.isNullOrEmpty(properties[iFrequency]) ? -1 : Integer.parseInt(properties[iFrequency]);
         } catch (NumberFormatException e) {
-            logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for frequency.", properties[6]);
+            logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for frequency.", properties[iFrequency]);
             frequency = -1;
         }
 
-        program = properties[7];
-        eia = properties[8];
+        program = properties[iProgram];
+        eia = properties[iEIA];
 
         try {
-            signalStrength = Integer.valueOf(properties[9]);
+            signalStrength = Integer.parseInt(properties[iSignalStrength]);
         } catch (NumberFormatException e) {
-            logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for signalStrength.", properties[9]);
+            logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for signalStrength.", properties[iSignalStrength]);
             signalStrength = 0;
         }
 
         try {
-            cci = CopyProtection.valueOf(properties[10]);
+            cci = CopyProtection.valueOf(properties[iCCI]);
         } catch (IllegalArgumentException e) {
-            logger.warn("Expected an copy protection enum, but '{}' was provided. Using the default UNKNOWN for cci.", properties[10]);
+            logger.warn("Expected an copy protection enum, but '{}' was provided. Using the default UNKNOWN for cci.", properties[iCCI]);
             cci = CopyProtection.UNKNOWN;
         }
 
         if (properties.length == 12) {
-            ignore = Boolean.valueOf(properties[11]);
+            ignore = Boolean.parseBoolean(properties[iIgnore]);
         }
     }
 
@@ -244,6 +244,10 @@ public class TVChannelImpl implements TVChannel {
         changes[iIgnore] = String.valueOf(ignore);
     }
 
+    public void setUpdateAll() {
+        changes = getProperties();
+    }
+
     public String[] getAndClearUpdates() {
         String oldChanges[] = changes;
         changes = new String[12];
@@ -266,5 +270,30 @@ public class TVChannelImpl implements TVChannel {
                 ", program='" + program + '\'' +
                 ", eia='" + eia + '\'' +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TVChannelImpl tvChannel = (TVChannelImpl) o;
+
+        if (frequency != tvChannel.frequency) return false;
+        if (channel != null ? !channel.equals(tvChannel.channel) : tvChannel.channel != null)
+            return false;
+        if (modulation != null ? !modulation.equals(tvChannel.modulation) : tvChannel.modulation != null)
+            return false;
+        return program != null ? program.equals(tvChannel.program) : tvChannel.program == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = channel != null ? channel.hashCode() : 0;
+        result = 31 * result + (modulation != null ? modulation.hashCode() : 0);
+        result = 31 * result + frequency;
+        result = 31 * result + (program != null ? program.hashCode() : 0);
+        return result;
     }
 }

@@ -54,6 +54,18 @@ public class Frequencies {
         return -1;
     }
 
+    /**
+     * Get a HashMap with all of the channels mapped to their respective frequencies.
+     * <p/>
+     * This is to speed up channel scanning by having a list of all of the expected channels that
+     * can be checked for within the same frequency.
+     * <p/>
+     * If there is no frequency associated with a channel it will be added as the frequency 0, so
+     * be sure to account for that if this is being used for a channel scan.
+     *
+     * @param lineup The lineup to be parsed.
+     * @return The HashMap with frequencies mapped to the channels they contain.
+     */
     public static HashMap<Integer, ArrayList<TVChannel>> getFrequenciesToChannelsMap(ChannelLineup lineup) {
         if (lineup == null) {
             return null;
@@ -62,7 +74,21 @@ public class Frequencies {
         HashMap<Integer, ArrayList<TVChannel>> returnValues = new HashMap<>();
 
         for (TVChannel tvChannel : lineup.getAllChannels(true, true)) {
-            //TODO: Implement lookup.
+
+            Integer lookupFreq = tvChannel.getFrequency();
+
+            if (tvChannel.getFrequency() <= 0) {
+                lookupFreq = 0;
+            }
+
+            ArrayList<TVChannel> currentFreq = returnValues.get(lookupFreq);
+
+            if (currentFreq == null) {
+                currentFreq = new ArrayList<>();
+                returnValues.put(lookupFreq, currentFreq);
+            }
+
+            currentFreq.add(tvChannel);
         }
 
         return returnValues;

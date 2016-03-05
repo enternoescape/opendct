@@ -16,10 +16,12 @@
 
 package opendct.consumer;
 
+import opendct.config.options.DeviceOptions;
+
 import java.io.IOException;
 import java.net.InetAddress;
 
-public interface SageTVConsumer extends Runnable {
+public interface SageTVConsumer extends Runnable, DeviceOptions {
 /**
  * The consumer thread is responsible for processing data and transferring it to SageTV via direct
  * file writing, uploadID or both. The consumer provides its own buffer. This allows the consumer to

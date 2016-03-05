@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package opendct.channel.http;
+package opendct.channel.updater.http;
 
 import opendct.channel.ChannelLineup;
 import opendct.channel.TVChannel;

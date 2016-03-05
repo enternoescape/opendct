@@ -574,10 +574,12 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         tuner.setVirtualChannel(dotChannel);
                     }
                 } catch (IOException e) {
-                    logger.error("HDHomeRun is unable to tune into channel because it cannot be reached '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel" +
+                            " because it cannot be reached '{}' => ", channel, e);
                     return logger.exit(false);
                 } catch (GetSetException e) {
-                    logger.error("HDHomeRun is unable to tune into channel because the command did not work '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel" +
+                            " because the command did not work '{}' => ", channel, e);
                     return logger.exit(false);
                 }
                 break;
@@ -595,7 +597,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                 try {
                                     tuner.setVirtualChannel(dotChannel);
                                 } catch (GetSetException e) {
-                                    logger.debug("Unable to set virtual channel. Trying legacy tuning. => ", e);
+                                    logger.debug("Unable to set virtual channel." +
+                                            " Trying legacy tuning. => ", e);
                                     if (!legacyTuneChannel(channel)) {
                                         return logger.exit(false);
                                     }
@@ -607,48 +610,57 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                         try {
                             tuner.setVirtualChannel(dotChannel);
                         } catch (GetSetException e) {
-                            logger.debug("Unable to set virtual channel. Trying legacy tuning. => ", e);
+                            logger.debug("Unable to set virtual channel." +
+                                    " Trying legacy tuning. => ", e);
                             if (!legacyTuneChannel(channel)) {
                                 return logger.exit(false);
                             }
                         }
                     }
                 } catch (IOException e) {
-                    logger.error("HDHomeRun is unable to tune into channel because it cannot be reached '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel" +
+                            " because it cannot be reached '{}' => ", channel, e);
                     return logger.exit(false);
                 /*} catch (GetSetException e) {
-                    logger.error("HDHomeRun is unable to tune into channel because the command did not work '{}' => ", channel, e);
+                    logger.error("HDHomeRun is unable to tune into channel" +
+                            " because the command did not work '{}' => ", channel, e);
                     return logger.exit(false);*/
                 }
                 break;
             case QAM_HDHOMERUN:
                 if (tvChannel == null) {
-                    tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, new TVChannelImpl(channel, channel));
+                    tvChannel = ChannelManager.autoDctToQamMap(
+                            this, encoderLineup, new TVChannelImpl(channel, channel));
 
                     if (tvChannel == null) {
-                        logger.error("Unable to tune channel because no references were found for this channel number.");
+                        logger.error("Unable to tune channel because no references" +
+                                " were found for this channel number.");
                         return logger.exit(false);
                     }
 
-                    logger.info("Added the channel '{}' to the lineup '{}'.", channel, encoderLineup);
+                    logger.info("Added the channel '{}' to the lineup '{}'.",
+                            channel, encoderLineup);
                 }
 
                 try {
                     String modulation = tvChannel.getModulation();
                     if (modulation == null) {
-                        logger.debug("The channel '{}' does not have a modulation on the lineup '{}'. Using auto.", channel, encoderLineup);
+                        logger.debug("The channel '{}' does not have a modulation" +
+                                " on the lineup '{}'. Using auto.", channel, encoderLineup);
                         modulation = "auto";
                     }
 
                     int frequency = tvChannel.getFrequency();
                     if (frequency <= 0) {
-                        logger.error("The channel '{}' does not have a frequency on the lineup '{}'.", channel, encoderLineup);
+                        logger.error("The channel '{}' does not have a frequency" +
+                                " on the lineup '{}'.", channel, encoderLineup);
                         return logger.exit(false);
                     }
 
                     String program = tvChannel.getProgram();
                     if (program == null) {
-                        logger.error("The channel '{}' does not have a program on the lineup '{}'.", channel, encoderLineup);
+                        logger.error("The channel '{}' does not have a program" +
+                                " on the lineup '{}'.", channel, encoderLineup);
                         return logger.exit(false);
                     }
 
@@ -680,29 +692,42 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                 tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
                                 if (tvChannel == null) {
-                                    tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, new TVChannelImpl(channel, channel));
+                                    tvChannel = ChannelManager.autoDctToQamMap(
+                                            this,
+                                            encoderLineup,
+                                            new TVChannelImpl(channel, channel));
                                 }
 
                                 if (tvChannel == null) {
-                                    logger.error("Unable to tune channel because no references were found for this channel number.");
+                                    logger.error("Unable to tune channel because no references" +
+                                            " were found for this channel number.");
                                     return logger.exit(false);
                                 }
 
                                 modulation = tvChannel.getModulation();
                                 if (modulation == null) {
-                                    logger.debug("The channel '{}' does not have a modulation on the lineup '{}'. Using auto.", channel, encoderLineup);
+                                    logger.debug("The channel '{}' does not have a modulation" +
+                                            " on the lineup '{}'. Using 'auto'.",
+                                            channel,
+                                            encoderLineup);
                                     modulation = "auto";
                                 }
 
                                 frequency = tvChannel.getFrequency();
                                 if (frequency <= 0) {
-                                    logger.error("The channel '{}' does not have a frequency on the lineup '{}'.", channel, encoderLineup);
+                                    logger.error("The channel '{}' does not have a frequency" +
+                                            " on the lineup '{}'.",
+                                            channel,
+                                            encoderLineup);
                                     return logger.exit(false);
                                 }
 
                                 program = tvChannel.getProgram();
                                 if (program == null) {
-                                    logger.error("The channel '{}' does not have a program on the lineup '{}'.", channel, encoderLineup);
+                                    logger.error("The channel '{}' does not have a program" +
+                                            " on the lineup '{}'.",
+                                            channel,
+                                            encoderLineup);
                                     return logger.exit(false);
                                 }
                             } else {
@@ -712,7 +737,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                         if (anyUrl == null) {
 
-                            TVChannel qamChannels[] = ChannelManager.getChannelList(encoderLineup, true, true);
+                            TVChannel qamChannels[] =
+                                    ChannelManager.getChannelList(encoderLineup, true, true);
 
                             for (TVChannel qamChannel : qamChannels) {
 
@@ -749,12 +775,22 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                         try {
                                             String split[] = tuner.getChannel().split(":");
 
-                                            if (split.length > 1 && split[split.length - 1].length() > 3) {
-                                                String optModulation = split[0].toUpperCase();
-                                                int optFrequency = Integer.parseInt(split[split.length - 1]);
-                                                String optProgram = String.valueOf(tuner.getProgram());
+                                            if (split.length > 1 &&
+                                                    split[split.length - 1].length() > 3) {
 
-                                                String optChannel = ChannelManager.autoFrequencyProgramToCableChannel(this, optFrequency, optProgram);
+                                                String optModulation = split[0].toUpperCase();
+                                                int optFrequency =
+                                                        Integer.parseInt(split[split.length - 1]);
+
+                                                String optProgram =
+                                                        String.valueOf(tuner.getProgram());
+
+                                                String optChannel =
+                                                        ChannelManager.
+                                                                autoFrequencyProgramToCableChannel(
+                                                                        this,
+                                                                        optFrequency,
+                                                                        optProgram);
 
                                                 if (optChannel == null) {
                                                     continue;
@@ -765,7 +801,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                                 qamChannel.setFrequency(optFrequency);
                                                 qamChannel.setProgram(optProgram);
 
-                                                ChannelManager.updateChannel(encoderLineup, qamChannel);
+                                                ChannelManager.updateChannel(
+                                                        encoderLineup, qamChannel);
                                             }
                                         } catch (NumberFormatException e) {
                                             logger.warn("Unable to parse frequency from tuning" +
@@ -774,7 +811,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                     }
                                 } catch (GetSetException e) {
                                     logger.error("Unable to tune the channel {}." +
-                                            " Removing channel from lineup.", qamChannel.getChannel());
+                                            " Removing channel from lineup.",
+                                            qamChannel.getChannel());
 
                                     ChannelLineup removeLineup =
                                             ChannelManager.getChannelLineup(encoderLineup);
@@ -798,7 +836,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                     newConsumer);
 
                         } else {
-                            logger.warn("QAM HTTP tuning hack was enabled," +
+                            logger.warn("QAM HTTP tuning was enabled," +
                                     " but the lineup does not appear to contain any QAM URLs." +
                                     " Reverting to legacy tuning. Wasted {}ms.",
                                     qamEndTime - qamStartTime);

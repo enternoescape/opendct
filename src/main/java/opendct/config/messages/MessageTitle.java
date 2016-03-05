@@ -17,7 +17,11 @@
 package opendct.config.messages;
 
 public enum MessageTitle {
-    CONSUMER_INIT_FAILURE("FFmpeg initialization failure.");
+    CONSUMER_INIT_FAILURE("Consumer initialization failure."),
+    CONSUMER_STALLED("Consumer stalled."),
+    PRODUCER_INIT_FAILURE("Producer initialization failure."),
+    PRODUCER_STALLED("Producer stalled."),
+    DEVICES_LOADED_FAILURE("Required capture devices not loaded.");
 
     public final String TITLE;
 

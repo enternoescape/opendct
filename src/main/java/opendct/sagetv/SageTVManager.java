@@ -17,7 +17,9 @@
 package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
+import opendct.capture.CaptureDeviceInitException;
 import opendct.capture.CaptureDeviceType;
+import opendct.channel.ChannelManager;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
@@ -76,12 +78,11 @@ public class SageTVManager implements PowerEventListener {
     public static void addCaptureDevice(CaptureDevice captureDevice) throws SocketException {
         logger.entry(captureDevice);
 
-        // Returns either the saved port for this capture device if it is already in properties or a
-        // unused(V1.0,V2.0)/shared(V3.0) port. This static method is thread-safe and designed to
-        // guarantee that two socket servers will not unintentionally use the same port.
+        // Returns either the saved port for this capture device if it is already in properties or
+        // an unused/shared port. This static method is thread-safe and designed to guarantee that
+        // two socket servers will not unintentionally use the same port.
         int newPort = Config.getSocketServerPort(
-                captureDevice.getEncoderUniqueHash(),
-                "3.0");
+                captureDevice.getEncoderUniqueHash());
 
         if (newPort == 0) {
             throw new SocketException("There are no available ports within the provided range. The tuner cannot start.");
@@ -96,8 +97,10 @@ public class SageTVManager implements PowerEventListener {
 
         try {
             if (captureDeviceNameToCaptureDevice.get(captureDevice.getEncoderName()) != null) {
-                logger.error("A capture device with the name '{}' already exists.", captureDevice.getEncoderName());
-                throw new Exception("Duplicate capture device.");
+                logger.error("A capture device with the name '{}' already exists.",
+                        captureDevice.getEncoderName());
+
+                throw new CaptureDeviceInitException("Duplicate capture device.");
             }
 
             //Check to see if a socket server is already running with this port.
@@ -112,8 +115,12 @@ public class SageTVManager implements PowerEventListener {
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
             captureDeviceIdToCaptureDevice.put(captureDevice.getEncoderUniqueHash(), captureDevice);
 
-            if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
-                SageTVPoolManager.addPoolCaptureDevice(captureDevice.getEncoderPoolName(), captureDevice.getEncoderName());
+            if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) &&
+                    SageTVPoolManager.isUsePools()) {
+
+                SageTVPoolManager.addPoolCaptureDevice(
+                        captureDevice.getEncoderPoolName(),
+                        captureDevice.getEncoderName());
             }
 
             logger.info("The capture device '{}' is ready.", captureDevice.getEncoderName());
@@ -133,6 +140,9 @@ public class SageTVManager implements PowerEventListener {
             } else if (!SageTVDiscovery.isRunning()) {
                 SageTVDiscovery.startDiscoveryBroadcast(newPort);
             }
+        } catch (CaptureDeviceInitException e) {
+            logger.debug("Unable to load capture device => ", e);
+            failure = true;
         } catch (Exception e) {
             failure = true;
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
@@ -151,8 +161,17 @@ public class SageTVManager implements PowerEventListener {
             }
         }
 
-        if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) && SageTVPoolManager.isUsePools()) {
+        if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) &&
+                SageTVPoolManager.isUsePools()) {
+
             SageTVPoolManager.resortMerits(captureDevice.getEncoderPoolName());
+        }
+
+        if (captureDevice.isOfflineChannelScan()) {
+
+            ChannelManager.addDeviceToOfflineScan(
+                    captureDevice.getChannelLineup(),
+                    captureDevice.getEncoderName());
         }
 
         logger.exit();
@@ -161,11 +180,13 @@ public class SageTVManager implements PowerEventListener {
     public static void removeCaptureDevice(int captureDeviceId) {
         logger.entry(captureDeviceId);
 
+        CaptureDevice captureDevice = null;
+
         captureDeviceNameToCaptureDeviceLock.writeLock().lock();
         captureDeviceToFilesLock.writeLock().lock();
 
         try {
-            CaptureDevice captureDevice = captureDeviceIdToCaptureDevice.get(captureDeviceId);
+            captureDevice = captureDeviceIdToCaptureDevice.get(captureDeviceId);
 
             if (captureDevice == null) {
                 logger.exit();
@@ -191,6 +212,15 @@ public class SageTVManager implements PowerEventListener {
         } finally {
             captureDeviceNameToCaptureDeviceLock.writeLock().unlock();
             captureDeviceToFilesLock.writeLock().lock();
+        }
+
+        if (captureDevice != null) {
+            ChannelManager.removeDeviceFromOfflineScan(
+                    captureDevice.getChannelLineup(),
+                    captureDevice.getEncoderName());
+
+            SageTVPoolManager.removePoolCaptureDevice(
+                    captureDevice.getEncoderName());
         }
 
         logger.exit();
@@ -534,7 +564,7 @@ public class SageTVManager implements PowerEventListener {
      * @return All currently available capture devices.
      */
     public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices() {
-        return getAllSageTVCaptureDevices(null);
+        return getAllSageTVCaptureDevices(new CaptureDeviceType[0]);
     }
 
     /**
@@ -543,26 +573,35 @@ public class SageTVManager implements PowerEventListener {
      * It is not recommended to modify the capture devices returned from the method unless you know
      * what the implications your actions could have on the stability of the capture device.
      *
-     * @param captureDeviceType The device type to filter by.
+     * @param captureDeviceTypes The device type or types to filter by.
      * @return A filtered array of all currently available capture devices.
      */
-    public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices(CaptureDeviceType captureDeviceType) {
+    public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices(CaptureDeviceType... captureDeviceTypes) {
         logger.entry();
 
-        portToSocketServerLock.readLock().lock();
+        captureDeviceNameToCaptureDeviceLock.readLock().lock();
         ArrayList<CaptureDevice> captureDevices = new ArrayList<CaptureDevice>();
 
         try {
             for (Map.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {
                 CaptureDevice captureDevice = captureDeviceMap.getValue();
-                if (captureDeviceType == null || captureDevice.getEncoderDeviceType() == captureDeviceType) {
-                    captureDevices.add(captureDevice);
+
+                if (captureDevice != null) {
+                    if (captureDeviceTypes.length == 0) {
+                        captureDevices.add(captureDevice);
+                    } else {
+                        for (CaptureDeviceType captureDeviceType : captureDeviceTypes) {
+                            if (captureDevice.getEncoderDeviceType() == captureDeviceType) {
+                                captureDevices.add(captureDevice);
+                            }
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
-            portToSocketServerLock.readLock().unlock();
+            captureDeviceNameToCaptureDeviceLock.readLock().unlock();
         }
 
         return logger.exit(captureDevices);
@@ -605,8 +644,7 @@ public class SageTVManager implements PowerEventListener {
                         "sagetv.device." + captureDevice.getEncoderUniqueHash() +
                                 ".encoder_listen_port",
                         Config.getSocketServerPort(
-                                captureDevice.getEncoderUniqueHash(),
-                                "3.0"
+                                captureDevice.getEncoderUniqueHash()
                         )
                 );
 

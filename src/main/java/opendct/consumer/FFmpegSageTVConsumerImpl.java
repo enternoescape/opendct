@@ -16,9 +16,11 @@
 
 package opendct.consumer;
 
-import opendct.config.Config;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBuffer;
 import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.video.ffmpeg.FFmpegConfig;
 import opendct.video.ffmpeg.FFmpegUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -47,68 +49,35 @@ import static org.bytedeco.javacpp.avutil.*;
 public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final Logger logger = LogManager.getLogger(FFmpegSageTVConsumerImpl.class);
 
-    private final boolean acceptsUploadID =
-            Config.getBoolean("consumer.ffmpeg.upload_id_enabled", false);
+    private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
 
     // We must have at a minimum a 5 MB buffer plus 1MB to catch up. This ensures that if
     // someone changes this setting to a lower value, it will be overridden.
-    private final int circularBufferSize =
-            (int) Math.max(
-                    Config.getInteger("consumer.ffmpeg.circular_buffer_size", 7864320),
-                    5617370 + 1123474
-            );
+    private final int circularBufferSize = FFmpegConfig.getCircularBufferSize();
 
     // This is the smallest probe size allowed.
-    private final long minProbeSize =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_probe_size", 165440),
-                    82720
-            );
+    private final long minProbeSize = FFmpegConfig.getMinProbeSize();
 
     // This is the smallest probe duration allowed.
-    private final long minAnalyzeDuration =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_analyze_duration", 165440),
-                    82720
-            );
+    private final long minAnalyzeDuration = FFmpegConfig.getMinAnalyseDuration();
 
     // This is the largest probe size allowed. 5MB is the minimum allowed value.
     private final long maxProbeSize = (circularBufferSize * 3) - 1123474;
 
     // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
-    private final long maxAnalyzeDuration =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.max_analyze_duration", 5000000),
-                    5000000
-            );
+    private final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
 
     // This value cannot go any lower than 65536. Lower values result in stream corruption when the
     // RTP packets are larger than the buffer size.
-    private final int RW_BUFFER_SIZE =
-            Math.max(Config.getInteger("consumer.ffmpeg.rw_buffer_size", 262144), 65536);
+    private final int RW_BUFFER_SIZE = FFmpegConfig.getRwBufferSize();
 
     // This is the smallest amount of data that will be transferred to the SageTV server.
-    private final int minUploadIDTransfer =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_upload_id_transfer_size", 20680),
-                    RW_BUFFER_SIZE
-            );
+    private final int minUploadIDTransfer = FFmpegConfig.getMinUploadIdTransferSize(RW_BUFFER_SIZE);
 
     // This is the smallest amount of data that will be flushed to the SageTV server.
-    private final int minDirectFlush =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_direct_flush_size", 1048576),
-                    -1
-            );
+    private final int minDirectFlush = FFmpegConfig.getMinDirectFlush();
 
-    private final int ffmpegThreadPriority =
-            Math.max(
-                    Math.min(
-                            Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
-                            Thread.MAX_PRIORITY
-                    ),
-                    Thread.MIN_PRIORITY
-            );
+    private final int ffmpegThreadPriority = FFmpegConfig.getThreadPriority();
 
     // Atomic because long values take two clocks just to store in 32-bit. We could get incomplete
     // values otherwise. Don't ever forget to set this value and increment it correctly. This is
@@ -143,7 +112,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
     private NIOSageTVUploadID nioSageTVUploadID = null;
 
-    private int uploadIDPort = Config.getInteger("consumer.ffmpeg.upload_id_port", 7818);
+    private int uploadIDPort = FFmpegConfig.getUploadIdPort();
     private SocketAddress uploadIDSocket = null;
 
     private String stateMessage = "Detecting stream...";
@@ -750,13 +719,20 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 }
 
                 if (minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush) {
-                    currentFileOutputStream.flush();
                     bytesFlushCounter = 0;
+
+                    File recordingFile = new File(currentRecordingFilename);
+
+                    // If the file should have some data, but it doesn't, flush the data to disk
+                    // to verify that the file in fact taking data.
+
+                    if (bytesStreamed.get() > 0 && recordingFile.length() == 0) {
+                        currentFileOutputStream.flush();
+                    }
 
                     // According to many sources, if the file is deleted an IOException will not be
                     // thrown. This handles the possible scenario. This also means previously
                     // written data is now lost.
-                    File recordingFile = new File(currentRecordingFilename);
 
                     if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0) ) {
                         try {
@@ -1329,5 +1305,15 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         }
 
         return streaming;
+    }
+
+    @Override
+    public DeviceOption[] getOptions() {
+        return FFmpegConfig.getFFmpegOptions();
+    }
+
+    @Override
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+        FFmpegConfig.setOptions(deviceOptions);
     }
 }

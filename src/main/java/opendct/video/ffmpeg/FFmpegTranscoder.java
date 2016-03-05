@@ -220,21 +220,21 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int videoHeight;
         int videoWidth;
 
-        if (ctx.videoCodecCtx != null) {
-            videoHeight = ctx.videoCodecCtx.height();
-            videoWidth = ctx.videoCodecCtx.width();
+        if (ctx.videoInCodecCtx != null) {
+            videoHeight = ctx.videoInCodecCtx.height();
+            videoWidth = ctx.videoInCodecCtx.width();
         } else {
             videoHeight = 0;
             videoWidth = 0;
         }
 
         if (firstRun) {
-            if (ctx.encodeProfile != null && ctx.videoCodecCtx != null && ctx.preferredVideo > NO_STREAM_IDX) {
+            if (ctx.encodeProfile != null && ctx.videoInCodecCtx != null && ctx.preferredVideo > NO_STREAM_IDX) {
                 ctx.videoEncodeSettings = ctx.encodeProfile.getVideoEncoderMap(
                         videoWidth,
                         videoHeight,
                         ctx.encodeProfile.getVideoEncoderCodec(
-                                avcodec_find_decoder(ctx.videoCodecCtx.codec_id())));
+                                avcodec_find_decoder(ctx.videoInCodecCtx.codec_id())));
 
                 // Remove the encoder profile if we cannot get permission to transcode. This will
                 // prevent any possible future attempts.
@@ -276,39 +276,39 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         if (ctx.encodeProfile != null &&
                 ctx.encodeProfile.canTranscodeVideo(
                         interlaced,
-                        avcodec_get_name(ctx.videoCodecCtx.codec_id()).getString(),
+                        avcodec_get_name(ctx.videoInCodecCtx.codec_id()).getString(),
                         videoHeight,
                         videoWidth)) {
 
-            ret = avcodec_open2(ctx.videoCodecCtx,
-                    avcodec_find_decoder(ctx.videoCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
+            ret = avcodec_open2(ctx.videoInCodecCtx,
+                    avcodec_find_decoder(ctx.videoInCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
 
             if (ret < 0) {
                 throw new FFmpegException("Failed to open decoder for stream #" + ctx.preferredVideo, ret);
             }
 
-            if ((ctx.videoStream = addTranscodeVideoStreamToContext(ctx, ctx.preferredVideo, ctx.encodeProfile)) == null) {
+            if ((ctx.videoOutStream = addTranscodeVideoStreamToContext(ctx, ctx.preferredVideo, ctx.encodeProfile)) == null) {
 
                 // If transcoding is not possible, we will just copy it.
                 logger.warn("Unable to set up transcoding. The stream will be copied.");
-                if ((ctx.videoStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.videoCodecCtx)) == null) {
+                if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                     throw new FFmpegException("Could not find a video stream", -1);
                 }
             } else {
                 ctx.encodeMap[ctx.preferredVideo] = true;
             }
         } else {
-            if ((ctx.videoStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.videoCodecCtx)) == null) {
+            if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                 throw new FFmpegException("Could not find a video stream", -1);
             }
         }
 
-        if ((ctx.audioStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.audioCodecCtx)) == null) {
+        if ((ctx.audioOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredAudio))) == null) {
             throw new FFmpegException("Could not find a audio stream", -1);
         }
 
-        ctx.streamMap[ctx.preferredVideo] = ctx.videoStream.id();
-        ctx.streamMap[ctx.preferredAudio] = ctx.audioStream.id();
+        ctx.streamMap[ctx.preferredVideo] = ctx.videoOutStream.id();
+        ctx.streamMap[ctx.preferredAudio] = ctx.audioOutStream.id();
 
         for (int i = 0; i < numInputStreams; ++i) {
             if (ctx.streamMap[i] != NO_STREAM_IDX) {
@@ -318,7 +318,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             AVCodecContext codecCtx = getCodecContext(ctx.avfCtxInput.streams(i));
 
             if (codecCtx != null) {
-                AVStream avsOutput = addCopyStreamToContext(ctx.avfCtxOutput, codecCtx);
+                AVStream avsOutput = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(i));
 
                 if (avsOutput != null) {
                     ctx.streamMap[i] = avsOutput.id();
@@ -358,45 +358,34 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     private void deallocFilterGraphs() {
-        if (ctx == null || filter_ctx == null) {
+        if (filter_ctx == null) {
             return;
         }
 
-        // The filter graphs have been allocated, so we need to de-allocate it before returning
-        // from an interrupt.
-        int nbStreams = ctx.avfCtxInput.nb_streams();
+        for (int i = 0; i < filter_ctx.length; i++) {
+            if (filter_ctx[i].buffersink_ctx != null) {
+                avfilter_free(filter_ctx[i].buffersink_ctx);
+                filter_ctx[i].buffersink_ctx = null;
+            }
 
-        for (int i = 0; i < nbStreams; i++) {
-            if (filter_ctx != null && filter_ctx[i].filter_graph != null)
+            if (filter_ctx[i].buffersink_ctx != null) {
+                avfilter_free(filter_ctx[i].buffersink_ctx);
+                filter_ctx[i].buffersink_ctx = null;
+            }
+
+            if (filter_ctx[i].filter_graph != null) {
                 avfilter_graph_free(filter_ctx[i].filter_graph);
+                filter_ctx[i].filter_graph = null;
+            }
         }
-    }
 
-    private static void logPacket(AVFormatContext fmt_ctx, AVPacket pkt, String tag) {
-        if (logger.isTraceEnabled()) {
-            AVRational tb = fmt_ctx.streams(pkt.stream_index()).time_base();
-
-            logger.trace(String.format("%s: pts:%s pts_time:%s dts:%s dts_time:%s duration:%s duration_time:%s stream_index:%d",
-                    tag,
-                    av_ts2str(pkt.pts()), av_ts2timestr(pkt.pts(), tb),
-                    av_ts2str(pkt.dts()), av_ts2timestr(pkt.dts(), tb),
-                    av_ts2str(pkt.duration()), av_ts2timestr(pkt.duration(), tb),
-                    pkt.stream_index()));
-        }
-    }
-
-    public static String av_ts2str(long pts) {
-        return pts == AV_NOPTS_VALUE ? "NOPTS" : Long.toString(pts);
-    }
-
-    public static String av_ts2timestr(long pts, AVRational tb) {
-        return pts == AV_NOPTS_VALUE ? "NOPTS" : String.format("%.6g", av_q2d(tb) * pts);
+        filter_ctx = null;
     }
 
     private boolean fastDeinterlaceDetection() throws FFmpegException {
 
-        int ret = avcodec_open2(ctx.videoCodecCtx,
-                avcodec_find_decoder(ctx.videoCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
+        int ret = avcodec_open2(ctx.videoInCodecCtx,
+                avcodec_find_decoder(ctx.videoInCodecCtx.codec_id()), (PointerPointer<AVDictionary>) null);
 
         if (ret < 0) {
             throw new FFmpegException("Failed to open decoder for stream #" + ctx.preferredVideo, ret);
@@ -502,7 +491,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         } catch (FFmpegException e) {
             logger.error("Deinterlace detection exception => ", e);
         } finally {
-            avcodec_close(ctx.videoCodecCtx);
+            avcodec_close(ctx.videoInCodecCtx);
 
             /*if (interFrames < interThresh) {
                 // Return to the start.
@@ -747,13 +736,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
             }
 
-            if (filter_ctx != null &&
-                    filter_ctx.length > i &&
-                    filter_ctx[i].filter_graph != null) {
-
-                avfilter_graph_free(filter_ctx[i].filter_graph);
-            }
-
+            deallocFilterGraphs();
         }
 
         if (ctx.avfCtxOutput != null && (ctx.avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0) {
@@ -771,40 +754,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         av_packet_unref(packet);
         av_frame_free(frame);
 
-        int nbStreams = ctx.avfCtxInput.nb_streams();
-
-        for (int i = 0; i < nbStreams; i++) {
-            avcodec_close(ctx.avfCtxInput.streams(i).codec());
-
-            if (ctx.streamMap != null &&
-                    ctx.streamMap.length > i &&
-                    ctx.streamMap[i] != NO_STREAM_IDX &&
-                    ctx.avfCtxOutput != null &&
-                    ctx.avfCtxOutput.nb_streams() > i &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]) != null &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec() != null) {
-
-                avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
-            }
-
-            if (filter_ctx != null &&
-                    filter_ctx.length > i &&
-                    filter_ctx[i].filter_graph != null) {
-
-                avfilter_graph_free(filter_ctx[i].filter_graph);
-            }
-
-        }
-
-        avformat_close_input(ctx.avfCtxInput);
-        ctx.avfCtxInput = null;
-        ctx.avioCtxInput = null;
-
-        if (ctx.avfCtxOutput != null && (ctx.avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0)
-            avio_closep(ctx.avfCtxOutput.pb());
-        avformat_free_context(ctx.avfCtxOutput);
-        ctx.avfCtxOutput = null;
-        ctx.avioCtxOutput = null;
+        deallocFilterGraphs();
     }
 
     private int initFilter(FilteringContext fctx, AVCodecContext dec_ctx,

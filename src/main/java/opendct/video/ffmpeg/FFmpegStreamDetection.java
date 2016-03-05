@@ -16,7 +16,6 @@
 
 package opendct.video.ffmpeg;
 
-import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.PointerPointer;
@@ -29,29 +28,6 @@ import static org.bytedeco.javacpp.avutil.*;
 
 public class FFmpegStreamDetection {
     private static final Logger logger = LogManager.getLogger(FFmpegStreamDetection.class);
-
-    //TODO: Provide all of these as DeviceOptions.
-
-    // This is the smallest probe size allowed.
-    private static long minProbeSize =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_probe_size", 165440),
-                    82720
-            );
-
-    // This is the smallest probe duration allowed.
-    private static long minAnalyzeDuration =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_analyze_duration", 165440),
-                    82720
-            );
-
-    // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
-    private static long maxAnalyzeDuration =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.max_analyze_duration", 5000000),
-                    5000000
-            );
 
     /**
      * Detect at least one video and all audio streams for a program.
@@ -75,6 +51,15 @@ public class FFmpegStreamDetection {
     public static boolean detectStreams(FFmpegContext ctx, String nativeFilename, String error[]) throws FFmpegException {
 
         long startTime = System.currentTimeMillis();
+
+        // This is the smallest probe size allowed.
+        final long minProbeSize = FFmpegConfig.getMinProbeSize();
+
+        // This is the smallest probe duration allowed.
+        final long minAnalyzeDuration = FFmpegConfig.getMinAnalyseDuration();
+
+        // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
+        final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
 
         if (error == null || error.length == 0) {
             // Nothing will return in this case, but this also means we don't need to check for this
@@ -158,8 +143,7 @@ public class FFmpegStreamDetection {
                 }
                 logger.info(error[0] + " Trying again with more data.");
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 
@@ -172,18 +156,17 @@ public class FFmpegStreamDetection {
             if (!FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram) && dynamicProbeSize != probeSizeLimit) {
                 logger.info("Stream details unavailable for one or more streams. " + TRYING_AGAIN);
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 
             ctx.preferredVideo = av_find_best_stream(ctx.avfCtxInput, AVMEDIA_TYPE_VIDEO, NO_STREAM_IDX, NO_STREAM_IDX, (PointerPointer<avcodec.AVCodec>) null, 0);
 
             if (ctx.preferredVideo != AVERROR_STREAM_NOT_FOUND) {
-                ctx.videoCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredVideo));
+                ctx.videoInCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredVideo));
             }
 
-            if (ctx.videoCodecCtx == null) {
+            if (ctx.videoInCodecCtx == null) {
                 if (ctx.isInterrupted()) {
                     error[0] = FFMPEG_INIT_INTERRUPTED;
                     return false;
@@ -195,8 +178,7 @@ public class FFmpegStreamDetection {
                 }
                 logger.info(error[0] + TRYING_AGAIN);
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 
@@ -208,10 +190,10 @@ public class FFmpegStreamDetection {
             ctx.preferredAudio = findBestAudioStream(ctx.avfCtxInput);
 
             if (ctx.preferredAudio != AVERROR_STREAM_NOT_FOUND) {
-                ctx.audioCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredAudio));
+                ctx.audioInCodecCtx = getCodecContext(ctx.avfCtxInput.streams(ctx.preferredAudio));
             }
 
-            if (ctx.audioCodecCtx == null) {
+            if (ctx.audioInCodecCtx == null) {
                 if (ctx.isInterrupted()) {
                     error[0] = FFMPEG_INIT_INTERRUPTED;
                     return false;
@@ -223,8 +205,7 @@ public class FFmpegStreamDetection {
                 }
                 logger.info(error[0] + TRYING_AGAIN);
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 
@@ -242,29 +223,5 @@ public class FFmpegStreamDetection {
         logger.debug("FFmpeg stream detection done in {}ms,", endTime - startTime);
 
         return true;
-    }
-
-    public static long getMinProbeSize() {
-        return minProbeSize;
-    }
-
-    public static void setMinProbeSize(long minProbeSize) {
-        FFmpegStreamDetection.minProbeSize = minProbeSize;
-    }
-
-    public static long getMinAnalyzeDuration() {
-        return minAnalyzeDuration;
-    }
-
-    public static void setMinAnalyzeDuration(long minAnalyzeDuration) {
-        FFmpegStreamDetection.minAnalyzeDuration = minAnalyzeDuration;
-    }
-
-    public static long getMaxAnalyzeDuration() {
-        return maxAnalyzeDuration;
-    }
-
-    public static void setMaxAnalyzeDuration(long maxAnalyzeDuration) {
-        FFmpegStreamDetection.maxAnalyzeDuration = maxAnalyzeDuration;
     }
 }

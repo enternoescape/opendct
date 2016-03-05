@@ -19,6 +19,8 @@ package opendct.sagetv;
 import opendct.capture.CaptureDevice;
 import opendct.config.Config;
 import opendct.config.ExitCode;
+import opendct.config.messages.MessageManager;
+import opendct.config.messages.MessageTitle;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -57,6 +59,10 @@ public class SageTVDevicesLoaded extends Thread {
 
         if (devicesLoaded < requiredDevices) {
             if (allowFailure) {
+                MessageManager.error(this, MessageTitle.DEVICES_LOADED_FAILURE,
+                        "OpenDCT is restarting because it was unable to load all " + requiredDevices
+                                + " required capture devices within " + timeout + " milliseconds.");
+
                 ExitCode.SAGETV_NO_DEVICES.terminateJVM();
             } else {
                 logger.info("Stopped waiting for devices to become available.");

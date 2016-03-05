@@ -16,7 +16,8 @@
 
 package opendct.consumer;
 
-import opendct.config.Config;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBuffer;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.ffmpeg.*;
@@ -40,56 +41,30 @@ import java.util.concurrent.atomic.AtomicLong;
 public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
 
-    private final boolean acceptsUploadID =
-            Config.getBoolean("consumer.ffmpeg.upload_id_enabled", false);
+    private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
 
     // We must have at a minimum a 5 MB buffer plus 1MB to catch up. This ensures that if
     // someone changes this setting to a lower value, it will be overridden.
-    private final int circularBufferSize =
-            (int) Math.max(
-                    Config.getInteger("consumer.ffmpeg.circular_buffer_size", 7864320),
-                    5617370 + 1123474
-            );
+    private final int circularBufferSize = FFmpegConfig.getCircularBufferSize();
 
     // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
-    private final long maxAnalyzeDuration =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.max_analyze_duration", 5000000),
-                    5000000
-            );
+    private final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
 
     // This value cannot go any lower than 65536. Lower values result in stream corruption when the
     // RTP packets are larger than the buffer size.
-    private final int RW_BUFFER_SIZE =
-            Math.max(Config.getInteger("consumer.ffmpeg.rw_buffer_size", 262144), 65536);
+    private final int RW_BUFFER_SIZE = FFmpegConfig.getRwBufferSize();
 
     // This is the smallest amount of data that will be transferred to the SageTV server.
     private final int minUploadIDTransfer =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_upload_id_transfer_size", 20680),
-                    RW_BUFFER_SIZE
-            );
+            FFmpegConfig.getMinUploadIdTransferSize(RW_BUFFER_SIZE);
 
     // This is the smallest amount of data that will be flushed to the SageTV server.
-    private final int minDirectFlush =
-            Math.max(
-                    Config.getInteger("consumer.ffmpeg.min_direct_flush_size", 1048576),
-                    -1
-            );
+    private final int minDirectFlush = FFmpegConfig.getMinDirectFlush();
 
-    private final int ffmpegThreadPriority =
-            Math.max(
-                    Math.min(
-                            Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
-                            Thread.MAX_PRIORITY
-                    ),
-                    Thread.MIN_PRIORITY
-            );
+    private final int ffmpegThreadPriority = FFmpegConfig.getThreadPriority();
 
-    private int uploadIDPort = Config.getInteger("consumer.ffmpeg.upload_id_port", 7818);
+    private int uploadIDPort = FFmpegConfig.getUploadIdPort();
     private final long initBufferedData = 786432;
-
-    private volatile boolean switching = false;
 
     private String currentRecordingQuality;
     private boolean consumeToNull;
@@ -110,6 +85,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final Object streamingMonitor = new Object();
     private InetSocketAddress uploadSocketAddress = null;
 
+    int desiredProgram = 0;
     private String stateMessage;
     private FFmpegCircularBuffer circularBuffer;
     private FFmpegContext ctx;
@@ -119,18 +95,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public FFmpegTransSageTVConsumerImpl() {
-        ctx = new FFmpegContext(circularBufferSize, RW_BUFFER_SIZE, new FFmpegTranscoder());
+        circularBuffer = new FFmpegCircularBuffer(FFmpegConfig.getCircularBufferSize());
     }
 
     @Override
     public void run() {
         if (running.getAndSet(true)) {
             logger.error("FFmpeg Transcoder consumer is already running.");
-            return;
-        }
-
-        if (ctx == null) {
-            logger.error("Context is null!");
             return;
         }
 
@@ -144,6 +115,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         Thread.currentThread().setPriority(ffmpegThreadPriority);
 
         try {
+            ctx = new FFmpegContext(circularBuffer, RW_BUFFER_SIZE, new FFmpegTranscoder());
+
+            ctx.setProgram(desiredProgram);
+
             FFmpegProfile profile = FFmpegProfileManager.getEncoderProfile(currentRecordingQuality);
             ctx.setEncodeProfile(profile);
 
@@ -152,6 +127,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 stalled = true;
                 return;
             }
+
+            Thread.sleep(1000);
 
             ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter);
 
@@ -174,7 +151,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 currentWriter.closeFile();
             }
 
-            ctx.deallocAll();
+            ctx.dispose();
 
             stateMessage = "Stopped.";
             running.set(false);
@@ -185,7 +162,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public void write(byte[] bytes, int offset, int length) throws IOException {
-        ctx.SEEK_BUFFER.write(bytes, offset, length);
+        circularBuffer.write(bytes, offset, length);
     }
 
     @Override
@@ -205,8 +182,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public void stopConsumer() {
-        ctx.interrupt();
-        ctx.SEEK_BUFFER.close();
+        if (ctx != null) {
+            ctx.interrupt();
+        }
+        circularBuffer.close();
     }
 
     @Override
@@ -267,9 +246,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public boolean switchStreamToUploadID(String filename, long bufferSize, int uploadId) {
-        stvRecordBufferSize = bufferSize;
+        if (ctx == null) {
+            return false;
+        }
 
-        switching = true;
+        stvRecordBufferSize = bufferSize;
 
         try {
             switchWriter = new FFmpegUploadIDWriter(uploadSocketAddress, filename, uploadId);
@@ -286,8 +267,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         } catch (FFmpegException e) {
             logger.error("Unable to SWITCH output to '{}' via upload ID {} => ", filename, uploadId, e);
             return false;
-        } finally {
-            switching = false;
         }
 
         return true;
@@ -295,9 +274,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public boolean switchStreamToFilename(String filename, long bufferSize) {
-        stvRecordBufferSize = bufferSize;
+        if (ctx == null) {
+            return false;
+        }
 
-        switching = true;
+        stvRecordBufferSize = bufferSize;
 
         try {
             switchWriter = new FFmpegDirectWriter(filename);
@@ -313,8 +294,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         } catch (FFmpegException e) {
             logger.error("Unable to SWITCH output to '{}' => ", filename, e);
             return false;
-        } finally {
-            switching = false;
         }
 
         return true;
@@ -337,12 +316,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public void setProgram(int program) {
-        ctx.setProgram(program);
+        desiredProgram = program;
     }
 
     @Override
     public int getProgram() {
-        return ctx.getProgram();
+        return desiredProgram;
     }
 
     @Override
@@ -376,6 +355,18 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
 
         return streaming;
+    }
+
+    @Override
+    public DeviceOption[] getOptions() {
+        return FFmpegConfig.getFFmpegTransOptions();
+    }
+
+    @Override
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+        // Device options are re-loaded when the consumer is re-loaded. It would be a very bad idea
+        // to change settings immediately while remuxing.
+        FFmpegConfig.setOptions(deviceOptions);
     }
 
     public class FFmpegUploadIDWriter implements FFmpegWriter {
@@ -463,24 +454,26 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public class FFmpegDirectWriter implements FFmpegWriter {
-        long bytesFlushCounter;
-        long autoOffset;
+        private volatile long bytesFlushCounter;
+        private volatile long autoOffset;
 
-        //Future<Integer> future;
-        BlockingQueue<ByteBuffer> buffers;
-        CompletionHandler<Integer, Object> handler;
-        AsynchronousFileChannel asyncFileChannel;
-        String directFilename;
-        File recordingFile;
-        boolean firstWrite;
+        private BlockingQueue<ByteBuffer> buffers;
+        private CompletionHandler<Integer, Object> handler;
+        private AsynchronousFileChannel asyncFileChannel;
+        private String directFilename;
+        private File recordingFile;
+        private boolean firstWrite;
 
         public FFmpegDirectWriter(final String filename) throws IOException {
-            //future = null;
-            buffers = new ArrayBlockingQueue<ByteBuffer>(3);
+            buffers = new ArrayBlockingQueue<>(3);
 
             buffers.add(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
 
-            asyncFileChannel = AsynchronousFileChannel.open(Paths.get(filename), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+            asyncFileChannel = AsynchronousFileChannel.open(
+                    Paths.get(filename),
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE);
+
             directFilename = filename;
             recordingFile = new File(directFilename);
 
@@ -492,13 +485,26 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 @Override
                 public void completed(Integer result, Object attachment) {
 
+                    try {
+                        buffers.put((ByteBuffer)attachment);
+                    } catch (InterruptedException e) {
+                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
+                    }
+
                     if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush)) {
-                        try {
-                            asyncFileChannel.force(false);
-                        } catch (IOException e) {
-                            logger.info("Unable to flush output => ", e);
-                        }
+
                         bytesFlushCounter = 0;
+
+                        // If the file should have some data, but it doesn't, flush the data to disk
+                        // to verify that the file in fact taking data.
+
+                        if (bytesStreamed.get() > 0 && recordingFile.length() == 0) {
+                            try {
+                                asyncFileChannel.force(true);
+                            } catch (IOException e) {
+                                logger.info("Unable to flush output => ", e);
+                            }
+                        }
 
                         // According to many sources, if the file is deleted an IOException will
                         // not be thrown. This handles the possible scenario. This also means
@@ -511,11 +517,16 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                 logger.debug("Exception while closing missing file => ", e);
                             }
 
-                            while (!ctx.isInterrupted()) {
+                            while (ctx != null && !ctx.isInterrupted()) {
                                 try {
-                                    asyncFileChannel = AsynchronousFileChannel.open(Paths.get(directFilename), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+                                    asyncFileChannel = AsynchronousFileChannel.open(
+                                            Paths.get(directFilename),
+                                            StandardOpenOption.WRITE,
+                                            StandardOpenOption.CREATE);
+
                                     bytesStreamed.set(0);
-                                    logger.warn("The file '{}' is missing and was re-created.");
+                                    logger.warn("The file '{}' is missing and was re-created.",
+                                            directFilename);
                                 } catch (Exception e) {
                                     logger.error("The file '{}' is missing and cannot be re-created => ",
                                             directFilename, e);
@@ -539,12 +550,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             streamingMonitor.notifyAll();
                         }
                     }
-
-                    try {
-                        buffers.put((ByteBuffer)attachment);
-                    } catch (InterruptedException e) {
-                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
-                    }
                 }
 
                 @Override
@@ -567,20 +572,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 firstWrite = false;
             }
 
-            /*while (future != null && future.isDone()) {
-                try {
-                    future.get();
-                } catch (InterruptedException e) {
-
-                } catch (ExecutionException e) {
-
-                }
-
-                if (future.isDone()) {
-                    future = null;
-                }
-            }*/
-
             int bytesToStream = data.remaining();
 
             if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + bytesToStream) {
@@ -601,8 +592,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 autoOffset = 0;
             }
 
-            //int savedSize = data.remaining();
-
             try {
                 ByteBuffer writeBuffer = buffers.take();
 
@@ -612,7 +601,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                 asyncFileChannel.write(writeBuffer, autoOffset, writeBuffer, handler);
             } catch (InterruptedException e) {
-                //future = asyncFileChannel.write(data, autoOffset);
                 return -1;
             }
 

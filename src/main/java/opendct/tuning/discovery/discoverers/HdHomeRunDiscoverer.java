@@ -58,6 +58,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static BooleanDeviceOption alwaysTuneLegacy;
     private static BooleanDeviceOption allowHttpTuning;
     private static StringDeviceOption transcodeProfile;
+    private static BooleanDeviceOption qamHttpTuningHack;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -73,149 +74,192 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);
+
+        // If the HDHomeRun Prime is allowed through the UPnP filter, we can't allow it here too.
+        if (Config.getString("upnp.new.device.schema_filter_strings_csv")
+                .contains("schemas-dkeystone-com")) {
+
+            Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");
+        }
+
         errorMessage = null;
         deviceOptions = new ConcurrentHashMap<>();
 
-        try {
-            retunePolling = new IntegerDeviceOption(
-                    Config.getInteger("hdhr.retune_poll_s", 1),
-                    false,
-                    "Re-tune Polling Seconds",
-                    "hdhr.retune_poll_s",
-                    "This is the frequency in seconds to poll the producer to check if it" +
-                            " is stalled.",
-                    0,
-                    Integer.MAX_VALUE
-            );
+        while (true) {
+            try {
+                retunePolling = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.retune_poll_s", 1),
+                        false,
+                        "Re-tune Polling Seconds",
+                        "hdhr.retune_poll_s",
+                        "This is the frequency in seconds to poll the producer to check if it" +
+                                " is stalled.",
+                        0,
+                        Integer.MAX_VALUE
+                );
 
-            autoMapReference = new BooleanDeviceOption(
-                    Config.getBoolean("hdhr.qam.automap_reference_lookup", true),
-                    false,
-                    "ClearQAM Auto-Map by Reference",
-                    "hdhr.qam.automap_reference_lookup",
-                    "This enables ClearQAM devices to look up their channels based on the" +
-                            " frequencies and programs available on a capture device with" +
-                            " a CableCARD installed. This works well if you have an" +
-                            " InfiniTV device with a CableCARD installed available."
-            );
+                autoMapReference = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.qam.automap_reference_lookup", true),
+                        false,
+                        "ClearQAM Auto-Map by Reference",
+                        "hdhr.qam.automap_reference_lookup",
+                        "This enables ClearQAM devices to look up their channels based on the" +
+                                " frequencies and programs available on a capture device with" +
+                                " a CableCARD installed. This works well if you have an" +
+                                " InfiniTV device with a CableCARD installed available."
+                );
 
-            autoMapTuning = new BooleanDeviceOption(
-                    Config.getBoolean("hdhr.qam.automap_tuning_lookup", false),
-                    false,
-                    "ClearQAM Auto-Map by Tuning",
-                    "hdhr.qam.automap_tuning_lookup",
-                    "This enables ClearQAM devices to look up their channels by tuning" +
-                            " into the channel on a capture device with a CableCARD" +
-                            " installed and then getting the current frequency and" +
-                            " program being used. This may be your only option if you are" +
-                            " using only HDHomeRun Prime capture devices. The program" +
-                            " always tries to get a channel by reference before resorting" +
-                            " to this lookup method. It will also retain the results of" +
-                            " the lookup so this doesn't need to happen the next time. If" +
-                            " all tuners with a CableCARD installed are currently in use," +
-                            " this method cannot be used and will fail to tune the channel."
-            );
+                autoMapTuning = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.qam.automap_tuning_lookup", false),
+                        false,
+                        "ClearQAM Auto-Map by Tuning",
+                        "hdhr.qam.automap_tuning_lookup",
+                        "This enables ClearQAM devices to look up their channels by tuning" +
+                                " into the channel on a capture device with a CableCARD" +
+                                " installed and then getting the current frequency and" +
+                                " program being used. This may be your only option if you are" +
+                                " using only HDHomeRun Prime capture devices. The program" +
+                                " always tries to get a channel by reference before resorting" +
+                                " to this lookup method. It will also retain the results of" +
+                                " the lookup so this doesn't need to happen the next time. If" +
+                                " all tuners with a CableCARD installed are currently in use," +
+                                " this method cannot be used and will fail to tune the channel."
+                );
 
-            hdhrLock = new BooleanDeviceOption(
-                    Config.getBoolean("hdhr.locking", true),
-                    false,
-                    "HDHomeRun Locking",
-                    "hdhr.locking",
-                    "This enables when using HDHomeRun Native Tuning, the program to put" +
-                            " the tuner in a locked state when it is in use. This should" +
-                            " generally not be disabled. The affected capture devices need" +
-                            " to be re-loaded for this setting to take effect."
-            );
+                hdhrLock = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.locking", true),
+                        false,
+                        "HDHomeRun Locking",
+                        "hdhr.locking",
+                        "This enables when using HDHomeRun Native Tuning, the program to put" +
+                                " the tuner in a locked state when it is in use. This should" +
+                                " generally not be disabled. The affected capture devices need" +
+                                " to be re-loaded for this setting to take effect."
+                );
 
-            controlRetryCount = new IntegerDeviceOption(
-                    Config.getInteger("hdhr.retry_count", 2),
-                    false,
-                    "Communication Retry Count",
-                    "hdhr.retry_count",
-                    "This is the number of times the program will attempt to communicate with the" +
-                            " HDHomeRun device before returning a IO error.",
-                    0,
-                    Integer.MAX_VALUE
-            );
+                controlRetryCount = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.retry_count", 2),
+                        false,
+                        "Communication Retry Count",
+                        "hdhr.retry_count",
+                        "This is the number of times the program will attempt to communicate with the" +
+                                " HDHomeRun device before returning a IO error.",
+                        0,
+                        Integer.MAX_VALUE
+                );
 
-            broadcastInterval = new IntegerDeviceOption(
-                    Config.getInteger("hdhr.broadcast_s", 58),
-                    false,
-                    "Discovery Broadcast Interval",
-                    "hdhr.broadcast_ms",
-                    "This is the interval in seconds that the program will send out a" +
-                            " broadcast to locate HDHomeRun devices on the network. A value of 0" +
-                            " will turn off discovery after the first broadcast.",
-                    0,
-                    Integer.MAX_VALUE
-            );
+                broadcastInterval = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.broadcast_s", 58),
+                        false,
+                        "Discovery Broadcast Interval",
+                        "hdhr.broadcast_ms",
+                        "This is the interval in seconds that the program will send out a" +
+                                " broadcast to locate HDHomeRun devices on the network. A value of 0" +
+                                " will turn off discovery after the first broadcast.",
+                        0,
+                        Integer.MAX_VALUE
+                );
 
-            // Ignore the HDHomeRun Prime for now.
-            ignoreModels = new StringDeviceOption(
-                    new String[] { "HDHR3-CC" },
-                    true,
-                    false,
-                    "Ignore Models",
-                    "hdhr.exp_ignore_models",
-                    "Prevent specific HDHomeRun models from being detected and loaded."
-            );
+                // Ignore the HDHomeRun Prime for now.
+                ignoreModels = new StringDeviceOption(
+                        Config.getStringArray("hdhr.exp_ignore_models", "HDHR3-CC"),
+                        true,
+                        false,
+                        "Ignore Models",
+                        "hdhr.exp_ignore_models",
+                        "Prevent specific HDHomeRun models from being detected and loaded."
+                );
 
-            ignoreDeviceIds = new StringDeviceOption(
-                    new String[] { "HDHR3-CC" },
-                    true,
-                    false,
-                    "Ignore Device IDs",
-                    "hdhr.ignore_device_ids",
-                    "Prevent specific HDHomeRun devices by ID from being detected and loaded."
-            );
+                ignoreDeviceIds = new StringDeviceOption(
+                        Config.getStringArray("hdhr.ignore_device_ids"),
+                        true,
+                        false,
+                        "Ignore Device IDs",
+                        "hdhr.ignore_device_ids",
+                        "Prevent specific HDHomeRun devices by ID from being detected and loaded."
+                );
 
-            alwaysTuneLegacy = new BooleanDeviceOption(
-                    Config.getBoolean("hdhr.always_tune_legacy", false),
-                    false,
-                    "Always Tune in Legacy Mode",
-                    "hdhr.always_tune_legacy",
-                    "This tells the program to only tune HDHomeRun devices in legacy mode. The" +
-                            " only devices that will always ignore this request are Digital Cable" +
-                            " Tuners that have a CableCARD inserted since it would turn them into" +
-                            " a ClearQAM device."
-            );
+                alwaysTuneLegacy = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.always_tune_legacy", false),
+                        false,
+                        "Always Tune in Legacy Mode",
+                        "hdhr.always_tune_legacy",
+                        "This tells the program to only tune HDHomeRun devices in legacy mode. The" +
+                                " only devices that will always ignore this request are Digital Cable" +
+                                " Tuners that have a CableCARD inserted since it would turn them into" +
+                                " a ClearQAM device."
+                );
 
-            allowHttpTuning = new BooleanDeviceOption(
-                    Config.getBoolean("hdhr.allow_http_tuning", true),
-                    false,
-                    "Allow HTTP Tuning",
-                    "hdhr.allow_http_tuning",
-                    "This will allow the HTTP URL to be used instead of RTP if a URL is available" +
-                            " for the requested channel. This will allow for hardware transcoding" +
-                            " on models that support it and higher reliability of the transport" +
-                            " stream. Depending on how SageTV has channels mapped, sometimes a" +
-                            " URL will not be located and RTP will be used instead."
-            );
+                allowHttpTuning = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.allow_http_tuning", true),
+                        false,
+                        "Allow HTTP Tuning",
+                        "hdhr.allow_http_tuning",
+                        "This will allow the HTTP URL to be used instead of RTP if a URL is available" +
+                                " for the requested channel. This will allow for hardware transcoding" +
+                                " on models that support it and higher reliability of the transport" +
+                                " stream. Depending on how SageTV has channels mapped, sometimes a" +
+                                " URL will not be located and RTP will be used instead."
+                );
 
-            transcodeProfile = new StringDeviceOption(
-                    Config.getString("hdhr.extend_transcode_profile", ""),
-                    false,
-                    "Transcode Profile",
-                    "hdhr.extend_transcode_profile",
-                    "This is the profile to be used for all tuners that support hardware" +
-                            " transcoding."
-            );
+                transcodeProfile = new StringDeviceOption(
+                        Config.getString("hdhr.extend_transcode_profile", ""),
+                        false,
+                        "Transcode Profile",
+                        "hdhr.extend_transcode_profile",
+                        "This is the profile to be used for all tuners that support hardware" +
+                                " transcoding."
+                );
 
-            Config.mapDeviceOptions(
-                    deviceOptions,
-                    retunePolling,
-                    autoMapReference,
-                    autoMapTuning,
-                    hdhrLock,
-                    controlRetryCount,
-                    ignoreModels,
-                    ignoreDeviceIds,
-                    alwaysTuneLegacy,
-                    allowHttpTuning,
-                    transcodeProfile
-            );
-        } catch (DeviceOptionException e) {
-            logger.error("Unable to configure device options for HDHomeRunDiscoverer => ", e);
+                qamHttpTuningHack = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.allow_qam_http_tuning", false),
+                        false,
+                        "Enable QAM HTTP Tuning",
+                        "hdhr.allow_qam_http_tuning",
+                        "This will allow the HTTP URL to be used instead of RTP if a URL is" +
+                                " available for the requested channel. The reason this is its own" +
+                                " option is because to get the correct channel it may need to" +
+                                " scan the available virtual channels 5000+ on the capture" +
+                                " device. It is recommended to have a seperate lineup per parent" +
+                                " capture device when using this because the virtual channel" +
+                                " mappings might be different between devices."
+                );
+
+                Config.mapDeviceOptions(
+                        deviceOptions,
+                        retunePolling,
+                        autoMapReference,
+                        autoMapTuning,
+                        hdhrLock,
+                        controlRetryCount,
+                        ignoreModels,
+                        ignoreDeviceIds,
+                        alwaysTuneLegacy,
+                        allowHttpTuning,
+                        transcodeProfile,
+                        qamHttpTuningHack
+                );
+            } catch (DeviceOptionException e) {
+                logger.error("Unable to configure device options for HDHomeRunDiscoverer." +
+                        " Reverting to defaults. => ", e);
+
+                Config.setInteger("hdhr.retune_poll_s", 1);
+                Config.setBoolean("hdhr.qam.automap_reference_lookup", true);
+                Config.setBoolean("hdhr.qam.automap_tuning_lookup", false);
+                Config.setBoolean("hdhr.locking", true);
+                Config.setInteger("hdhr.retry_count", 2);
+                Config.setInteger("hdhr.broadcast_s", 58);
+                Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");
+                Config.setStringArray("hdhr.ignore_device_ids");
+                Config.setBoolean("hdhr.always_tune_legacy", false);
+                Config.setBoolean("hdhr.allow_http_tuning", true);
+                Config.setString("hdhr.extend_transcode_profile", "");
+                Config.setBoolean("hdhr.allow_qam_http_tuning", false);
+
+                continue;
+            }
+
+            break;
         }
     }
 
@@ -300,7 +344,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         return deviceLoader == null || deviceLoader.isWaitingForDevices();
     }
 
-    public void addDevice(HDHomeRunDevice discoveredDevice) {
+    public void addCaptureDevice(HDHomeRunDevice discoveredDevice) {
 
         discoveredDevicesLock.writeLock().lock();
 
@@ -550,7 +594,11 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 hdhrLock,
                 controlRetryCount,
                 ignoreModels,
-                ignoreDeviceIds
+                ignoreDeviceIds,
+                alwaysTuneLegacy,
+                allowHttpTuning,
+                transcodeProfile,
+                qamHttpTuningHack
         };
     }
 
@@ -617,5 +665,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static String getTranscodeProfile() {
         return transcodeProfile.getValue();
+    }
+
+    public static boolean getQamHttpTuningHack() {
+        return qamHttpTuningHack.getBoolean();
     }
 }

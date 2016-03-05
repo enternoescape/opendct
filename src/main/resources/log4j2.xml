@@ -42,6 +42,10 @@
             <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>
+        <Logger name="ffmpeg" level="DEBUG" additivity="false">
+            <AppenderRef level="INFO" ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
         <Logger name="ffmpeg.libx264" level="INFO" additivity="false">
             <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>

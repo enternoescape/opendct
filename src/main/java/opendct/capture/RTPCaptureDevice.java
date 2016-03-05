@@ -58,6 +58,12 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
      */
     public RTPCaptureDevice(String deviceParentName, String deviceName) throws CaptureDeviceIgnoredException {
         super(deviceParentName, deviceName);
+
+        logger.debug("Initializing RTSP client...");
+        rtspClient = getNewRTSPClient();
+
+        logger.debug("Getting a port for incoming RTP data...");
+        rtpLocalPort = Config.getFreeRTSPPort(encoderName);
     }
 
     /**
@@ -74,6 +80,9 @@ public abstract class RTPCaptureDevice extends BasicCaptureDevice implements Cap
      */
     public RTPCaptureDevice(String deviceParentName, String deviceName, int encoderParentHash, int encoderHash) throws CaptureDeviceIgnoredException {
         super(deviceParentName, deviceName, encoderParentHash, encoderHash);
+
+        logger.debug("Getting a port for incoming RTP data...");
+        rtpLocalPort = Config.getFreeRTSPPort(encoderName);
     }
 
     /**

@@ -199,6 +199,8 @@ public class ChannelLineup {
 
         if (!tvChannel.getChannelRemap().equals("")) {
             setRemap(tvChannel.getChannel(), tvChannel.getChannelRemap());
+        } else {
+            clearRemap(tvChannel.getChannel());
         }
     }
 

@@ -17,6 +17,10 @@
 package opendct.consumer;
 
 import opendct.config.Config;
+import opendct.config.options.BooleanDeviceOption;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
+import opendct.config.options.IntegerDeviceOption;
 import opendct.consumer.buffers.SeekableCircularBuffer;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.java.VideoUtil;
@@ -31,43 +35,22 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RawSageTVConsumerImpl implements SageTVConsumer {
-    private final Logger logger = LogManager.getLogger(RawSageTVConsumerImpl.class);
+    private static final Logger logger = LogManager.getLogger(RawSageTVConsumerImpl.class);
 
-    private final boolean acceptsUploadID =
-            Config.getBoolean("consumer.raw.upload_id_enabled", false);
+    private final boolean acceptsUploadID = uploadIdEnabledOpt.getBoolean();
 
-    private final int minTransferSize =
-            Math.max(
-                    Config.getInteger("consumer.raw.min_transfer_size", 16384),
-                    1316
-            );
+    private final int minTransferSize = minTransferSizeOpt.getInteger();
 
-    private final int maxTransferSize =
-            Math.max(
-                    Config.getInteger("consumer.raw.max_transfer_size", 131072),
-                    minTransferSize * 4
-            );
+    private final int maxTransferSize = maxTransferSizeOpt.getInteger();
 
-    private final int bufferSize =
-            Math.max(
-                    Config.getInteger("consumer.raw.stream_buffer_size", 1048476),
-                    maxTransferSize * 2
-            );
+    private final int bufferSize = bufferSizeOpt.getInteger();
 
-    private final int rawThreadPriority =
-            Math.max(
-                    Math.min(
-                            Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
-                            Thread.MAX_PRIORITY
-                    ),
-                    Thread.MIN_PRIORITY
-            );
-
-    private final int standoff = Config.getInteger("consumer.raw.standoff", 8192);
+    private final int rawThreadPriority = threadPriorityOpt.getInteger();
 
     // Atomic because long values take two clocks to process in 32-bit. We could get incomplete
     // values otherwise. Don't ever forget to set this value and increment it correctly. This is
@@ -97,11 +80,19 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
     private NIOSageTVUploadID nioSageTVUploadID = null;
 
-    private final int uploadIDPort = Config.getInteger("consumer.raw.upload_id_port", 7818);
+    private final int uploadIDPort = uploadIdPortOpt.getInteger();
     private SocketAddress uploadIDSocket = null;
 
     private volatile boolean stalled = false;
     private String stateMessage = "Waiting for first bytes...";
+
+    static {
+        deviceOptions = new ConcurrentHashMap<>();
+
+        initDeviceOptions();
+
+
+    }
 
     public void run() {
         logger.entry();
@@ -184,7 +175,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             }
 
             boolean start = true;
-            int standoffCountdown = standoff;
             stateMessage = "Waiting for PES start byte...";
             while (!Thread.currentThread().isInterrupted()) {
                 streamBuffer.clear();
@@ -243,8 +233,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                         }
                                     }
 
-                                    bytesStreamed.addAndGet(lastBytesToStream + standoff);
-                                    standoffCountdown = standoff;
+                                    bytesStreamed.addAndGet(lastBytesToStream);
 
                                     if (!nioSageTVUploadID.switchUpload(
                                             switchRecordingFilename, switchUploadID)) {
@@ -280,11 +269,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                             nioSageTVUploadID.uploadAutoIncrement(streamBuffer);
                         }
 
-                        if(standoffCountdown < 0) {
-                            bytesStreamed.addAndGet(bytesToStream);
-                        } else {
-                            standoffCountdown -= bytesToStream;
-                        }
+                        bytesStreamed.addAndGet(bytesToStream);
                     } else if (!consumeToNull) {
                         if (switchFile) {
                             int switchIndex = VideoUtil.getTsVideoPatStartByte(
@@ -315,8 +300,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                         }
                                     }
 
-                                    bytesStreamed.addAndGet(lastBytesToStream + standoff);
-                                    standoffCountdown = lastBytesToStream;
+                                    bytesStreamed.addAndGet(lastBytesToStream);
 
                                     if (switchFileOutputStream != null) {
                                         if (currentFile != null && currentFile.isOpen()) {
@@ -346,14 +330,10 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                             }
                         }
 
-                        while (streamBuffer.hasRemaining()) {
+                        while (currentFile != null && streamBuffer.hasRemaining()) {
                             int savedSize = currentFile.write(streamBuffer);
 
-                            if(standoffCountdown < 0) {
-                                bytesStreamed.addAndGet(savedSize);
-                            } else {
-                                standoffCountdown -= savedSize;
-                            }
+                            bytesStreamed.addAndGet(savedSize);
 
                             if (stvRecordBufferSize > 0 && stvRecordBufferPos.get() >
                                     stvRecordBufferSize) {
@@ -583,10 +563,144 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
      *
      * @param timeout The amount of time in milliseconds to block until returning even if the stream
      *                has not started.
-     * @return
+     * @return <i>true</i> if the consumer is currently streaming.
      */
     public boolean isStreaming(long timeout) {
+        try {
+            Thread.sleep(timeout / 2);
+        } catch (InterruptedException e) {
+            logger.debug("Interrupted while waiting for streaming.");
+        }
+
         return !stalled;
+    }
+
+    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+
+    private static BooleanDeviceOption uploadIdEnabledOpt;
+    private static IntegerDeviceOption minTransferSizeOpt;
+    private static IntegerDeviceOption maxTransferSizeOpt;
+    private static IntegerDeviceOption bufferSizeOpt;
+    private static IntegerDeviceOption threadPriorityOpt;
+    private static IntegerDeviceOption uploadIdPortOpt;
+
+    private static void initDeviceOptions() {
+        while (true) {
+            try {
+                uploadIdEnabledOpt = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.raw.upload_id_enabled", false),
+                        false,
+                        "Enable Upload ID",
+                        "consumer.raw.upload_id_enabled",
+                        "This enables the use of upload ID with SageTV for writing out recordings.");
+
+                minTransferSizeOpt = new IntegerDeviceOption(
+                        Config.getInteger("consumer.raw.min_transfer_size", 65536),
+                        false,
+                        "Min Transfer Rate",
+                        "consumer.raw.min_transfer_size",
+                        "This is the minimum number of bytes to write at one time. This value" +
+                                " cannot be less than 16384 bytes and cannot be greater than" +
+                                " 262144 bytes.",
+                        16384,
+                        262144);
+
+                maxTransferSizeOpt = new IntegerDeviceOption(
+                        Config.getInteger("consumer.raw.max_transfer_size", 1048476),
+                        false,
+                        "Max Transfer Rate",
+                        "consumer.raw.max_transfer_size",
+                        "This is the maximum number of bytes to write at one time. This value" +
+                                " cannot be less than 786432 bytes and cannot be greater than" +
+                                " 1048576 bytes.",
+                        786432,
+                        1048576);
+
+                bufferSizeOpt = new IntegerDeviceOption(
+                        Config.getInteger("consumer.raw.stream_buffer_size", 2097152),
+                        false,
+                        "Stream Buffer Size",
+                        "consumer.raw.stream_buffer_size",
+                        "This is the size of the streaming buffer. If this is not greater than 2" +
+                                " * Max Transfer Size, it will be adjusted. This value cannot be" +
+                                " less than 2097152 bytes and cannot be greater than 33554432" +
+                                " bytes.",
+                        2097152,
+                        33554432);
+
+
+                threadPriorityOpt = new IntegerDeviceOption(
+                        Config.getInteger("consumer.raw.thread_priority", Thread.MAX_PRIORITY - 2),
+                        false,
+                        "Raw Thread Priority",
+                        "consumer.raw.thread_priority",
+                        "This is the priority given to the raw processing thread. A higher" +
+                                " number means higher priority. Only change this value for" +
+                                " troubleshooting. This value cannot be less than 1 and cannot be" +
+                                " greater than 10.",
+                        Thread.MIN_PRIORITY,
+                        Thread.MAX_PRIORITY);
+
+                uploadIdPortOpt = new IntegerDeviceOption(
+                        Config.getInteger("consumer.raw.upload_id_port", 7818),
+                        false,
+                        "SageTV Upload ID Port",
+                        "consumer.raw.upload_id_port",
+                        "This is the port number used to communicate with SageTV when using" +
+                                " upload ID for recording. You only need to change this value if" +
+                                " you have changed it in SageTV. This value cannot be less than" +
+                                " 1024 and cannot be greater than 65535.",
+                        1024,
+                        65535);
+
+            } catch (DeviceOptionException e) {
+                logger.warn("Invalid options. Reverting to defaults => ", e);
+
+                Config.setBoolean("consumer.raw.upload_id_enabled", false);
+                Config.setInteger("consumer.raw.min_transfer_size", 65536);
+                Config.setInteger("consumer.raw.max_transfer_size", 1048476);
+                Config.setInteger("consumer.raw.stream_buffer_size", 2097152);
+                Config.setInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2);
+                Config.setInteger("consumer.raw.upload_id_port", 7818);
+                continue;
+            }
+
+            break;
+        }
+    }
+
+    @Override
+    public DeviceOption[] getOptions() {
+        return new DeviceOption[] {
+                uploadIdEnabledOpt,
+                minTransferSizeOpt,
+                maxTransferSizeOpt,
+                bufferSizeOpt,
+                threadPriorityOpt,
+                uploadIdPortOpt
+        };
+    }
+
+    @Override
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+        for (DeviceOption option : deviceOptions) {
+            DeviceOption optionReference =
+                    RawSageTVConsumerImpl.deviceOptions.get(option.getProperty());
+
+            if (optionReference == null) {
+                continue;
+            }
+
+            if (optionReference.isArray()) {
+                optionReference.setValue(option.getArrayValue());
+            } else {
+                optionReference.setValue(option.getValue());
+            }
+
+            Config.setDeviceOption(optionReference);
+        }
+
+        Config.saveConfig();
     }
 }
 

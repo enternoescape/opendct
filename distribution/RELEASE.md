@@ -412,3 +412,47 @@
 > being used to access the device. HTTP tuning can cause the device to be locked by the local IP
 > address, but will not unlock or allow it to be changed even though we are on the correct IP
 > address.
+
+#### 0.4.30-Beta
+> *Fixed the new transcoder HashMap so it doesn't unintentionally retain references. The associated 
+> RAM with the buffer would never be returned.
+
+> *HDHomeRun ongoing discovery only sends one packet per interval after the first 3 in a row. This
+> helps prevent the UDP traffic from being dropped because of all of the responses.
+
+> *Changed periodic flushing so it only happens if it looks like the file isn't growing.
+
+> *Changed automatic lineup creation for ATSC HDHomeRun capture devices so they create a new
+> lineup per parent device instead of per tuning type. Automatic pooling also separates ATSC capture
+> devices by parent device. This is required because some people have completely different lineups
+> between their devices of the same type.
+
+> *Added new lineup update method: COPY. This will copy another lineup to get updates, the
+> tunable/ignored channel statuses in the source lineup will not effect the tunable/ignored channels 
+> in this lineup. The lineup.address property needs to be the name of the lineup to copy. If the
+> lineup to be copied does not exist, this lineup will not be updated and an error will appear in
+> the log.
+
+> *Added HDHomeRun QAM HTTP streaming. HDHomeRun ClearQAM tuning maps to arbitrary virtual channels
+> starting at 5000 that could change between channel scans. Since we can't reliably tell what we are
+> going to get, we need to scan every single virtual channel until we find the one with the
+> frequency and program we are looking for. OpenDCT updates the lineup with everything it discovers
+> along the way, so we can reduce the possibility of needing to scan again in the future. It is safe
+> to run a new scan on the capture device itself since OpenDCT always verifies that the frequency
+> and program have not changed before it uses the URL associated with the virtual channel.
+
+> *HDHomeRun Prime can now be loaded via the native detection protocol. This will not change how the
+> device is named in SageTV. The following needs to be changed in opendct.properties to allow this:
+> 1) Remove schemas-dkeystone-com including the comma in front of it from
+>    upnp.new.device.schema_filter_strings_csv
+> 2) Change discovery.exp_enabled from false to true
+> 3) Remove HDHR3-CC from hdhr.exp_ignore_models
+> *) If you only use HDHomeRun devices, you can also turn off UPnP completely by changing
+>    upnp.enabled to false.
+
+> *Internal: Moved offline channel scanning registration from the BasicCaptureDevice to
+> SageTVManager.
+
+> *Internal: Cleaned up the layout of several methods.
+
+> *Internal: Added DeviceOptions to the FFmpeg consumers.

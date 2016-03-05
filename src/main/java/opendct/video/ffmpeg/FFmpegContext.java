@@ -583,7 +583,7 @@ public class FFmpegContext {
     public void dumpInputFormat() {
         DUMP_BUFFER.setLength(0);
         FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxInput, 0, inputFilename, false, desiredProgram);
-        logger.info(DUMP_BUFFER.toString());
+        logger.info("DI {}", DUMP_BUFFER.toString());
     }
 
     /**
@@ -592,7 +592,7 @@ public class FFmpegContext {
     public void dumpOutputFormat() {
         DUMP_BUFFER.setLength(0);
         FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxOutput, 0, outputFilename, true, desiredProgram);
-        logger.info(DUMP_BUFFER.toString());
+        logger.info("DO {}", DUMP_BUFFER.toString());
     }
 
     /**
@@ -733,9 +733,34 @@ public class FFmpegContext {
         return avioCtx;
     }
 
+    private void freeAndSetNull(AVIOContext avioCtx) {
+        if (avioCtx != null && !avioCtx.isNull()) {
+            if (avioCtx.buffer() != null) {
+                av_free(avioCtx.buffer());
+                avioCtx.buffer(null);
+            }
+            av_free(avioCtx);
+            avioCtx.setNull();
+        }
+    }
+
+    private void freeAndSetNull(AVFormatContext avfCtx) {
+        if (avfCtx != null && !avfCtx.isNull()) {
+            int numStreams = avfCtx.nb_streams();
+            for (int idx = 0; idx < numStreams; ++idx) {
+                avcodec_close(avfCtx.streams(idx).codec());
+            }
+            avformat_free_context(avfCtx);
+            avfCtx.setNull();
+        }
+    }
+
     public void deallocInputContext() {
         if (avfCtxInput != null && !avfCtxInput.isNull()) {
-            avformat_close_input(avfCtxInput);
+
+            freeAndSetNull(avioCtxInput);
+            avformat_close_input(avfCtxInput); // This call already sets avfCtxInput's pointer to null
+            freeAndSetNull(avfCtxInput);
 
             // These are all de-allocated when avformat_close_input is called.
             avfCtxInput = null;
@@ -749,12 +774,34 @@ public class FFmpegContext {
     public void deallocOutputContext() {
         if (avfCtxOutput != null && !avfCtxOutput.isNull()) {
 
+            logger.debug("avcodec_close");
+            int numStreams = avfCtxOutput.nb_streams();
+            for (int idx = 0; idx < numStreams; ++idx) {
+                if (avfCtxOutput.streams(idx) != null &&
+                        avfCtxOutput.streams(idx).codec() != null) {
+
+                    avcodec_close(avfCtxOutput.streams(idx).codec());
+                }
+            }
+
+            logger.debug("avio_closep");
             if ((avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0) {
                 avio_closep(avfCtxOutput.pb());
                 avioCtxOutput = null;
             }
 
+            logger.debug("EncoderContext: av_dict_free");
+            if (encoderDicts != null) {
+                for (AVDictionary encoderDict : encoderDicts) {
+                    if (encoderDict != null && !encoderDict.isNull()) {
+                        av_dict_free(encoderDict);
+                    }
+                }
+            }
+
+            logger.debug("avformat_free_context");
             avformat_free_context(avfCtxOutput);
+
             avfCtxOutput = null;
         }
 

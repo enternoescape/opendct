@@ -173,38 +173,42 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         // Configure channel lineup
         // =========================================================================================
 
+        String newLineupName;
+
         if (isTuneLegacy()) {
             // This way we don't end up with a device that doesn't have a lineup.xml file becoming
             // the primary source.
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN) {
-                setChannelLineup(Config.getString(
+               newLineupName = Config.getString(
                         propertiesDeviceParent + "lineup",
                         String.valueOf(encoderDeviceType).toLowerCase() + "_legacy_" +
-                                device.getDeviceIdHex().toLowerCase()));
+                                device.getDeviceIdHex().toLowerCase());
             } else {
-                setChannelLineup(Config.getString(
+                newLineupName = Config.getString(
                         propertiesDeviceParent + "lineup",
-                        String.valueOf(encoderDeviceType).toLowerCase() + "_legacy"));
+                        String.valueOf(encoderDeviceType).toLowerCase() + "_legacy");
             }
         } else {
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN ||
                     encoderDeviceType == CaptureDeviceType.QAM_HDHOMERUN) {
 
-                setChannelLineup(Config.getString(
+                newLineupName = Config.getString(
                         propertiesDeviceParent + "lineup",
                         String.valueOf(encoderDeviceType).toLowerCase() + "_" +
-                                device.getDeviceIdHex().toLowerCase()));
+                                device.getDeviceIdHex().toLowerCase());
             } else {
-                setChannelLineup(Config.getString(
+                newLineupName = Config.getString(
                         propertiesDeviceParent + "lineup",
-                        String.valueOf(encoderDeviceType).toLowerCase()));
+                        String.valueOf(encoderDeviceType).toLowerCase());
             }
 
             httpServices = new HTTPCaptureDeviceServices();
         }
 
+        setChannelLineup(newLineupName);
+
         if (!ChannelManager.hasChannels(encoderLineup) &&
-                encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
+                encoderLineup.equals(newLineupName)) {
 
             ChannelLineup newChannelLineup;
 
@@ -708,17 +712,20 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                         if (anyUrl == null) {
 
-                            int anyChannel = 5001;
-                            anyUrl = ChannelManager.getChannel(encoderLineup, "5000");
+                            TVChannel qamChannels[] = ChannelManager.getChannelList(encoderLineup, true, true);
 
-                            // This goes a lot faster than you might expect.
-                            while (anyUrl != null) {
-                                if (anyChannel % 10 == 0) {
-                                    setExternalLock(true);
+                            for (TVChannel qamChannel : qamChannels) {
+
+                                if (tuningThread != Thread.currentThread()) {
+                                    return false;
+                                }
+
+                                if (Util.isNullOrEmpty(qamChannel.getUrl())) {
+                                    continue;
                                 }
 
                                 try {
-                                    tuner.setVirtualChannel(anyUrl.getChannel());
+                                    tuner.setVirtualChannel(qamChannel.getChannel());
 
                                     String tFrequency = tuner.getChannel();
                                     int tProgram = tuner.getProgram();
@@ -726,12 +733,14 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                     if (tFrequency.endsWith(String.valueOf(":" + frequency)) &&
                                             program.equals(String.valueOf(tProgram))) {
 
-                                        anyUrl.setChannelRemap(tvChannel.getChannel());
-                                        anyUrl.setModulation(modulation);
-                                        anyUrl.setFrequency(frequency);
-                                        anyUrl.setProgram(program);
+                                        qamChannel.setChannelRemap(tvChannel.getChannel());
+                                        qamChannel.setModulation(modulation);
+                                        qamChannel.setFrequency(frequency);
+                                        qamChannel.setProgram(program);
 
-                                        ChannelManager.updateChannel(encoderLineup, anyUrl);
+                                        ChannelManager.updateChannel(encoderLineup, qamChannel);
+
+                                        anyUrl = qamChannel;
                                         break;
                                     } else {
                                         // While we have this one tuned in, let's try to match it up
@@ -751,35 +760,37 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                                     continue;
                                                 }
 
-                                                anyUrl.setChannelRemap(optChannel);
-                                                anyUrl.setModulation(optModulation);
-                                                anyUrl.setFrequency(optFrequency);
-                                                anyUrl.setProgram(optProgram);
+                                                qamChannel.setChannelRemap(optChannel);
+                                                qamChannel.setModulation(optModulation);
+                                                qamChannel.setFrequency(optFrequency);
+                                                qamChannel.setProgram(optProgram);
 
-                                                ChannelManager.updateChannel(encoderLineup, anyUrl);
+                                                ChannelManager.updateChannel(encoderLineup, qamChannel);
                                             }
                                         } catch (NumberFormatException e) {
-                                            logger.warn("Unable to parse frequency from tuning the channel {}.", anyUrl.getChannel());
+                                            logger.warn("Unable to parse frequency from tuning" +
+                                                    " the channel {}.", qamChannel.getChannel());
                                         }
                                     }
                                 } catch (GetSetException e) {
                                     logger.error("Unable to tune the channel {}." +
-                                            " Removing channel from lineup.", anyUrl.getChannel());
+                                            " Removing channel from lineup.", qamChannel.getChannel());
 
-                                    ChannelLineup removeLineup = ChannelManager.getChannelLineup(encoderLineup);
+                                    ChannelLineup removeLineup =
+                                            ChannelManager.getChannelLineup(encoderLineup);
+
                                     if (removeLineup != null) {
-                                        removeLineup.removeChannel(anyUrl.getChannel());
+                                        removeLineup.removeChannel(qamChannel.getChannel());
                                     }
                                 }
-
-                                anyUrl = ChannelManager.getChannel(encoderLineup, String.valueOf(anyChannel++));
                             }
                         }
 
                         long qamEndTime = System.currentTimeMillis();
 
                         if (anyUrl != null) {
-                            logger.info("Found QAM virtual channel {} in {}ms.", anyUrl.getChannel(),  qamEndTime - qamStartTime);
+                            logger.info("Found QAM virtual channel {} in {}ms.",
+                                    anyUrl.getChannel(),  qamEndTime - qamStartTime);
 
                             httpProducing = tuneUrl(
                                     anyUrl,
@@ -802,10 +813,16 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     }
 
                 } catch (IOException e) {
-                    logger.error("HDHomeRun is unable to tune into channel because it cannot be reached => ", e);
+                    logger.error("HDHomeRun is unable to tune into channel" +
+                            " because it cannot be reached => ", e);
                     return logger.exit(false);
                 } catch (GetSetException e) {
-                    logger.error("HDHomeRun is unable to tune into channel because the command did not work => ", e);
+                    logger.error("HDHomeRun is unable to tune into channel" +
+                            " because the command did not work => ", e);
+                    return logger.exit(false);
+                } catch (Exception e) {
+                    logger.error("Unable to tune into channel because of an unexpected error => ",
+                            e);
                     return logger.exit(false);
                 }
 
@@ -1417,6 +1434,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 }
 
                 return "";
+            case QAM_HDHOMERUN:
+                return super.scanChannelInfo(channel, true);
+            case DCT_HDHOMERUN:
+                return super.scanChannelInfo(channel, true);
         }
 
         return returnValue;
@@ -1601,8 +1622,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
     private boolean isTuneLegacy() {
         return device.isLegacy() ||
-                encoderDeviceType != CaptureDeviceType.DCT_HDHOMERUN &&
-                        HDHomeRunDiscoverer.getAlwaysTuneLegacy();
+                (encoderDeviceType != CaptureDeviceType.DCT_HDHOMERUN &&
+                        HDHomeRunDiscoverer.getAlwaysTuneLegacy());
     }
 
     private static final HashSet<String> updateLineups = new HashSet<>();

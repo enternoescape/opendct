@@ -414,6 +414,9 @@
 > address.
 
 #### 0.4.30-Beta
+> *Fixed the new transcoder HashMap so it doesn't unintentionally retain references. The associated 
+> RAM with the buffer would never be returned.
+
 > *HDHomeRun ongoing discovery only sends one packet per interval after the first 3 in a row. This
 > helps prevent the UDP traffic from being dropped because of all of the responses.
 
@@ -423,9 +426,6 @@
 > lineup per parent device instead of per tuning type. Automatic pooling also separates ATSC capture
 > devices by parent device. This is required because some people have completely different lineups
 > between their devices of the same type.
-
-> *The FFmpeg Transcoder will now copy the audio stream language when it is available to the remuxed
-> audio stream.
 
 > *Added new lineup update method: COPY. This will copy another lineup to get updates, the
 > tunable/ignored channel statuses in the source lineup will not effect the tunable/ignored channels 

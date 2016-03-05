@@ -85,6 +85,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final Object streamingMonitor = new Object();
     private InetSocketAddress uploadSocketAddress = null;
 
+    int desiredProgram = 0;
     private String stateMessage;
     private FFmpegCircularBuffer circularBuffer;
     private FFmpegContext ctx;
@@ -94,18 +95,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public FFmpegTransSageTVConsumerImpl() {
-        ctx = new FFmpegContext(circularBufferSize, RW_BUFFER_SIZE, new FFmpegTranscoder());
+        circularBuffer = new FFmpegCircularBuffer(FFmpegConfig.getCircularBufferSize());
     }
 
     @Override
     public void run() {
         if (running.getAndSet(true)) {
             logger.error("FFmpeg Transcoder consumer is already running.");
-            return;
-        }
-
-        if (ctx == null) {
-            logger.error("Context is null!");
             return;
         }
 
@@ -119,6 +115,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         Thread.currentThread().setPriority(ffmpegThreadPriority);
 
         try {
+            ctx = new FFmpegContext(circularBuffer, RW_BUFFER_SIZE, new FFmpegTranscoder());
+
+            ctx.setProgram(desiredProgram);
+
             FFmpegProfile profile = FFmpegProfileManager.getEncoderProfile(currentRecordingQuality);
             ctx.setEncodeProfile(profile);
 
@@ -127,6 +127,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 stalled = true;
                 return;
             }
+
+            Thread.sleep(1000);
 
             ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter);
 
@@ -149,7 +151,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 currentWriter.closeFile();
             }
 
-            ctx.deallocAll();
+            ctx.dispose();
 
             stateMessage = "Stopped.";
             running.set(false);
@@ -160,7 +162,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public void write(byte[] bytes, int offset, int length) throws IOException {
-        ctx.SEEK_BUFFER.write(bytes, offset, length);
+        circularBuffer.write(bytes, offset, length);
     }
 
     @Override
@@ -180,8 +182,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public void stopConsumer() {
-        ctx.interrupt();
-        ctx.SEEK_BUFFER.close();
+        if (ctx != null) {
+            ctx.interrupt();
+        }
+        circularBuffer.close();
     }
 
     @Override
@@ -242,6 +246,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public boolean switchStreamToUploadID(String filename, long bufferSize, int uploadId) {
+        if (ctx == null) {
+            return false;
+        }
+
         stvRecordBufferSize = bufferSize;
 
         try {
@@ -266,6 +274,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public boolean switchStreamToFilename(String filename, long bufferSize) {
+        if (ctx == null) {
+            return false;
+        }
+
         stvRecordBufferSize = bufferSize;
 
         try {
@@ -304,12 +316,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public void setProgram(int program) {
-        ctx.setProgram(program);
+        desiredProgram = program;
     }
 
     @Override
     public int getProgram() {
-        return ctx.getProgram();
+        return desiredProgram;
     }
 
     @Override
@@ -505,7 +517,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                 logger.debug("Exception while closing missing file => ", e);
                             }
 
-                            while (!ctx.isInterrupted()) {
+                            while (ctx != null && !ctx.isInterrupted()) {
                                 try {
                                     asyncFileChannel = AsynchronousFileChannel.open(
                                             Paths.get(directFilename),

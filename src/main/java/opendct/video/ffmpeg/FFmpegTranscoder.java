@@ -358,18 +358,28 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     private void deallocFilterGraphs() {
-        if (ctx == null || filter_ctx == null) {
+        if (filter_ctx == null) {
             return;
         }
 
-        // The filter graphs have been allocated, so we need to de-allocate it before returning
-        // from an interrupt.
-        int nbStreams = ctx.avfCtxInput.nb_streams();
+        for (int i = 0; i < filter_ctx.length; i++) {
+            if (filter_ctx[i].buffersink_ctx != null) {
+                avfilter_free(filter_ctx[i].buffersink_ctx);
+                filter_ctx[i].buffersink_ctx = null;
+            }
 
-        for (int i = 0; i < nbStreams; i++) {
-            if (filter_ctx != null && filter_ctx[i].filter_graph != null)
+            if (filter_ctx[i].buffersink_ctx != null) {
+                avfilter_free(filter_ctx[i].buffersink_ctx);
+                filter_ctx[i].buffersink_ctx = null;
+            }
+
+            if (filter_ctx[i].filter_graph != null) {
                 avfilter_graph_free(filter_ctx[i].filter_graph);
+                filter_ctx[i].filter_graph = null;
+            }
         }
+
+        filter_ctx = null;
     }
 
     private boolean fastDeinterlaceDetection() throws FFmpegException {
@@ -726,13 +736,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
             }
 
-            if (filter_ctx != null &&
-                    filter_ctx.length > i &&
-                    filter_ctx[i].filter_graph != null) {
-
-                avfilter_graph_free(filter_ctx[i].filter_graph);
-            }
-
+            deallocFilterGraphs();
         }
 
         if (ctx.avfCtxOutput != null && (ctx.avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0) {
@@ -750,40 +754,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         av_packet_unref(packet);
         av_frame_free(frame);
 
-        int nbStreams = ctx.avfCtxInput.nb_streams();
-
-        for (int i = 0; i < nbStreams; i++) {
-            avcodec_close(ctx.avfCtxInput.streams(i).codec());
-
-            if (ctx.streamMap != null &&
-                    ctx.streamMap.length > i &&
-                    ctx.streamMap[i] != NO_STREAM_IDX &&
-                    ctx.avfCtxOutput != null &&
-                    ctx.avfCtxOutput.nb_streams() > i &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]) != null &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec() != null) {
-
-                avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
-            }
-
-            if (filter_ctx != null &&
-                    filter_ctx.length > i &&
-                    filter_ctx[i].filter_graph != null) {
-
-                avfilter_graph_free(filter_ctx[i].filter_graph);
-            }
-
-        }
-
-        avformat_close_input(ctx.avfCtxInput);
-        ctx.avfCtxInput = null;
-        ctx.avioCtxInput = null;
-
-        if (ctx.avfCtxOutput != null && (ctx.avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0)
-            avio_closep(ctx.avfCtxOutput.pb());
-        avformat_free_context(ctx.avfCtxOutput);
-        ctx.avfCtxOutput = null;
-        ctx.avioCtxOutput = null;
+        deallocFilterGraphs();
     }
 
     private int initFilter(FilteringContext fctx, AVCodecContext dec_ctx,

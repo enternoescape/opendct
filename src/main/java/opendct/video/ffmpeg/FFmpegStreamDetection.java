@@ -143,8 +143,7 @@ public class FFmpegStreamDetection {
                 }
                 logger.info(error[0] + " Trying again with more data.");
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 
@@ -157,8 +156,7 @@ public class FFmpegStreamDetection {
             if (!FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram) && dynamicProbeSize != probeSizeLimit) {
                 logger.info("Stream details unavailable for one or more streams. " + TRYING_AGAIN);
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 
@@ -180,8 +178,7 @@ public class FFmpegStreamDetection {
                 }
                 logger.info(error[0] + TRYING_AGAIN);
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 
@@ -208,8 +205,7 @@ public class FFmpegStreamDetection {
                 }
                 logger.info(error[0] + TRYING_AGAIN);
 
-                // When we allocate the new context, the old context will de-allocate automatically.
-                //freeAndSetNullAttemptData();
+                ctx.deallocInputContext();
                 continue;
             }
 

@@ -132,7 +132,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         try {
             if (device.isCableCardTuner()) {
-                if (device.getCardStatus().toLowerCase().equals("inserted")) {
+                if (device.getCardStatus().toLowerCase().contains("card=ready")) {
                     encoderDeviceType = CaptureDeviceType.DCT_HDHOMERUN;
                     setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
                 } else {

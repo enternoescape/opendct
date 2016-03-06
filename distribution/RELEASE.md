@@ -458,3 +458,4 @@
 > *Internal: Added DeviceOptions to the FFmpeg consumers.
 
 #### 0.4.31-Beta
+> *Fixed HDHomeRun Prime not checking for the correct string for CableCARD presence.

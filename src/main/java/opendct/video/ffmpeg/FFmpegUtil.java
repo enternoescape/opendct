@@ -208,6 +208,9 @@ public abstract class FFmpegUtil {
         //out_stream.time_base(av_make_q(1, 90000));
         out_stream.time_base(in_stream.time_base());
 
+        // The FFmpeg executable also sets the codec time base to the stream time base.
+        codecCtxOutput.time_base(in_stream.time_base());
+
         // The language is not always available, but it's nice to have when it is.
         /*AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);
 
@@ -263,10 +266,10 @@ public abstract class FFmpegUtil {
         }
 
         AVCodec encoder;
-        AVDictionary dict = ctx.encoderDicts[stream_id] = new AVDictionary(null);
+        AVDictionary dict = ctx.streamMap[stream_id].encoderDict = new AVDictionary(null);
 
         if (decoderCodecType == AVMEDIA_TYPE_VIDEO) {
-            encoder = ctx.encoderCodecs[stream_id] = profile.getVideoEncoderCodec(dec_ctx.codec());
+            encoder = ctx.streamMap[stream_id].encoderCodec = profile.getVideoEncoderCodec(dec_ctx.codec());
 
             if (encoder == null) {
                 logger.fatal("Necessary video encoder not found");
@@ -303,7 +306,7 @@ public abstract class FFmpegUtil {
             ctx.videoEncodeSettings = profile.getVideoEncoderMap(w, h, encoder);*/
             FFmpegProfileManager.confVideoEncoder(ctx.videoEncodeSettings, enc_ctx, dict);
         } else {
-            encoder = ctx.encoderCodecs[stream_id] = avcodec_find_encoder(dec_ctx.codec_id());
+            encoder = ctx.streamMap[stream_id].encoderCodec = avcodec_find_encoder(dec_ctx.codec_id());
 
             if (encoder == null) {
                 logger.fatal("Necessary audio encoder not found");

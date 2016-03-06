@@ -158,7 +158,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     @Override
-    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer) throws FFmpegException, InterruptedException {
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer)
+            throws FFmpegException, InterruptedException {
+
         initStreamOutput(ctx, outputFilename, writer, true);
     }
 
@@ -174,7 +176,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
      * @throws FFmpegException This is thrown if there are any problems that cannot be handled.
      * @throws InterruptedException This is thrown if initialization is is interrupted.
      */
-    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer, boolean firstRun) throws FFmpegException, InterruptedException {
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename,
+                                 FFmpegWriter writer, boolean firstRun)
+            throws FFmpegException, InterruptedException {
+
         int ret;
         this.ctx = ctx;
 
@@ -196,14 +201,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         lastDtsByStreamIndex = new long[numInputStreams];
         Arrays.fill(lastDtsByStreamIndex, Integer.MIN_VALUE);
 
-        ctx.streamMap = new int[numInputStreams];
-        Arrays.fill(ctx.streamMap, NO_STREAM_IDX);
+        ctx.streamMap = new OutputStreamMap[numInputStreams];
 
-        ctx.encodeMap = new boolean[numInputStreams];
-        Arrays.fill(ctx.encodeMap, false); // It should be this by default, but let's not assume.
-
-        ctx.encoderCodecs = new AVCodec[numInputStreams];
-        ctx.encoderDicts = new AVDictionary[numInputStreams];
+        for (int i = 0; i < ctx.streamMap.length; i++) {
+            ctx.streamMap[i] = new OutputStreamMap();
+        }
 
         if (firstRun) {
             encodedFrames = new AtomicInteger[numInputStreams];
@@ -240,16 +242,17 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 // prevent any possible future attempts.
                 String weightStr = ctx.videoEncodeSettings.get("encode_weight");
 
-                if (weightStr == null) {
-                    weightStr = "null";
-                }
-
                 int weight = 2;
-                try {
-                    weight = Integer.parseInt(weightStr);
-                } catch (NumberFormatException e ) {
-                    logger.error("Unable to parse '{}' into an integer, using the default {}.",
-                            weightStr, weight);
+
+                if (weightStr != null) {
+                    try {
+                        weight = Integer.parseInt(weightStr);
+                    } catch (NumberFormatException e) {
+                        logger.error("Unable to parse '{}' into an integer, using the default {}.",
+                                weightStr, weight);
+                    }
+                } else {
+                    logger.warn("encode_weight is not set. Using default {}.", weight);
                 }
 
                 if (!getTranscodePermission(ctx.OPAQUE, weight)) {
@@ -295,7 +298,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     throw new FFmpegException("Could not find a video stream", -1);
                 }
             } else {
-                ctx.encodeMap[ctx.preferredVideo] = true;
+                ctx.streamMap[ctx.preferredVideo].transcode = true;
             }
         } else {
             if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
@@ -307,11 +310,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             throw new FFmpegException("Could not find a audio stream", -1);
         }
 
-        ctx.streamMap[ctx.preferredVideo] = ctx.videoOutStream.id();
-        ctx.streamMap[ctx.preferredAudio] = ctx.audioOutStream.id();
+        ctx.streamMap[ctx.preferredVideo].outStreamIndex = ctx.videoOutStream.id();
+        ctx.streamMap[ctx.preferredAudio].outStreamIndex = ctx.audioOutStream.id();
 
         for (int i = 0; i < numInputStreams; ++i) {
-            if (ctx.streamMap[i] != NO_STREAM_IDX) {
+            if (ctx.streamMap[i].outStreamIndex != NO_STREAM_IDX) {
                 continue;
             }
 
@@ -321,7 +324,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 AVStream avsOutput = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(i));
 
                 if (avsOutput != null) {
-                    ctx.streamMap[i] = avsOutput.id();
+                    ctx.streamMap[i].outStreamIndex = avsOutput.id();
                 }
             }
         }
@@ -538,7 +541,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 int outputStreamIndex;
 
                 if (inputStreamIndex >= ctx.streamMap.length ||
-                        (outputStreamIndex = ctx.streamMap[inputStreamIndex]) == NO_STREAM_IDX) {
+                        (outputStreamIndex = ctx.streamMap[inputStreamIndex].outStreamIndex)
+                                == NO_STREAM_IDX) {
 
                     av_packet_unref(packet);
                     continue;
@@ -647,7 +651,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                     logPacket(ctx.avfCtxInput, packet, "copy-out");
 
-                    packet.stream_index(ctx.streamMap[inputStreamIndex]);
+                    packet.stream_index(ctx.streamMap[inputStreamIndex].outStreamIndex);
 
                     ret = av_interleaved_write_frame(ctx.avfCtxOutput, packet);
 
@@ -721,7 +725,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             return;
         }
 
-        int nbStreams = ctx.avfCtxInput.nb_streams();
+        /*int nbStreams = ctx.avfCtxInput.nb_streams();
 
         for (int i = 0; i < nbStreams; i++) {
 
@@ -745,7 +749,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         avformat_free_context(ctx.avfCtxOutput);
         ctx.avfCtxOutput = null;
-        ctx.avioCtxOutput = null;
+        ctx.avioCtxOutput = null;*/
+
+        deallocFilterGraphs();
+        ctx.deallocOutputContext();
 
         initStreamOutput(ctx, newFilename, newWriter, false);
     }
@@ -1003,7 +1010,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
             codecType = ctx.avfCtxInput.streams(i).codec().codec_type();
 
-            if ( !ctx.encodeMap[i] || !(
+            if ( !ctx.streamMap[i].transcode || !(
                     codecType == AVMEDIA_TYPE_AUDIO ||
                     codecType == AVMEDIA_TYPE_VIDEO)) {
 
@@ -1044,9 +1051,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             }
 
             ret = initFilter(filter_ctx[i], ctx.avfCtxInput.streams(i).codec(),
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec(),
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]), filter_spec,
-                    ctx.encoderCodecs[i], ctx.encoderDicts[i]);
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i].outStreamIndex).codec(),
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i].outStreamIndex), filter_spec,
+                    ctx.streamMap[i].encoderCodec, ctx.streamMap[i].encoderDict);
 
             if (ret != 0) {
                 return ret;
@@ -1072,7 +1079,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         av_init_packet(enc_pkt);
 
         int codecType = ctx.avfCtxInput.streams(stream_index).codec().codec_type();
-        AVStream oavStream = ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]);
+        AVStream oavStream = ctx.avfCtxOutput.streams(ctx.streamMap[stream_index].outStreamIndex);
         AVCodecContext oavCodec = oavStream.codec();
 
         if (codecType == AVMEDIA_TYPE_VIDEO) {
@@ -1096,7 +1103,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         logPacket(ctx.avfCtxOutput, enc_pkt, "trans-enc-in");
 
         // prepare packet for muxing
-        enc_pkt.stream_index(ctx.streamMap[stream_index]);
+        enc_pkt.stream_index(ctx.streamMap[stream_index].outStreamIndex);
         av_packet_rescale_ts(enc_pkt,
                 oavCodec.time_base(),
                 oavStream.time_base());
@@ -1171,14 +1178,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     private int flushEncoder(int stream_index) {
-        if (ctx.streamMap[stream_index] == NO_STREAM_IDX) {
+        if (ctx.streamMap[stream_index].outStreamIndex == NO_STREAM_IDX) {
             return 0;
         }
 
         int ret;
         int got_frame[] = new int[] { 0 };
 
-        if ((ctx.avfCtxOutput.streams(ctx.streamMap[stream_index]).codec().codec().capabilities() &
+        if ((ctx.avfCtxOutput.streams(ctx.streamMap[stream_index].outStreamIndex).codec().codec().capabilities() &
                 AV_CODEC_CAP_DELAY) == 0) {
 
             return 0;

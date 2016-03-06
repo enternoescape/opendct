@@ -42,11 +42,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
-    public static final int VERSION_CONFIG = 1;
+    public static final int VERSION_CONFIG = 2;
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 31;
+    public static final int VERSION_BUILD = 32;
     public static final String VERSION_PROGRAM = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -204,6 +204,8 @@ public class Config {
         // Do not use break. That way the changes will cascade.
 
         HashSet<String> removeEntries = new HashSet<>();
+        String oldArray[];
+        String newArray[];
 
         switch (configVersion) {
             case 1:
@@ -223,6 +225,9 @@ public class Config {
                         removeEntries.add(key);
                     }
                 }
+
+                oldArray = getStringArray("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com", "schemas-dkeystone-com");
+
         }
 
         Properties propertiesMigrate = properties;

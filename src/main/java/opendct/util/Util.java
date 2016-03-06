@@ -27,6 +27,7 @@ import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Enumeration;
 
 public class Util {
@@ -306,5 +307,24 @@ public class Util {
         }
 
         return null;
+    }
+
+    /**
+     * Remove every element that matches a string from an array.
+     *
+     * @param remove
+     * @param array
+     * @return A new array
+     */
+    public static String[] removeFromArray(String remove, String array[]) {
+        ArrayList<String> returnValues = new ArrayList<>();
+
+        for (String value : array) {
+            if (!value.equals(remove)) {
+                returnValues.add(value);
+            }
+        }
+
+        return returnValues.toArray(new String[returnValues.size()]);
     }
 }

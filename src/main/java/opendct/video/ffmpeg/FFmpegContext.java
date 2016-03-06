@@ -85,10 +85,12 @@ public class FFmpegContext {
     protected String inputFilename;
     protected String outputFilename;
     protected int desiredProgram;
-    protected int streamMap[];
+
+    OutputStreamMap streamMap[];
+    /*protected int streamMap[];
     protected AVCodec encoderCodecs[];
     protected AVDictionary encoderDicts[];
-    protected boolean encodeMap[];
+    protected boolean encodeMap[];*/
 
     static {
         FFmpegUtil.initAll();
@@ -152,10 +154,11 @@ public class FFmpegContext {
         audioInCodecCtx = null;
         videoFramerate = new AVRational();
 
-        streamMap = new int[0];
+        /*streamMap = new int[0];
         encodeMap = new boolean[0];
         encoderCodecs = new AVCodec[0];
-        encoderDicts = new AVDictionary[0];
+        encoderDicts = new AVDictionary[0];*/
+        streamMap = new OutputStreamMap[0];
         encodeProfile = null;
         videoEncodeSettings = new HashMap<>();
     }
@@ -519,7 +522,7 @@ public class FFmpegContext {
      *                               and AVIOContext contexts are de-allocated on exception.
      */
     protected void allocInputIoTsFormatContext() throws FFmpegException {
-        deallocInputContext();
+        //deallocInputContext();
 
         avioCtxInput = allocIoContext(OPAQUE, readCallback, null, seekCallback);
 
@@ -557,7 +560,7 @@ public class FFmpegContext {
      *                               and AVIOContext contexts are de-allocated on exception.
      */
     protected void allocInputFormatNativeContext(String filename, AVDictionary dict) throws FFmpegException {
-        deallocInputContext();
+        //deallocInputContext();
 
         int ret;
 
@@ -733,34 +736,10 @@ public class FFmpegContext {
         return avioCtx;
     }
 
-    private void freeAndSetNull(AVIOContext avioCtx) {
-        if (avioCtx != null && !avioCtx.isNull()) {
-            if (avioCtx.buffer() != null) {
-                av_free(avioCtx.buffer());
-                avioCtx.buffer(null);
-            }
-            av_free(avioCtx);
-            avioCtx.setNull();
-        }
-    }
-
-    private void freeAndSetNull(AVFormatContext avfCtx) {
-        if (avfCtx != null && !avfCtx.isNull()) {
-            int numStreams = avfCtx.nb_streams();
-            for (int idx = 0; idx < numStreams; ++idx) {
-                avcodec_close(avfCtx.streams(idx).codec());
-            }
-            avformat_free_context(avfCtx);
-            avfCtx.setNull();
-        }
-    }
-
     public void deallocInputContext() {
         if (avfCtxInput != null && !avfCtxInput.isNull()) {
 
-            freeAndSetNull(avioCtxInput);
             avformat_close_input(avfCtxInput); // This call already sets avfCtxInput's pointer to null
-            freeAndSetNull(avfCtxInput);
 
             // These are all de-allocated when avformat_close_input is called.
             avfCtxInput = null;
@@ -790,31 +769,20 @@ public class FFmpegContext {
                 avioCtxOutput = null;
             }
 
-            logger.debug("EncoderContext: av_dict_free");
-            if (encoderDicts != null) {
-                for (AVDictionary encoderDict : encoderDicts) {
-                    if (encoderDict != null && !encoderDict.isNull()) {
-                        av_dict_free(encoderDict);
-                    }
+            for (OutputStreamMap aStreamMap : streamMap) {
+                aStreamMap.encoderCodec = null;
+
+                if (aStreamMap.encoderDict != null && !aStreamMap.encoderDict.isNull()) {
+                    logger.debug("Calling av_dict_free");
+                    av_dict_free(aStreamMap.encoderDict);
                 }
+                aStreamMap.encoderDict = null;
             }
 
             logger.debug("avformat_free_context");
             avformat_free_context(avfCtxOutput);
 
             avfCtxOutput = null;
-        }
-
-        for (AVCodec encoderCodec : encoderCodecs) {
-            encoderCodec = null;
-        }
-
-        for (AVDictionary encoderDict : encoderDicts) {
-            if (encoderDict != null && !encoderDict.isNull()) {
-                logger.debug("Calling av_dict_free");
-                av_dict_free(encoderDict);
-            }
-            encoderDict = null;
         }
     }
 
@@ -856,13 +824,5 @@ public class FFmpegContext {
         }
 
         deallocAll();
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        // Not sure this is completely necessary.
-        //dispose();
-
-        super.finalize();
     }
 }

@@ -459,3 +459,8 @@
 
 #### 0.4.31-Beta
 > *Fixed HDHomeRun Prime not checking for the correct string for CableCARD presence.
+
+#### 0.4.32-Beta
+> *FFmpeg transcoder now also assigns the output stream time base to the codec time base.
+
+> *Cleaned up some FFmpeg transcoder code.

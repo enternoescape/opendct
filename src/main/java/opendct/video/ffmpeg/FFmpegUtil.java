@@ -208,9 +208,6 @@ public abstract class FFmpegUtil {
         //out_stream.time_base(av_make_q(1, 90000));
         out_stream.time_base(in_stream.time_base());
 
-        // The FFmpeg executable also sets the codec time base to the stream time base.
-        codecCtxOutput.time_base(in_stream.time_base());
-
         // The language is not always available, but it's nice to have when it is.
         /*AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);
 
@@ -221,9 +218,11 @@ public abstract class FFmpegUtil {
             out_stream.metadata(in_stream.metadata());
         }*/
 
-        /*AVDictionary dict = new AVDictionary(null);
-        av_dict_copy(dict, in_stream.metadata(), 0);
-        out_stream.metadata(dict);*/
+        if (in_stream.metadata() != null) {
+            AVDictionary dict = new AVDictionary(null);
+            av_dict_copy(dict, in_stream.metadata(), 0);
+            out_stream.metadata(dict);
+        }
 
         codecCtxOutput.codec_tag(0);
 

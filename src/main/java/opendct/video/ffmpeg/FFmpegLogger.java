@@ -151,18 +151,12 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
             initMessage = trim(bytes);
 
-            if (lastMessage != null && lastMessage.equals(initMessage)) {
-                repeated.addAndGet(1);
-                return;
-            }
-
             message = initMessage;
         }
 
-
-        switch (className) {
-            case "libx264":
-
+        if (lastMessage != null && lastMessage.equals(initMessage)) {
+            repeated.addAndGet(1);
+            return;
         }
 
         // Clean up logging. Everything ignored here is expected and does not need to be logged.

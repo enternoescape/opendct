@@ -15,7 +15,7 @@
     </Appenders>
     <Loggers>
         <Root level="DEBUG">
-            <AppenderRef level="DEBUG" ref="Console"/>
+            <AppenderRef ref="Console"/>
         </Root>
         <Logger name="ffmpeg.libx264" level="INFO" additivity="false">
             <AppenderRef level="INFO" ref="Console"/>

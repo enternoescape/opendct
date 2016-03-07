@@ -71,6 +71,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     (Runtime.getRuntime().availableProcessors() - 1) * 2);
 
     private long lastDtsByStreamIndex[] = new long[0];
+    private long lastPtsByStreamIndex[] = new long[0];
+    boolean h264PtsHackEnabled = false;
     private AtomicInteger encodedFrames[] = new AtomicInteger[0];
     private long startTime = 0;
 
@@ -201,6 +203,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         lastDtsByStreamIndex = new long[numInputStreams];
         Arrays.fill(lastDtsByStreamIndex, Integer.MIN_VALUE);
 
+        lastPtsByStreamIndex = new long[numInputStreams];
+        Arrays.fill(lastPtsByStreamIndex, Integer.MIN_VALUE);
+
         ctx.streamMap = new OutputStreamMap[numInputStreams];
 
         for (int i = 0; i < ctx.streamMap.length; i++) {
@@ -231,12 +236,19 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
 
         if (firstRun) {
+            AVCodec videoCodec = null;
+
+            if (ctx.videoInCodecCtx != null) {
+                videoCodec = avcodec_find_decoder(ctx.videoInCodecCtx.codec_id());
+            }
+
             if (ctx.encodeProfile != null && ctx.videoInCodecCtx != null && ctx.preferredVideo > NO_STREAM_IDX) {
+
                 ctx.videoEncodeSettings = ctx.encodeProfile.getVideoEncoderMap(
                         videoWidth,
                         videoHeight,
                         ctx.encodeProfile.getVideoEncoderCodec(
-                                avcodec_find_decoder(ctx.videoInCodecCtx.codec_id())));
+                                videoCodec));
 
                 // Remove the encoder profile if we cannot get permission to transcode. This will
                 // prevent any possible future attempts.
@@ -270,6 +282,17 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             interlaced = ctx.encodeProfile != null &&
                     ctx.encodeProfile.canInterlaceDetect(videoHeight, videoWidth) &&
                     fastDeinterlaceDetection();
+
+            if (FFmpegConfig.getH264PtsHack() &&
+                    !interlaced &&
+                    videoHeight == 720 &&
+                    videoWidth == 1280 &&
+                    videoCodec != null &&
+                    avcodec_get_name(videoCodec.id()).getString().equals("h264")) {
+
+                logger.debug("H.264 PTS hack enabled on this video stream.");
+                h264PtsHackEnabled = true;
+            }
         }
 
         if (ctx.isInterrupted()) {
@@ -513,7 +536,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     public synchronized void streamOutput() throws FFmpegException {
         int ret = 0;
 
-        int switchFlag = -1;
+        int switchFlag;
+        long dts;
+        long pts;
 
         AVPacket packet = new AVPacket();
         packet.data(null);
@@ -551,13 +576,26 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 // Some streams will provide a dts value that's <= to the last value. Sometimes they
                 // don't even have a dts value. These frames are discarded since they are normally
                 // redundant.
-                long dts = packet.dts();
+                dts = packet.dts();
 
                 if (dts == AV_NOPTS_VALUE || lastDtsByStreamIndex[outputStreamIndex] >= dts) {
                     av_packet_unref(packet);
                     continue;
                 } else {
                     lastDtsByStreamIndex[outputStreamIndex] = dts;
+                }
+
+                // If this gets enabled on interlaced content, it may remove all of the even or odd
+                // frames since they typically have an out of order PTS.
+                if (h264PtsHackEnabled) {
+                    pts = packet.pts();
+
+                    if (lastPtsByStreamIndex[outputStreamIndex] >= pts) {
+                        av_packet_unref(packet);
+                        continue;
+                    } else {
+                        lastPtsByStreamIndex[outputStreamIndex] = pts;
+                    }
                 }
 
                 if (switching && inputStreamIndex == ctx.preferredVideo) {
@@ -591,25 +629,24 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 iavCodecContext = iavStream.codec();
                 type = iavStream.codec().codec_type();
 
-                logger.trace("Demuxer gave frame of streamIndex {}",
-                        inputStreamIndex);
+                //logger.trace("Demuxer gave frame of streamIndex {}", inputStreamIndex);
 
                 if (filter_ctx[inputStreamIndex].filter_graph != null) {
 
-                    logger.trace("Going to re-encode & filter the frame");
+                    //logger.trace("Going to re-encode & filter the frame");
 
                     frame = av_frame_alloc();
                     if (frame == null) {
                         throw new FFmpegException("av_frame_alloc: Unable to allocate frame.", ENOMEM);
                     }
 
-                    logPacket(ctx.avfCtxInput, packet, "trans-dec-in");
+                    //logPacket(ctx.avfCtxInput, packet, "trans-dec-in");
 
                     av_packet_rescale_ts(packet,
                             iavStream.time_base(),
                             iavCodecContext.time_base());
 
-                    logPacket(ctx.avfCtxInput, packet, "trans-dec-out");
+                    //logPacket(ctx.avfCtxInput, packet, "trans-dec-out");
 
                     if (type == AVMEDIA_TYPE_VIDEO) {
                         ret = avcodec_decode_video2(
@@ -641,15 +678,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         av_frame_free(frame);
                     }
                 } else {
-
-                    logPacket(ctx.avfCtxInput, packet, "copy-in");
+                    //logPacket(ctx.avfCtxInput, packet, "copy-in");
 
                     // remux this frame without re-encoding
                     av_packet_rescale_ts(packet,
                             ctx.avfCtxInput.streams(inputStreamIndex).time_base(),
                             ctx.avfCtxOutput.streams(outputStreamIndex).time_base());
 
-                    logPacket(ctx.avfCtxInput, packet, "copy-out");
+                    //logPacket(ctx.avfCtxInput, packet, "copy-out");
 
                     packet.stream_index(ctx.streamMap[inputStreamIndex].outStreamIndex);
 
@@ -952,7 +988,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     format = input.format();
                     ar = input.sample_aspect_ratio();
                     fr = input.frame_rate();
-                    tb = input.time_base(); //av_inv_q(fr);
+                    tb = input.time_base();
 
                     if (logger.isDebugEnabled()) {
                         logger.debug("After filter: h:{} w:{} fmt:{} ar:{}/{} fr:{}/{} tb: {}/{}",
@@ -965,10 +1001,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     enc_ctx.sample_aspect_ratio(ar);
                     enc_ctx.framerate(fr);
                     enc_ctx.time_base(tb);
-
-                    //out_stream.avg_frame_rate(fr);
-                    //out_stream.r_frame_rate(fr);
-                    //out_stream.time_base(tb);
 
                     ret = avcodec_open2(enc_ctx, encoder, dict);
                     av_dict_free(dict);
@@ -1022,8 +1054,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             filter_ctx[i].filter_graph = new AVFilterGraph();
 
             if (codecType == AVMEDIA_TYPE_VIDEO) {
-                //filter_spec = "idet";
-
                 if (interlaced) {
                     filter_spec = ctx.videoEncodeSettings.get("deinterlace_filter");
                 } else {
@@ -1037,13 +1067,15 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             " 'progressive_filter' to 'null' or 'fps=fps=opendct_fps:round=near'" +
                             " in the profile.");
                 } else {
-                    //opendct_fps
-                    if (filter_spec.contains("opendct_")) {
-                        int num = ctx.avfCtxInput.streams(i).codec().framerate().num();
-                        int den = ctx.avfCtxInput.streams(i).codec().framerate().den();
 
-                        filter_spec = filter_spec.replace("opendct_fps", num + "/" + den);
-                        filter_spec = filter_spec.replace("opendct_dfps", (num * 2) + "/" + den);
+                    if (filter_spec.contains("opendct_")) {
+                        AVRational fullRate = ctx.avfCtxInput.streams(i).codec().framerate();
+                        AVRational halfRate = av_mul_q(fullRate, av_make_q(1, 2));
+                        AVRational doubleRate = av_mul_q(fullRate, av_make_q(2, 1));
+
+                        filter_spec = filter_spec.replace("opendct_hfps", halfRate.num() + "/" + halfRate.den());
+                        filter_spec = filter_spec.replace("opendct_fps", fullRate.num() + "/" + fullRate.den());
+                        filter_spec = filter_spec.replace("opendct_dfps", doubleRate.num() + "/" + doubleRate.den());
                     }
                 }
             } else {
@@ -1072,8 +1104,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             got_frame = new int[] { 0 };
         }
 
-        logger.trace("Encoding frame");
-    /* encode filtered frame */
+        //logger.trace("Encoding frame");
+        // encode filtered frame
         enc_pkt.data(null);
         enc_pkt.size(0);
         av_init_packet(enc_pkt);
@@ -1100,7 +1132,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             return 0;
         }
 
-        logPacket(ctx.avfCtxOutput, enc_pkt, "trans-enc-in");
+        //logPacket(ctx.avfCtxOutput, enc_pkt, "trans-enc-in");
 
         // prepare packet for muxing
         enc_pkt.stream_index(ctx.streamMap[stream_index].outStreamIndex);
@@ -1108,9 +1140,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 oavCodec.time_base(),
                 oavStream.time_base());
 
-        logPacket(ctx.avfCtxOutput, enc_pkt, "trans-enc-out");
+        //logPacket(ctx.avfCtxOutput, enc_pkt, "trans-enc-out");
 
-        logger.trace("Muxing frame");
+        //logger.trace("Muxing frame");
 
         // mux encoded frame
         ret = av_interleaved_write_frame(ctx.avfCtxOutput, enc_pkt);
@@ -1131,8 +1163,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         AVFrame filt_frame;
         int got_frame[] = new int[] { 0 };
 
-        logger.trace("Pushing decoded frame to filters");
-    /* push the decoded frame into the filtergraph */
+        //logger.trace("Pushing decoded frame to filters");
+        // push the decoded frame into the filtergraph
         ret = av_buffersrc_add_frame_flags(filter_ctx[stream_index].buffersrc_ctx,
                 frame, 0);
         if (ret < 0) {
@@ -1140,7 +1172,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             return ret;
         }
 
-    /* pull filtered frames from the filtergraph */
+        // pull filtered frames from the filtergraph
         while (true) {
             filt_frame = av_frame_alloc();
 
@@ -1149,7 +1181,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 break;
             }
 
-            logger.trace("Pulling filtered frame from filters");
+            //logger.trace("Pulling filtered frame from filters");
             ret = av_buffersink_get_frame(filter_ctx[stream_index].buffersink_ctx,
                     filt_frame);
 

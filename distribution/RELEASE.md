@@ -484,3 +484,4 @@
 > returns OK to SageTV while tuning a channel. The property is hdhr.wait_for_streaming and defaults
 > to 5000(ms).
 
+> *Fixed the profiles in the Windows installer so they are lowercase.

@@ -952,7 +952,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             }
         }
 
-        sageTVConsumerRunnable.isStreaming(UpnpDiscoverer.getStreamingWait());
+        sageTVConsumerRunnable.isStreaming(HDHomeRunDiscoverer.getStreamingWait());
 
         return logger.exit(true);
     }

@@ -47,6 +47,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     // Global UPnP device settings.
     private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private static LongDeviceOption streamingWait;
     private static IntegerDeviceOption retunePolling;
     private static BooleanDeviceOption autoMapReference;
     private static BooleanDeviceOption autoMapTuning;
@@ -87,6 +88,15 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         while (true) {
             try {
+                streamingWait = new LongDeviceOption(
+                        Config.getInteger("hdhr.wait_for_streaming", 5000),
+                        false,
+                        "Return to SageTV",
+                        "hdhr.wait_for_streaming",
+                        "This is the maximum number of milliseconds to wait before returning to" +
+                                " SageTV regardless of if the requested channel is actually streaming."
+                );
+
                 retunePolling = new IntegerDeviceOption(
                         Config.getInteger("hdhr.retune_poll_s", 1),
                         false,
@@ -227,6 +237,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
                 Config.mapDeviceOptions(
                         deviceOptions,
+                        streamingWait,
                         retunePolling,
                         autoMapReference,
                         autoMapTuning,
@@ -243,6 +254,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 logger.error("Unable to configure device options for HDHomeRunDiscoverer." +
                         " Reverting to defaults. => ", e);
 
+                Config.setInteger("hdhr.wait_for_streaming", 5000);
                 Config.setInteger("hdhr.retune_poll_s", 1);
                 Config.setBoolean("hdhr.qam.automap_reference_lookup", true);
                 Config.setBoolean("hdhr.qam.automap_tuning_lookup", false);
@@ -588,6 +600,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     @Override
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
+                streamingWait,
                 retunePolling,
                 autoMapReference,
                 autoMapTuning,
@@ -621,6 +634,10 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         }
 
         Config.saveConfig();
+    }
+
+    public static long getStreamingWait() {
+        return streamingWait.getLong();
     }
 
     public static int getRetunePolling() {

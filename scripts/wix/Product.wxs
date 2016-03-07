@@ -254,13 +254,13 @@
                             <File Source="$(var.configSourcePath)\transcode\profile_example.properties" Id="profileExample.properties" KeyPath="yes" Vital="yes" />
                         </Component>
                         <Component Id="ultraFast720p.properties" Guid="{0acc4829-4194-4aa4-acde-4afb5da49301}" NeverOverwrite="no" Permanent="no">
-                            <File Source="$(var.configSourcePath)\transcode\ultraFast720p.properties" Id="ultraFast720p.properties" KeyPath="yes" Vital="yes" />
+                            <File Source="$(var.configSourcePath)\transcode\ultrafast720p.properties" Id="ultraFast720p.properties" KeyPath="yes" Vital="yes" />
                         </Component>
                         <Component Id="ultraFast720p30fps.properties" Guid="{0acc4829-4194-4aa4-acde-4afb5da49302}" NeverOverwrite="no" Permanent="no">
-                            <File Source="$(var.configSourcePath)\transcode\ultraFast720p30fps.properties" Id="ultraFast720p30fps.properties" KeyPath="yes" Vital="yes" />
+                            <File Source="$(var.configSourcePath)\transcode\ultrafast720p30fps.properties" Id="ultraFast720p30fps.properties" KeyPath="yes" Vital="yes" />
                         </Component>
                         <Component Id="ultraFast1080p.properties" Guid="{0acc4829-4194-4aa4-acde-4afb5da49303}" NeverOverwrite="no" Permanent="no">
-                            <File Source="$(var.configSourcePath)\transcode\ultraFast1080p.properties" Id="ultraFast1080p.properties" KeyPath="yes" Vital="yes" />
+                            <File Source="$(var.configSourcePath)\transcode\ultrafast1080p.properties" Id="ultraFast1080p.properties" KeyPath="yes" Vital="yes" />
                         </Component>
                     </Directory>
 				</Directory>

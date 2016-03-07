@@ -41,6 +41,7 @@ public class FFmpegConfig {
     private static IntegerDeviceOption minDirectFlush;
     private static IntegerDeviceOption threadPriority;
     private static IntegerDeviceOption uploadIdPort;
+    private static BooleanDeviceOption h264PtsHack;
 
     static {
         deviceOptions = new ConcurrentHashMap<>();
@@ -58,7 +59,8 @@ public class FFmpegConfig {
                 minUploadIdTransferSize,
                 minDirectFlush,
                 threadPriority,
-                uploadIdPort
+                uploadIdPort,
+                h264PtsHack
         );
     }
 
@@ -184,6 +186,18 @@ public class FFmpegConfig {
                         1024,
                         65535);
 
+                h264PtsHack = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.h264_pts_hack", false),
+                        false,
+                        "H.264 PTS Hack",
+                        "consumer.ffmpeg.h264_pts_hack",
+                        "This enables the removal of out of order PTS frames on H.264 720p" +
+                                " content so that it will playback correctly on the Fire TV and" +
+                                " Nexus. When enabled, this will only apply to 1280x720 H.264" +
+                                " non-interlaced content. Disable this if you notice interlaced" +
+                                " video not playing back smoothly."
+                        );
+
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid options. Reverting to defaults => ", e);
 
@@ -197,6 +211,7 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.min_direct_flush_size", 1048576);
                 Config.setInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2);
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
+                Config.setBoolean("consumer.ffmpeg.h264_pts_hack", true);
                 continue;
             }
 
@@ -230,7 +245,8 @@ public class FFmpegConfig {
                 minUploadIdTransferSize,
                 minDirectFlush,
                 threadPriority,
-                uploadIdPort
+                uploadIdPort,
+                h264PtsHack
         };
     }
 
@@ -306,5 +322,9 @@ public class FFmpegConfig {
 
     public static int getUploadIdPort() {
         return uploadIdPort.getInteger();
+    }
+
+    public static boolean getH264PtsHack() {
+        return h264PtsHack.getBoolean();
     }
 }

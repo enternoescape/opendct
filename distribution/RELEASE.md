@@ -464,3 +464,24 @@
 > *FFmpeg transcoder now also assigns the output stream time base to the codec time base.
 
 > *Cleaned up some FFmpeg transcoder code.
+
+#### 0.4.33-Beta
+> *Reversed: FFmpeg transcoder now also assigns the output stream time base to the codec time base.
+
+> *Added feature that can make 720p content more compatible with H.264 decoders that do not play
+> nicely with out of order presentation time stamps. Set consumer.ffmpeg.h264_pts_hack to true in
+> opendct.properties to enable the compatibility hack. This feature is only works when using
+> FFmpegTransSageTVConsumer.
+
+> *Removed trace logging from the FFmpeg transcoder.
+
+> *Audio and video stream metadata such as language is now copied when available into the FFmpeg
+> output stream when using FFmpegTransSageTVConsumer.
+
+> *Fixed de-duplicating FFmpeg logging. It was broken when phantom duplicates where fixed.
+
+> *HDHomeRun native capture device now has it's own property for how long it will wait before it
+> returns OK to SageTV while tuning a channel. The property is hdhr.wait_for_streaming and defaults
+> to 5000(ms).
+
+> *Fixed the profiles in the Windows installer so they are lowercase.

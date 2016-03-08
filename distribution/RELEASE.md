@@ -61,3 +61,5 @@
 > *Ubuntu init.d script was not running on startup for everyone. The install script now runs
 > 'update-rc.d -f opendct defaults'. The uninstall script runs 'update-rc.d -f opendct remove'.
 > Thanks mikejaner.
+
+> *Addressed runlevels warning message when enabling the Ubuntu init.d script.

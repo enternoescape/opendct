@@ -41,7 +41,7 @@ public class RegisterDevice {
         // come in, we need to filter out devices that don't meet our
         // actual request. This could also be used to send different
         // devices into different initialization paths.
-        String dctSchemaFilters[] = Config.getStringArray("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com", "schemas-dkeystone-com");
+        String dctSchemaFilters[] = Config.getStringArray("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com");
         String deviceName = "Unknown Device";
         String deviceSchema = "Unknown Schema";
         try {

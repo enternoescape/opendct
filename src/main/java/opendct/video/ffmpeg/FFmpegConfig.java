@@ -211,7 +211,7 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.min_direct_flush_size", 1048576);
                 Config.setInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2);
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
-                Config.setBoolean("consumer.ffmpeg.h264_pts_hack", true);
+                Config.setBoolean("consumer.ffmpeg.h264_pts_hack", false);
                 continue;
             }
 

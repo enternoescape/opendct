@@ -23,6 +23,8 @@ if test ! -e /etc/opendct/conf; then
     mkdir -p /etc/opendct/conf
 fi
 
+update-rc.d -f opendct defaults
+
 chown opendct:opendct /etc/opendct/conf
 
 if test -e /opt/opendct/conf; then

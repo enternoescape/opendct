@@ -4,6 +4,9 @@ chown opendct:opendct /opt/opendct
 ln -fs /opt/opendct/service /etc/init.d/opendct
 chmod 755 /etc/init.d/opendct
 
+update-rc.d -f opendct defaults
+
+echo ""
 echo "To use the provided ufw rules type:"
 echo "/opt/opendct/enable-ufw-ports"
 echo ""

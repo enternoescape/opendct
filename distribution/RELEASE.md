@@ -56,3 +56,8 @@
 
 #### 0.3.17-Stable
 > *Upped UDP recieve packet size to 65508.
+
+#### 0.3.18-Stable
+> *Ubuntu init.d script was not running on startup for everyone. The install script now runs
+> 'update-rc.d -f opendct defaults'. The uninstall script runs 'update-rc.d -f opendct remove'.
+> Thanks mikejaner.

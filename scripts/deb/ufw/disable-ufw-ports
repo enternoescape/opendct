@@ -5,3 +5,4 @@ sudo ufw delete allow 9000-9100/tcp
 sudo ufw delete allow 8271/udp
 sudo ufw delete allow 8300-8500/udp
 sudo ufw delete allow 8501/tcp
+sudo ufw delete allow 64998/udp

@@ -418,7 +418,7 @@
 > RAM with the buffer would never be returned.
 
 > *HDHomeRun ongoing discovery only sends one packet per interval after the first 3 in a row. This
-> helps prevent the UDP traffic from being dropped because of all of the responses.
+> helps prevent UDP traffic from being dropped because of all of the responses.
 
 > *Changed periodic flushing so it only happens if it looks like the file isn't growing.
 
@@ -485,3 +485,37 @@
 > to 5000(ms).
 
 > *Fixed the profiles in the Windows installer so they are lowercase.
+
+#### 0.4.34-Beta
+> *CONFIGURATION UPGRADE: The first time you run this version, it will upgrade your current
+> configuration. What this means is a few properties in opendct.properties will be removed and some
+> properties will be modified so that you are using the best configuration. The HDHomeRun Prime will
+> be switched to being discovered via its native discovery protocol. This upgrade will only happen
+> once. The new configuration is not fully compatible with OpenDCT versions earlier than 0.4.30. As
+> of 0.4.25 the properties are backed up on upgrade, so if this upgrade breaks anything for you and
+> you did not make a copy of your old configuration, you should have a file named
+> opendct.properties.0.4.xx-x containing your old configuration that you can use to undo the 
+> changes.
+
+> *The following properties no longer do anything, will confuse people and will be removed: 
+> hdhr.always_force_lockkey, 
+> sagetv.device.parent.\<parent_id\>.consumer, 
+> sagetv.device.parent.\<parent_id\>.channel_scan_consumer
+
+> *'schemas-dkeystone-com' will be removed from 'upnp.new.device.schema_filter_strings_csv'
+
+> *'HDHR3-CC' will be removed from 'hdhr.exp_ignore_models'
+
+> *'discovery.exp_enabled' will be set to 'true'
+
+> *ATSC HDHomeRun support is now a fully supported configuration. It is no longer experimental.
+
+> *HDHomeRun discovery port can be set to a specific port by change the property 
+> hdhr.broadcast_port. If the value is less than 1024, the port will be chosen automatically. The
+> default is 64998. The static port makes it easier to do port-based firewall rules.
+
+> *Ubuntu init.d script was not running on startup for everyone. The install script now runs
+> 'update-rc.d -f opendct defaults'. The uninstall script runs 'update-rc.d -f opendct remove'.
+> Thanks mikejaner.
+
+> *Addressed runlevels warning message when enabling the Ubuntu init.d script.

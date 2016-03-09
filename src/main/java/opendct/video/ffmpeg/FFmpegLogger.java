@@ -154,11 +154,6 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             message = initMessage;
         }
 
-        if (lastMessage != null && lastMessage.equals(initMessage)) {
-            repeated.addAndGet(1);
-            return;
-        }
-
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
         if (limitLogging && message != null && (
                 message.endsWith("Invalid frame dimensions 0x0.") ||
@@ -183,6 +178,11 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 message.contains(" buffer underflow st="))) {
 
 
+            return;
+        }
+
+        if (lastMessage != null && lastMessage.equals(initMessage)) {
+            repeated.addAndGet(1);
             return;
         }
 

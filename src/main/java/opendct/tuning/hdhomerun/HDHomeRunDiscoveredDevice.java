@@ -28,7 +28,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
-    private final Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDevice.class);
+    private final static Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDevice.class);
 
     private int tunerNumber;
     private HDHomeRunDiscoveredDeviceParent deviceParent;

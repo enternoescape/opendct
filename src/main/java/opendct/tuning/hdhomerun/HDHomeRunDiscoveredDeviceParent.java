@@ -16,21 +16,62 @@
 
 package opendct.tuning.hdhomerun;
 
+import opendct.config.Config;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
+import opendct.config.options.StringDeviceOption;
 import opendct.tuning.discovery.NetworkDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.InetAddress;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
-    private final Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDeviceParent.class);
+    private final static Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDeviceParent.class);
 
     HDHomeRunDevice device;
+
+    ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    StringDeviceOption channelMap;
 
     public HDHomeRunDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, HDHomeRunDevice hdHomeRunDevice) {
         super(name, parentId, localAddress);
 
         device = hdHomeRunDevice;
+
+        deviceOptions = new ConcurrentHashMap<>();
+
+        while(true) {
+            try {
+                channelMap = new StringDeviceOption(
+                        "",
+                        false,
+                        "Channel Map",
+                        propertiesDeviceParent + "channel_map",
+                        "Change the channel map used for tuning on this HDHomeRun device. Valid" +
+                                " values are 'us-cable' and 'us-bcast'. This option has no effect" +
+                                " on CableCARD devices.",
+                        "",
+                        "us-cable",
+                        "us-bcast"
+                );
+
+                Config.mapDeviceOptions(
+                        deviceOptions,
+                        channelMap
+                );
+            } catch (DeviceOptionException e) {
+                logger.warn("Invalid options. Reverting to defaults => ", e);
+
+                Config.setString(propertiesDeviceParent + "channel_map", "");
+
+                continue;
+            }
+
+            break;
+        }
+
     }
 
     @Override
@@ -40,5 +81,46 @@ public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDevicePare
 
     public HDHomeRunDevice getDevice() {
         return device;
+    }
+
+    @Override
+    public DeviceOption[] getOptions() {
+        DeviceOption tempArray[] = super.getOptions();
+        DeviceOption returnArray[] = new DeviceOption[tempArray.length + 1];
+
+        if (tempArray.length > 0) {
+            System.arraycopy(tempArray, 0, returnArray, 0, tempArray.length);
+        }
+
+        returnArray[returnArray.length - 1] = channelMap;
+
+        return returnArray;
+    }
+
+    @Override
+    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+        super.setOptions(deviceOptions);
+
+        for (DeviceOption option : deviceOptions) {
+            DeviceOption optionReference = this.deviceOptions.get(option.getProperty());
+
+            if (optionReference == null) {
+                continue;
+            }
+
+            if (optionReference.isArray()) {
+                optionReference.setValue(option.getArrayValue());
+            } else {
+                optionReference.setValue(option.getValue());
+            }
+
+            Config.setDeviceOption(optionReference);
+        }
+
+        Config.saveConfig();
+    }
+
+    public String getChannelMap() {
+        return channelMap.getValue();
     }
 }

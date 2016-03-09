@@ -344,7 +344,6 @@ public class FFmpegContext {
             try {
                 ByteBuffer writeBuffer = buf.position(0).limit(bufSize).asByteBuffer();
 
-                //TODO: Add file switching mechanism.
                 numBytesWritten = context.write(writeBuffer);
             } catch (IOException e) {
                 Logger logger = context.getLogger();

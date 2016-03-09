@@ -24,9 +24,16 @@ import opendct.config.options.*;
 import opendct.tuning.discovery.*;
 import opendct.tuning.upnp.UpnpDiscoveredDevice;
 import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
+import opendct.tuning.upnp.UpnpManager;
+import opendct.tuning.upnp.config.DCTDefaultUpnpServiceConfiguration;
+import opendct.tuning.upnp.listener.DiscoveryRegistryListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.fourthline.cling.model.meta.RemoteDevice;
 
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -242,30 +249,50 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public synchronized void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
+        running = UpnpManager.isRunning();
+
         if (deviceLoader == null || !UpnpDiscoverer.enabled || UpnpDiscoverer.running) {
             return;
         }
-        //UpnpManager.startUpnpServices(DCTDefaultUpnpServiceConfiguration.getDCTDefault(), new DCTRegistryListener());
 
+        this.deviceLoader = deviceLoader;
 
+        UpnpManager.startUpnpServices(
+                DCTDefaultUpnpServiceConfiguration.getDCTDefault(),
+                new DiscoveryRegistryListener(this));
     }
 
     @Override
     public synchronized void stopDetection() throws DiscoveryException {
+        running = UpnpManager.isRunning();
+
         if (!UpnpDiscoverer.running) {
             return;
         }
 
+        UpnpManager.stopUpnpServices();
 
+        running = UpnpManager.isRunning();
     }
 
     @Override
     public synchronized void waitForStopDetection() throws InterruptedException {
-        if (!UpnpDiscoverer.running) {
-            return;
+        long timeout = System.currentTimeMillis() + 5000;
+
+        try {
+            while (timeout > System.currentTimeMillis()) {
+                UpnpManager.stopUpnpServices();
+                running = UpnpManager.isRunning();
+
+                if (!UpnpDiscoverer.running) {
+                    return;
+                }
+
+                Thread.sleep(100);
+            }
+        } catch (Exception e) {
+            logger.error("UPnP shutdown created an exception => ", e);
         }
-
-
     }
 
     @Override
@@ -388,6 +415,59 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         return deviceParent;
     }
 
+    public void addCaptureDevice(UpnpDiscoveredDeviceParent parent, UpnpDiscoveredDevice... devices) {
+        discoveredDevicesLock.writeLock().lock();
+
+        try {
+            // This prevents accidentally re-adding a device after detection has stopped.
+            if (!UpnpManager.isRunning()) {
+                return;
+            }
+
+            // Any universal filtering can go here.
+
+            UpnpDiscoveredDeviceParent updateDeviceParent =
+                    discoveredParents.get(parent.getParentId());
+
+            if (updateDeviceParent != null) {
+                // This device has been detected before. We will only update the IP address.
+
+                if (!(updateDeviceParent.getRemoteAddress() == parent.getRemoteAddress())) {
+                    logger.info("HDHomeRun device '{}' changed its IP address from {} to {}.",
+                            updateDeviceParent.getFriendlyName(),
+                            updateDeviceParent.getRemoteAddress().getHostAddress(),
+                            parent.getRemoteAddress().getHostAddress()
+                    );
+
+                    updateDeviceParent.setRemoteAddress(parent.getRemoteAddress());
+                }
+
+                return;
+            }
+
+            discoveredParents.put(parent.getParentId(), parent);
+
+            for (UpnpDiscoveredDevice newDevice : devices) {
+
+                // The array size will usually be 1-2 devices too big.
+                if (newDevice == null) {
+                    continue;
+                }
+
+                this.discoveredDevices.put(newDevice.getId(), newDevice);
+
+                parent.addChild(newDevice.getId());
+
+                deviceLoader.advertiseDevice(newDevice, this);
+            }
+
+        } catch (Exception e) {
+            logger.error("addDevices created an unexpected exception => ", e);
+        } finally {
+            discoveredDevicesLock.writeLock().unlock();
+        }
+    }
+
     @Override
     public CaptureDevice loadCaptureDevice(int deviceId)
             throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
@@ -422,6 +502,34 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         }
 
         return returnValue;
+    }
+
+    public static InetAddress getRemoteIpAddress(RemoteDevice remoteDevice) {
+        InetAddress returnAddress = null;
+
+        if (remoteDevice.getDetails() != null &&
+                remoteDevice.getDetails().getBaseURL() != null &&
+                remoteDevice.getDetails().getBaseURL().getHost() != null) {
+
+            try {
+                returnAddress = InetAddress.getByName(remoteDevice.getParentDevice().getDetails().getBaseURL().getHost());
+            } catch (UnknownHostException e) {
+                // Sometimes a URL doesn't show up in the base URL field soon enough.
+
+                //(RemoteDeviceIdentity) UDN: uuid:24FB1FB3-38BF-39B9-AAC0-F1A177B8E8D5, Descriptor: http://x.x.x.x:80/dri/device.xml
+                String encoderIPAddress = remoteDevice.getParentDevice().getIdentity().toString();
+
+                try {
+                    encoderIPAddress = encoderIPAddress.substring(encoderIPAddress.lastIndexOf("http://"));
+                    returnAddress = InetAddress.getByName(new URI(encoderIPAddress).getHost());
+                } catch (Exception e1) {
+                    logger.error("Unable to parse '{}' into encoder IP address => ", encoderIPAddress, e);
+                }
+            }
+        }
+
+
+        return returnAddress;
     }
 
     @Override

@@ -16,28 +16,16 @@
 
 package opendct.tuning.upnp;
 
-import opendct.tuning.discovery.NetworkDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.InetAddress;
 
-public class UpnpDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
-    private final static Logger logger = LogManager.getLogger(UpnpDiscoveredDeviceParent.class);
+public class InfiniTVDiscoveredDeviceParent extends UpnpDiscoveredDeviceParent {
+    private final static Logger logger = LogManager.getLogger(InfiniTVDiscoveredDeviceParent.class);
 
-    InetAddress remoteAddress;
+    public InfiniTVDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, InetAddress remoteAddress) {
+        super(name, parentId, localAddress, remoteAddress);
 
-    public UpnpDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, InetAddress remoteAddress) {
-        super(name, parentId, localAddress);
-        this.remoteAddress = remoteAddress;
-    }
-
-    @Override
-    public InetAddress getRemoteAddress() {
-        return remoteAddress;
-    }
-
-    public void setRemoteAddress(InetAddress remoteAddress) {
-        this.remoteAddress = remoteAddress;
     }
 }

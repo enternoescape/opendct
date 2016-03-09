@@ -80,7 +80,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);
 
         // If the HDHomeRun Prime is allowed through the UPnP filter, we can't allow it here too.
-        if (Config.getString("upnp.new.device.schema_filter_strings_csv")
+
+        if (Config.getString("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com")
                 .contains("schemas-dkeystone-com")) {
 
             Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");

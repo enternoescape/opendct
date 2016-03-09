@@ -61,6 +61,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static BooleanDeviceOption allowHttpTuning;
     private static StringDeviceOption transcodeProfile;
     private static BooleanDeviceOption qamHttpTuningHack;
+    private static IntegerDeviceOption offlineDetectionSeconds;
+    private static IntegerDeviceOption offlineDetectionMinBytes;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -248,6 +250,25 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                                 " mappings might be different between devices."
                 );
 
+                offlineDetectionSeconds = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.wait_for_offline_detection_s", 8),
+                        false,
+                        "Offline Channel Detection Seconds",
+                        "hdhr.wait_for_offline_detection_s",
+                        "This is the value in seconds to wait after tuning a channel before" +
+                                " making a final determination on if it is tunable or not." +
+                                " This applies only to offline scanning."
+                );
+
+                offlineDetectionMinBytes = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.offline_detection_min_bytes", 10528),
+                        false,
+                        "Offline Channel Detection Bytes",
+                        "hdhr.offline_detection_min_bytes",
+                        "This is the value in bytes that must be consumed before a channel is" +
+                                " considered tunable."
+                );
+
                 Config.mapDeviceOptions(
                         deviceOptions,
                         streamingWait,
@@ -263,7 +284,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         alwaysTuneLegacy,
                         allowHttpTuning,
                         transcodeProfile,
-                        qamHttpTuningHack
+                        qamHttpTuningHack,
+                        offlineDetectionSeconds,
+                        offlineDetectionMinBytes
                 );
             } catch (DeviceOptionException e) {
                 logger.error("Unable to configure device options for HDHomeRunDiscoverer." +
@@ -277,7 +300,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.setInteger("hdhr.retry_count", 2);
                 Config.setInteger("hdhr.broadcast_s", 58);
                 Config.setInteger("hdhr.broadcast_port", 64998);
-                Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");
+                Config.setStringArray("hdhr.exp_ignore_models");
                 Config.setStringArray("hdhr.ignore_device_ids");
                 Config.setBoolean("hdhr.always_tune_legacy", false);
                 Config.setBoolean("hdhr.allow_http_tuning", true);
@@ -629,7 +652,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 alwaysTuneLegacy,
                 allowHttpTuning,
                 transcodeProfile,
-                qamHttpTuningHack
+                qamHttpTuningHack,
+                offlineDetectionSeconds,
+                offlineDetectionMinBytes
         };
     }
 
@@ -704,6 +729,14 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static boolean getQamHttpTuningHack() {
         return qamHttpTuningHack.getBoolean();
+    }
+
+    public static int getOfflineDetectionSeconds() {
+        return offlineDetectionSeconds.getInteger();
+    }
+
+    public static int getOfflineDetectionMinBytes() {
+        return offlineDetectionMinBytes.getInteger();
     }
 
     public static int getBroadcastPort() {

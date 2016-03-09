@@ -362,9 +362,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 return logger.exit(false);
             }
 
-            //TODO: This needs to be improved before the web interface is completed.
-            int offlineDetectionMinBytes = 10528; //HDHomeRunDiscoverer.getOfflineDetectionMinBytes();
-            int timeout = 8; //HDHomeRunDiscoverer.getOfflineDetectionSeconds();
+            int offlineDetectionMinBytes = HDHomeRunDiscoverer.getOfflineDetectionMinBytes();
+            int timeout = HDHomeRunDiscoverer.getOfflineDetectionSeconds();
 
             if (!skipCCI) {
                 CopyProtection copyProtection = getCopyProtection();

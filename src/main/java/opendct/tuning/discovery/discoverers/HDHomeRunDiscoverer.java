@@ -54,12 +54,15 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static BooleanDeviceOption hdhrLock;
     private static IntegerDeviceOption controlRetryCount;
     private static IntegerDeviceOption broadcastInterval;
+    private static IntegerDeviceOption broadcastPort;
     private static StringDeviceOption ignoreModels;
     private static StringDeviceOption ignoreDeviceIds;
     private static BooleanDeviceOption alwaysTuneLegacy;
     private static BooleanDeviceOption allowHttpTuning;
     private static StringDeviceOption transcodeProfile;
     private static BooleanDeviceOption qamHttpTuningHack;
+    private static IntegerDeviceOption offlineDetectionSeconds;
+    private static IntegerDeviceOption offlineDetectionMinBytes;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -76,8 +79,10 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);
 
-        // If the HDHomeRun Prime is allowed through the UPnP filter, we can't allow it here too.
-        if (Config.getString("upnp.new.device.schema_filter_strings_csv")
+        // If the HDHomeRun Prime is allowed through the UPnP filter, we can't allow it here too
+        // because SageTVManager will rightly not allow it.
+
+        if (Config.getString("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com")
                 .contains("schemas-dkeystone-com")) {
 
             Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");
@@ -170,9 +175,21 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         Integer.MAX_VALUE
                 );
 
+                broadcastPort = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.broadcast_port", 64998),
+                        false,
+                        "SageTV Upload ID Port",
+                        "hdhr.broadcast_port",
+                        "This is the port number used to send and receive the HDHomeRun discovery" +
+                                " broadcast. If this value is less than 1024, the program will" +
+                                " automatically select a port, the value cannot be greater than" +
+                                " 65535.",
+                        1023,
+                        65535);
+
                 // Ignore the HDHomeRun Prime for now.
                 ignoreModels = new StringDeviceOption(
-                        Config.getStringArray("hdhr.exp_ignore_models", "HDHR3-CC"),
+                        Config.getStringArray("hdhr.exp_ignore_models"),
                         true,
                         false,
                         "Ignore Models",
@@ -235,6 +252,25 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                                 " mappings might be different between devices."
                 );
 
+                offlineDetectionSeconds = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.wait_for_offline_detection_s", 8),
+                        false,
+                        "Offline Channel Detection Seconds",
+                        "hdhr.wait_for_offline_detection_s",
+                        "This is the value in seconds to wait after tuning a channel before" +
+                                " making a final determination on if it is tunable or not." +
+                                " This applies only to offline scanning."
+                );
+
+                offlineDetectionMinBytes = new IntegerDeviceOption(
+                        Config.getInteger("hdhr.offline_detection_min_bytes", 10528),
+                        false,
+                        "Offline Channel Detection Bytes",
+                        "hdhr.offline_detection_min_bytes",
+                        "This is the value in bytes that must be consumed before a channel is" +
+                                " considered tunable."
+                );
+
                 Config.mapDeviceOptions(
                         deviceOptions,
                         streamingWait,
@@ -243,12 +279,16 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         autoMapTuning,
                         hdhrLock,
                         controlRetryCount,
+                        broadcastInterval,
+                        broadcastPort,
                         ignoreModels,
                         ignoreDeviceIds,
                         alwaysTuneLegacy,
                         allowHttpTuning,
                         transcodeProfile,
-                        qamHttpTuningHack
+                        qamHttpTuningHack,
+                        offlineDetectionSeconds,
+                        offlineDetectionMinBytes
                 );
             } catch (DeviceOptionException e) {
                 logger.error("Unable to configure device options for HDHomeRunDiscoverer." +
@@ -261,7 +301,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.setBoolean("hdhr.locking", true);
                 Config.setInteger("hdhr.retry_count", 2);
                 Config.setInteger("hdhr.broadcast_s", 58);
-                Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");
+                Config.setInteger("hdhr.broadcast_port", 64998);
+                Config.setStringArray("hdhr.exp_ignore_models");
                 Config.setStringArray("hdhr.ignore_device_ids");
                 Config.setBoolean("hdhr.always_tune_legacy", false);
                 Config.setBoolean("hdhr.allow_http_tuning", true);
@@ -606,12 +647,16 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 autoMapTuning,
                 hdhrLock,
                 controlRetryCount,
+                broadcastInterval,
+                broadcastPort,
                 ignoreModels,
                 ignoreDeviceIds,
                 alwaysTuneLegacy,
                 allowHttpTuning,
                 transcodeProfile,
-                qamHttpTuningHack
+                qamHttpTuningHack,
+                offlineDetectionSeconds,
+                offlineDetectionMinBytes
         };
     }
 
@@ -686,5 +731,30 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static boolean getQamHttpTuningHack() {
         return qamHttpTuningHack.getBoolean();
+    }
+
+    public static int getOfflineDetectionSeconds() {
+        return offlineDetectionSeconds.getInteger();
+    }
+
+    public static int getOfflineDetectionMinBytes() {
+        return offlineDetectionMinBytes.getInteger();
+    }
+
+    public static int getBroadcastPort() {
+        int returnValue = broadcastPort.getInteger();
+
+        if (returnValue > 0 && returnValue < 1024) {
+            try {
+                broadcastPort.setValue(0);
+            } catch (DeviceOptionException e) {
+
+            }
+            Config.setInteger("hdhr.broadcast_port", 0);
+
+            returnValue = 0;
+        }
+
+        return returnValue;
     }
 }

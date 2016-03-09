@@ -16,18 +16,15 @@
 
 package opendct.tuning.upnp;
 
-import opendct.capture.CaptureDevice;
-import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.tuning.discovery.BasicDiscoveredDevice;
-import opendct.tuning.discovery.CaptureDeviceLoadException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class UpnpDiscoveredDevice extends BasicDiscoveredDevice {
-    private final Logger logger = LogManager.getLogger(UpnpDiscoveredDevice.class);
+public abstract class UpnpDiscoveredDevice extends BasicDiscoveredDevice {
+    private final static Logger logger = LogManager.getLogger(UpnpDiscoveredDevice.class);
 
     public UpnpDiscoveredDevice(String name, int id, int parentId, String description) {
         super(name, id, parentId, description);
@@ -55,10 +52,5 @@ public class UpnpDiscoveredDevice extends BasicDiscoveredDevice {
 
             Config.setDeviceOption(deviceOption);
         }
-    }
-
-    @Override
-    public synchronized CaptureDevice loadCaptureDevice() throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
-        return null;
     }
 }

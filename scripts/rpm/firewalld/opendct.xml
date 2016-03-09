@@ -33,4 +33,8 @@
 
     <!-- Cling HTTP TCP receiving port -->
     <port protocol="tcp" port="8501"/>
+
+    <!-- HDHomeRun discovery receiving port -->
+    <port protocol="tcp" port="64998"/>
+
 </service>

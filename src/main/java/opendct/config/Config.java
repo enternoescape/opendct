@@ -42,11 +42,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
-    public static final int VERSION_CONFIG = 2;
+    public static final int VERSION_CONFIG = 3;
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 33;
+    public static final int VERSION_BUILD = 34;
     public static final String VERSION_PROGRAM = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -134,9 +134,7 @@ public class Config {
             }
 
             if (Config.properties != null) {
-                // It looks like we have a new configuration. Let's clear out the old one.
-                logger.debug("Clearing current OpenDCT configuration...");
-                Config.properties.clear();
+                Config.properties = new Properties();
             }
 
             try {
@@ -153,7 +151,8 @@ public class Config {
         Config.isConfigOnly = CommandLine.isConfigOnly();
 
         if ("true".equals(properties.getProperty("version.first_run", "false"))) {
-            properties.remove("version.first_run");
+            properties.setProperty("version.first_run", "false");
+            properties.remove("version.first_run"); //Sometimes first run doesn't clear.
             properties.setProperty("version.program", VERSION_PROGRAM);
             properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
 
@@ -168,21 +167,7 @@ public class Config {
             }
 
             if (!properties.getProperty("version.program", VERSION_PROGRAM).equals(VERSION_PROGRAM)) {
-                File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
-
-                if (newFileName == null) {
-                    logger.error("Unable to make a copy of opendct.properties on upgrade.");
-                    // Only try to do this once. This is not an issue that merits restarting
-                    // the JVM.
-                } else {
-                    try {
-                        Util.copyFile(new File(filename), newFileName, true);
-                    } catch (IOException e) {
-                        logger.error("Unable to make a copy of opendct.properties on upgrade => ", e);
-                    }
-                }
-
-                properties.setProperty("version.program", VERSION_PROGRAM);
+                versionBackup();
             }
         }
 
@@ -191,10 +176,12 @@ public class Config {
                 properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
             }
 
+            versionBackup();
+
             // Upgrade config if the version is behind.
-            //int configVersion = getInteger("version.config", VERSION_CONFIG);
-            //configUpgradeCleanup(configVersion);
-            //properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+            int configVersion = getInteger("version.config", VERSION_CONFIG);
+            configUpgradeCleanup(configVersion);
+            properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
         }
 
         return logger.exit(true);
@@ -204,30 +191,52 @@ public class Config {
         // Do not use break. That way the changes will cascade.
 
         HashSet<String> removeEntries = new HashSet<>();
-        String oldArray[];
         String newArray[];
 
         switch (configVersion) {
             case 1:
-                logger.info("Upgrading to config version 2...");
+            case 2:
+                logger.info("Upgrading to config version 3...");
 
-                logger.info("Removing hdhr.always_force_lockkey key. It is now per capture device.");
+                logger.info("Removing hdhr.always_force_lockkey key. It is per capture device.");
                 properties.remove("hdhr.always_force_lockkey");
 
                 for (Map.Entry<Object, Object> entry : properties.entrySet()) {
                     String key = (String)entry.getKey();
 
-                    if (key.startsWith("sagetv.device.parent.") && key.endsWith(".consumer")) {
+                    if (key.startsWith("sagetv.device.parent.") &&
+                            key.endsWith(".consumer")) {
+
                         logger.info("Removing {} key. It is now per capture device.", key);
                         removeEntries.add(key);
-                    } else if (key.startsWith("sagetv.device.parent.") && key.endsWith(".channel_scan_consumer")) {
+                    } else if (key.startsWith("sagetv.device.parent.") &&
+                            key.endsWith(".channel_scan_consumer")) {
+
                         logger.info("Removing {} key. It is now per capture device.", key);
                         removeEntries.add(key);
                     }
                 }
 
-                oldArray = getStringArray("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com", "schemas-dkeystone-com");
+                logger.info("Removing 'schemas-dkeystone-com' from" +
+                        " 'upnp.new.device.schema_filter_strings_csv'");
 
+                newArray = Util.removeFromArray("schemas-dkeystone-com",
+                        getStringArray("upnp.new.device.schema_filter_strings_csv",
+                                "schemas-cetoncorp-com", "schemas-dkeystone-com"));
+
+                setStringArray("upnp.new.device.schema_filter_strings_csv", newArray);
+
+
+                logger.info("Removing 'HDHR3-CC' from 'hdhr.exp_ignore_models'");
+                newArray = Util.removeFromArray("HDHR3-CC",
+                        getStringArray("hdhr.exp_ignore_models",
+                                "HDHR3-CC"));
+
+                setStringArray("hdhr.exp_ignore_models", newArray);
+
+
+                logger.info("Setting 'discovery.exp_enabled' to 'true'");
+                setBoolean("discovery.exp_enabled", true);
         }
 
         Properties propertiesMigrate = properties;
@@ -244,17 +253,23 @@ public class Config {
         }
     }
 
-    public static synchronized void clearConfig() {
-        logger.entry();
+    public static synchronized void versionBackup() {
+        File configFilename = new File(getDefaultConfigFilename());
+        File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
 
-        if (properties != null) {
-            logger.debug("Clearing current OpenDCT configuration...");
-            properties.clear();
+        if (newFileName == null) {
+            logger.error("Unable to make a copy of '{}' on upgrade.", configFilename);
+            // Only try to do this once. This is not an issue that merits restarting
+            // the JVM.
         } else {
-            properties = new Properties();
+            try {
+                Util.copyFile(configFilename, newFileName, true);
+            } catch (IOException e) {
+                logger.error("Unable to make a copy of opendct.properties on upgrade => ", e);
+            }
         }
 
-        logger.exit();
+        properties.setProperty("version.program", VERSION_PROGRAM);
     }
 
     public static synchronized boolean saveConfig() {

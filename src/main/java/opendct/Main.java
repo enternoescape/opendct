@@ -209,7 +209,7 @@ public class Main {
         boolean useUPnP = Config.getBoolean("upnp.enabled", true);
 
         // If this is enabled the program will
-        boolean useDiscoveryManager = Config.getBoolean("discovery.exp_enabled", false);
+        boolean useDiscoveryManager = Config.getBoolean("discovery.exp_enabled", true);
 
         Config.saveConfig();
 

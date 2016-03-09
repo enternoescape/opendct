@@ -21,6 +21,7 @@ import opendct.config.Config;
 import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.config.options.StringDeviceOption;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
 import opendct.producer.RTPProducer;
@@ -58,6 +59,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
     private final ConcurrentHashMap<String, DeviceOption> deviceOptions;
     private BooleanDeviceOption forceExternalUnlock;
+    private StringDeviceOption channelMap;
 
     private HTTPCaptureDeviceServices httpServices;
     private HTTPProducer httpProducer;
@@ -118,7 +120,9 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 );
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid options. Reverting to defaults => ", e);
+
                 Config.setBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
+
                 continue;
             }
 
@@ -140,6 +144,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
                 }
             } else {
+                if (!discoveredDeviceParent.getChannelMap().equals("")) {
+                    tuner.setChannelmap(discoveredDeviceParent.getChannelMap());
+                }
+
                 String channelMapName = tuner.getChannelmap();
                 HDHomeRunChannelMap channelMap = HDHomeRunFeatures.getEnumForChannelmap(channelMapName);
 
@@ -362,9 +370,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 return logger.exit(false);
             }
 
-            //TODO: This needs to be improved before the web interface is completed.
-            int offlineDetectionMinBytes = 10528; //HDHomeRunDiscoverer.getOfflineDetectionMinBytes();
-            int timeout = 8; //HDHomeRunDiscoverer.getOfflineDetectionSeconds();
+            int offlineDetectionMinBytes = HDHomeRunDiscoverer.getOfflineDetectionMinBytes();
+            int timeout = HDHomeRunDiscoverer.getOfflineDetectionSeconds();
 
             if (!skipCCI) {
                 CopyProtection copyProtection = getCopyProtection();
@@ -767,6 +774,10 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                         ChannelManager.updateChannel(encoderLineup, qamChannel);
 
                                         anyUrl = qamChannel;
+
+                                        // If we don't rest here, the HDHomeRun sometimes gives a
+                                        // 503 error when the URL is accessed less than 1ms later.
+                                        Thread.sleep(25);
                                         break;
                                     } else {
                                         // While we have this one tuned in, let's try to match it up

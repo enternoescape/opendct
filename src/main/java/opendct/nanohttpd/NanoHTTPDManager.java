@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package opendct.jetty;
+package opendct.nanohttpd;
 
-public class JettyManager {
+public class NanoHTTPDManager {
     //TODO: [js] Create a simple web server for communicating with and troubleshooting the network encoder.
 
     /*

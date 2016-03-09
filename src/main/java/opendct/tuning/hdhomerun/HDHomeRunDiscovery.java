@@ -20,6 +20,7 @@ import opendct.power.NetworkPowerEventManger;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketTag;
 import opendct.tuning.hdhomerun.types.HDHomeRunPacketType;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -85,10 +86,24 @@ public class HDHomeRunDiscovery implements Runnable {
         sendThread = new Thread(this);
         sendThread.setName("HDHomeRunDiscoverySend-" + sendThread.getId());
 
+        int broadcastPort = HDHomeRunDiscoverer.getBroadcastPort();
+
         for (int i = 0; i < datagramChannels.length; i++ ) {
             datagramChannels[i] = DatagramChannel.open();
             datagramChannels[i].socket().setBroadcast(true);
             datagramChannels[i].socket().setReceiveBufferSize(100000);
+
+            if (broadcastPort > 1023) {
+                try {
+                    datagramChannels[i].bind(
+                            new InetSocketAddress(
+                                    Util.getLocalIPForRemoteIP(BROADCAST_ADDRESS[i]),
+                                    broadcastPort));
+
+                } catch (Exception e) {
+                    logger.error("Unable to use port {}, using any port available.", broadcastPort);
+                }
+            }
 
             ReceiveThread receiveThread = new ReceiveThread();
             receiveThread.listenIndex = i;

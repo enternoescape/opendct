@@ -478,6 +478,7 @@ public class ChannelManager implements PowerEventListener {
             case COPY:
                 logger.info("Copying to the channel lineup {} ({}).", channelLineup.getFriendlyName(), channelLineup.LINEUP_NAME);
                 CopyChannels.populateChannels(channelLineup);
+                break;
             case STATIC:
                 logger.info("The static channel lineup {} ({}) will remain unchanged.", channelLineup.getFriendlyName(), channelLineup.LINEUP_NAME);
                 break;

@@ -134,9 +134,7 @@ public class Config {
             }
 
             if (Config.properties != null) {
-                // It looks like we have a new configuration. Let's clear out the old one.
-                logger.debug("Clearing current OpenDCT configuration...");
-                Config.properties.clear();
+                Config.properties = new Properties();
             }
 
             try {
@@ -169,7 +167,7 @@ public class Config {
             }
 
             if (!properties.getProperty("version.program", VERSION_PROGRAM).equals(VERSION_PROGRAM)) {
-                versionBackup(filename);
+                versionBackup();
             }
         }
 
@@ -178,7 +176,7 @@ public class Config {
                 properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
             }
 
-            versionBackup(filename);
+            versionBackup();
 
             // Upgrade config if the version is behind.
             int configVersion = getInteger("version.config", VERSION_CONFIG);
@@ -255,35 +253,23 @@ public class Config {
         }
     }
 
-    public static synchronized void versionBackup(String filename) {
+    public static synchronized void versionBackup() {
+        File configFilename = new File(getDefaultConfigFilename());
         File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
 
         if (newFileName == null) {
-            logger.error("Unable to make a copy of opendct.properties on upgrade.");
+            logger.error("Unable to make a copy of '{}' on upgrade.", configFilename);
             // Only try to do this once. This is not an issue that merits restarting
             // the JVM.
         } else {
             try {
-                Util.copyFile(new File(filename), newFileName, true);
+                Util.copyFile(configFilename, newFileName, true);
             } catch (IOException e) {
                 logger.error("Unable to make a copy of opendct.properties on upgrade => ", e);
             }
         }
 
         properties.setProperty("version.program", VERSION_PROGRAM);
-    }
-
-    public static synchronized void clearConfig() {
-        logger.entry();
-
-        if (properties != null) {
-            logger.debug("Clearing current OpenDCT configuration...");
-            properties.clear();
-        } else {
-            properties = new Properties();
-        }
-
-        logger.exit();
     }
 
     public static synchronized boolean saveConfig() {

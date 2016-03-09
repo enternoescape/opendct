@@ -153,7 +153,8 @@ public class Config {
         Config.isConfigOnly = CommandLine.isConfigOnly();
 
         if ("true".equals(properties.getProperty("version.first_run", "false"))) {
-            properties.remove("version.first_run");
+            properties.setProperty("version.first_run", "false");
+            properties.remove("version.first_run"); //Sometimes first run doesn't clear.
             properties.setProperty("version.program", VERSION_PROGRAM);
             properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
 
@@ -168,21 +169,7 @@ public class Config {
             }
 
             if (!properties.getProperty("version.program", VERSION_PROGRAM).equals(VERSION_PROGRAM)) {
-                File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
-
-                if (newFileName == null) {
-                    logger.error("Unable to make a copy of opendct.properties on upgrade.");
-                    // Only try to do this once. This is not an issue that merits restarting
-                    // the JVM.
-                } else {
-                    try {
-                        Util.copyFile(new File(filename), newFileName, true);
-                    } catch (IOException e) {
-                        logger.error("Unable to make a copy of opendct.properties on upgrade => ", e);
-                    }
-                }
-
-                properties.setProperty("version.program", VERSION_PROGRAM);
+                versionBackup(filename);
             }
         }
 
@@ -191,10 +178,12 @@ public class Config {
                 properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
             }
 
+            versionBackup(filename);
+
             // Upgrade config if the version is behind.
-            //int configVersion = getInteger("version.config", VERSION_CONFIG);
-            //configUpgradeCleanup(configVersion);
-            //properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+            int configVersion = getInteger("version.config", VERSION_CONFIG);
+            configUpgradeCleanup(configVersion);
+            properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
         }
 
         return logger.exit(true);
@@ -264,6 +253,24 @@ public class Config {
 
             properties.setProperty(key, value);
         }
+    }
+
+    public static synchronized void versionBackup(String filename) {
+        File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
+
+        if (newFileName == null) {
+            logger.error("Unable to make a copy of opendct.properties on upgrade.");
+            // Only try to do this once. This is not an issue that merits restarting
+            // the JVM.
+        } else {
+            try {
+                Util.copyFile(new File(filename), newFileName, true);
+            } catch (IOException e) {
+                logger.error("Unable to make a copy of opendct.properties on upgrade => ", e);
+            }
+        }
+
+        properties.setProperty("version.program", VERSION_PROGRAM);
     }
 
     public static synchronized void clearConfig() {

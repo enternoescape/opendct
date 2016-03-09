@@ -463,14 +463,14 @@
 #### 0.4.32-Beta
 > *FFmpeg transcoder now also assigns the output stream time base to the codec time base.
 
-> *Cleaned up some FFmpeg transcoder code.
+> *Internal: Cleaned up some FFmpeg transcoder code.
 
 #### 0.4.33-Beta
 > *Reversed: FFmpeg transcoder now also assigns the output stream time base to the codec time base.
 
 > *Added feature that can make 720p content more compatible with H.264 decoders that do not play
 > nicely with out of order presentation time stamps. Set consumer.ffmpeg.h264_pts_hack to true in
-> opendct.properties to enable the compatibility hack. This feature is only works when using
+> opendct.properties to enable the compatibility hack. This feature only works when using
 > FFmpegTransSageTVConsumer.
 
 > *Removed trace logging from the FFmpeg transcoder.
@@ -508,7 +508,15 @@
 
 > *'discovery.exp_enabled' will be set to 'true'
 
+> *Now all HDHomeRun devices available on the network will be discovered and monitored by OpenDCT
+> by default.
+
 > *ATSC HDHomeRun support is now a fully supported configuration. It is no longer experimental.
+
+> *The channel map can now be set for HDHomeRun devices via the property
+> sagetv.device.parent.\<parent_id\>.channel_map if desired. Leave this property blank if you do not
+> want OpenDCT to change your channel map for you. This is mostly a convenience for legacy devices.
+> This setting has no effect on CableCARD devices.
 
 > *HDHomeRun discovery port can be set to a specific port by change the property 
 > hdhr.broadcast_port. If the value is less than 1024, the port will be chosen automatically. The

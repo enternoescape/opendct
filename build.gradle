@@ -76,7 +76,6 @@ configurations {
 }
 
 dependencies {
-    //testCompile 'junit:junit:4.12'
     testCompile 'org.testng:testng:6.1.1'
 
     compile fileTree(dir: 'lib', include: ['*.jar'])

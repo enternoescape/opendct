@@ -212,7 +212,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         manufacturer = Config.getString(propertiesDeviceParent + "manufacturer", manufacturer);
 
         logger.debug("Determining the encoder number...");
-        encoderNumber = Integer.parseInt(encoderName.substring(encoderName.length() - 1));
+        String originalName = dctDevice.getDetails().getFriendlyName();
+        encoderNumber = Integer.parseInt(originalName.substring(originalName.length() - 1));
 
         if (manufacturer.equals("Ceton Corporation")) {
             encoderIPAddress = dctDevice.getParentDevice().getDetails().getBaseURL().getHost();

@@ -1360,10 +1360,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
                         // Since it's possible that a SWITCH may have happened since we last started
                         // the recording, this keeps everything consistent.
-                        if (sageTVConsumerRunnable != null) {
-                            filename = sageTVConsumerRunnable.getEncoderFilename();
-                            encodingQuality = sageTVConsumerRunnable.getEncoderQuality();
-                            uploadID = sageTVConsumerRunnable.getEncoderUploadID();
+                        SageTVConsumer consumer = sageTVConsumerRunnable;
+                        if (consumer != null) {
+                            filename = consumer.getEncoderFilename();
+                            encodingQuality = consumer.getEncoderQuality();
+                            uploadID = consumer.getEncoderUploadID();
                         }
 
 

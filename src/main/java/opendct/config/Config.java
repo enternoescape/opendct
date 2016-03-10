@@ -176,12 +176,14 @@ public class Config {
                 properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
             }
 
-            versionBackup();
-
             // Upgrade config if the version is behind.
             int configVersion = getInteger("version.config", VERSION_CONFIG);
-            configUpgradeCleanup(configVersion);
-            properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+
+            if (configVersion < VERSION_CONFIG) {
+                versionBackup();
+                configUpgradeCleanup(configVersion);
+                properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+            }
         }
 
         return logger.exit(true);

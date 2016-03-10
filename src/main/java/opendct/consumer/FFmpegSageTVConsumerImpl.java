@@ -1057,7 +1057,16 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         return false;
     }
     private AVCodecContext getCodecContext(AVStream inputStream) {
+        if (inputStream == null) {
+            return null;
+        }
+
         AVCodecContext codecCtxInput = inputStream.codec();
+
+        if (codecCtxInput == null) {
+            return null;
+        }
+
         int codecType = codecCtxInput.codec_type();
         boolean isStreamValid =
                 (codecType == AVMEDIA_TYPE_AUDIO || codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_SUBTITLE) &&

@@ -135,7 +135,16 @@ public abstract class FFmpegUtil {
     }
 
     public static avcodec.AVCodecContext getCodecContext(AVStream inputStream) {
+        if (inputStream == null) {
+            return null;
+        }
+
         avcodec.AVCodecContext codecCtxInput = inputStream.codec();
+
+        if (codecCtxInput == null) {
+            return null;
+        }
+
         int codecType = codecCtxInput.codec_type();
         int codecWidth = codecCtxInput.width();
         int codecHeight = codecCtxInput.height();

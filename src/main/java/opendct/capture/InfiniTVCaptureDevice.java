@@ -19,6 +19,7 @@ package opendct.capture;
 import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
@@ -62,15 +63,45 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         }
 
         try {
-            InfiniTVStatus.getVar(parent.getRemoteAddress().getHostAddress(), encoderNumber, "diag", "Streaming_IP");
+            InfiniTVStatus.getVar(parent.getRemoteAddress().getHostAddress(),
+                    encoderNumber, "diag", "Streaming_IP");
         } catch (IOException e) {
-            logger.warn("HTTP tuning has been requested on this capture device, but it can't support it. Disabling feature...");
+            logger.warn("HTTP tuning has been requested on this capture device, but it can't" +
+                    " support it. Disabling feature...");
             if (encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
-                logger.error("This device is configured for QAM and HTTP tuning is not available, you may not be able to use it.");
+                logger.error("This device is configured for QAM and HTTP tuning is not available," +
+                        " you may not be able to use it.");
             }
-
-
+            throw new CaptureDeviceLoadException("This capture device does not support tuning via" +
+                    " the web interface. Upgrade your firmware.");
         }
+
+        boolean cableCardPresent = false;
+        try {
+            String cardStatus = InfiniTVStatus.getVar(parent.getRemoteAddress().getHostAddress(),
+                    encoderNumber, "cas", "CardStatus");
+
+            if (cardStatus == null) {
+                // We only reference the properties if we can't get the status the best way.
+                cableCardPresent =
+                        Config.getBoolean(propertiesDeviceParent + "cable_card_inserted", false);
+
+                logger.warn("Unable to read the CableCARD status. Using the value '{}' from" +
+                        " properties.", cableCardPresent);
+            } else {
+                cableCardPresent = cardStatus.toLowerCase().contains("inserted");
+            }
+        } catch (IOException e) {
+            // We only reference the properties if we can't get the status the best way.
+            cableCardPresent =
+                    Config.getBoolean(propertiesDeviceParent + "cable_card_inserted", false);
+
+            logger.warn("Unable to read the CableCARD status. Using the value '{}' from" +
+                    " properties => ", cableCardPresent, e);
+        }
+
+        // Update properties with the currently known cable card status.
+        Config.setBoolean(propertiesDeviceParent + "cable_card_inserted", cableCardPresent);
     }
 
     @Override

@@ -1761,6 +1761,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         logger.exit();
     }
 
+    public InetAddress getEncoderIpAddress() {
+        return rtpStreamRemoteIP;
+    }
+
     @Override
     public DeviceOption[] getOptions() {
         return new DeviceOption[0];

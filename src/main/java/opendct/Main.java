@@ -25,6 +25,7 @@ import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.DiscoveryManager;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
+import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.upnp.UpnpManager;
 import opendct.video.ffmpeg.FFmpegUtil;
 import org.apache.logging.log4j.LogManager;
@@ -207,6 +208,7 @@ public class Main {
         // Currently the program doesn't do much without this part, but in the future we might have
         // a capture device that doesn't use UPnP so we would want it disabled if we don't need it.
         boolean useUPnP = Config.getBoolean("upnp.enabled", true);
+        boolean legacyUPnP = Config.getBoolean("upnp.exp_legacy_capture_device", true);
 
         // If this is enabled the program will
         boolean useDiscoveryManager = Config.getBoolean("discovery.exp_enabled", true);
@@ -218,7 +220,7 @@ public class Main {
             SageTVManager.addAndStartSocketServers(Config.getAllSocketServerPorts());
         }
 
-        if (useUPnP) {
+        if (useUPnP && legacyUPnP) {
             UpnpManager.startUpnpServices();
 
             PowerMessageManager.EVENTS.addListener(UpnpManager.POWER_EVENT_LISTENER);
@@ -233,6 +235,10 @@ public class Main {
         }
 
         if (useDiscoveryManager) {
+            if (!legacyUPnP) {
+                DiscoveryManager.addDiscoverer(new UpnpDiscoverer());
+            }
+
             DiscoveryManager.addDiscoverer(new HDHomeRunDiscoverer());
             DiscoveryManager.startDeviceDiscovery();
 

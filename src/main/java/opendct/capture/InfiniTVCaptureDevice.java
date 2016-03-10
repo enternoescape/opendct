@@ -16,70 +16,72 @@
 
 package opendct.capture;
 
-import opendct.channel.BroadcastStandard;
-import opendct.channel.CopyProtection;
-import opendct.channel.TVChannel;
+import opendct.channel.*;
 import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.consumer.SageTVConsumer;
+import opendct.producer.RTPProducer;
+import opendct.producer.SageTVProducer;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
+import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.http.InfiniTVStatus;
+import opendct.tuning.http.InfiniTVTuning;
+import opendct.tuning.upnp.InfiniTVDiscoveredDevice;
 import opendct.tuning.upnp.InfiniTVDiscoveredDeviceParent;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.fourthline.cling.model.meta.Device;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     private final static Logger logger = LogManager.getLogger(InfiniTVCaptureDevice.class);
 
-    private final Device upnpDevice;
     private final InfiniTVDiscoveredDeviceParent parent;
+    private final InfiniTVDiscoveredDevice device;
 
+    private final RTPCaptureDeviceServices rtpServices;
     private final int encoderNumber;
 
+    private final AtomicBoolean locked;
+    private final Object exclusiveLock;
 
-    public InfiniTVCaptureDevice(String deviceParentName,
-                                 String deviceName,
-                                 int encoderParentHash,
-                                 int encoderHash,
-                                 Device device,
+    private Thread tuningThread;
+    private Thread monitorThread;
+
+    public InfiniTVCaptureDevice(InfiniTVDiscoveredDevice device,
                                  InfiniTVDiscoveredDeviceParent parent)
             throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
 
-        super(deviceParentName, deviceName, encoderParentHash, encoderHash);
+        super(parent.getFriendlyName(), device.getFriendlyName(), parent.getParentId(), device.getId());
 
-        this.upnpDevice = device;
+        this.device = device;
         this.parent = parent;
+
+        locked = new AtomicBoolean(false);
+        exclusiveLock = new Object();
+
+        // This should never be turned into a global variable because it can change.
+        String encoderAddress = parent.getRemoteAddress().getHostAddress();
 
         try {
             logger.debug("Determining the encoder number...");
-            encoderNumber = Integer.parseInt(deviceName.substring(deviceName.length() - 1));
+            encoderNumber =
+                    Integer.parseInt(device.getName().substring(device.getName().length() - 1));
+
         } catch (NumberFormatException e) {
-            logger.error("Unable to parse the encoder number from '{}'", deviceName);
+            logger.error("Unable to parse the encoder number from '{}'", device.getName());
             throw new CaptureDeviceLoadException("Unable to parse the encoder number.");
         }
 
-        try {
-            InfiniTVStatus.getVar(parent.getRemoteAddress().getHostAddress(),
-                    encoderNumber, "diag", "Streaming_IP");
-        } catch (IOException e) {
-            logger.warn("HTTP tuning has been requested on this capture device, but it can't" +
-                    " support it. Disabling feature...");
-            if (encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
-                logger.error("This device is configured for QAM and HTTP tuning is not available," +
-                        " you may not be able to use it.");
-            }
-            throw new CaptureDeviceLoadException("This capture device does not support tuning via" +
-                    " the web interface. Upgrade your firmware.");
-        }
-
         boolean cableCardPresent = false;
+
         try {
-            String cardStatus = InfiniTVStatus.getVar(parent.getRemoteAddress().getHostAddress(),
-                    encoderNumber, "cas", "CardStatus");
+            String cardStatus = InfiniTVStatus.getVar(
+                    encoderAddress, encoderNumber, "cas", "CardStatus");
 
             if (cardStatus == null) {
                 // We only reference the properties if we can't get the status the best way.
@@ -90,6 +92,9 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                         " properties.", cableCardPresent);
             } else {
                 cableCardPresent = cardStatus.toLowerCase().contains("inserted");
+
+                // Update properties with the currently known cable card status.
+                Config.setBoolean(propertiesDeviceParent + "cable_card_inserted", cableCardPresent);
             }
         } catch (IOException e) {
             // We only reference the properties if we can't get the status the best way.
@@ -100,73 +105,644 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                     " properties => ", cableCardPresent, e);
         }
 
-        // Update properties with the currently known cable card status.
-        Config.setBoolean(propertiesDeviceParent + "cable_card_inserted", cableCardPresent);
+        if (cableCardPresent) {
+            encoderDeviceType = CaptureDeviceType.DCT_INFINITV;
+            setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
+        } else {
+            encoderDeviceType = CaptureDeviceType.QAM_INFINITV;
+            setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
+        }
+
+        try {
+            InfiniTVStatus.getVar(encoderAddress, encoderNumber, "diag", "Streaming_IP");
+        } catch (IOException e) {
+            logger.warn("HTTP tuning has been requested on this capture device, but it can't" +
+                    " support it.");
+            if (encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
+                logger.error("This device is configured for QAM and HTTP tuning is not available," +
+                        " you may not be able to use it.");
+            }
+            throw new CaptureDeviceLoadException("This capture device does not support tuning via" +
+                    " the web interface. Upgrade your firmware.");
+        }
+
+        rtpServices = new RTPCaptureDeviceServices(encoderName, propertiesDeviceParent);
+
+        setChannelLineup(
+                Config.getString(propertiesDeviceParent + "lineup",
+                String.valueOf(encoderDeviceType).toLowerCase()));
+
+        if (!ChannelManager.hasChannels(encoderLineup) &&
+                encoderLineup.equals(String.valueOf(encoderDeviceType).toLowerCase())) {
+
+            ChannelLineup newChannelLineup;
+
+            if (encoderDeviceType == CaptureDeviceType.DCT_INFINITV) {
+                newChannelLineup = new ChannelLineup(
+                        encoderLineup,
+                        encoderParentName,
+                        ChannelSourceType.INFINITV,
+                        encoderAddress);
+            } else {
+                // The lineup on the InfiniTV QAM devices is always stale. This will make a copy
+                // from an InfiniTV DCT if one exists.
+                newChannelLineup = new ChannelLineup(
+                        encoderLineup,
+                        encoderParentName,
+                        ChannelSourceType.COPY,
+                        String.valueOf(CaptureDeviceType.DCT_INFINITV).toLowerCase());
+            }
+
+            ChannelManager.updateChannelLineup(newChannelLineup);
+            ChannelManager.addChannelLineup(newChannelLineup, true);
+            ChannelManager.saveChannelLineup(encoderLineup);
+        }
+
+        logger.info("Encoder Manufacturer: 'Ceton'," +
+                        " Number: {}," +
+                        " Remote IP: '{}'," +
+                        " Local IP: '{}'," +
+                        " CableCARD: {}," +
+                        " Lineup: '{}'," +
+                        " Offline Scan Enabled: {}," +
+                        " RTP Port: {}",
+                encoderNumber,
+                encoderAddress,
+                parent.getLocalAddress(),
+                cableCardPresent,
+                encoderLineup,
+                offlineChannelScan,
+                rtpServices.getRtpLocalPort());
     }
 
     @Override
     public boolean isLocked() {
-        return false;
+        return locked.get();
     }
 
     @Override
     public boolean setLocked(boolean locked) {
-        return false;
+        boolean messageLock = this.locked.get();
+
+        // This means the lock was already set
+        if (this.locked.getAndSet(locked) == locked) {
+            logger.info("Capture device was already {}.", (locked ? "locked" : "unlocked"));
+            return false;
+        }
+
+        synchronized (exclusiveLock) {
+            this.locked.set(locked);
+
+            if (messageLock != locked) {
+                logger.info("Capture device is now {}.", (locked ? "locked" : "unlocked"));
+            } else {
+                logger.debug("Capture device is now re-{}.", (locked ? "locked" : "unlocked"));
+            }
+        }
+
+        return true;
     }
 
     @Override
     public boolean isExternalLocked() {
+        // This device doesn't have any locking mechanism, so it always says the lock is not set.
         return false;
     }
 
     @Override
     public boolean setExternalLock(boolean locked) {
+        // This device doesn't have any locking mechanism, so it always says the lock was set
+        // successfully.
         return true;
     }
 
     @Override
+    /**
+     * Tunes a channel outside of any requests from the SageTV server and updates information about
+     * the channel.
+     *
+     * @param tvChannel A TVChannel object with at the very least a defined channel or frequency and
+     *                  program. Otherwise there is nothing to tune.
+     * @param skipCCI If <i>true</i>, the method will not wait to ensure the CCI is correct. The
+     *                reason to skip this is because it takes much longer for unencrypted channels.
+     * @return <i>true</i> if the test was complete and successful. <i>false</i> if we should try
+     *         again on a different capture device since this one is currently locked.
+     */
     public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
-        return false;
+        logger.entry(tvChannel);
+
+        if (isLocked() || isExternalLocked()) {
+            return logger.exit(false);
+        }
+
+        synchronized (exclusiveLock) {
+            // Return immediately if an exclusive lock was set between here and the first check if
+            // there is an exclusive lock set.
+            if (isLocked()) {
+                return logger.exit(false);
+            }
+
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0)) {
+                return logger.exit(false);
+            }
+
+            int offlineDetectionMinBytes = UpnpDiscoverer.getOfflineDetectionMinBytes();
+            int timeout = UpnpDiscoverer.getOfflineDetectionSeconds();
+
+            while (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning() &&
+                    getRecordedBytes() < offlineDetectionMinBytes && timeout-- > 0) {
+
+                if (isLocked()) {
+                    stopEncoding();
+                    return logger.exit(false);
+                }
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return logger.exit(false);
+                }
+            }
+
+            CopyProtection copyProtection = getCopyProtection();
+
+            if (!skipCCI) {
+                while ((copyProtection == CopyProtection.NONE ||
+                        copyProtection == CopyProtection.UNKNOWN) &&
+                        timeout-- > 0) {
+
+                    if (isLocked()) {
+                        stopEncoding();
+                        return logger.exit(false);
+                    }
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        return logger.exit(false);
+                    }
+                    copyProtection = getCopyProtection();
+                }
+
+                tvChannel.setCci(copyProtection);
+            }
+
+            tvChannel.setSignalStrength(getSignalStrength());
+
+            /*if (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN) {
+                String encoderAddress = parent.getRemoteAddress().getHostAddress();
+
+                try {
+                    tvChannel.setModulation(
+                            InfiniTVStatus.getModulationString(encoderAddress, encoderNumber));
+                } catch (IOException e) {
+                    logger.error("Unable to get current modulation because the tuner {} on the" +
+                            " device at address {} is unreachable.", encoderNumber, encoderAddress);
+                }
+
+
+                try {
+                    int frequency = InfiniTVStatus.getFrequency(encoderAddress, encoderNumber);
+
+                    if (frequency > 0) {
+                        tvChannel.setFrequency(frequency);
+                    }
+                } catch (IOException e) {
+                    logger.error("Unable to get current frequency because the tuner {} on the" +
+                            " device at address {} is unreachable.", encoderNumber, encoderAddress);
+                }
+
+                try {
+                    int program = InfiniTVStatus.getProgram(encoderAddress, encoderNumber);
+
+                    if (program > 0) {
+                        tvChannel.setProgram(String.valueOf(program));
+                    }
+                } catch (IOException e) {
+                    logger.error("Unable to get current program because the tuner {} on the" +
+                            " device at address {} is unreachable.", encoderNumber, encoderAddress);
+                }
+            }*/
+
+            if (copyProtection == CopyProtection.COPY_FREELY ||
+                    copyProtection == CopyProtection.NONE) {
+
+                tvChannel.setTunable(getRecordedBytes() > offlineDetectionMinBytes);
+            } else {
+                tvChannel.setTunable(false);
+            }
+
+            stopEncoding();
+        }
+
+        return logger.exit(true);
     }
 
     @Override
     public void stopDevice() {
+        stopEncoding();
+    }
 
+    @Override
+    public void stopEncoding() {
+        synchronized (exclusiveLock) {
+            if (monitorThread != null && monitorThread != Thread.currentThread()) {
+                monitorThread.interrupt();
+            }
+
+            InfiniTVTuning.stopRTSP(parent.getRemoteAddress().getHostAddress(), encoderNumber);
+
+            rtpServices.stopProducing(false);
+            super.stopEncoding();
+        }
     }
 
     @Override
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize) {
-        return false;
+        return startEncoding(channel, filename, encodingQuality, bufferSize, -1, null);
     }
 
     @Override
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress) {
-        return false;
+        logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+
+        // This is used to detect a second tuning attempt while a tuning is still in progress. When
+        // the current tuning attempt sees that another thread is waiting, it gives up and lets the
+        // waiting thread start tuning.
+        tuningThread = Thread.currentThread();
+
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            monitorThread.interrupt();
+        }
+
+        TVChannel tvChannel = null;
+
+        if(encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
+            tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+
+            if (tvChannel == null) {
+                tvChannel = new TVChannelImpl(channel, "Unknown");
+            }
+
+            if (tvChannel.getFrequency() < 0 || Util.isNullOrEmpty(tvChannel.getProgram())) {
+                tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, tvChannel);
+            }
+
+            if (tvChannel == null) {
+                logger.error("Unable to tune ClearQAM channel because" +
+                        " the virtual channel cannot be mapped.");
+
+                return logger.exit(false);
+            }
+        }
+
+        synchronized (exclusiveLock) {
+            return startEncodingSync(
+                    channel,
+                    filename,
+                    encodingQuality,
+                    bufferSize,
+                    uploadID,
+                    remoteAddress,
+                    tvChannel);
+        }
     }
 
-    @Override
-    public String scanChannelInfo(String channel) {
-        return null;
+    private boolean startEncodingSync(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress, TVChannel tvChannel) {
+        logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress, tvChannel);
+
+        boolean scanOnly = false;
+
+        if (remoteAddress != null) {
+            logger.info("Starting the encoding for the channel '{}' from the device '{}' to the file '{}' via the upload id '{}'...", channel, encoderName, filename, uploadID);
+        } else if (filename != null) {
+            logger.info("Starting the encoding for the channel '{}' from the device '{}' to the file '{}'...", channel, encoderName, filename);
+        } else {
+            logger.info("Starting a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
+            scanOnly = true;
+        }
+
+        // The producer and consumer methods are requested to not block. If they don't shut down in
+        // time, it will be caught and handled later. This gives us a small gain in speed.
+        rtpServices.stopProducing(false);
+
+        // If we are trying to restart the stream, we don't need to stop the consumer.
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
+            stopConsuming(false);
+        }
+
+        // Get a new producer and consumer.
+        RTPProducer newRTPProducer = rtpServices.getNewRTPProducer(propertiesDeviceParent);
+        SageTVConsumer newConsumer;
+
+        // If we are trying to restart the stream, we don't need to create a new consumer.
+        if (monitorThread != null && monitorThread == Thread.currentThread()) {
+            newConsumer = sageTVConsumerRunnable;
+        } else if (scanOnly) {
+            newConsumer = getNewChannelScanSageTVConsumer();
+            newConsumer.consumeToNull(true);
+        } else {
+            newConsumer = getNewSageTVConsumer();
+        }
+
+        InetAddress iEncoderAddress = parent.getRemoteAddress();
+        String encoderAddress = iEncoderAddress.getHostAddress();
+
+        InetAddress iLocalAddress = parent.getLocalAddress();
+        String localAddress = iLocalAddress.getHostAddress();
+
+        try {
+            switch (encoderDeviceType) {
+                case DCT_INFINITV:
+                    InfiniTVTuning.tuneVChannel(channel, encoderAddress, encoderNumber, 5);
+                    break;
+                case QAM_INFINITV:
+                    InfiniTVTuning.tuneQamChannel(
+                            tvChannel,
+                            encoderAddress,
+                            encoderNumber,
+                            5);
+                    break;
+                default:
+                    logger.error("This device has been assigned an " +
+                            "unsupported capture device type: {}", encoderDeviceType);
+                    return logger.exit(false);
+            }
+        } catch (InterruptedException e) {
+            logger.debug("Tuning was interrupted => ", e);
+            return logger.exit(false);
+        }
+
+        logger.info("Configuring and starting the new RTP producer...");
+
+        if (!rtpServices.startProducing(
+                newRTPProducer, newConsumer, iEncoderAddress,
+                rtpServices.getRtpLocalPort(), encoderName)) {
+
+            logger.error("The producer thread using the implementation '{}' failed to start.",
+                    newRTPProducer.getClass().getSimpleName());
+
+            return logger.exit(false);
+        }
+
+        if (!InfiniTVTuning.startRTSP(
+                localAddress, rtpServices.getRtpLocalPort(), encoderAddress, encoderNumber)) {
+
+            logger.error("Unable to start RTSP. Will try again on re-tune.");
+        }
+
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
+            try {
+                int getProgram = InfiniTVStatus.getProgram(encoderAddress, encoderNumber, 5);
+                newConsumer.setProgram(getProgram);
+
+                int timeout = 20;
+
+                while (newConsumer.getProgram() == -1) {
+                    Thread.sleep(100);
+                    getProgram = InfiniTVStatus.getProgram(encoderAddress, encoderNumber, 2);
+                    newConsumer.setProgram(getProgram);
+
+                    if (timeout-- < 0) {
+                        logger.error("Unable to get program after more than 2 seconds.");
+                        return logger.exit(false);
+                    }
+
+                    if (tuningThread != Thread.currentThread()) {
+                        rtpServices.stopProducing(false);
+                        return logger.exit(false);
+                    }
+                }
+            } catch (IOException e) {
+                logger.error("Unable to get program number => ", e);
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while trying to get program number => ", e);
+                return logger.exit(false);
+            }
+
+            // If we are trying to restart the stream, we don't need to stop the consumer.
+            logger.info("Configuring and starting the new SageTV consumer...");
+
+            if (uploadID > 0 && remoteAddress != null) {
+                newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
+            } else if (!scanOnly) {
+                newConsumer.consumeToFilename(filename);
+            }
+
+            startConsuming(channel, newConsumer, encodingQuality, bufferSize);
+        } else {
+            logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
+        }
+
+        // Make sure only one monitor thread is running per request.
+        if (monitorThread == null || monitorThread != Thread.currentThread()) {
+            if (!scanOnly) {
+                monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+            }
+        }
+
+        sageTVConsumerRunnable.isStreaming(UpnpDiscoverer.getStreamingWait());
+
+        return logger.exit(true);
+    }
+
+    private void monitorTuning(final String channel, final String originalFilename, final String originalEncodingQuality, final long bufferSize, final int originalUploadID, final InetAddress remoteAddress) {
+        if (monitorThread != null && monitorThread != Thread.currentThread()) {
+            monitorThread.interrupt();
+        }
+
+        monitorThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                logger.info("Tuning monitoring thread started.");
+
+                TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
+
+                int timeout = 0;
+                boolean firstPass = true;
+
+                if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
+                    // Music Choice channels take forever to start and with a 4 second timeout,
+                    // they might never start.
+                    timeout = UpnpDiscoverer.getRetunePolling() * 4000;
+                } else {
+                    timeout = UpnpDiscoverer.getRetunePolling() * 1000;
+                }
+
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        Thread.sleep(timeout);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+
+                    SageTVProducer rtpProducer = rtpServices.getProducer();
+
+                    if (rtpProducer != null &&
+                            rtpProducer.isStalled() &&
+                            !Thread.currentThread().isInterrupted()) {
+
+                        String filename = originalFilename;
+                        String encodingQuality = originalEncodingQuality;
+                        int uploadID = originalUploadID;
+
+                        // Since it's possible that a SWITCH may have happened since we last started
+                        // the recording, this keeps everything consistent.
+                        SageTVConsumer consumer = sageTVConsumerRunnable;
+                        if (consumer != null) {
+                            filename = consumer.getEncoderFilename();
+                            encodingQuality = consumer.getEncoderQuality();
+                            uploadID = consumer.getEncoderUploadID();
+                        }
+
+
+                        logger.error("No data was streamed." +
+                                " Copy protection status is '{}' and signal strength is {}." +
+                                " Re-tuning channel...", getCopyProtection(), getSignalStrength());
+                        if (logger.isInfoEnabled()) {
+                            logger.info(getTunerStatusString());
+                        }
+
+                        boolean tuned = false;
+
+                        while (!tuned && !Thread.currentThread().isInterrupted()) {
+                            stopDevice();
+                            tuned = startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException e) {
+                                return;
+                            }
+                        }
+
+                        logger.info("Stream halt caused re-tune. Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
+                    }
+
+                    if (getRecordedBytes() != 0 && firstPass) {
+                        firstPass = false;
+                        logger.info("Streamed first {} bytes.", getRecordedBytes());
+
+                        if (logger.isInfoEnabled()) {
+                            logger.info(getTunerStatusString());
+                        }
+                    }
+                }
+
+                logger.info("Tuning monitoring thread stopped.");
+            }
+        });
+
+        monitorThread.setName("TuningMonitor-" + monitorThread.getId() + ":" + encoderName);
+        monitorThread.start();
     }
 
     @Override
     public boolean isReady() {
-        return false;
+        return true;
     }
 
     @Override
     public BroadcastStandard getBroadcastStandard() {
-        return null;
+        BroadcastStandard returnValue = BroadcastStandard.QAM256;
+
+        try {
+            returnValue = InfiniTVStatus.getModulation(
+                    parent.getRemoteAddress().getHostAddress(), encoderNumber);
+        } catch (IOException e) {
+            logger.debug("Unable to get broadcast standard from capture device.");
+        }
+
+        return returnValue;
     }
 
     @Override
     public int getSignalStrength() {
-        return 0;
+        logger.entry();
+
+        int signal = 0;
+
+        try {
+            signal = (int)InfiniTVStatus.getSignalNoiseRatio(
+                    parent.getRemoteAddress().getHostAddress(), encoderNumber);
+        } catch (IOException e) {
+            logger.debug("Unable to get signal noise ratio from capture device.");
+        }
+
+        return logger.exit(signal);
     }
 
     @Override
     public CopyProtection getCopyProtection() {
-        return null;
+        logger.entry();
+
+        CopyProtection returnValue = CopyProtection.UNKNOWN;
+
+        try {
+            returnValue = InfiniTVStatus.getCCIStatus(
+                    parent.getRemoteAddress().getHostAddress(), encoderNumber);
+        } catch (Exception e) {
+            logger.debug("Unable to get CCI status from capture device.");
+        }
+
+        return logger.exit(returnValue);
+    }
+
+    public String getTunerStatusString() {
+        logger.entry();
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        String encoderAddress = parent.getRemoteAddress().getHostAddress();
+
+        try {
+            stringBuilder.append("CarrierLock: ")
+                    .append(InfiniTVStatus.getCarrierLock(encoderAddress, encoderNumber));
+        } catch (Exception e) {
+            logger.debug("Unable to get CarrierLock status from capture device.");
+        }
+
+        try {
+            stringBuilder.append(", PCRLock: ")
+                    .append(InfiniTVStatus.getPCRLock(encoderAddress, encoderNumber));
+        } catch (Exception e) {
+            logger.debug("Unable to get PCRLock status from capture device.");
+        }
+
+        try {
+            stringBuilder.append(", StreamingIP: ")
+                    .append(InfiniTVStatus.getStreamingIP(encoderAddress, encoderNumber));
+        } catch (Exception e) {
+            logger.debug("Unable to get StreamingIP status from capture device.");
+        }
+
+        try {
+            stringBuilder.append(", StreamingPort: ")
+                    .append(InfiniTVStatus.getStreamingPort(encoderAddress, encoderNumber));
+        } catch (Exception e) {
+            logger.debug("Unable to get StreamingPort status from capture device.");
+        }
+
+        try {
+            stringBuilder.append(", Temperature: ")
+                    .append(InfiniTVStatus.getTemperature(encoderAddress, encoderNumber));
+        } catch (Exception e) {
+            logger.debug("Unable to get Temperature status from capture device.");
+        }
+
+        try {
+            stringBuilder.append(", TransportState: ")
+                    .append(InfiniTVStatus.getTransportState(encoderAddress, encoderNumber));
+        } catch (Exception e) {
+            logger.debug("Unable to get TransportState status from capture device.");
+        }
+
+        return logger.exit(stringBuilder.toString());
+    }
+
+    @Override
+    public String scanChannelInfo(String channel) {
+        return super.scanChannelInfo(channel, true);
     }
 
     @Override

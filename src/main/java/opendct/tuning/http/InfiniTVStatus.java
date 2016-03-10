@@ -199,7 +199,9 @@ public class InfiniTVStatus {
         return logger.exit(CopyProtection.UNKNOWN);
     }
 
-    @Deprecated
+    /**
+     * This is not the most reliable way to get signal strength.
+     */
     public static int getSignalStrength(String deviceAddress, int tunerNumber) throws IOException {
         logger.entry(deviceAddress, tunerNumber);
 

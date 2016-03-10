@@ -42,7 +42,6 @@ public class InfiniTVDiscoveredDevice extends UpnpDiscoveredDevice {
     public CaptureDevice loadCaptureDevice()
             throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
 
-        return new InfiniTVCaptureDevice(parent.getName(), getName(),
-                parent.getParentId(), getId(), device, parent);
+        return new InfiniTVCaptureDevice(this, parent);
     }
 }

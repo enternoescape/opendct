@@ -131,8 +131,6 @@ public class RegisterInfiniTVDevice {
         String parentName = remoteDevice.getDetails().getFriendlyName();
         String deviceSchema = remoteDevice.getType().getNamespace();
 
-        logger.debug("Checking if the schema '{}' can be used...", deviceSchema);
-
         if (parentName == null || deviceSchema == null) {
             logger.error("Unable to identify the UPnP device.");
             return;

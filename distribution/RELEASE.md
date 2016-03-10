@@ -518,7 +518,7 @@
 > want OpenDCT to change your channel map for you. This is mostly a convenience for legacy devices.
 > This setting has no effect on CableCARD devices.
 
-> *HDHomeRun discovery port can be set to a specific port by change the property 
+> *HDHomeRun discovery port can be set to a specific port by changing the property 
 > hdhr.broadcast_port. If the value is less than 1024, the port will be chosen automatically. The
 > default is 64998. The static port makes it easier to do port-based firewall rules.
 
@@ -527,3 +527,6 @@
 > Thanks mikejaner.
 
 > *Addressed runlevels warning message when enabling the Ubuntu init.d script.
+
+#### 0.4.35-Beta
+> *Fixed a rare null pointer exception in the FFmpeg processor.

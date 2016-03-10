@@ -529,4 +529,4 @@
 > *Addressed runlevels warning message when enabling the Ubuntu init.d script.
 
 #### 0.4.35-Beta
-> *Fixed a rare null pointer exception in FFmpeg processor.
+> *Fixed a rare null pointer exception in the FFmpeg processor.

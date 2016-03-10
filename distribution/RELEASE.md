@@ -540,4 +540,4 @@
 
 > *Fixed the COPY lineup update method not saving newly added channels.
 
-> *Cleaned up FFmpeg logging a little more and improved atomicity.
+> *Cleaned up FFmpeg logging a little more and improved atomicity of deduplication.

@@ -145,40 +145,66 @@ public abstract class FFmpegUtil {
             return null;
         }
 
-        int codecType = codecCtxInput.codec_type();
-        int codecWidth = codecCtxInput.width();
-        int codecHeight = codecCtxInput.height();
-        int codecChannels = codecCtxInput.channels();
+        boolean isStreamValid;
 
-        boolean isStreamValid =
-                (codecType == AVMEDIA_TYPE_AUDIO || codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_SUBTITLE) &&
-                        ((codecType != AVMEDIA_TYPE_VIDEO || (codecWidth != 0 && codecHeight != 0)) &&
-                                (codecType != AVMEDIA_TYPE_AUDIO || codecChannels != 0));
+        switch (codecCtxInput.codec_type()) {
+            case AVMEDIA_TYPE_AUDIO:
+                isStreamValid = codecCtxInput.channels() != 0;
+                break;
+            case AVMEDIA_TYPE_VIDEO:
+                isStreamValid = codecCtxInput.width() != 0 && codecCtxInput.height() != 0;
+                break;
+            case AVMEDIA_TYPE_SUBTITLE:
+                isStreamValid = true;
+                break;
+            default:
+                isStreamValid = false;
+        }
 
         return isStreamValid ? codecCtxInput : null;
     }
 
     public static int findBestAudioStream(AVFormatContext inputContext) {
+        if (inputContext == null) {
+            return -1;
+        }
+
         int preferredAudio = -1;
         int maxChannels = 0;
         int maxFrames = 0;
+        int maxBitrate = 0;
         boolean hasAudio = false;
         int numStreams = inputContext.nb_streams();
 
-        for (int streamIndex = 0; streamIndex < numStreams; streamIndex++) {
-            AVStream stream = inputContext.streams(streamIndex);
+        for (int i = 0; i < numStreams; i++) {
+            AVStream stream = inputContext.streams(i);
+
+            if (stream == null) {
+                continue;
+            }
+
             avcodec.AVCodecContext codec = stream.codec();
-            // AVDictionaryEntry lang = av_dict_get( stream.metadata(), "language", (PointerPointer<AVDictionaryEntry>) null, 0);
+
+            if (codec == null) {
+                continue;
+            }
+
+            //AVDictionaryEntry lang = av_dict_get(stream.metadata(), "language", null, 0);
 
             if (codec.codec_type() == AVMEDIA_TYPE_AUDIO) {
                 hasAudio = true;
                 int cChannels = codec.channels();
                 int cFrames = stream.codec_info_nb_frames();
+                int cBitrate = codec.bit_rate(); // The bitrate is not always set.
 
-                if (cChannels > maxChannels || (cChannels == maxChannels && cFrames > maxFrames)) {
+                if (cChannels > maxChannels ||
+                        (cChannels == maxChannels && cFrames > maxFrames) ||
+                        (cChannels == maxChannels && cFrames == maxFrames && cBitrate > maxBitrate))
+                {
                     maxChannels = cChannels;
                     maxFrames = cFrames;
-                    preferredAudio = streamIndex;
+                    maxBitrate = cBitrate;
+                    preferredAudio = i;
                 }
             }
         }
@@ -207,11 +233,6 @@ public abstract class FFmpegUtil {
             logger.error("Failed to copy context from input to output stream codec context");
             return null;
         }
-
-        //
-        // This prevents FFmpeg messages like this: Ignoring attempt to set invalid timebase 1/0 for st:1
-        //
-        //avsOutput.time_base(av_add_q(codecCtxInput.time_base(), av_make_q(0, 1)));
 
         // 90000hz is standard for most MPEG-TS streams.
         //out_stream.time_base(av_make_q(1, 90000));

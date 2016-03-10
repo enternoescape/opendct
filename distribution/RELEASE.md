@@ -530,3 +530,6 @@
 
 #### 0.4.35-Beta
 > *Fixed a rare null pointer exception in the FFmpeg processor.
+
+#### 0.4.36-RC1
+> *Improved audio stream detection for FFmpeg transcoder.

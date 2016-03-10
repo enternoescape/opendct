@@ -46,7 +46,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 35;
+    public static final int VERSION_BUILD = 36;
     public static final String VERSION_PROGRAM = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -176,12 +176,14 @@ public class Config {
                 properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
             }
 
-            versionBackup();
-
             // Upgrade config if the version is behind.
             int configVersion = getInteger("version.config", VERSION_CONFIG);
-            configUpgradeCleanup(configVersion);
-            properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+
+            if (configVersion < VERSION_CONFIG) {
+                versionBackup();
+                configUpgradeCleanup(configVersion);
+                properties.setProperty("version.config", String.valueOf(VERSION_CONFIG));
+            }
         }
 
         return logger.exit(true);

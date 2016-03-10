@@ -37,15 +37,15 @@ public class RegisterInfiniTVDevice {
                     "schemas-cetoncorp-com");
 
 
-    public static void addRemoteDevice(UpnpDiscoverer discoverer, RemoteDevice remoteDevice) {
+    public static void addRemoteDevice(UpnpDiscoverer discoverer, RemoteDevice parentDevice) {
 
-        if (remoteDevice.getDetails() == null || remoteDevice.getType() == null) {
+        if (parentDevice.getDetails() == null || parentDevice.getType() == null) {
             logger.error("Unable to get UPnP device details or type.");
             return;
         }
 
-        String parentName = remoteDevice.getDetails().getFriendlyName();
-        String deviceSchema = remoteDevice.getType().getNamespace();
+        String parentName = parentDevice.getDetails().getFriendlyName();
+        String deviceSchema = parentDevice.getType().getNamespace();
 
         logger.debug("Checking if the schema '{}' can be used...", deviceSchema);
 
@@ -55,7 +55,7 @@ public class RegisterInfiniTVDevice {
         }
 
         int parentId = parentName.hashCode();
-        InetAddress parentRemoteAddress = UpnpDiscoverer.getRemoteIpAddress(remoteDevice);
+        InetAddress parentRemoteAddress = UpnpDiscoverer.getRemoteIpAddress(parentDevice);
 
         if (parentRemoteAddress == null) {
             logger.error("Unable to get the remote address for '{}'", parentName);
@@ -80,6 +80,7 @@ public class RegisterInfiniTVDevice {
         for (String dctSchemaFilter : dctSchemaFilters) {
             if (deviceSchema.equals(dctSchemaFilter)) {
                 correctDevice = true;
+                break;
             }
         }
 
@@ -89,7 +90,7 @@ public class RegisterInfiniTVDevice {
 
         logger.debug("Creating network encoders from the embedded devices on '{}'" +
                 " with the namespace '{}'.", parentName, deviceSchema);
-        RemoteDevice[] embeddedDevices = remoteDevice.getEmbeddedDevices();
+        RemoteDevice[] embeddedDevices = parentDevice.getEmbeddedDevices();
         InfiniTVDiscoveredDevice newDevices[] = new InfiniTVDiscoveredDevice[embeddedDevices.length];
         int nextDevice = 0;
 
@@ -110,11 +111,6 @@ public class RegisterInfiniTVDevice {
                 continue;
             }
 
-            logger.debug("Attempting to create capture device from embedded device '{}'...", embeddedName);
-
-            // This makes it a little easier to troubleshoot if the threads get frozen.
-            Thread.currentThread().setName("cling-" + Thread.currentThread().getId() + ":" + embeddedName);
-
             String childName = "DCT-" + embeddedName;
             int childId = childName.hashCode();
 
@@ -134,8 +130,6 @@ public class RegisterInfiniTVDevice {
 
         String parentName = remoteDevice.getDetails().getFriendlyName();
         String deviceSchema = remoteDevice.getType().getNamespace();
-
-        logger.debug("Checking if the schema '{}' can be used...", deviceSchema);
 
         if (parentName == null || deviceSchema == null) {
             logger.error("Unable to identify the UPnP device.");

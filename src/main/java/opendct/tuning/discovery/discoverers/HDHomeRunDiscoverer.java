@@ -624,6 +624,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         } catch (CaptureDeviceLoadException e) {
             loadException = e;
+        } catch (CaptureDeviceIgnoredException e) {
+            logger.warn("Capture device will not be loaded => {}", e.toString());
         } catch (Exception e) {
             logger.error("An unhandled exception happened in loadCaptureDevice while using" +
                     " discoveredDevicesLock => ", e);

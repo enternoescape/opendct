@@ -106,8 +106,17 @@ public class DiscoveryRegistryListener implements RegistryListener {
         logger.debug("Shutdown of UPnP registry complete.");
     }
 
+    /**
+     * Get the device type so an appropriate capture device can be made available.
+     * <p/>
+     * Try to make this fairly quick and no synchronized methods since it will happen every time a
+     * device checks in.
+     *
+     * @param remoteDevice The remote device.
+     * @return
+     */
     private UpnpDeviceType getDeviceType(RemoteDevice remoteDevice) {
-        if (remoteDevice.getDisplayString().contains("INFINITV")) {
+        if (remoteDevice.getDisplayString().toUpperCase().contains("INFINITV")) {
             return UpnpDeviceType.INFINITV;
         }
 

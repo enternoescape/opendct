@@ -35,88 +35,91 @@ public class InfiniTVTuning {
     private static final Logger logger = LogManager.getLogger(InfiniTVTuning.class);
 
     public static boolean tuneChannel(String lineupName, String channel, String deviceAddress, int tunerNumber, boolean useVChannel, int retry) throws InterruptedException {
-        logger.entry(channel, deviceAddress, tunerNumber);
+
+        if (!useVChannel) {
+            TVChannel tvChannel = ChannelManager.getChannel(lineupName, channel);
+            return tuneQamChannel(tvChannel, deviceAddress, tunerNumber, retry);
+        }
+
+        // There is no need to look up the channel when a CableCARD is present.
+        return tuneVChannel(channel, deviceAddress, tunerNumber, retry);
+    }
+
+    public static boolean tuneQamChannel(TVChannel tvChannel, String deviceAddress, int tunerNumber, int retry) throws InterruptedException {
+        logger.entry(deviceAddress, tunerNumber);
 
         boolean returnValue = false;
 
-        if (useVChannel) {
-            // There is no need to look up the channel when a CableCARD is present.
-            returnValue = tuneVChannel(channel, deviceAddress, tunerNumber, retry);
-        } else {
-            // This will only hang up temporarily when the channel map is still loading or being
-            // refreshed.
-            TVChannel tvChannel = ChannelManager.getChannel(lineupName, channel);
-
-            if (tvChannel == null) {
-                logger.error("The requested channel does not exist in the channel map.");
-                return logger.exit(false);
-            }
-
-            try {
-                // Check if the frequency is already correct.
-                String currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
-
-                boolean frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
-                int attempts = 20;
-
-                while (!frequencyTuned) {
-                    tuneFrequency(tvChannel, deviceAddress, tunerNumber, retry);
-
-                    currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
-                    frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
-
-                    if (attempts-- == 0 && !frequencyTuned) {
-                        logger.error("The requested frequency cannot be tuned.");
-                        return logger.exit(false);
-                    } else if (!frequencyTuned) {
-                        try {
-                            // Sleep if the first request fails so we don't overwhelm the device
-                            // with requests. Remember up to 6 of these kinds of request could
-                            // happen at the exact same time.
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            logger.error("tuneChannel was interrupted while tuning to a frequency.");
-                            return logger.exit(false);
-                        }
-                    }
-                }
-
-                attempts = 20;
-                boolean programSelected = false;
-
-                Thread.sleep(250);
-
-                while (!programSelected) {
-                    // If we are not already on the correct frequency, it takes the tuner a moment
-                    // to detect the available programs. If you try to set a program before the list
-                    // is available, it will fail. Normally this happens so fast, a sleep method
-                    // isn't appropriate. We have a while loop to retry a few times if it fails.
-
-                    tuneProgram(tvChannel, deviceAddress, tunerNumber, retry);
-
-                    programSelected = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "mux", "ProgramNumber").equals(tvChannel.getProgram());
-                    if (attempts-- == 0 && !programSelected) {
-                        logger.error("The requested program cannot be selected.");
-                        return logger.exit(false);
-                    } else if (!programSelected) {
-                        try {
-                            // Sleep if the first request fails so we don't overwhelm the device
-                            // with requests. Remember up to 6 of these kinds of request could
-                            // happen at the exact same time.
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            logger.error("tuneChannel was interrupted while selecting a program.");
-                            return logger.exit(false);
-                        }
-                    }
-                }
-                returnValue = true;
-            /*} catch (InterruptedException e) {
-                logger.debug("tuneChannel was interrupted while waiting setting the program.");*/
-            } catch (IOException e) {
-                logger.debug("tuneChannel was unable to get the current program value.");
-            }
+        if (tvChannel == null) {
+            logger.error("The requested channel does not exist in the channel map.");
+            return logger.exit(false);
         }
+
+        try {
+            // Check if the frequency is already correct.
+            String currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
+
+            boolean frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
+            int attempts = 20;
+
+            while (!frequencyTuned) {
+                tuneFrequency(tvChannel, deviceAddress, tunerNumber, retry);
+
+                currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
+                frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
+
+                if (attempts-- == 0 && !frequencyTuned) {
+                    logger.error("The requested frequency cannot be tuned.");
+                    return logger.exit(false);
+                } else if (!frequencyTuned) {
+                    try {
+                        // Sleep if the first request fails so we don't overwhelm the device
+                        // with requests. Remember up to 6 of these kinds of request could
+                        // happen at the exact same time.
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        logger.error("tuneChannel was interrupted while tuning to a frequency.");
+                        return logger.exit(false);
+                    }
+                }
+            }
+
+            attempts = 20;
+            boolean programSelected = false;
+
+            Thread.sleep(250);
+
+            while (!programSelected) {
+                // If we are not already on the correct frequency, it takes the tuner a moment
+                // to detect the available programs. If you try to set a program before the list
+                // is available, it will fail. Normally this happens so fast, a sleep method
+                // isn't appropriate. We have a while loop to retry a few times if it fails.
+
+                tuneProgram(tvChannel, deviceAddress, tunerNumber, retry);
+
+                programSelected = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "mux", "ProgramNumber").equals(tvChannel.getProgram());
+                if (attempts-- == 0 && !programSelected) {
+                    logger.error("The requested program cannot be selected.");
+                    return logger.exit(false);
+                } else if (!programSelected) {
+                    try {
+                        // Sleep if the first request fails so we don't overwhelm the device
+                        // with requests. Remember up to 6 of these kinds of request could
+                        // happen at the exact same time.
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        logger.error("tuneChannel was interrupted while selecting a program.");
+                        return logger.exit(false);
+                    }
+                }
+            }
+            returnValue = true;
+        /*} catch (InterruptedException e) {
+            logger.debug("tuneChannel was interrupted while waiting setting the program.");*/
+        } catch (IOException e) {
+            logger.debug("tuneChannel was unable to get the current program value.");
+        }
+
 
         return logger.exit(returnValue);
     }

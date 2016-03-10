@@ -76,7 +76,7 @@ public class CopyChannels {
             destChannel.setTunable(tunable);
             destChannel.setIgnore(ignored);
             destChannel.setUpdateAll();
-            destLineup.updateChannel(destChannel);
+            destLineup.addChannel(destChannel);
         }
 
         return true;

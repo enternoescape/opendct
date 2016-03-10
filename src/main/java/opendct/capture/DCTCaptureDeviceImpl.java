@@ -533,6 +533,8 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
      *
      * @param tvChannel A TVChannel object with at the very least a defined channel or frequency and
      *                  program. Otherwise there is nothing to tune.
+     * @param skipCCI If <i>true</i>, the method will not wait to ensure the CCI is correct. The
+     *                reason to skip this is because it takes much longer for unencrypted channels.
      * @return <i>true</i> if the test was complete and successful. <i>false</i> if we should try
      *         again on a different capture device since this one is currently locked.
      */
@@ -665,10 +667,6 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         return logger.exit(true);
-    }
-
-    public InetAddress getEncoderIpAddress() {
-        return rtpStreamRemoteIP;
     }
 
     private boolean startEncodingHDHR(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress) {
@@ -1362,10 +1360,11 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
                         // Since it's possible that a SWITCH may have happened since we last started
                         // the recording, this keeps everything consistent.
-                        if (sageTVConsumerRunnable != null) {
-                            filename = sageTVConsumerRunnable.getEncoderFilename();
-                            encodingQuality = sageTVConsumerRunnable.getEncoderQuality();
-                            uploadID = sageTVConsumerRunnable.getEncoderUploadID();
+                        SageTVConsumer consumer = sageTVConsumerRunnable;
+                        if (consumer != null) {
+                            filename = consumer.getEncoderFilename();
+                            encodingQuality = consumer.getEncoderQuality();
+                            uploadID = consumer.getEncoderUploadID();
                         }
 
 
@@ -1760,6 +1759,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         logger.exit();
+    }
+
+    public InetAddress getEncoderIpAddress() {
+        return rtpStreamRemoteIP;
     }
 
     @Override

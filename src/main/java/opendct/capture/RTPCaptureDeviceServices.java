@@ -29,30 +29,28 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /*
 This incorporates a lot of very basic functionality that might be
 otherwise duplicated between RTP capture devices.
  */
-public abstract class RTPCaptureDeviceServices {
+public class RTPCaptureDeviceServices {
     private final Logger logger = LogManager.getLogger(RTPCaptureDeviceServices.class);
 
-    protected URI rtpStreamRemoteURI;
-    protected InetAddress rtpStreamRemoteIP;
-    protected int rtpLocalPort = -1;
-    protected RTPProducer rtpProducerRunnable = null;
-    protected Thread rtpProducerThread = null;
-    protected final ReentrantReadWriteLock rtpProducerLock = new ReentrantReadWriteLock(true);
-    protected RTSPClient rtspClient = null;
+    private int rtpLocalPort = -1;
+    private RTPProducer rtpProducerRunnable = null;
+    private Thread rtpProducerThread = null;
+    private final ReentrantReadWriteLock rtpProducerLock = new ReentrantReadWriteLock(true);
+    private final RTSPClient rtspClient;
 
     /**
      * Create a new RTP helper services.
      *
-     * @param encoderName This name is used to uniquely identify this capture device. The encoder
-     *                   version is defaulted to 3.0.
-     * @throws CaptureDeviceIgnoredException If the configuration indicates that this device should
-     *                                       not be loaded, this exception will be thrown.
+     * @param encoderName This name is used to uniquely identify this capture device when asking for
+     *                    a port number.
+     * @param propertiesDeviceParent  This is the root for parent properties for this device.
      */
     public RTPCaptureDeviceServices(String encoderName, String propertiesDeviceParent) {
         logger.debug("Initializing RTSP client...");
@@ -72,6 +70,8 @@ public abstract class RTPCaptureDeviceServices {
      * @param remoteIP       This is the IP address of the RTP server.
      * @param localPort      This is the suggested port to listen for RTP packets. If this port is
      *                       already in use, this method will use
+     * @param encoderName    Used to get a new port if the currently selected port is already in
+     *                       use.
      * @return <i>true</i> if the producer was able to start.
      */
     public boolean startProducing(RTPProducer rtpProducer, SageTVConsumer sageTVConsumer,
@@ -93,7 +93,6 @@ public abstract class RTPCaptureDeviceServices {
             while (!returnValue) {
                 try {
                     this.rtpLocalPort = localPort;
-                    this.rtpStreamRemoteIP = remoteIP;
 
                     rtpProducerRunnable = rtpProducer;
                     rtpProducerRunnable.setConsumer(sageTVConsumer);
@@ -222,17 +221,24 @@ public abstract class RTPCaptureDeviceServices {
         return logger.exit(returnValue);
     }
 
+    public int getRtpLocalPort() {
+        return rtpLocalPort;
+    }
+
     // Stop the capture device from streaming and stop the encoder threads.
     public void returnRTPPort() {
         Config.returnFreeRTSPPort(rtpLocalPort);
-
-        if (rtspClient != null && rtpStreamRemoteURI != null) {
-            try {
-                rtspClient.stopRTPStream(rtpStreamRemoteURI);
-            } catch (Exception e) {
-                logger.error("An unexpected exception was created while stopping the RTP stream => ", e);
-            }
-        }
     }
 
+    public boolean configureRTSP(URI rtpStreamRemoteURI) throws UnknownHostException {
+        return rtspClient.configureRTPStream(rtpStreamRemoteURI, rtpLocalPort);
+    }
+
+    public void stopRTSP(URI rtpStreamRemoteURI) {
+        try {
+            rtspClient.stopRTPStream(rtpStreamRemoteURI);
+        } catch (Exception e) {
+            logger.error("An unexpected exception was created while stopping the RTP stream => ", e);
+        }
+    }
 }

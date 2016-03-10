@@ -65,7 +65,6 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     // Detection configuration and state
     private static boolean enabled;
-    private static boolean running;
     private static String errorMessage;
     private DeviceLoader deviceLoader;
 
@@ -75,7 +74,6 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     static {
         enabled = Config.getBoolean("upnp.discoverer_enabled", true);
-        running = false;
         errorMessage = null;
         deviceOptions = new ConcurrentHashMap<>();
 
@@ -217,10 +215,6 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         }
     }
 
-    public UpnpDiscoverer() {
-        UpnpDiscoverer.running = false;
-    }
-
     @Override
     public String getName() {
         return UpnpDiscoverer.name;
@@ -249,9 +243,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public synchronized void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
-        running = UpnpManager.isRunning();
 
-        if (deviceLoader == null || !UpnpDiscoverer.enabled || UpnpDiscoverer.running) {
+        if (deviceLoader == null || !UpnpDiscoverer.enabled || UpnpManager.isRunning()) {
             return;
         }
 
@@ -260,19 +253,17 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         UpnpManager.startUpnpServices(
                 DCTDefaultUpnpServiceConfiguration.getDCTDefault(),
                 new DiscoveryRegistryListener(this));
+
     }
 
     @Override
     public synchronized void stopDetection() throws DiscoveryException {
-        running = UpnpManager.isRunning();
 
-        if (!UpnpDiscoverer.running) {
+        if (!UpnpManager.isRunning()) {
             return;
         }
 
         UpnpManager.stopUpnpServices();
-
-        running = UpnpManager.isRunning();
     }
 
     @Override
@@ -282,9 +273,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         try {
             while (timeout > System.currentTimeMillis()) {
                 UpnpManager.stopUpnpServices();
-                running = UpnpManager.isRunning();
 
-                if (!UpnpDiscoverer.running) {
+                if (!UpnpManager.isRunning()) {
                     return;
                 }
 
@@ -297,7 +287,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public boolean isRunning() {
-        return UpnpDiscoverer.running;
+        return UpnpManager.isRunning();
     }
 
     @Override
@@ -432,7 +422,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
             if (updateDeviceParent != null) {
                 // This device has been detected before. We will only update the IP address.
 
-                if (!(updateDeviceParent.getRemoteAddress() == parent.getRemoteAddress())) {
+                if (!(updateDeviceParent.getRemoteAddress().equals(parent.getRemoteAddress()))) {
                     logger.info("HDHomeRun device '{}' changed its IP address from {} to {}.",
                             updateDeviceParent.getFriendlyName(),
                             updateDeviceParent.getRemoteAddress().getHostAddress(),
@@ -447,6 +437,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
             discoveredParents.put(parent.getParentId(), parent);
 
+            boolean addedDevices = false;
+
             for (UpnpDiscoveredDevice newDevice : devices) {
 
                 // The array size will usually be 1-2 devices too big.
@@ -454,11 +446,18 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                     continue;
                 }
 
+                addedDevices = true;
+
                 this.discoveredDevices.put(newDevice.getId(), newDevice);
 
                 parent.addChild(newDevice.getId());
 
                 deviceLoader.advertiseDevice(newDevice, this);
+            }
+
+            if (!addedDevices) {
+                // Remove parents without any children.
+                discoveredParents.remove(parent.getParentId());
             }
 
         } catch (Exception e) {
@@ -490,6 +489,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
         } catch (CaptureDeviceLoadException e) {
             loadException = e;
+        } catch (CaptureDeviceIgnoredException e) {
+            logger.warn("Capture device will not be loaded => {}", e.toString());
         } catch (Exception e) {
             logger.error("An unhandled exception happened in loadCaptureDevice while using" +
                     " discoveredDevicesLock => ", e);
@@ -512,7 +513,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                 remoteDevice.getDetails().getBaseURL().getHost() != null) {
 
             try {
-                returnAddress = InetAddress.getByName(remoteDevice.getParentDevice().getDetails().getBaseURL().getHost());
+                returnAddress = InetAddress.getByName(remoteDevice.getDetails().getBaseURL().getHost());
             } catch (UnknownHostException e) {
                 // Sometimes a URL doesn't show up in the base URL field soon enough.
 

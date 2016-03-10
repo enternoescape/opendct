@@ -46,6 +46,9 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         byte[] bytes = new byte[1024];
         int[] printPrefix = new int[]{1};
 
+        // This is needed because without it, lastMessage could change at the last minute and it
+        // could result in a null pointer exception.
+        String holdMessage = lastMessage;
         String className = FFMPEG;
         String message = null;
         String initMessage = null;
@@ -157,9 +160,12 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
         if (limitLogging && message != null && (
                 message.endsWith("Invalid frame dimensions 0x0.") ||
-                // We handle this message by increasing probe sizes based on the currently available
-                // data.
+                // This message is handled by increasing probe sizes based on the currently
+                // available data.
                 message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
+                // This message is handled by increasing probe sizes based on the currently
+                // available data.
+                message.endsWith("not enough frames to estimate rate; consider increasing probesize" ) ||
                 // This is the PAT packet and sometimes it doesn't get incremented which makes
                 // FFmpeg unhappy.
                 message.endsWith("Continuity check failed for pid 0 expected 1 got 0") ||
@@ -181,7 +187,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             return;
         }
 
-        if (lastMessage != null && lastMessage.equals(initMessage)) {
+        if (holdMessage != null && holdMessage.equals(initMessage)) {
             repeated.addAndGet(1);
             return;
         }

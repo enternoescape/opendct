@@ -530,3 +530,14 @@
 
 #### 0.4.35-Beta
 > *Fixed a rare null pointer exception in the FFmpeg processor.
+
+#### 0.4.36-RC1
+> *Fixed opendct.properties was being version backed up every single time the program was started.
+> It now only does a backup on version and/or config upgrade like it was supposed to do. 
+
+> *Improved audio stream selection for FFmpeg transcoder. Bitrate when available is now a
+> tie-breaker which helps with channels like PBS that have three two channel audio streams.
+
+> *Fixed the COPY lineup update method not saving newly added channels.
+
+> *Cleaned up FFmpeg logging a little more and improved atomicity of deduplication.

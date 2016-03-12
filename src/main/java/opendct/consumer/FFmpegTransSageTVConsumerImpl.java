@@ -128,8 +128,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 return;
             }
 
-            Thread.sleep(500);
-
             ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter);
 
             ctx.STREAM_PROCESSOR.streamOutput();

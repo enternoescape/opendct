@@ -111,11 +111,11 @@ public class FFmpegStreamDetection {
             dynamicProbeSize = Math.max(dynamicProbeSize, ctx.getProbeAvailable() + 188);
             dynamicProbeSize = Math.min(dynamicProbeSize, probeSizeLimit);
 
-            dynamicAnalyzeDuration = Math.max(dynamicAnalyzeDuration, (System.nanoTime() - startNanoTime) / 1000L);
-            dynamicAnalyzeDuration = Math.min(dynamicAnalyzeDuration, analyzeDurationLimit);
+            //dynamicAnalyzeDuration = Math.max(dynamicAnalyzeDuration, (System.nanoTime() - startNanoTime) / 1000L);
+            dynamicAnalyzeDuration = 0;// Math.min(dynamicAnalyzeDuration, analyzeDurationLimit);
 
-            av_opt_set_int(ctx.avfCtxInput.priv_data(), "probesize", dynamicProbeSize, 0); // Must be set before avformat_open_input
-            av_opt_set_int(ctx.avfCtxInput.priv_data(), "analyzeduration", dynamicAnalyzeDuration, 0); // Must be set before avformat_find_stream_info
+            av_opt_set_int(ctx.avfCtxInput, "probesize", dynamicProbeSize, 0); // Must be set before avformat_open_input
+            av_opt_set_int(ctx.avfCtxInput, "analyzeduration", dynamicAnalyzeDuration, 0); // Must be set before avformat_find_stream_info
 
             logger.debug("Calling avformat_open_input");
 

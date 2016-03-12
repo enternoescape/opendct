@@ -478,12 +478,12 @@
 > *Added feature that can make 720p content more compatible with H.264 decoders that do not play
 > nicely with out of order presentation time stamps. Set consumer.ffmpeg.h264_pts_hack to true in
 > opendct.properties to enable the compatibility hack. This feature only works when using
-> FFmpegTransSageTVConsumer.
+> FFmpegTransSageTVConsumerImpl.
 
 > *Removed trace logging from the FFmpeg transcoder.
 
 > *Audio and video stream metadata such as language is now copied when available into the FFmpeg
-> output stream when using FFmpegTransSageTVConsumer.
+> output stream when using FFmpegTransSageTVConsumerImpl.
 
 > *Fixed de-duplicating FFmpeg logging. It was broken when phantom duplicates where fixed.
 
@@ -548,3 +548,5 @@
 > *Fixed the COPY lineup update method not saving newly added channels.
 
 > *Cleaned up FFmpeg logging a little more and improved atomicity of deduplication.
+
+> *Detection speed increase for FFmpeg trancoder.

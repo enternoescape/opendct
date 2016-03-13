@@ -57,6 +57,13 @@
 #### 0.3.17-Stable
 > *Upped UDP recieve packet size to 65508.
 
+#### 0.3.18-Stable
+> *Ubuntu init.d script was not running on startup for everyone. The install script now runs
+> 'update-rc.d -f opendct defaults'. The uninstall script runs 'update-rc.d -f opendct remove'.
+> Thanks mikejaner.
+
+> *Addressed runlevels warning message when enabling the Ubuntu init.d script.
+
 #### 0.4.0-Beta
 > *Added tuner pooling as an experimental feature turned off by default. Set the property
 > pool.enabled=true to enable it. There are no fundamental issues, but this is it's first release,
@@ -471,12 +478,12 @@
 > *Added feature that can make 720p content more compatible with H.264 decoders that do not play
 > nicely with out of order presentation time stamps. Set consumer.ffmpeg.h264_pts_hack to true in
 > opendct.properties to enable the compatibility hack. This feature only works when using
-> FFmpegTransSageTVConsumer.
+> FFmpegTransSageTVConsumerImpl.
 
 > *Removed trace logging from the FFmpeg transcoder.
 
 > *Audio and video stream metadata such as language is now copied when available into the FFmpeg
-> output stream when using FFmpegTransSageTVConsumer.
+> output stream when using FFmpegTransSageTVConsumerImpl.
 
 > *Fixed de-duplicating FFmpeg logging. It was broken when phantom duplicates where fixed.
 
@@ -541,3 +548,5 @@
 > *Fixed the COPY lineup update method not saving newly added channels.
 
 > *Cleaned up FFmpeg logging a little more and improved atomicity of deduplication.
+
+> *Detection speed increase for FFmpeg trancoder.

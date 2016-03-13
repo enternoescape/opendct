@@ -549,4 +549,6 @@
 
 > *Cleaned up FFmpeg logging a little more and improved atomicity of deduplication.
 
-> *Detection speed increase for FFmpeg trancoder.
+> *Detection speed increase for FFmpeg transcoder.
+
+> *Cleaned up some HDHomeRun communications logging.

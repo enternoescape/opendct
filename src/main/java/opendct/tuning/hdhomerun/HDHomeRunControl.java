@@ -162,7 +162,7 @@ public class HDHomeRunControl {
         if (bufferLimit > 4) {
             if (rxPacket.getPacketType() == HDHomeRunPacketType.HDHOMERUN_TYPE_GETSET_RPY) {
                 int packetLength = rxPacket.getPacketLength();
-                logger.debug("bufferLimit: {}, packetLength: {}", bufferLimit, packetLength);
+                logger.trace("bufferLimit: {}, packetLength: {}", bufferLimit, packetLength);
                 rxPacket.BUFFER.limit(packetLength + 4);
 
                 while (rxPacket.BUFFER.remaining() >= 2) {
@@ -189,7 +189,7 @@ public class HDHomeRunControl {
                         case HDHOMERUN_TAG_GETSET_NAME:
                             // The device may return the key name.
                             rxPacket.BUFFER.position(rxPacket.BUFFER.position() + length);
-                            logger.debug("HDHomeRun device returned the key name. Skipped {} bytes.", length);
+                            logger.trace("HDHomeRun device returned the key name. Skipped {} bytes.", length);
                             break;
 
                         case HDHOMERUN_TAG_GETSET_VALUE:

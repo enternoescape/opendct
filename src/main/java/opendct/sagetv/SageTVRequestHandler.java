@@ -25,6 +25,7 @@
 package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
+import opendct.capture.InfiniTVCaptureDevice;
 import opendct.config.Config;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -157,6 +158,10 @@ public class SageTVRequestHandler implements Runnable {
                                 setThreadName(deviceName, captureDevice.getEncoderName());
                                 captureDevice.stopEncoding();
                                 unlockEncoder(captureDevice);
+
+                                if (captureDevice instanceof InfiniTVCaptureDevice) {
+                                    SageTVTuningMonitor.stopMonitorRecording(captureDevice);
+                                }
                             } else {
                                 logger.error("SageTV requested the tuner '{}' and it does not exist at this time.", deviceName);
                             }
@@ -229,6 +234,14 @@ public class SageTVRequestHandler implements Runnable {
 
                                         postRecording();
                                         sendResponse("OK");
+
+                                        if (captureDevice instanceof InfiniTVCaptureDevice) {
+                                            if (captureDevice.canEncodeUploadID() && uploadID != 0) {
+                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0, uploadID, socket.getInetAddress());
+                                            } else {
+                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0);
+                                            }
+                                        }
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
                                         logger.error("Encoder device is unable to start.");
@@ -297,6 +310,14 @@ public class SageTVRequestHandler implements Runnable {
 
                                         postRecording();
                                         sendResponse("OK");
+
+                                        if (captureDevice instanceof InfiniTVCaptureDevice) {
+                                            if (captureDevice.canEncodeUploadID() && uploadID != 0) {
+                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize, uploadID, socket.getInetAddress());
+                                            } else {
+                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize);
+                                            }
+                                        }
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
                                         logger.error("Encoder device is unable to start.");

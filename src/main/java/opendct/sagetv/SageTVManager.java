@@ -236,6 +236,8 @@ public class SageTVManager implements PowerEventListener {
      * re-start the socket servers.
      */
     public static void stopAllSocketServers() {
+        SageTVTuningMonitor.stopMonitor();
+
         ArrayList<SageTVSocketServer> stvSocketServers = getAllSageTVSocketServers();
 
         for (SageTVSocketServer stvSocketServer : stvSocketServers) {

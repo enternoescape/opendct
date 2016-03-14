@@ -64,6 +64,8 @@ public class SageTVSocketServer implements Runnable {
     public boolean startListening() {
         logger.entry();
 
+        SageTVTuningMonitor.startMonitor();
+
         boolean error = false;
 
         synchronized (listeningLock) {

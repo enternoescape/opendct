@@ -458,8 +458,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         private BlockingQueue<ByteBuffer> buffers;
         private CompletionHandler<Integer, Object> handler;
         private AsynchronousFileChannel asyncFileChannel;
-        private String directFilename;
-        private File recordingFile;
+        private final String directFilename;
+        private final File recordingFile;
         private boolean firstWrite;
 
         public FFmpegDirectWriter(final String filename) throws IOException {
@@ -552,7 +552,16 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                 @Override
                 public void failed(Throwable e, Object attachment) {
-                    logger.error("File write failed => ", e);
+                    logger.error("File '{}' write failed => ", directFilename, e);
+
+                    try {
+                        asyncFileChannel = AsynchronousFileChannel.open(
+                                Paths.get(directFilename),
+                                StandardOpenOption.WRITE,
+                                StandardOpenOption.CREATE);
+                    } catch (IOException e1) {
+                        logger.error("Unable to re-open file '{}' => ", directFilename, e);
+                    }
 
                     try {
                         buffers.put((ByteBuffer)attachment);

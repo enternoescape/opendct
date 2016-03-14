@@ -812,6 +812,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     public void stopEncoding() {
         logger.entry();
 
+        recordLastFilename = null;
         stopConsuming(false);
 
         logger.exit();

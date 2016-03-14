@@ -547,8 +547,12 @@
 
 > *Fixed the COPY lineup update method not saving newly added channels.
 
+> *Fixed a potentially very long hang when tuning InfiniTV devices that have rebooted.
+
 > *Cleaned up FFmpeg logging a little more and improved atomicity of deduplication.
 
 > *Detection speed increase for FFmpeg transcoder.
 
 > *Cleaned up some HDHomeRun communications logging.
+
+> *Improved handling of FFmpeg transcoder direct file writing failures.

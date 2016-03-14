@@ -22,10 +22,9 @@ import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -316,7 +315,7 @@ public class InfiniTVTuning {
         }
         logger.info("Connecting to InfiniTV tuner using the URL '{}'", url);
 
-        HttpURLConnection httpURLConnection = null;
+        final HttpURLConnection httpURLConnection;
         try {
             httpURLConnection = (HttpURLConnection) url.openConnection();
         } catch (IOException e) {
@@ -349,19 +348,38 @@ public class InfiniTVTuning {
         }
 
         String line = null;
-        BufferedReader bufferedReader = null;
         try {
-            bufferedReader = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
-            /*while ((line = bufferedReader.readLine()) != null) {
-                //logger.debug("POST returned: {}", line);
-            }*/
-
             dataOutputStream.close();
-            bufferedReader.close();
+
+            final HttpURLConnection finalHttpURLConnection = httpURLConnection;
+
+            Thread httpTimeout = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+
+                    finalHttpURLConnection.disconnect();
+                }
+            });
+
+            httpTimeout.start();
+            InputStream inputStream = httpURLConnection.getInputStream();
+            httpTimeout.interrupt();
+
+            // The InfiniTV requires that at least one byte of data is read or the POST will fail.
+            if (inputStream.available() > 0) {
+                inputStream.read();
+            }
+
+            inputStream.close();
         } catch (IOException e) {
-            logger.error("Unable to read reply => {}", e);
-            return logger.exit(false);
+            logger.error("Unable to read reply => {}", e.toString());
         }
+
         return logger.exit(true);
     }
 }

@@ -556,3 +556,5 @@
 > *Cleaned up some HDHomeRun communications logging.
 
 > *Improved handling of FFmpeg transcoder direct file writing failures.
+
+> *Improved re-tuning efficiency.

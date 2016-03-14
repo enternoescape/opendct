@@ -455,7 +455,7 @@ public class ChannelManager implements PowerEventListener {
         for (Map.Entry<String, ChannelLineup> lineupPair : channelLineupsMap.entrySet()) {
             final ChannelLineup channelLineup = lineupPair.getValue();
 
-            if (!now && channelLineup.getNextUpdate() > System.currentTimeMillis() && channelLineup.hasChannels()) {
+            if (!now && channelLineup.getNextUpdate() > System.currentTimeMillis()) {
                 continue;
             }
 

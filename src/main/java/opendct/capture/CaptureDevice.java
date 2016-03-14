@@ -496,7 +496,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public String scanChannelInfo(String channel);
 
     /**
-     * Is the tuner going to work as configured?
+     * Is the capture device going to work as configured?
      * <p/>
      * Return <i>true</i> if the tuner is configured in a manner that it will be able to produce a
      * recording. You can have it already tuned and buffering, but this is just making sure that we
@@ -505,6 +505,17 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @return Returns <i>true</i> if the tuner will work as configured.
      */
     public boolean isReady();
+
+    /**
+     * The raw data produced by the capture device.
+     * <p/>
+     * This is used as an indicator of activity on the capture device and is used to determine if
+     * the capture device is stalled. A packet can be represent anything, the only requirement is
+     * that it must be a different value between calls unless there's a problem.
+     *
+     * @return The number of raw packets produced since the last tuning.
+     */
+    public long getProducedPackets();
 
     /**
      * Gets the channel lineup currently in use.

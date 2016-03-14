@@ -22,6 +22,7 @@ import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.RTPProducer;
+import opendct.producer.SageTVProducer;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.hdhomerun.GetSetException;
@@ -98,6 +99,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
     private boolean cableCardPresent = false;
     private String encoderIPAddress = null;
     private InetAddress localIPAddress = null;
+    private String lastRecording = null;
 
     private boolean httpTune = UpnpDiscoverer.getHttpTuning();
     private boolean hdhrTune = UpnpDiscoverer.getHdhrTuning();
@@ -1763,6 +1765,17 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
 
     public InetAddress getEncoderIpAddress() {
         return rtpStreamRemoteIP;
+    }
+
+    @Override
+    public long getProducedPackets() {
+        SageTVProducer producer = rtpProducerRunnable;
+
+        if (producer != null) {
+            return producer.getPackets();
+        }
+
+        return 0;
     }
 
     @Override

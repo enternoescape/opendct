@@ -50,7 +50,6 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     private final Object exclusiveLock;
 
     private Thread tuningThread;
-    private Thread monitorThread;
 
     public InfiniTVCaptureDevice(InfiniTVDiscoveredDevice device,
                                  InfiniTVDiscoveredDeviceParent parent)
@@ -346,10 +345,6 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     @Override
     public void stopEncoding() {
         synchronized (exclusiveLock) {
-            if (monitorThread != null && monitorThread != Thread.currentThread()) {
-                monitorThread.interrupt();
-            }
-
             InfiniTVTuning.stopRTSP(parent.getRemoteAddress().getHostAddress(), encoderNumber);
 
             rtpServices.stopProducing(false);
@@ -370,10 +365,6 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         // the current tuning attempt sees that another thread is waiting, it gives up and lets the
         // waiting thread start tuning.
         tuningThread = Thread.currentThread();
-
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
-            monitorThread.interrupt();
-        }
 
         TVChannel tvChannel = null;
 
@@ -411,14 +402,21 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     private boolean startEncodingSync(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress, TVChannel tvChannel) {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress, tvChannel);
 
+        boolean retune = false;
         boolean scanOnly = false;
 
-        if (remoteAddress != null) {
-            logger.info("Starting the encoding for the channel '{}' from the device '{}' to the file '{}' via the upload id '{}'...", channel, encoderName, filename, uploadID);
-        } else if (filename != null) {
-            logger.info("Starting the encoding for the channel '{}' from the device '{}' to the file '{}'...", channel, encoderName, filename);
+        if (recordLastFilename != null && recordLastFilename.equals(filename)) {
+            retune = true;
         } else {
-            logger.info("Starting a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
+            recordLastFilename = filename;
+        }
+
+        if (remoteAddress != null) {
+            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}' via the upload id '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename, uploadID);
+        } else if (filename != null) {
+            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename);
+        } else {
+            logger.info("{} a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
             scanOnly = true;
         }
 
@@ -427,7 +425,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         rtpServices.stopProducing(false);
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
-        if (monitorThread == null || monitorThread != Thread.currentThread()) {
+        if (!retune) {
             stopConsuming(false);
         }
 
@@ -436,7 +434,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         SageTVConsumer newConsumer;
 
         // If we are trying to restart the stream, we don't need to create a new consumer.
-        if (monitorThread != null && monitorThread == Thread.currentThread()) {
+        if (retune) {
             newConsumer = sageTVConsumerRunnable;
         } else if (scanOnly) {
             newConsumer = getNewChannelScanSageTVConsumer();
@@ -491,7 +489,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             logger.error("Unable to start RTSP. Will try again on re-tune.");
         }
 
-        if (monitorThread == null || monitorThread != Thread.currentThread()) {
+        if (!retune) {
             try {
                 int getProgram = InfiniTVStatus.getProgram(encoderAddress, encoderNumber, 5);
                 newConsumer.setProgram(getProgram);
@@ -534,107 +532,9 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
 
-        // Make sure only one monitor thread is running per request.
-        if (monitorThread == null || monitorThread != Thread.currentThread()) {
-            if (!scanOnly) {
-                monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
-            }
-        }
-
         sageTVConsumerRunnable.isStreaming(UpnpDiscoverer.getStreamingWait());
 
         return logger.exit(true);
-    }
-
-    private void monitorTuning(final String channel, final String originalFilename, final String originalEncodingQuality, final long bufferSize, final int originalUploadID, final InetAddress remoteAddress) {
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
-            monitorThread.interrupt();
-        }
-
-        monitorThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("Tuning monitoring thread started.");
-
-                TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
-
-                int timeout = 0;
-                boolean firstPass = true;
-
-                if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
-                    // Music Choice channels take forever to start and with a 4 second timeout,
-                    // they might never start.
-                    timeout = UpnpDiscoverer.getRetunePolling() * 4000;
-                } else {
-                    timeout = UpnpDiscoverer.getRetunePolling() * 1000;
-                }
-
-                while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                        Thread.sleep(timeout);
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-
-                    SageTVProducer rtpProducer = rtpServices.getProducer();
-
-                    if (rtpProducer != null &&
-                            rtpProducer.isStalled() &&
-                            !Thread.currentThread().isInterrupted()) {
-
-                        String filename = originalFilename;
-                        String encodingQuality = originalEncodingQuality;
-                        int uploadID = originalUploadID;
-
-                        // Since it's possible that a SWITCH may have happened since we last started
-                        // the recording, this keeps everything consistent.
-                        SageTVConsumer consumer = sageTVConsumerRunnable;
-                        if (consumer != null) {
-                            filename = consumer.getEncoderFilename();
-                            encodingQuality = consumer.getEncoderQuality();
-                            uploadID = consumer.getEncoderUploadID();
-                        }
-
-
-                        logger.error("No data was streamed." +
-                                " Copy protection status is '{}' and signal strength is {}." +
-                                " Re-tuning channel...", getCopyProtection(), getSignalStrength());
-                        if (logger.isInfoEnabled()) {
-                            logger.info(getTunerStatusString());
-                        }
-
-                        boolean tuned = false;
-
-                        while (!tuned && !Thread.currentThread().isInterrupted()) {
-                            stopDevice();
-                            tuned = startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
-
-                            try {
-                                Thread.sleep(500);
-                            } catch (InterruptedException e) {
-                                return;
-                            }
-                        }
-
-                        logger.info("Stream halt caused re-tune. Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
-                    }
-
-                    if (getRecordedBytes() != 0 && firstPass) {
-                        firstPass = false;
-                        logger.info("Streamed first {} bytes.", getRecordedBytes());
-
-                        if (logger.isInfoEnabled()) {
-                            logger.info(getTunerStatusString());
-                        }
-                    }
-                }
-
-                logger.info("Tuning monitoring thread stopped.");
-            }
-        });
-
-        monitorThread.setName("TuningMonitor-" + monitorThread.getId() + ":" + encoderName);
-        monitorThread.start();
     }
 
     @Override
@@ -738,6 +638,21 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         }
 
         return logger.exit(stringBuilder.toString());
+    }
+
+    @Override
+    public long getProducedPackets() {
+        if (rtpServices == null) {
+            return 0;
+        }
+
+        SageTVProducer producer = rtpServices.getProducer();
+
+        if (producer != null) {
+            return producer.getPackets();
+        }
+
+        return 0;
     }
 
     @Override

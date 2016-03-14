@@ -25,6 +25,7 @@ import opendct.config.options.StringDeviceOption;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
 import opendct.producer.RTPProducer;
+import opendct.producer.SageTVProducer;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
@@ -1483,6 +1484,27 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     @Override
     public boolean isReady() {
         return true;
+    }
+
+    @Override
+    public long getProducedPackets() {
+        SageTVProducer producer;
+
+        if (httpProducing) {
+            if (httpServices != null) {
+                producer = httpServices.getProducer();
+            } else {
+                producer = rtpProducerRunnable;
+            }
+        } else {
+            producer = rtpProducerRunnable;
+        }
+
+        if (producer != null) {
+            return rtpProducerRunnable.getPackets();
+        }
+
+        return 0;
     }
 
     public String getTunerStatusString() {

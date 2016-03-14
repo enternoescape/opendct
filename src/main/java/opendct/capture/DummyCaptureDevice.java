@@ -190,6 +190,11 @@ public class DummyCaptureDevice implements CaptureDevice {
         return false;
     }
 
+    @Override
+    public long getProducedPackets() {
+        return 0;
+    }
+
     public String getChannelLineup() {
         return lineup;
     }

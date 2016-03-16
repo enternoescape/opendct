@@ -519,16 +519,15 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         }
     }
 
-
-
     private boolean startEncodingSync(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress, String dotChannel, TVChannel tvChannel) {
-        logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress, tvChannel);
+        logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress, dotChannel, tvChannel);
 
         boolean retune = false;
         boolean scanOnly = false;
 
         if (recordLastFilename != null && recordLastFilename.equals(filename)) {
             retune = true;
+            logger.info("Re-tune: {}", getTunerStatusString());
         } else {
             recordLastFilename = filename;
         }
@@ -542,36 +541,36 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             scanOnly = true;
         }
 
-        if (!httpProducing) {
-            // Only lock the HDHomeRun if this device is locked too. This will prevent any offline
-            // activities from taking the tuner away from outside programs.
-            if (isLocked()) {
-                int timeout = 5;
-                while (!setExternalLock(true) && !Thread.currentThread().isInterrupted()) {
-                    if (timeout-- < 0) {
-                        logger.error("Locking HDHomeRun device failed after 5 attempts.");
-                        return logger.exit(false);
-                    }
+        // Only lock the HDHomeRun if this device is locked too. This will prevent any offline
+        // activities from taking the tuner away from outside programs.
+        if (isLocked()) {
+            int timeout = 5;
+            while (!setExternalLock(true) && !Thread.currentThread().isInterrupted()) {
+                if (timeout-- < 0) {
+                    logger.error("Locking HDHomeRun device failed after 5 attempts.");
+                    return logger.exit(false);
+                }
 
-                    logger.warn("Unable to lock HDHomeRun device.");
+                logger.warn("Unable to lock HDHomeRun device.");
 
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        return logger.exit(false);
-                    }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return logger.exit(false);
+                }
 
-                    if (tuningThread != Thread.currentThread()) {
-                        return logger.exit(false);
-                    }
+                if (tuningThread != Thread.currentThread()) {
+                    return logger.exit(false);
                 }
             }
+        }
 
+        if (!httpProducing) {
             // The producer and consumer methods are requested to not block. If they don't shut down in
             // time, it will be caught and handled later. This gives us a small gain in speed.
             rtpServices.stopProducing(false);
         } else {
-            httpServices.stopProducing(true);
+            httpServices.stopProducing(false);
         }
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
@@ -719,7 +718,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                                 ChannelManager.updateChannel(encoderLineup, tvChannel);
 
                                 logger.info("The virtual channel {} no longer has the correct" +
-                                                " program and/or frequency. Finding new virtual channel.",
+                                        " program and/or frequency. Finding new virtual channel.",
                                         tvChannel.getChannel());
 
                                 tvChannel = ChannelManager.getChannel(encoderLineup, channel);
@@ -1473,6 +1472,8 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             if (httpProducing) {
                 httpServices.stopProducing(false);
                 httpProducer = null;
+            } else {
+                rtpServices.stopProducing(false);
             }
 
             super.stopEncoding();
@@ -1510,6 +1511,8 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         if (httpProducing) {
             httpServices.stopProducing(false);
             httpProducer = null;
+        } else {
+            rtpServices.stopProducing(false);
         }
 
         try {

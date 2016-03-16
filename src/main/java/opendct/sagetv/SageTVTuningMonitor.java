@@ -128,6 +128,8 @@ public class SageTVTuningMonitor {
 
     public static class MonitoredRecording {
         protected Thread retuneThread = null;
+        protected long lessThanRecordedBytes = 0;
+        protected long lessThanProducedPackets = 0;
 
         protected long nextCheck = System.currentTimeMillis() + 5000;
         protected long lastRecordedBytes = -1;
@@ -225,13 +227,19 @@ public class SageTVTuningMonitor {
                                         return;
                                     }
 
-                                    if (uploadID > 0) {
-                                        tuned = captureDevice.startEncoding(
-                                                channel, filename, encodingQuality, bufferSize,
-                                                uploadID, remoteAddress);
+                                    if (captureDevice.isLocked()) {
+                                        if (uploadID > 0) {
+                                            tuned = captureDevice.startEncoding(
+                                                    channel, filename, encodingQuality, bufferSize,
+                                                    uploadID, remoteAddress);
+                                        } else {
+                                            tuned = captureDevice.startEncoding(
+                                                    channel, filename, encodingQuality, bufferSize);
+                                        }
                                     } else {
-                                        tuned = captureDevice.startEncoding(
-                                                channel, filename, encodingQuality, bufferSize);
+                                        logger.info("Re-tune was cancelled because the capture" +
+                                                " device is no longer internally locked.");
+                                        return;
                                     }
 
                                     // If the channel still won't tune in, start over.
@@ -247,13 +255,15 @@ public class SageTVTuningMonitor {
 
                                         captureDevice.stopEncoding();
 
-                                        if (uploadID > 0) {
-                                            captureDevice.startEncoding(channel, filename,
-                                                    encodingQuality, bufferSize,
-                                                    uploadID, remoteAddress);
-                                        } else {
-                                            captureDevice.startEncoding(channel, filename,
-                                                    encodingQuality, bufferSize);
+                                        if (captureDevice.isLocked()) {
+                                            if (uploadID > 0) {
+                                                captureDevice.startEncoding(channel, filename,
+                                                        encodingQuality, bufferSize,
+                                                        uploadID, remoteAddress);
+                                            } else {
+                                                captureDevice.startEncoding(channel, filename,
+                                                        encodingQuality, bufferSize);
+                                            }
                                         }
                                     }
                                 }
@@ -269,15 +279,26 @@ public class SageTVTuningMonitor {
                                 break;
                             }
 
+                            // Setting these to the current value will ensure that a log entry is
+                            // created if data starts streaming again.
+                            recording.lastProducedPackets = producedPackets;
+                            recording.lessThanRecordedBytes = recordedBytes;
+
                             recording.retuneThread.start();
                         }
 
-                        if (recording.lastProducedPackets <= 0 && producedPackets > 0) {
+                        if (recording.lastProducedPackets <= recording.lessThanProducedPackets &&
+                                producedPackets > 0) {
+
+                            recording.lastProducedPackets = 0;
                             logger.info("'{}' produced first {} packets.",
                                     recording.captureDevice.getEncoderName(), producedPackets);
                         }
 
-                        if (recording.lastRecordedBytes <= 0 && recordedBytes > 0) {
+                        if (recording.lastRecordedBytes <= recording.lessThanProducedPackets &&
+                                recordedBytes > 0) {
+
+                            recording.lessThanProducedPackets = 0;
                             logger.info("'{}' recorded first {} bytes.",
                                     recording.captureDevice.getEncoderName(), recordedBytes);
                         }

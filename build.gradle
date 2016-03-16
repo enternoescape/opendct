@@ -352,12 +352,16 @@ def sourceWin() {
 def packageWin(String arch) {
     if (!OperatingSystem.current().isWindows()) {
         //[js] I understand this could be done with Wix using Wine.
-        throw new GradleException('WiX will only build installers on Windows platforms.');
-    }
-
-    exec {
-        workingDir 'scripts/wix'
-        commandLine 'cmd', '/c', "WixBuild.cmd", arch, version
+        //throw new GradleException('WiX will only build installers on Windows platforms.');
+        exec {
+            workingDir 'scripts/wix'
+            commandLine 'wine', 'cmd', '/c', "WixBuild.cmd", arch, version
+        }
+    } else {
+        exec {
+            workingDir 'scripts/wix'
+            commandLine 'cmd', '/c', "WixBuild.cmd", arch, version
+        }
     }
 }
 

@@ -236,7 +236,7 @@ public class SageTVPoolManager  {
             }
         }
 
-        logger.error("Unable to locate a free pool capture device for '{}'.");
+        logger.error("Unable to locate a free pool capture device for '{}'.", vCaptureDevice);
         return null;
 
     }

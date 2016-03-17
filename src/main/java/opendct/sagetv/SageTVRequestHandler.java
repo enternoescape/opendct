@@ -25,6 +25,7 @@
 package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
+import opendct.capture.HDHRNativeCaptureDevice;
 import opendct.capture.InfiniTVCaptureDevice;
 import opendct.config.Config;
 import opendct.util.Util;
@@ -159,7 +160,7 @@ public class SageTVRequestHandler implements Runnable {
                                 captureDevice.stopEncoding();
                                 unlockEncoder(captureDevice);
 
-                                if (captureDevice instanceof InfiniTVCaptureDevice) {
+                                if (captureDevice instanceof InfiniTVCaptureDevice || captureDevice instanceof HDHRNativeCaptureDevice) {
                                     SageTVTuningMonitor.stopMonitorRecording(captureDevice);
                                 }
                             } else {
@@ -235,7 +236,7 @@ public class SageTVRequestHandler implements Runnable {
                                         postRecording();
                                         sendResponse("OK");
 
-                                        if (captureDevice instanceof InfiniTVCaptureDevice) {
+                                        if (captureDevice instanceof InfiniTVCaptureDevice || captureDevice instanceof HDHRNativeCaptureDevice) {
                                             if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                                 SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0, uploadID, socket.getInetAddress());
                                             } else {
@@ -311,7 +312,7 @@ public class SageTVRequestHandler implements Runnable {
                                         postRecording();
                                         sendResponse("OK");
 
-                                        if (captureDevice instanceof InfiniTVCaptureDevice) {
+                                        if (captureDevice instanceof InfiniTVCaptureDevice || captureDevice instanceof HDHRNativeCaptureDevice) {
                                             if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                                 SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize, uploadID, socket.getInetAddress());
                                             } else {

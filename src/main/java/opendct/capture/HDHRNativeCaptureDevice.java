@@ -28,7 +28,6 @@ import opendct.producer.RTPProducer;
 import opendct.producer.SageTVProducer;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
-import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.hdhomerun.*;
 import opendct.tuning.hdhomerun.returns.*;
 import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
@@ -45,7 +44,7 @@ import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
+public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     private final Logger logger = LogManager.getLogger(HDHRNativeCaptureDevice.class);
 
     private final HDHomeRunDiscoveredDeviceParent discoveredDeviceParent;
@@ -55,13 +54,13 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
     private final AtomicBoolean locked = new AtomicBoolean(false);
     private final Object exclusiveLock = new Object();
-    private Thread monitorThread;
     private Thread tuningThread;
 
     private final ConcurrentHashMap<String, DeviceOption> deviceOptions;
     private BooleanDeviceOption forceExternalUnlock;
     private StringDeviceOption channelMap;
 
+    private RTPCaptureDeviceServices rtpServices;
     private HTTPCaptureDeviceServices httpServices;
     private HTTPProducer httpProducer;
     private boolean httpProducing;
@@ -214,6 +213,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             httpServices = new HTTPCaptureDeviceServices();
         }
 
+        rtpServices = new RTPCaptureDeviceServices(encoderName, propertiesDeviceParent);
+
         setChannelLineup(newLineupName);
 
         if (!ChannelManager.hasChannels(encoderLineup) &&
@@ -262,7 +263,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                 (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN),
                 encoderLineup,
                 offlineChannelScan,
-                rtpLocalPort);
+                rtpServices.getRtpLocalPort());
     }
 
     @Override
@@ -466,13 +467,6 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
         tuningThread = Thread.currentThread();
 
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
-            monitorThread.interrupt();
-        }
-
-        long startTime = System.currentTimeMillis();
-        boolean scanOnly = false;
-
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
         String dotChannel = channel;
 
@@ -512,54 +506,84 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             }
         }
 
-        if (remoteAddress != null) {
-            logger.info("Starting the encoding for the channel '{}' from the device '{}' to the file '{}' via the upload id '{}'...", channel, encoderName, filename, uploadID);
-        } else if (filename != null) {
-            logger.info("Starting the encoding for the channel '{}' from the device '{}' to the file '{}'...", channel, encoderName, filename);
+        synchronized (exclusiveLock) {
+            return startEncodingSync(
+                    channel,
+                    filename,
+                    encodingQuality,
+                    bufferSize,
+                    uploadID,
+                    remoteAddress,
+                    dotChannel,
+                    tvChannel);
+        }
+    }
+
+    private boolean startEncodingSync(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress, String dotChannel, TVChannel tvChannel) {
+        logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress, dotChannel, tvChannel);
+
+        boolean retune = false;
+        boolean scanOnly = false;
+
+        if (recordLastFilename != null && recordLastFilename.equals(filename)) {
+            retune = true;
+            logger.info("Re-tune: {}", getTunerStatusString());
         } else {
-            logger.info("Starting a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
+            recordLastFilename = filename;
+        }
+
+        if (remoteAddress != null) {
+            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}' via the upload id '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename, uploadID);
+        } else if (filename != null) {
+            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename);
+        } else {
+            logger.info("{} a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
             scanOnly = true;
         }
 
-        if (!httpProducing) {
-            // Only lock the HDHomeRun if this device is locked too. This will prevent any offline
-            // activities from taking the tuner away from outside programs.
-            if (isLocked()) {
-                int timeout = 5;
-                while (!setExternalLock(true) && !Thread.currentThread().isInterrupted()) {
-                    if (timeout-- < 0) {
-                        logger.error("Locking HDHomeRun device failed after 5 attempts.");
-                        return logger.exit(false);
-                    }
+        // Only lock the HDHomeRun if this device is locked too. This will prevent any offline
+        // activities from taking the tuner away from outside programs.
+        if (isLocked()) {
+            int timeout = 5;
+            while (!setExternalLock(true) && !Thread.currentThread().isInterrupted()) {
+                if (timeout-- < 0) {
+                    logger.error("Locking HDHomeRun device failed after 5 attempts.");
+                    return logger.exit(false);
+                }
 
-                    logger.warn("Unable to lock HDHomeRun device.");
+                logger.warn("Unable to lock HDHomeRun device.");
 
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        return logger.exit(false);
-                    }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return logger.exit(false);
+                }
+
+                if (tuningThread != Thread.currentThread()) {
+                    return logger.exit(false);
                 }
             }
+        }
 
+        if (!httpProducing) {
             // The producer and consumer methods are requested to not block. If they don't shut down in
             // time, it will be caught and handled later. This gives us a small gain in speed.
-            stopProducing(false);
-         } else {
-            httpServices.stopProducing(true);
+            rtpServices.stopProducing(false);
+        } else {
+            httpServices.stopProducing(false);
         }
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
-        if (monitorThread == null || monitorThread != Thread.currentThread()) {
+        if (!retune) {
             stopConsuming(false);
         }
 
         // Get a new producer and consumer.
-        RTPProducer newRTPProducer = getNewRTPProducer();
+        RTPProducer newRTPProducer = rtpServices.getNewRTPProducer(propertiesDeviceParent);
         SageTVConsumer newConsumer;
 
         // If we are trying to restart the stream, we don't need to get a new consumer.
-        if (monitorThread != null && monitorThread == Thread.currentThread()) {
+        if (retune) {
             newConsumer = sageTVConsumerRunnable;
         } else if (scanOnly) {
             newConsumer = getNewChannelScanSageTVConsumer();
@@ -715,7 +739,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                 modulation = tvChannel.getModulation();
                                 if (modulation == null) {
                                     logger.debug("The channel '{}' does not have a modulation" +
-                                            " on the lineup '{}'. Using 'auto'.",
+                                                    " on the lineup '{}'. Using 'auto'.",
                                             channel,
                                             encoderLineup);
                                     modulation = "auto";
@@ -724,7 +748,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                 frequency = tvChannel.getFrequency();
                                 if (frequency <= 0) {
                                     logger.error("The channel '{}' does not have a frequency" +
-                                            " on the lineup '{}'.",
+                                                    " on the lineup '{}'.",
                                             channel,
                                             encoderLineup);
                                     return logger.exit(false);
@@ -733,7 +757,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                 program = tvChannel.getProgram();
                                 if (program == null) {
                                     logger.error("The channel '{}' does not have a program" +
-                                            " on the lineup '{}'.",
+                                                    " on the lineup '{}'.",
                                             channel,
                                             encoderLineup);
                                     return logger.exit(false);
@@ -823,7 +847,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                                     }
                                 } catch (GetSetException e) {
                                     logger.error("Unable to tune the channel {}." +
-                                            " Removing channel from lineup.",
+                                                    " Removing channel from lineup.",
                                             qamChannel.getChannel());
 
                                     ChannelLineup removeLineup =
@@ -849,8 +873,8 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
 
                         } else {
                             logger.warn("QAM HTTP tuning was enabled," +
-                                    " but the lineup does not appear to contain any QAM URLs." +
-                                    " Reverting to legacy tuning. Wasted {}ms.",
+                                            " but the lineup does not appear to contain any QAM URLs." +
+                                            " Reverting to legacy tuning. Wasted {}ms.",
                                     qamEndTime - qamStartTime);
                         }
 
@@ -886,17 +910,15 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         if (!httpProducing) {
             logger.info("Configuring and starting the new RTP producer...");
 
-            if (!startProducing(newRTPProducer, newConsumer, rtpStreamRemoteIP, rtpLocalPort)) {
+            if (!rtpServices.startProducing(newRTPProducer, newConsumer, discoveredDeviceParent.getRemoteAddress(), rtpServices.getRtpLocalPort(), encoderName)) {
                 logger.error("The producer thread using the implementation '{}' failed to start.",
                         newRTPProducer.getClass().getSimpleName());
 
                 return logger.exit(false);
             }
 
-            rtpLocalPort = newRTPProducer.getLocalPort();
-
             try {
-                tuner.setTarget("rtp://" + discoveredDeviceParent.getLocalAddress().getHostAddress() + ":" + rtpLocalPort);
+                tuner.setTarget("rtp://" + discoveredDeviceParent.getLocalAddress().getHostAddress() + ":" + rtpServices.getRtpLocalPort());
             } catch (IOException e) {
                 logger.error("HDHomeRun is unable to start RTP because the device could not be reached => ", e);
                 return logger.exit(false);
@@ -907,7 +929,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         }
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
-        if (monitorThread == null || monitorThread != Thread.currentThread()) {
+        if (!retune) {
 
             try {
                 newConsumer.setProgram(tuner.getProgram());
@@ -925,7 +947,7 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
                     }
 
                     if (tuningThread != Thread.currentThread()) {
-                        stopProducing(false);
+                        rtpServices.stopProducing(false);
                         logger.info("tuningThread != Thread.currentThread()");
                         return logger.exit(false);
                     }
@@ -952,118 +974,9 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
 
-        if (logger.isDebugEnabled()) {
-            long endTime = System.currentTimeMillis();
-            logger.debug("Total tuning time: {}ms", endTime - startTime);
-        }
-
-        // If we are trying to restart the stream, we only need one monitoring thread.
-        if (monitorThread == null || monitorThread != Thread.currentThread()) {
-            if (!scanOnly) {
-                monitorTuning(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
-            }
-        }
-
         sageTVConsumerRunnable.isStreaming(HDHomeRunDiscoverer.getStreamingWait());
 
         return logger.exit(true);
-    }
-
-    private boolean isProducerStalled() {
-        if (httpProducing && httpProducer != null) {
-            return httpProducer.isStalled();
-        } else if (rtpProducerRunnable != null) {
-            return rtpProducerRunnable.isStalled();
-        }
-
-        // This should not be happening.
-        return false;
-    }
-
-    private void monitorTuning(final String channel, final String originalFilename, final String originalEncodingQuality, final long bufferSize, final int originalUploadID, final InetAddress remoteAddress) {
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
-            monitorThread.interrupt();
-        }
-
-        monitorThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("Tuning monitoring thread started.");
-
-                TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
-
-                tvChannel = updateChannelMapping(tvChannel);
-
-                int timeout = 0;
-                boolean firstPass = true;
-
-                if (tvChannel != null && tvChannel.getName().startsWith("MC")) {
-                    // Music Choice channels take forever to start and with a 4 second timeout,
-                    // they might never start.
-                    timeout = UpnpDiscoverer.getRetunePolling() * 4000;
-                } else {
-                    timeout = UpnpDiscoverer.getRetunePolling() * 1000;
-                }
-
-                while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                        Thread.sleep(timeout);
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-
-                    if (isProducerStalled() && !Thread.currentThread().isInterrupted()) {
-                        String filename = originalFilename;
-                        String encodingQuality = originalEncodingQuality;
-                        int uploadID = originalUploadID;
-
-                        // Since it's possible that a SWITCH may have happened since we last started
-                        // the recording, this keeps everything consistent.
-                        SageTVConsumer consumer = sageTVConsumerRunnable;
-                        if (consumer != null) {
-                            filename = consumer.getEncoderFilename();
-                            encodingQuality = consumer.getEncoderQuality();
-                            uploadID = consumer.getEncoderUploadID();
-                        }
-
-
-                        logger.error("No data was streamed. Copy protection status is '{}' and signal strength is {}. Re-tuning channel...", getCopyProtection(), getSignalStrength());
-                        if (logger.isInfoEnabled()) {
-                            logger.info(getTunerStatusString());
-                        }
-
-                        boolean tuned = false;
-
-                        while (!tuned && !Thread.currentThread().isInterrupted()) {
-                            stopDevice();
-                            tuned = startEncoding(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
-
-                            try {
-                                Thread.sleep(500);
-                            } catch (InterruptedException e) {
-                                return;
-                            }
-                        }
-
-                        logger.info("Stream halt caused re-tune. Copy protection status is '{}' and signal strength is {}.", getCopyProtection(), getSignalStrength());
-                    }
-
-                    if (getRecordedBytes() != 0 && firstPass) {
-                        firstPass = false;
-                        logger.info("Streamed first {} bytes.", getRecordedBytes());
-
-                        if (logger.isInfoEnabled()) {
-                            logger.info(getTunerStatusString());
-                        }
-                    }
-                }
-
-                logger.info("Tuning monitoring thread stopped.");
-            }
-        });
-
-        monitorThread.setName("TuningMonitor-" + monitorThread.getId() + ":" + encoderName);
-        monitorThread.start();
     }
 
     private boolean legacyTuneChannel(String channel) {
@@ -1494,14 +1407,14 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
             if (httpServices != null) {
                 producer = httpServices.getProducer();
             } else {
-                producer = rtpProducerRunnable;
+                producer = rtpServices.getProducer();
             }
         } else {
-            producer = rtpProducerRunnable;
+            producer = rtpServices.getProducer();
         }
 
         if (producer != null) {
-            return rtpProducerRunnable.getPackets();
+            return producer.getPackets();
         }
 
         return 0;
@@ -1556,13 +1469,11 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
         logger.debug("Stopping encoding...");
 
         synchronized (exclusiveLock) {
-            if (monitorThread != null && monitorThread != Thread.currentThread()) {
-                monitorThread.interrupt();
-            }
-
             if (httpProducing) {
                 httpServices.stopProducing(false);
                 httpProducer = null;
+            } else {
+                rtpServices.stopProducing(false);
             }
 
             super.stopEncoding();
@@ -1597,13 +1508,11 @@ public class HDHRNativeCaptureDevice extends RTPCaptureDevice {
     public void stopDevice() {
         logger.entry();
 
-        if (monitorThread != null && monitorThread != Thread.currentThread()) {
-            monitorThread.interrupt();
-        }
-
         if (httpProducing) {
             httpServices.stopProducing(false);
             httpProducer = null;
+        } else {
+            rtpServices.stopProducing(false);
         }
 
         try {

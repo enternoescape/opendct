@@ -1,0 +1,5 @@
+#!/bin/sh
+
+WINEDLLOVERRIDES="msi=n" wine cmd /c WixBuild.cmd "$@"
+
+exit $?

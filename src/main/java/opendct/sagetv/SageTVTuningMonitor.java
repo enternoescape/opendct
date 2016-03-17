@@ -52,6 +52,81 @@ public class SageTVTuningMonitor {
         clearQueue();
     }
 
+    public static void pauseMonitorRecording(CaptureDevice captureDevice) {
+        queueLock.readLock().lock();
+
+        try {
+            MonitoredRecording monitoredRecording = recordingQueue.get(captureDevice.getEncoderName());
+
+            if (monitoredRecording == null) {
+                logger.warn("Unable to pause the capture device '{}' because it is not currently monitored.",
+                        captureDevice.getEncoderName());
+                return;
+            }
+
+            monitoredRecording.active = false;
+
+            // If a re-tune is currently in progress, unfortunately we just have to wait it out.
+            if (monitoredRecording.retuneThread != null && monitoredRecording.retuneThread.isAlive()) {
+                monitoredRecording.retuneThread.interrupt();
+                monitoredRecording.retuneThread.join(15000);
+
+                if (monitoredRecording.retuneThread.isAlive()) {
+                    logger.warn("Waited over 15 seconds for the re-tune thread to stop. It is still running.");
+                }
+            }
+        } catch (Throwable e) {
+            logger.error("Unexpected exception while pausing '{}' => ",
+                    captureDevice.getEncoderName(), e);
+        } finally {
+            queueLock.readLock().unlock();
+        }
+    }
+
+    public static void resumeMonitorRecording(CaptureDevice captureDevice) {
+        queueLock.readLock().lock();
+
+        try {
+            MonitoredRecording monitoredRecording = recordingQueue.get(captureDevice.getEncoderName());
+
+            if (monitoredRecording == null) {
+                logger.warn("Unable to resume the capture device '{}' because it is not currently monitored.",
+                        captureDevice.getEncoderName());
+                return;
+            }
+
+            monitoredRecording.active = true;
+        } catch (Throwable e) {
+            logger.error("Unexpected exception while pausing '{}' => ",
+                    captureDevice.getEncoderName(), e);
+        } finally {
+            queueLock.readLock().unlock();
+        }
+    }
+
+    public static void resumeMonitorRecording(CaptureDevice captureDevice, int uploadID, InetAddress remoteAddress) {
+        queueLock.readLock().lock();
+
+        try {
+            MonitoredRecording monitoredRecording = recordingQueue.get(captureDevice.getEncoderName());
+
+            if (monitoredRecording == null) {
+                logger.warn("Unable to resume the capture device '{}' because it is not currently monitored.",
+                        captureDevice.getEncoderName());
+                return;
+            }
+
+            monitoredRecording.uploadID = uploadID;
+            monitoredRecording.remoteAddress = remoteAddress;
+            monitoredRecording.active = true;
+        } catch (Throwable e) {
+            logger.error("Unexpected exception while pausing '{}' => ",
+                    captureDevice.getEncoderName(), e);
+        } finally {
+            queueLock.readLock().unlock();
+        }
+    }
+
     public static void monitorRecording(CaptureDevice captureDevice, String channel,
                                         String encodingQuality, long bufferSize) {
 
@@ -127,6 +202,7 @@ public class SageTVTuningMonitor {
     }
 
     public static class MonitoredRecording {
+        protected boolean active = true;
         protected Thread retuneThread = null;
         protected long lessThanRecordedBytes = 0;
         protected long lessThanProducedPackets = 0;
@@ -138,8 +214,8 @@ public class SageTVTuningMonitor {
         protected final String channel;
         protected final String encodingQuality;
         protected final long bufferSize;
-        protected final int uploadID;
-        protected final InetAddress remoteAddress;
+        protected int uploadID;
+        protected InetAddress remoteAddress;
 
         public MonitoredRecording(CaptureDevice captureDevice, String channel,
                                   String encodingQuality, long bufferSize,
@@ -185,7 +261,7 @@ public class SageTVTuningMonitor {
                             break;
                         }
 
-                        if (recording.nextCheck > currentTime) {
+                        if (!recording.active || recording.nextCheck > currentTime) {
                             continue;
                         }
 
@@ -217,7 +293,7 @@ public class SageTVTuningMonitor {
                             recording.retuneThread = new Thread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    boolean tuned = false;
+                                    boolean tuned;
                                     String filename = captureDevice.getRecordFilename();
 
                                     if (filename == null) {

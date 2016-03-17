@@ -345,10 +345,10 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     @Override
     public void stopEncoding() {
         synchronized (exclusiveLock) {
-            InfiniTVTuning.stopRTSP(parent.getRemoteAddress().getHostAddress(), encoderNumber);
-
             rtpServices.stopProducing(false);
             super.stopEncoding();
+
+            InfiniTVTuning.stopRTSP(parent.getRemoteAddress().getHostAddress(), encoderNumber);
         }
     }
 
@@ -407,6 +407,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
 
         if (recordLastFilename != null && recordLastFilename.equals(filename)) {
             retune = true;
+            logger.info("Re-tune: {}", getTunerStatusString());
         } else {
             recordLastFilename = filename;
         }

@@ -557,4 +557,4 @@
 
 > *Improved handling of FFmpeg transcoder direct file writing failures.
 
-> *Improved re-tuning efficiency.
+> *Improved re-tune monitoring efficiency for HDHomeRun.

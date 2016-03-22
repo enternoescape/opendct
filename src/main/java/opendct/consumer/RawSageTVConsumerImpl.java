@@ -90,8 +90,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         deviceOptions = new ConcurrentHashMap<>();
 
         initDeviceOptions();
-
-
     }
 
     public void run() {
@@ -667,6 +665,16 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
             break;
         }
+
+        Config.mapDeviceOptions(
+                deviceOptions,
+                uploadIdEnabledOpt,
+                minTransferSizeOpt,
+                maxTransferSizeOpt,
+                bufferSizeOpt,
+                threadPriorityOpt,
+                uploadIdPortOpt
+        );
     }
 
     @Override

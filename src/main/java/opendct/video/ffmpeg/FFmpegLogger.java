@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.bytedeco.javacpp.avutil.av_log_format_line;
 
 public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
-    public static final boolean linuxLogging = Config.getBoolean("consumer.ffmpeg.linux_logging", false);
+    public static final boolean linuxLogging = Config.getBoolean("consumer.ffmpeg.linux_logging", true);
     public static final boolean limitLogging = Config.getBoolean("consumer.ffmpeg.limit_logging", true);
     public static final boolean threadRename = Config.getBoolean("consumer.ffmpeg.thread_rename_logging", false);
     public static final boolean enhancedLogging = Config.getBoolean("consumer.ffmpeg.enhanced_logging", true);
@@ -43,6 +43,10 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
     @Override
     public void call(Pointer source, int level, String formatStr, Pointer params) {
+        if (Config.IS_LINUX && !linuxLogging) {
+            return;
+        }
+
         byte[] bytes = new byte[1024];
         int[] printPrefix = new int[]{1};
 
@@ -55,33 +59,31 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         Arrays.fill(bytes, (byte)0);
 
-        // This is not the greatest way to better manage logging, but the C++ code behind this is
+        // This is not the greatest way to better manage logging, but the code behind this is
         // very fast compared to making multiple calls back and forth to get the customization we
         // are looking for.
         if (enhancedLogging && source != null) {
             try {
-                if (Config.IS_WINDOWS || Config.IS_LINUX && linuxLogging) {
-                    av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
-                    initMessage = trim(bytes);
-                    message = initMessage;
+                av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
+                initMessage = trim(bytes);
+                message = initMessage;
 
-                    if (message.startsWith("[")) {
-                        int end = message.indexOf(" @ ");
-                        int rightBracket = message.indexOf("]");
+                if (message.startsWith("[")) {
+                    int end = message.indexOf(" @ ");
+                    int rightBracket = message.indexOf("]");
 
-                        if (end > 0 && end + 3 + addressSize == rightBracket) {
-                            className = "ffmpeg." + message.substring(1, end);
-                            if (threadRename && message.length() > end + 3 + addressSize + 2) {
-                                end += 3;
-                                Thread.currentThread().setName(message.substring(end, end + addressSize));
-                                message = message.substring(end + addressSize + 2);
-                            } else {
-                                message = "[" + message.substring(end + 3);
+                    if (end > 0 && end + 3 + addressSize == rightBracket) {
+                        className = "ffmpeg." + message.substring(1, end);
+                        if (threadRename && message.length() > end + 3 + addressSize + 2) {
+                            end += 3;
+                            Thread.currentThread().setName(message.substring(end, end + addressSize));
+                            message = message.substring(end + addressSize + 2);
+                        } else {
+                            message = "[" + message.substring(end + 3);
 
-                                if (message.trim().length() == 0) {
-                                    className = FFMPEG;
-                                    message = initMessage;
-                                }
+                            if (message.trim().length() == 0) {
+                                className = FFMPEG;
+                                message = initMessage;
                             }
                         }
                     }
@@ -149,7 +151,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         }
 
 
-        if (initMessage == null && (Config.IS_WINDOWS || Config.IS_LINUX && linuxLogging)) {
+        if (initMessage == null) {
 
             av_log_format_line(source, level, formatStr, params, bytes, bytes.length, printPrefix);
             initMessage = trim(bytes);

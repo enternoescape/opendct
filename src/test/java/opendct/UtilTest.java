@@ -22,7 +22,7 @@ import org.testng.annotations.Test;
 public class UtilTest {
 
     @Test(groups = { "util", "nullorempty" })
-    public void parseStreamInfoProgram() {
+    public void parseTestNullOrEmpty() {
         assert Util.isNullOrEmpty("") : "Value is blank and the test reports that it is not.";
         assert Util.isNullOrEmpty(null) : "Value is null and the test reports that it is not.";
     }

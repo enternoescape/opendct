@@ -43,6 +43,7 @@ package opendct.video.ffmpeg;
 import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bytedeco.javacpp.*;
 
 import java.util.Arrays;
 import java.util.HashMap;

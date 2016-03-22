@@ -2,7 +2,7 @@
 
 :: This does not need to be defined unless you did not use the Wix installer
 :: or the installer didn't set the environment variable WIX.
-SET WixPath=
+SET WixPath=C:\wix
 
 :: If Wix is not installed on this computer, we can't build anything.
 IF NOT DEFINED WIX (

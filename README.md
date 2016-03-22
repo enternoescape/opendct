@@ -77,7 +77,7 @@ installing a new version. It is however necessary to stop the service before upg
     ```
     service opendct start
     ```
-  * *CentOS:* From a console as root run: *The first command enables the service so it will always run at startup.*
+  * *CentOS and Ubuntu 16.04:* From a console as root run: *The first command enables the service so it will always run at startup.*
     
     ```
     systemctl enable opendct.service

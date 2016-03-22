@@ -443,6 +443,16 @@ task packageDeb32(type: Deb) {
 
     arch = I386
 
+    from("scripts/deb/systemd") {
+        include "opendct.service"
+        into "/lib/systemd/system"
+        fileMode = 0664
+        addParentDirs = false
+        user = "root"
+        permissionGroup = "root"
+        filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
+    }
+
     into linuxInstallPath
 
     from(configurations.linux_x86) {
@@ -513,6 +523,16 @@ task packageDeb64(type: Deb) {
     dependsOn jswLinux64
 
     arch = "amd64"
+
+    from("scripts/deb/systemd") {
+        include "opendct.service"
+        into "/lib/systemd/system"
+        fileMode = 0664
+        addParentDirs = false
+        user = "root"
+        permissionGroup = "root"
+        filter(FixCrLfFilter.class, eol:FixCrLfFilter.CrLf.newInstance("lf"))
+    }
 
     into linuxInstallPath
 

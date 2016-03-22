@@ -610,7 +610,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         lastPtsByStreamIndex[outputStreamIndex] = pts;
                         lastDtsByStreamIndex[outputStreamIndex] += 1;
                         packet.dts(lastDtsByStreamIndex[outputStreamIndex]);
-                    } else if (dts < 100000) {
+                    } else if (lastDtsByStreamIndex[outputStreamIndex] - dts > 100000) {
                         // Wrap-around.
                         lastPtsByStreamIndex[outputStreamIndex] = pts;
                         lastDtsByStreamIndex[outputStreamIndex] = dts;
@@ -800,32 +800,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         if (ctx.isInterrupted()) {
             return;
         }
-
-        /*int nbStreams = ctx.avfCtxInput.nb_streams();
-
-        for (int i = 0; i < nbStreams; i++) {
-
-            if (ctx.streamMap != null &&
-                    ctx.streamMap.length > i &&
-                    ctx.streamMap[i] != NO_STREAM_IDX &&
-                    ctx.avfCtxOutput != null &&
-                    ctx.avfCtxOutput.nb_streams() > i &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]) != null &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec() != null) {
-
-                avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
-            }
-
-            deallocFilterGraphs();
-        }
-
-        if (ctx.avfCtxOutput != null && (ctx.avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0) {
-            avio_closep(ctx.avfCtxOutput.pb());
-        }
-
-        avformat_free_context(ctx.avfCtxOutput);
-        ctx.avfCtxOutput = null;
-        ctx.avioCtxOutput = null;*/
 
         deallocFilterGraphs();
         ctx.deallocOutputContext();

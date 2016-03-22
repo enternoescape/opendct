@@ -1178,8 +1178,15 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 long dts = pkt.dts();
                 boolean dtsChanged = true;
 
-                if (dts == AV_NOPTS_VALUE || lastDtsByStreamIndex[outputStreamIndex] >= dts) {
+                if (dts < 0 || dts > 8589934592L) {
                     dtsChanged = false;
+                } else if (lastDtsByStreamIndex[outputStreamIndex] >= dts) {
+                    if (lastDtsByStreamIndex[outputStreamIndex] - dts > 100000) {
+                        // Wrap-around.
+                        lastDtsByStreamIndex[outputStreamIndex] = dts;
+                    } else {
+                        dtsChanged = false;
+                    }
                 } else {
                     lastDtsByStreamIndex[outputStreamIndex] = dts;
                 }

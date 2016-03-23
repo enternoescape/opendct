@@ -59,7 +59,8 @@ installing a new version. It is however necessary to stop the service before upg
     ```
     /opt/opendct/console-only
     ```
-5. Press Ctrl-C after waiting about 30 seconds to stop OpenDCT.
+5. Press Ctrl-C after waiting about 30 seconds to stop OpenDCT. *Never run the console and the
+ service at the same time.*
 6. After the program exits, you can edit opendct.properties per the section below. The [first post
  on the SageTV forums](http://forums.sagetv.com/forums/showthread.php?p=581743&postcount=1) explains
  some of the more detailed options.

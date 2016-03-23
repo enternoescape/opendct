@@ -15,8 +15,10 @@ chown opendct:opendct /var/log/opendct
 chown opendct:opendct /var/run/opendct
 chown opendct:opendct /opt/opendct
 
-ln -fs /opt/opendct/service /etc/init.d/opendct
-chmod 755 /etc/init.d/opendct
+if test -e /usr/share/upstart; then
+    ln -fs /opt/opendct/service /etc/init.d/opendct
+    chmod 755 /etc/init.d/opendct
+fi
 
 ##### 0.4.18 Upgrade START#####
 if test ! -e /etc/opendct/conf; then
@@ -60,6 +62,10 @@ echo "To delete the provided ufw rules type:"
 echo "/opt/opendct/disable-ufw-ports"
 echo ""
 echo "To start the OpenDCT service type:"
-echo "service opendct start"
+echo "Ubuntu 14.04:"
+echo "sudo service start opendct"
+echo "Ubuntu 16.04:"
+echo "sudo systemctl enable opendct.service"
+echo "sudo systemctl start opendct.service"
 
 exit 0

@@ -96,7 +96,8 @@ public class SageTVSocketServer implements Runnable {
 
         if (error) {
             // Doing this within a lock will cause the lock to be released.
-            ExitCode.SAGETV_SOCKET.terminateJVM();
+            ExitCode.SAGETV_SOCKET.terminateJVM("Make sure you are not running the service and" +
+                    " the console at the same time.");
             return logger.exit(false);
         }
 

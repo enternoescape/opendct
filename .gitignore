@@ -23,6 +23,7 @@ Thumbs.db
 /archive/
 /opendct*.log*
 /opendct.properties
+/opendct.properties.*
 /opendct.properties.backup
 /lineup/
 /target/

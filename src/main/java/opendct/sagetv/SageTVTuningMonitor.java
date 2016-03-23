@@ -59,8 +59,8 @@ public class SageTVTuningMonitor {
             MonitoredRecording monitoredRecording = recordingQueue.get(captureDevice.getEncoderName());
 
             if (monitoredRecording == null) {
-                logger.warn("Unable to pause the capture device '{}' because it is not currently monitored.",
-                        captureDevice.getEncoderName());
+                /*logger.warn("Unable to pause the capture device '{}' because it is not currently monitored.",
+                        captureDevice.getEncoderName());*/
                 return;
             }
 

@@ -70,6 +70,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             Config.getInteger("consumer.ffmpeg.transcode_limit",
                     (Runtime.getRuntime().availableProcessors() - 1) * 2);
 
+
+    private long firstDtsByStreamIndex[] = new long[0];
+    private long firstPtsByStreamIndex[] = new long[0];
     private long lastDtsByStreamIndex[] = new long[0];
     private long lastPtsByStreamIndex[] = new long[0];
     boolean h264PtsHackEnabled = false;
@@ -205,6 +208,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         lastPtsByStreamIndex = new long[numInputStreams];
         Arrays.fill(lastPtsByStreamIndex, Integer.MIN_VALUE);
+
+        firstDtsByStreamIndex = new long[numInputStreams];
+        Arrays.fill(firstDtsByStreamIndex, Integer.MIN_VALUE);
+
+        firstPtsByStreamIndex = new long[numInputStreams];
+        Arrays.fill(firstPtsByStreamIndex, Integer.MIN_VALUE);
 
         ctx.streamMap = new OutputStreamMap[numInputStreams];
 
@@ -539,6 +548,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int switchFlag;
         long dts;
         long pts;
+        boolean firstFrame[] = new boolean[firstDtsByStreamIndex.length];
+        Arrays.fill(firstFrame, true);
 
         AVPacket packet = new AVPacket();
         packet.data(null);
@@ -549,6 +560,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int inputStreamIndex;
         int type;
         int got_frame[] = new int[] { 0 };
+
 
         // This needs to start out null or Java complains about the cleanup.
         AVFrame frame = null;
@@ -573,23 +585,51 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     continue;
                 }
 
+                if (firstFrame[outputStreamIndex] && (packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
+                    av_packet_unref(packet);
+                    continue;
+                }
+
+                firstFrame[outputStreamIndex] = false;
+
                 // Some streams will provide a dts value that's <= to the last value. Sometimes they
                 // don't even have a dts value. These frames are discarded since they are normally
                 // redundant.
                 dts = packet.dts();
+                pts = packet.pts();
 
-                if (dts == AV_NOPTS_VALUE || lastDtsByStreamIndex[outputStreamIndex] >= dts) {
+                /*if (inputStreamIndex == ctx.preferredVideo) {
+                    logPacket(ctx.avfCtxInput, packet, "dts-filter-in");
+                }*/
+
+                if (dts < 0 || dts > 8589934592L) {
                     av_packet_unref(packet);
                     continue;
+                } else if (lastDtsByStreamIndex[outputStreamIndex] >= dts) {
+                    if (pts > lastPtsByStreamIndex[outputStreamIndex]) {
+                        lastPtsByStreamIndex[outputStreamIndex] = pts;
+                        lastDtsByStreamIndex[outputStreamIndex] += 1;
+                        packet.dts(lastDtsByStreamIndex[outputStreamIndex]);
+                    } else if (lastDtsByStreamIndex[outputStreamIndex] - dts > 100000) {
+                        // Wrap-around.
+                        lastPtsByStreamIndex[outputStreamIndex] = pts;
+                        lastDtsByStreamIndex[outputStreamIndex] = dts;
+                    } else {
+                        av_packet_unref(packet);
+                        continue;
+                    }
                 } else {
+                    lastPtsByStreamIndex[outputStreamIndex] = pts;
                     lastDtsByStreamIndex[outputStreamIndex] = dts;
                 }
+
+                /*if (inputStreamIndex == ctx.preferredVideo) {
+                    logPacket(ctx.avfCtxInput, packet, "dts-filter-out");
+                }*/
 
                 // If this gets enabled on interlaced content, it may remove all of the even or odd
                 // frames since they typically have an out of order PTS.
                 if (h264PtsHackEnabled) {
-                    pts = packet.pts();
-
                     if (lastPtsByStreamIndex[outputStreamIndex] >= pts) {
                         av_packet_unref(packet);
                         continue;
@@ -760,32 +800,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         if (ctx.isInterrupted()) {
             return;
         }
-
-        /*int nbStreams = ctx.avfCtxInput.nb_streams();
-
-        for (int i = 0; i < nbStreams; i++) {
-
-            if (ctx.streamMap != null &&
-                    ctx.streamMap.length > i &&
-                    ctx.streamMap[i] != NO_STREAM_IDX &&
-                    ctx.avfCtxOutput != null &&
-                    ctx.avfCtxOutput.nb_streams() > i &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]) != null &&
-                    ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec() != null) {
-
-                avcodec_close(ctx.avfCtxOutput.streams(ctx.streamMap[i]).codec());
-            }
-
-            deallocFilterGraphs();
-        }
-
-        if (ctx.avfCtxOutput != null && (ctx.avfCtxOutput.oformat().flags() & AVFMT_NOFILE) != 0) {
-            avio_closep(ctx.avfCtxOutput.pb());
-        }
-
-        avformat_free_context(ctx.avfCtxOutput);
-        ctx.avfCtxOutput = null;
-        ctx.avioCtxOutput = null;*/
 
         deallocFilterGraphs();
         ctx.deallocOutputContext();

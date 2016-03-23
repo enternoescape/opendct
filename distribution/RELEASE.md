@@ -558,3 +558,16 @@
 > *Improved handling of FFmpeg transcoder direct file writing failures.
 
 > *Improved re-tune monitoring efficiency for HDHomeRun.
+
+#### 0.4.37-RC2
+> *FFmpeg Linux logging is now enabled by default. It was disabled before because it could cause the
+> JVM to crash. The latest versions of FFmpeg do not appear to still cause this issue.
+
+> *Fixed FFmpeg Linux logging filter so null messages are not written to the log.
+
+> *Addressed higher than 33-bit dts values breaking the dts ordering filter.
+
+> *FFmpeg transcoder if the dts value is not monotonic, but the pts value is, the dts value is
+> adjusted to be monotonic.
+
+> *Pre-release support for Ubuntu 16.04 systemd is now a part of the Debian package.

@@ -16,14 +16,24 @@
 
 package opendct;
 
-import opendct.util.Util;
+import opendct.config.options.ChannelRangesDeviceOption;
 import org.testng.annotations.Test;
 
-public class UtilTest {
+public class ChannelRangesDeviceOptionTest {
 
-    @Test(groups = { "util", "nullorempty" })
+    @Test(groups = { "util", "channelRanges" })
     public void parseTestNullOrEmpty() {
-        assert Util.isNullOrEmpty("") : "Value is blank and the test reports that it is not.";
-        assert Util.isNullOrEmpty(null) : "Value is null and the test reports that it is not.";
+        String returned[] = ChannelRangesDeviceOption.parseRanges("");
+        String expected[] = new String[] { };
+
+        verifyValues(returned, expected);
+    }
+
+    private void verifyValues(String returned[], String expected[]) {
+        assert returned.length == expected.length : "returned.length = " + returned.length + " != expected.length = " + expected.length;
+
+        for (int i = 0; i < returned.length; i++) {
+            assert returned[i].equals(expected[i]) : "index " + i + " returned = " + returned[i] + " != expected = " + expected[i];
+        }
     }
 }

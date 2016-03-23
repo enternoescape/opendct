@@ -127,6 +127,9 @@ public class HDHomeRunControl {
                 packetSendReceive(txPacket.BUFFER.slice(), HDHOMERUN_CONTROL_RECV_TIMEOUT);
                 success = true;
             } catch (IOException e) {
+                // Signal to the discoverer that we might need a new IP address.
+                HDHomeRunDiscoverer.needBroadcast();
+
                 errorMessage = e;
                 closeSocket();
                 try {
@@ -142,6 +145,9 @@ public class HDHomeRunControl {
         }
 
         if (!success) {
+            // Signal to the discoverer that we might need a new IP address.
+            HDHomeRunDiscoverer.needBroadcast();
+
             if (errorMessage != null) {
                 logger.error("Unable to communicate with HDHomeRun after {} attempts.", retryLimit);
                 throw errorMessage;
@@ -274,6 +280,9 @@ public class HDHomeRunControl {
                 socket.write(packetSend);
             }
         } catch (IOException e) {
+            // Signal to the discoverer that we might need a new IP address.
+            HDHomeRunDiscoverer.needBroadcast();
+
             closeSocket();
             throw e;
         }
@@ -297,6 +306,9 @@ public class HDHomeRunControl {
         rxPacket.BUFFER.flip();
 
         if (rxPacket.BUFFER.remaining() == 0) {
+            // Signal to the discoverer that we might need a new IP address.
+            HDHomeRunDiscoverer.needBroadcast();
+
             closeSocket();
             throw new IOException("HDHomeRun did not reply with a message. Closing socket...");
         }
@@ -337,6 +349,9 @@ public class HDHomeRunControl {
                         }
                     }
                 } catch (IOException e) {
+                    // Signal to the discoverer that we might need a new IP address.
+                    HDHomeRunDiscoverer.needBroadcast();
+
                     logger.debug("ReceiveThread was unable to receive => ", e);
                 } catch (Exception e) {
                     logger.warn("ReceiveThread experienced an unexpected exception => ", e);

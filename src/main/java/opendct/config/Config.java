@@ -43,7 +43,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 37;
+    public static final int VERSION_BUILD = 38;
     public static final String VERSION_PROGRAM = VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
@@ -554,7 +554,7 @@ public class Config {
     public static boolean getBoolean(String key, boolean defaultValue) {
         logger.entry(key, defaultValue);
 
-        boolean returnValue = defaultValue;
+        boolean returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
         try {
             returnValue = Boolean.valueOf(stringValue.toLowerCase());
@@ -571,7 +571,7 @@ public class Config {
     public static short getShort(String key, short defaultValue) {
         logger.entry(key, defaultValue);
 
-        short returnValue = defaultValue;
+        short returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
         try {
             returnValue = Short.valueOf(stringValue);
@@ -588,7 +588,7 @@ public class Config {
     public static int getInteger(String key, int defaultValue) {
         logger.entry(key, defaultValue);
 
-        int returnValue = defaultValue;
+        int returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
 
         try {
@@ -633,7 +633,7 @@ public class Config {
     public static long getLong(String key, long defaultValue) {
         logger.entry(key, defaultValue);
 
-        long returnValue = defaultValue;
+        long returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
 
         try {
@@ -651,7 +651,7 @@ public class Config {
     public static float getFloat(String key, float defaultValue) {
         logger.entry(key, defaultValue);
 
-        float returnValue = defaultValue;
+        float returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
 
         try {
@@ -669,7 +669,7 @@ public class Config {
     public static double getDouble(String key, double defaultValue) {
         logger.entry(key, defaultValue);
 
-        double returnValue = defaultValue;
+        double returnValue;
         String stringValue = properties.getProperty(key, String.valueOf(defaultValue));
 
         try {
@@ -1047,7 +1047,7 @@ public class Config {
             if (mapValue != null) {
                 returnPort = 0;
                 for (int i = lowRange; i < highRange; i += 2) {
-                    if ((mapValue = rtspPortMap.get(i)) == null) {
+                    if ((rtspPortMap.get(i)) == null) {
                         returnPort = i;
                         break;
                     }

@@ -570,4 +570,10 @@
 > *FFmpeg transcoder if the dts value is not monotonic, but the pts value is, the dts value is
 > adjusted to be monotonic.
 
-> *Pre-release support for Ubuntu 16.04 systemd is now a part of the Debian package.
+> *Pre-release support for Ubuntu 16.04 LTS systemd is now a part of the Debian package.
+
+#### 0.4.38-RC3
+> *Improved HDHomeRun discovery so it only runs at startup, standby and if a device is unreachable.
+   This was done because the discovery feedback can still very much interfere with active
+   recordings using UDP if you have many HDHomeRun devices on your network.
+   

@@ -180,14 +180,28 @@ public class HDHomeRunDiscovery implements Runnable {
         txPacket.BUFFER.mark();
 
         while (!Thread.currentThread().isInterrupted()) {
-            while (!Thread.currentThread().isInterrupted() && retry-- > 0) {
+            while (!Thread.currentThread().isInterrupted()) {
+
+                boolean logDiscovery = HDHomeRunDiscoverer.getSmartBroadcast() || discoverer.isWaitingForDevices();
+
+                if (retry == 1 &&
+                        !discoverer.isWaitingForDevices() &&
+                        !HDHomeRunDiscoverer.needBroadcast() &&
+                        HDHomeRunDiscoverer.getSmartBroadcast()) {
+
+                    break;
+                }
+
+                if (retry-- <= 0) {
+                    break;
+                }
 
                 boolean failed = false;
 
                 for (int i = 0; i < datagramChannels.length; i++) {
                     while (txPacket.BUFFER.hasRemaining()) {
                         try {
-                            if (discoverer.isWaitingForDevices()) {
+                            if (logDiscovery) {
                                 logger.info("Broadcasting HDHomeRun discovery packet to {}...", BROADCAST_SOCKET[i]);
                             }
 
@@ -217,22 +231,20 @@ public class HDHomeRunDiscovery implements Runnable {
 
             retry = 1;
 
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    int interval = HDHomeRunDiscoverer.getBroadcastInterval();
-                    boolean devicesLoaded = discoverer.isWaitingForDevices();
+            try {
+                int interval = HDHomeRunDiscoverer.getBroadcastInterval();
+                boolean devicesLoaded = discoverer.isWaitingForDevices();
 
-                    if (interval == 0 && devicesLoaded) {
-                        return;
-                    } else if (interval == 0) {
-                        Thread.sleep(4500);
-                    } else {
-                        Thread.sleep(HDHomeRunDiscoverer.getBroadcastInterval() * 1000);
-                    }
-                } catch (InterruptedException e) {
-                    logger.debug("Interrupted while waiting for next broadcast to be sent => ", e);
+                if (interval == 0 && devicesLoaded) {
                     return;
+                } else if (interval == 0 || HDHomeRunDiscoverer.getSmartBroadcast()) {
+                    Thread.sleep(4500);
+                } else {
+                    Thread.sleep(HDHomeRunDiscoverer.getBroadcastInterval() * 1000);
                 }
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while waiting for next broadcast to be sent => ", e);
+                return;
             }
         }
 

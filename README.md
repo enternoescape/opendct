@@ -140,7 +140,7 @@ OpenDCT builds are created using Gradle. The following commands should get you s
 gradlew eclipse
 ```
 
-#### Create project files for IntelliJ.
+#### Create project files for IntelliJ IDEA.
 ```
 gradlew idea
 ```

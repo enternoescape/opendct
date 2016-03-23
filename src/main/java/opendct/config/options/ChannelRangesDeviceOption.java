@@ -53,8 +53,6 @@ public class ChannelRangesDeviceOption extends BaseDeviceOption {
         String split[] = ranges.split("\\s*,\\s*");
 
         for (String range : split) {
-            range = range.trim();
-
             // This might happen on an empty array.
             if (Util.isNullOrEmpty(range)) {
                 continue;
@@ -68,7 +66,7 @@ public class ChannelRangesDeviceOption extends BaseDeviceOption {
 
                 if (dash2 < 0) {
                     // This is a numeric range.
-                    String startString = range.substring(0, dash1 - 1);
+                    String startString = range.substring(0, dash1);
                     String endString = range.substring(dash1 + 1);
 
                     int start;
@@ -103,8 +101,6 @@ public class ChannelRangesDeviceOption extends BaseDeviceOption {
         String split[] = ranges.split("\\s*,\\s*");
 
         for (String range : split) {
-            range = range.trim();
-
             // This might happen on an empty array.
             if (Util.isNullOrEmpty(range)) {
                 continue;
@@ -118,7 +114,7 @@ public class ChannelRangesDeviceOption extends BaseDeviceOption {
 
                 if (dash2 < 0) {
                     // This is a numeric range.
-                    String startString = range.substring(0, dash1 - 1);
+                    String startString = range.substring(0, dash1);
                     String endString = range.substring(dash1 + 1);
 
                     int start;

@@ -23,10 +23,38 @@ public class ChannelRangesDeviceOptionTest {
 
     @Test(groups = { "util", "channelRanges" })
     public void parseTestNullOrEmpty() {
-        String returned[] = ChannelRangesDeviceOption.parseRanges("");
-        String expected[] = new String[] { };
+        String ranges = "";
 
-        verifyValues(returned, expected);
+        String failed[] = ChannelRangesDeviceOption.validateRanges(ranges);
+        String expectedFailed[] = new String[] { };
+
+        String success[] = ChannelRangesDeviceOption.parseRanges(ranges);
+        String expectedSuccess[] = new String[] { };
+
+        verifyValues(failed, expectedFailed);
+        verifyValues(success, expectedSuccess);
+
+        ranges = "08,509,58-60";
+
+        failed = ChannelRangesDeviceOption.validateRanges(ranges);
+        expectedFailed = new String[] { };
+
+        success = ChannelRangesDeviceOption.parseRanges(ranges);
+        expectedSuccess = new String[] { "08", "509", "58", "59", "60" };
+
+        verifyValues(failed, expectedFailed);
+        verifyValues(success, expectedSuccess);
+
+        ranges = "1-2-3, 5-8,5860- ,;,5000-5001,78,283-283,32-x,";
+
+        failed = ChannelRangesDeviceOption.validateRanges(ranges);
+        expectedFailed = new String[] { "5860-", "32-x" };
+
+        success = ChannelRangesDeviceOption.parseRanges(ranges);
+        expectedSuccess = new String[] { "1-2-3", "5", "6", "7", "8", ";", "5000", "5001", "78", "283" };
+
+        verifyValues(failed, expectedFailed);
+        verifyValues(success, expectedSuccess);
     }
 
     private void verifyValues(String returned[], String expected[]) {

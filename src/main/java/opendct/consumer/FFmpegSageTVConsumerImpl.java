@@ -1222,7 +1222,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     }
                 } else {
                     if (logger.isDebugEnabled()) {
-                        logger.debug("Read frame with same dts as last frame. Skipping this frame. dts = {}", dts);
+                        logger.debug("Read frame with dts <= last frame. Skipping this frame. dts = {}", dts);
                     }
                 }
             }

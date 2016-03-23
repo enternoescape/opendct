@@ -570,4 +570,4 @@
 > *FFmpeg transcoder if the dts value is not monotonic, but the pts value is, the dts value is
 > adjusted to be monotonic.
 
-> *Pre-release support for Ubuntu 16.04 systemd is now a part of the install package.
+> *Pre-release support for Ubuntu 16.04 systemd is now a part of the Debian package.

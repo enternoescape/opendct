@@ -441,7 +441,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             newConsumer = getNewChannelScanSageTVConsumer();
             newConsumer.consumeToNull(true);
         } else {
-            newConsumer = getNewSageTVConsumer();
+            newConsumer = getNewSageTVConsumer(channel);
         }
 
         InetAddress iEncoderAddress = parent.getRemoteAddress();

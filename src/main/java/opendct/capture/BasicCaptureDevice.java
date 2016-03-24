@@ -152,7 +152,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             }
         }
 
-        sageTVConsumerRunnable = getNewSageTVConsumer();
+        sageTVConsumerRunnable = getNewSageTVConsumer("");
         canSwitch = Config.getBoolean(propertiesDeviceRoot + "fast_network_encoder_switch", sageTVConsumerRunnable.canSwitch());
         canEncodeFilename = sageTVConsumerRunnable.acceptsFilename();
         canEncodeUploadID = sageTVConsumerRunnable.acceptsUploadID();
@@ -691,11 +691,12 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return A new consumer.
      */
-    protected SageTVConsumer getNewSageTVConsumer() {
+    protected SageTVConsumer getNewSageTVConsumer(String channel) {
         return Config.getSageTVConsumer(
                 propertiesDeviceRoot + "consumer",
                 Config.getString("sagetv.new.default_consumer_impl",
-                        FFmpegSageTVConsumerImpl.class.getName()));
+                        FFmpegSageTVConsumerImpl.class.getName()),
+                channel);
     }
 
     /**
@@ -707,7 +708,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return Config.getSageTVConsumer(
                 propertiesDeviceRoot + "channel_scan_consumer",
                 Config.getString("sagetv.new.default_channel_scan_consumer_impl",
-                        FFmpegSageTVConsumerImpl.class.getName()));
+                        FFmpegSageTVConsumerImpl.class.getName()), "");
     }
 
     /**

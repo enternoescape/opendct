@@ -21,6 +21,7 @@ import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.OSVersion;
 import opendct.config.options.*;
+import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.*;
 import opendct.tuning.hdhomerun.*;
 import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
@@ -48,13 +49,11 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     // Global UPnP device settings.
     private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
     private static LongDeviceOption streamingWait;
-    private static IntegerDeviceOption retunePolling;
-    private static BooleanDeviceOption autoMapReference;
-    private static BooleanDeviceOption autoMapTuning;
     private static BooleanDeviceOption hdhrLock;
     private static IntegerDeviceOption controlRetryCount;
     private static IntegerDeviceOption broadcastInterval;
     private static IntegerDeviceOption broadcastPort;
+    private static BooleanDeviceOption smartBroadcast;
     private static StringDeviceOption ignoreModels;
     private static StringDeviceOption ignoreDeviceIds;
     private static BooleanDeviceOption alwaysTuneLegacy;
@@ -66,6 +65,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     // Detection configuration and state
     private static boolean enabled;
+    private static volatile boolean requestBroadcast;
     private static String errorMessage;
     private DeviceLoader deviceLoader;
 
@@ -78,6 +78,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);
+
+        requestBroadcast = false;
 
         // If the HDHomeRun Prime is allowed through the UPnP filter, we can't allow it here too
         // because SageTVManager will rightly not allow it.
@@ -100,45 +102,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         "hdhr.wait_for_streaming",
                         "This is the maximum number of milliseconds to wait before returning to" +
                                 " SageTV regardless of if the requested channel is actually streaming."
-                );
-
-                retunePolling = new IntegerDeviceOption(
-                        Config.getInteger("hdhr.retune_poll_s", 1),
-                        false,
-                        "Re-tune Polling Seconds",
-                        "hdhr.retune_poll_s",
-                        "This is the frequency in seconds to poll the producer to check if it" +
-                                " is stalled.",
-                        0,
-                        Integer.MAX_VALUE
-                );
-
-                autoMapReference = new BooleanDeviceOption(
-                        Config.getBoolean("hdhr.qam.automap_reference_lookup", true),
-                        false,
-                        "ClearQAM Auto-Map by Reference",
-                        "hdhr.qam.automap_reference_lookup",
-                        "This enables ClearQAM devices to look up their channels based on the" +
-                                " frequencies and programs available on a capture device with" +
-                                " a CableCARD installed. This works well if you have an" +
-                                " InfiniTV device with a CableCARD installed available."
-                );
-
-                autoMapTuning = new BooleanDeviceOption(
-                        Config.getBoolean("hdhr.qam.automap_tuning_lookup", false),
-                        false,
-                        "ClearQAM Auto-Map by Tuning",
-                        "hdhr.qam.automap_tuning_lookup",
-                        "This enables ClearQAM devices to look up their channels by tuning" +
-                                " into the channel on a capture device with a CableCARD" +
-                                " installed and then getting the current frequency and" +
-                                " program being used. This may be your only option if you are" +
-                                " using only HDHomeRun Prime capture devices. The program" +
-                                " always tries to get a channel by reference before resorting" +
-                                " to this lookup method. It will also retain the results of" +
-                                " the lookup so this doesn't need to happen the next time. If" +
-                                " all tuners with a CableCARD installed are currently in use," +
-                                " this method cannot be used and will fail to tune the channel."
                 );
 
                 hdhrLock = new BooleanDeviceOption(
@@ -167,10 +130,13 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         Config.getInteger("hdhr.broadcast_s", 58),
                         false,
                         "Discovery Broadcast Interval",
-                        "hdhr.broadcast_ms",
+                        "hdhr.broadcast_s",
                         "This is the interval in seconds that the program will send out a" +
-                                " broadcast to locate HDHomeRun devices on the network. A value of 0" +
-                                " will turn off discovery after the first broadcast.",
+                                " broadcast to locate HDHomeRun devices on the network. A value" +
+                                " of 0 will turn off discovery after the first broadcast and" +
+                                " implicitly disables Smart Broadcast. Values above 0 are ignored" +
+                                " if Smart Broadcast is enabled since it will make broadcasts" +
+                                " happen on demand.",
                         0,
                         Integer.MAX_VALUE
                 );
@@ -187,7 +153,18 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         1023,
                         65535);
 
-                // Ignore the HDHomeRun Prime for now.
+                smartBroadcast = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.smart_broadcast", true),
+                        false,
+                        "Smart Broadcast Enabled",
+                        "hdhr.smart_broadcast",
+                        "This tells the program to only broadcast for new HDHomeRun devices if" +
+                                " one is inaccessible possibly due to an IP address change or if" +
+                                " an expected device has not yet loaded. When this is enabled," +
+                                " Discovery Broadcast Interval is ignored since this makes the" +
+                                " broadcast run on demand."
+                );
+
                 ignoreModels = new StringDeviceOption(
                         Config.getStringArray("hdhr.exp_ignore_models"),
                         true,
@@ -274,13 +251,11 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.mapDeviceOptions(
                         deviceOptions,
                         streamingWait,
-                        retunePolling,
-                        autoMapReference,
-                        autoMapTuning,
                         hdhrLock,
                         controlRetryCount,
                         broadcastInterval,
                         broadcastPort,
+                        smartBroadcast,
                         ignoreModels,
                         ignoreDeviceIds,
                         alwaysTuneLegacy,
@@ -295,9 +270,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         " Reverting to defaults. => ", e);
 
                 Config.setInteger("hdhr.wait_for_streaming", 5000);
-                Config.setInteger("hdhr.retune_poll_s", 1);
-                Config.setBoolean("hdhr.qam.automap_reference_lookup", true);
-                Config.setBoolean("hdhr.qam.automap_tuning_lookup", false);
+                Config.getBoolean("hdhr.smart_broadcast", true);
                 Config.setBoolean("hdhr.locking", true);
                 Config.setInteger("hdhr.retry_count", 2);
                 Config.setInteger("hdhr.broadcast_s", 58);
@@ -644,13 +617,11 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
                 streamingWait,
-                retunePolling,
-                autoMapReference,
-                autoMapTuning,
                 hdhrLock,
                 controlRetryCount,
                 broadcastInterval,
                 broadcastPort,
+                smartBroadcast,
                 ignoreModels,
                 ignoreDeviceIds,
                 alwaysTuneLegacy,
@@ -687,18 +658,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         return streamingWait.getLong();
     }
 
-    public static int getRetunePolling() {
-        return retunePolling.getInteger();
-    }
-
-    public static boolean getAutoMapReference() {
-        return autoMapReference.getBoolean();
-    }
-
-    public static boolean getAutoMapTuning() {
-        return autoMapTuning.getBoolean();
-    }
-
     public static boolean getHdhrLock() {
         return hdhrLock.getBoolean();
     }
@@ -709,6 +668,20 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static int getBroadcastInterval() {
         return broadcastInterval.getInteger();
+    }
+
+    public static boolean getSmartBroadcast() {
+        return smartBroadcast.getBoolean();
+    }
+
+    public synchronized static void requestBroadcast() {
+        requestBroadcast = true;
+    }
+
+    public synchronized static boolean needBroadcast() {
+        boolean returnValue = requestBroadcast;
+        requestBroadcast = false;
+        return returnValue;
     }
 
     public static String[] getIgnoreModels() {

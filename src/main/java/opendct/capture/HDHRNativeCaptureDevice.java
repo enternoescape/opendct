@@ -589,7 +589,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             newConsumer = getNewChannelScanSageTVConsumer();
             newConsumer.consumeToNull(true);
         } else {
-            newConsumer = getNewSageTVConsumer();
+            newConsumer = getNewSageTVConsumer(channel);
         }
 
         switch (encoderDeviceType) {

@@ -896,6 +896,16 @@ public class Config {
         return returnValues;
     }
 
+    public static String[] getSageTVConsumersLessDynamic() {
+        String returnValues[] = new String[3];
+
+        returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[1] = FFmpegSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
+
+        return returnValues;
+    }
+
     /**
      * Get a new SageTV consumer.
      *
@@ -903,9 +913,11 @@ public class Config {
      *            instead of looking up a key and only using that value if the key does not exist.
      * @param sageTVConsumer This is the default value to be returned if the requested key does not
      *                       exist or the current value of the key is not a valid class.
+     * @param channel The channel to be used with this consumer. This only influences things if the
+     *                dynamic consumer is being used.
      * @return An alreadying initialized SageTV consumer.
      */
-    public static SageTVConsumer getSageTVConsumer(String key, String sageTVConsumer) {
+    public static SageTVConsumer getSageTVConsumer(String key, String sageTVConsumer, String channel) {
         logger.entry(key, sageTVConsumer);
 
         SageTVConsumer returnValue;
@@ -925,21 +937,7 @@ public class Config {
         } else if (consumerName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegTransSageTVConsumerImpl();
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
-            try {
-                returnValue = new DynamicConsumerImpl();
-            } catch (IllegalAccessError e) {
-                try {
-                    returnValue = (SageTVConsumer) Class.forName(consumerName).newInstance();
-                } catch (Throwable e0) {
-                    logger.error("The dynamic consumer cannot refer to itself. Using default implementation '{}' => ", sageTVConsumer, e0);
-                    try {
-                        returnValue = (SageTVConsumer) Class.forName(sageTVConsumer).newInstance();
-                    } catch (Throwable e1) {
-                        logger.error("The default property '{}' with the value '{}' does not refer to a valid SageTVConsumer implementation. Returning built in default 'NIOSageTVRawConsumerImpl' => ", key, consumerName, sageTVConsumer, e1);
-                        returnValue = new RawSageTVConsumerImpl();
-                    }
-                }
-            }
+            returnValue = DynamicConsumerImpl.getConsumer(channel);
         } else {
             try {
                 returnValue = (SageTVConsumer) Class.forName(consumerName).newInstance();
@@ -954,7 +952,9 @@ public class Config {
             }
         }
 
-        if (key != null) {
+        if (key != null &&
+                !consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
+
             properties.setProperty(key, returnValue.getClass().getName());
         }
 

@@ -721,7 +721,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             newConsumer = getNewChannelScanSageTVConsumer();
             newConsumer.consumeToNull(true);
         } else {
-            newConsumer = getNewSageTVConsumer();
+            newConsumer = getNewSageTVConsumer(channel);
         }
 
         switch (encoderDeviceType) {
@@ -926,7 +926,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
             newConsumer = getNewChannelScanSageTVConsumer();
             newConsumer.consumeToNull(true);
         } else {
-            newConsumer = getNewSageTVConsumer();
+            newConsumer = getNewSageTVConsumer(channel);
         }
 
         // Selects what method to use to get the channel tuned in.
@@ -1101,7 +1101,7 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
                 newConsumer = getNewChannelScanSageTVConsumer();
                 newConsumer.consumeToNull(true);
             } else {
-                newConsumer = getNewSageTVConsumer();
+                newConsumer = getNewSageTVConsumer(channel);
             }
 
             // Verify that the connection is actually in an active state if we are using fast tuning.

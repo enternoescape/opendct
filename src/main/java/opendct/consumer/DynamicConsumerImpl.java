@@ -28,12 +28,14 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DynamicConsumerImpl implements SageTVConsumer {
     private static final Logger logger = LogManager.getLogger(DynamicConsumerImpl.class);
 
     private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
 
+    private static final ReentrantReadWriteLock dynamicMapsLock;
     private static final HashMap<String, String> dynamicMaps;
     private static StringDeviceOption defaultConsumer;
     private static ChannelRangesDeviceOption ffmpegConsumer;
@@ -45,45 +47,84 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     private String encodeQuality;
     private int desiredProgram;
 
-    private String channel;
     private SageTVConsumer sageTVConsumer;
+    private String channel;
 
     static {
+        dynamicMapsLock = new ReentrantReadWriteLock();
         dynamicMaps = new HashMap<>();
         deviceOptions = new ConcurrentHashMap<>();
 
         initDeviceOptions();
+        updateDynamicMap();
     }
 
-    public DynamicConsumerImpl() throws IllegalAccessError {
-        StackTraceElement elements[] = Thread.currentThread().getStackTrace();
+    private static void updateDynamicMap() {
+        String channels[];
 
-        // Verify that we are not going in a circle by referencing this class.
-        for (StackTraceElement element : elements) {
-            if (element.getClassName().endsWith(DynamicConsumerImpl.class.getName())) {
-                throw new IllegalAccessError("DynamicConsumerImpl cannot be used to initialize" +
-                        " itself because it will create an endless loop.");
+        dynamicMapsLock.writeLock().lock();
+
+        try {
+            if (defaultConsumer.getValue().endsWith(DynamicConsumerImpl.class.getSimpleName())) {
+                logger.error("Dynamic consumer cannot be the default consumer. Changing to '{}'",
+                        FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
+
+                defaultConsumer.setValue(FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
             }
+
+            channels = ChannelRangesDeviceOption.parseRanges(ffmpegConsumer.getValue());
+            for (String channel : channels) {
+                dynamicMaps.put(channel, FFmpegSageTVConsumerImpl.class.getCanonicalName());
+            }
+
+            logger.info("Dynamic consumer set to use FFmpegSageTVConsumerImpl for {}", channels);
+
+            channels = ChannelRangesDeviceOption.parseRanges(ffmpegTransConsumer.getValue());
+            for (String channel : channels) {
+                dynamicMaps.put(channel, FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
+            }
+
+            logger.info("Dynamic consumer set to use FFmpegTransSageTVConsumerImpl for {}", channels);
+
+            channels = ChannelRangesDeviceOption.parseRanges(rawConsumer.getValue());
+            for (String channel : channels) {
+                dynamicMaps.put(channel, RawSageTVConsumerImpl.class.getCanonicalName());
+            }
+
+            logger.info("Dynamic consumer set to use RawSageTVConsumerImpl for {}", channels);
+        } catch (Exception e) {
+            logger.warn("There was an unexpected exception while updating the dynamic consumer" +
+                    " channel map => ", e);
+        } finally {
+            dynamicMapsLock.writeLock().unlock();
         }
     }
 
     @Override
     public void run() {
-        if (sageTVConsumer == null) {
-            setConsumer();
+        SageTVConsumer consumer = sageTVConsumer;
+
+        if (consumer == null) {
+            sageTVConsumer = getConsumer(channel);
+            consumer = sageTVConsumer;
         }
 
-        updateConsumer();
+        if (consumer == null) {
+            logger.error("The consumer is null. Recording cannot start.");
+            return;
+        }
 
+        updateConsumer(consumer);
 
+        consumer.run();
     }
 
-    private void setConsumer() {
+    public static SageTVConsumer getConsumer(String channel) {
         String consumerName;
 
         if (channel == null) {
-            logger.warn("Unable to select a determine what consumer is requested because a " +
-                    "channel was not provided. Using default '{}'", defaultConsumer);
+            logger.warn("Unable to determine what consumer is needed because a " +
+                    "channel was not provided. Using default '{}'", defaultConsumer.getValue());
 
             consumerName = defaultConsumer.getValue();
         } else {
@@ -97,12 +138,10 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             logger.debug("Using defined consumer '{}' for channel '{}'", defaultConsumer, channel);
         }
 
-        sageTVConsumer = Config.getSageTVConsumer(null, consumerName);
+        return Config.getSageTVConsumer(null, consumerName, channel);
     }
 
-    private void updateConsumer() {
-        SageTVConsumer consumer = sageTVConsumer;
-
+    private void updateConsumer(SageTVConsumer consumer) {
         if (consumer != null) {
             consumer.setRecordBufferSize(bufferSize);
             consumer.consumeToNull(consumeToNull);
@@ -113,7 +152,18 @@ public class DynamicConsumerImpl implements SageTVConsumer {
 
     @Override
     public void write(byte[] bytes, int offset, int length) throws IOException {
-        sageTVConsumer.write(bytes, offset, length);
+        SageTVConsumer consumer = sageTVConsumer;
+
+        if (consumer == null) {
+            sageTVConsumer = getConsumer(channel);
+            consumer = sageTVConsumer;
+        }
+
+        if (consumer != null) {
+            consumer.write(bytes, offset, length);
+        } else {
+            logger.error("Unable to load a consumer for writing!");
+        }
     }
 
     @Override
@@ -129,7 +179,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             return consumer.canSwitch();
         }
 
-        setConsumer();
+        sageTVConsumer = getConsumer(channel);
 
         consumer = sageTVConsumer;
         return consumer != null && consumer.canSwitch();
@@ -171,7 +221,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             return consumer.acceptsUploadID();
         }
 
-        setConsumer();
+        sageTVConsumer = getConsumer(channel);
 
         consumer = sageTVConsumer;
         return consumer != null && consumer.acceptsUploadID();
@@ -185,7 +235,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             return consumer.acceptsFilename();
         }
 
-        setConsumer();
+        sageTVConsumer = getConsumer(channel);
 
         consumer = sageTVConsumer;
         return consumer != null && consumer.acceptsFilename();
@@ -204,8 +254,8 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             return consumer.consumeToUploadID(filename, uploadId, socketAddress);
         }
 
-        setConsumer();
-        updateConsumer();
+        sageTVConsumer = getConsumer(channel);
+        updateConsumer(consumer);
 
         consumer = sageTVConsumer;
         return consumer != null && consumer.consumeToUploadID(filename, uploadId, socketAddress);
@@ -219,8 +269,8 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             return consumer.consumeToFilename(filename);
         }
 
-        setConsumer();
-        updateConsumer();
+        sageTVConsumer = getConsumer(channel);
+        updateConsumer(consumer);
 
         consumer = sageTVConsumer;
         return consumer != null && consumer.consumeToFilename(filename);
@@ -281,7 +331,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     public void setChannel(String channel) {
         this.channel = channel;
 
-        setConsumer();
+        sageTVConsumer = getConsumer(channel);
     }
 
     @Override
@@ -300,7 +350,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     public String stateMessage() {
         SageTVConsumer consumer = sageTVConsumer;
 
-        return consumer != null ? consumer.stateMessage() : "";
+        return consumer != null ? consumer.stateMessage() : "Dynamic consumer not selected.";
     }
 
     @Override
@@ -322,7 +372,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                         "This if the default consumer to be used if the channel does not match" +
                                 " any defined channels. The default consumer setting for upload" +
                                 " if will also decide if that feature will be used.",
-                        Config.getSageTVConsumers());
+                        Config.getSageTVConsumersLessDynamic());
 
                 ffmpegConsumer = new ChannelRangesDeviceOption(
                         Config.getString("consumer.dynamic.channels.ffmpeg", ""),
@@ -378,11 +428,35 @@ public class DynamicConsumerImpl implements SageTVConsumer {
 
     @Override
     public DeviceOption[] getOptions() {
-        return new DeviceOption[0];
+        return new DeviceOption[] {
+                defaultConsumer,
+                ffmpegConsumer,
+                ffmpegTransConsumer,
+                rawConsumer
+        };
     }
 
     @Override
     public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+        for (DeviceOption option : deviceOptions) {
+            DeviceOption optionReference =
+                    DynamicConsumerImpl.deviceOptions.get(option.getProperty());
 
+            if (optionReference == null) {
+                continue;
+            }
+
+            if (optionReference.isArray()) {
+                optionReference.setValue(option.getArrayValue());
+            } else {
+                optionReference.setValue(option.getValue());
+            }
+
+            Config.setDeviceOption(optionReference);
+        }
+
+        updateDynamicMap();
+
+        Config.saveConfig();
     }
 }

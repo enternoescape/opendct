@@ -37,9 +37,12 @@ public class ChannelRangesDeviceOption extends BaseDeviceOption {
 
     @Override
     public void setValue(String... newValues) throws DeviceOptionException {
-
-
         super.setValue(newValues);
+
+        String invalid[] = validateRanges(newValues[0]);
+        if (invalid.length > 0) {
+            logger.warn("These ranges are invalid and will not be used: {}", invalid);
+        }
     }
 
     /**

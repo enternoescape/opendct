@@ -218,7 +218,22 @@ public abstract class FFmpegUtil {
 
     public static AVStream addCopyStreamToContext(AVFormatContext outputContext, AVStream in_stream) {
 
+        if (outputContext == null) {
+            logger.error("Codec output context was not allocated");
+            return null;
+        }
+
+        if (in_stream == null) {
+            logger.error("Stream input context was not allocated");
+            return null;
+        }
+
         AVCodecContext codecCtxInput = in_stream.codec();
+
+        if (codecCtxInput == null) {
+            logger.error("Codec input context was not allocated");
+            return null;
+        }
 
         AVStream out_stream = avformat_new_stream(outputContext, codecCtxInput.codec());
 

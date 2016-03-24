@@ -577,3 +577,4 @@
    This was done because the discovery feedback can still very much interfere with active
    recordings using UDP if you have many HDHomeRun devices on your network.
    
+> *Added more checks for unlikely, but allegedly possible null conditions in FFmpeg transcoder. 

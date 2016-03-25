@@ -746,7 +746,8 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                                 currentFileOutputStream = new FileOutputStream(currentRecordingFilename);
                                 currentFile = currentFileOutputStream.getChannel();
                                 bytesStreamed.set(0);
-                                logger.warn("The file '{}' is missing and was re-created.");
+                                logger.warn("The file '{}' is missing and was re-created.",
+                                        currentRecordingFilename);
                             } catch (Exception e) {
                                 logger.error("The file '{}' is missing and cannot be re-created => ",
                                         currentRecordingFilename, e);

@@ -77,141 +77,160 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         errorMessage = null;
         deviceOptions = new ConcurrentHashMap<>();
 
-        try {
-            streamingWait = new LongDeviceOption(
-                    Config.getInteger("upnp.dct.wait_for_streaming", 5000),
-                    false,
-                    "Return to SageTV",
-                    "upnp.dct.wait_for_streaming",
-                    "This is the maximum number of milliseconds to wait before returning to" +
-                            " SageTV regardless of if the requested channel is actually streaming."
-            );
+        while (true) {
+            try {
+                streamingWait = new LongDeviceOption(
+                        Config.getInteger("upnp.dct.wait_for_streaming", 8500),
+                        false,
+                        "Return to SageTV",
+                        "upnp.dct.wait_for_streaming",
+                        "This is the maximum number of milliseconds to wait before returning to" +
+                                " SageTV regardless of if the requested channel is actually streaming."
+                );
 
-            offlineDetectionSeconds = new IntegerDeviceOption(
-                    Config.getInteger("upnp.dct.wait_for_offline_detection_s", 18),
-                    false,
-                    "Offline Channel Detection Seconds",
-                    "upnp.dct.wait_for_offline_detection_s",
-                    "This is the value in seconds to wait after tuning a channel before" +
-                            " making a final determination on if it is tunable or not." +
-                            " This applies only to offline scanning."
-            );
+                offlineDetectionSeconds = new IntegerDeviceOption(
+                        Config.getInteger("upnp.dct.wait_for_offline_detection_s", 18),
+                        false,
+                        "Offline Channel Detection Seconds",
+                        "upnp.dct.wait_for_offline_detection_s",
+                        "This is the value in seconds to wait after tuning a channel before" +
+                                " making a final determination on if it is tunable or not." +
+                                " This applies only to offline scanning."
+                );
 
-            offlineDetectionMinBytes = new IntegerDeviceOption(
-                    Config.getInteger("upnp.dct.offline_detection_min_bytes", 18800),
-                    false,
-                    "Offline Channel Detection Bytes",
-                    "upnp.dct.offline_detection_min_bytes",
-                    "This is the value in bytes that must be consumed before a channel is" +
-                            " considered tunable."
-            );
+                offlineDetectionMinBytes = new IntegerDeviceOption(
+                        Config.getInteger("upnp.dct.offline_detection_min_bytes", 18800),
+                        false,
+                        "Offline Channel Detection Bytes",
+                        "upnp.dct.offline_detection_min_bytes",
+                        "This is the value in bytes that must be consumed before a channel is" +
+                                " considered tunable."
+                );
 
-            retunePolling = new IntegerDeviceOption(
-                    Config.getInteger("upnp.retune_poll_s", 1),
-                    false,
-                    "Re-tune Polling Seconds",
-                    "upnp.retune_poll_s",
-                    "This is the frequency in seconds to poll the producer to check if it" +
-                            " is stalled."
-            );
+                retunePolling = new IntegerDeviceOption(
+                        Config.getInteger("upnp.retune_poll_s", 1),
+                        false,
+                        "Re-tune Polling Seconds",
+                        "upnp.retune_poll_s",
+                        "This is the frequency in seconds to poll the producer to check if it" +
+                                " is stalled."
+                );
 
-            httpTuning = new BooleanDeviceOption(
-                    Config.getBoolean("upnp.dct.http_tuning", true),
-                    false,
-                    "HTTP Tuning",
-                    "upnp.dct.http_tuning",
-                    "This enables HTTP tuning for InfiniTV devices. This is a tuning" +
-                            " method that is faster than UPnP and is available on all" +
-                            " InfiniTV devices except InfiniTV 4 devices with old" +
-                            " firmware. This tuning mode is not optional and will" +
-                            " automatically enable itself for ClearQAM tuning on InfiniTV" +
-                            " devices. The affected capture devices need to be re-loaded for this" +
-                            " setting to take effect."
-            );
+                httpTuning = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.dct.http_tuning", true),
+                        false,
+                        "HTTP Tuning",
+                        "upnp.dct.http_tuning",
+                        "This enables HTTP tuning for InfiniTV devices. This is a tuning" +
+                                " method that is faster than UPnP and is available on all" +
+                                " InfiniTV devices except InfiniTV 4 devices with old" +
+                                " firmware. This tuning mode is not optional and will" +
+                                " automatically enable itself for ClearQAM tuning on InfiniTV" +
+                                " devices. The affected capture devices need to be re-loaded for this" +
+                                " setting to take effect."
+                );
 
-            hdhrTuning = new BooleanDeviceOption(
-                    Config.getBoolean("upnp.dct.hdhr_tuning", true),
-                    false,
-                    "HDHomeRun Native Tuning",
-                    "upnp.dct.http_tuning",
-                    "This enables HDHomeRun native tuning for HDHomeRun Prime devices." +
-                            " This is a tuning method that is faster than UPnP and is" +
-                            " available on all HDHomeRun Prime devices. This tuning mode" +
-                            " is not optional and will automatically enable itself for" +
-                            " ClearQAM tuning on HDHomeRun Prime devices. The affected capture" +
-                            " devices need to be re-loaded for this setting to take effect."
-            );
+                hdhrTuning = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.dct.hdhr_tuning", true),
+                        false,
+                        "HDHomeRun Native Tuning",
+                        "upnp.dct.http_tuning",
+                        "This enables HDHomeRun native tuning for HDHomeRun Prime devices." +
+                                " This is a tuning method that is faster than UPnP and is" +
+                                " available on all HDHomeRun Prime devices. This tuning mode" +
+                                " is not optional and will automatically enable itself for" +
+                                " ClearQAM tuning on HDHomeRun Prime devices. The affected capture" +
+                                " devices need to be re-loaded for this setting to take effect."
+                );
 
-            autoMapReference = new BooleanDeviceOption(
-                    Config.getBoolean("upnp.qam.automap_reference_lookup", true),
-                    false,
-                    "ClearQAM Auto-Map by Reference",
-                    "upnp.qam.automap_reference_lookup",
-                    "This enables ClearQAM devices to look up their channels based on the" +
-                            " frequencies and programs available on a capture device with" +
-                            " a CableCARD installed. This works well if you have an" +
-                            " InfiniTV device with a CableCARD installed available."
-            );
+                autoMapReference = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.qam.automap_reference_lookup", true),
+                        false,
+                        "ClearQAM Auto-Map by Reference",
+                        "upnp.qam.automap_reference_lookup",
+                        "This enables ClearQAM devices to look up their channels based on the" +
+                                " frequencies and programs available on a capture device with" +
+                                " a CableCARD installed. This works well if you have an" +
+                                " InfiniTV device with a CableCARD installed available."
+                );
 
-            autoMapTuning = new BooleanDeviceOption(
-                    Config.getBoolean("upnp.qam.automap_tuning_lookup", false),
-                    false,
-                    "ClearQAM Auto-Map by Tuning",
-                    "upnp.qam.automap_reference_lookup",
-                    "This enables ClearQAM devices to look up their channels by tuning" +
-                            " into the channel on a capture device with a CableCARD" +
-                            " installed and then getting the current frequency and" +
-                            " program being used. This may be your only option if you are" +
-                            " using only HDHomeRun Prime capture devices. The program" +
-                            " always tries to get a channel by reference before resorting" +
-                            " to this lookup method. It will also retain the results of" +
-                            " the lookup so this doesn't need to happen the next time. If" +
-                            " all tuners with a CableCARD installed are currently in use," +
-                            " this method cannot be used and will fail to tune the channel."
-            );
+                autoMapTuning = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.qam.automap_tuning_lookup", false),
+                        false,
+                        "ClearQAM Auto-Map by Tuning",
+                        "upnp.qam.automap_reference_lookup",
+                        "This enables ClearQAM devices to look up their channels by tuning" +
+                                " into the channel on a capture device with a CableCARD" +
+                                " installed and then getting the current frequency and" +
+                                " program being used. This may be your only option if you are" +
+                                " using only HDHomeRun Prime capture devices. The program" +
+                                " always tries to get a channel by reference before resorting" +
+                                " to this lookup method. It will also retain the results of" +
+                                " the lookup so this doesn't need to happen the next time. If" +
+                                " all tuners with a CableCARD installed are currently in use," +
+                                " this method cannot be used and will fail to tune the channel."
+                );
 
-            fastTune = new BooleanDeviceOption(
-                    Config.getBoolean("upnp.dct.fast_tuning", false),
-                    false,
-                    "UPnP Fast Tuning",
-                    "upnp.dct.fast_tuning",
-                    "This enables 'fast' tuning for devices being tuned using strictly" +
-                            " UPnP. The result of enabling this is the device is left in" +
-                            " an always ready state that dramatically reduces the number" +
-                            " of steps involved to actually tune a channel. The state is" +
-                            " checked for before tuning and if the capture device is not" +
-                            " in the expected state, it will perform a normal tuning via" +
-                            " UPnP. The affected capture devices need to be re-loaded for" +
-                            " this setting to take effect."
-            );
+                fastTune = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.dct.fast_tuning", false),
+                        false,
+                        "UPnP Fast Tuning",
+                        "upnp.dct.fast_tuning",
+                        "This enables 'fast' tuning for devices being tuned using strictly" +
+                                " UPnP. The result of enabling this is the device is left in" +
+                                " an always ready state that dramatically reduces the number" +
+                                " of steps involved to actually tune a channel. The state is" +
+                                " checked for before tuning and if the capture device is not" +
+                                " in the expected state, it will perform a normal tuning via" +
+                                " UPnP. The affected capture devices need to be re-loaded for" +
+                                " this setting to take effect."
+                );
 
-            hdhrLock = new BooleanDeviceOption(
-                    Config.getBoolean("hdhr.locking", true),
-                    false,
-                    "HDHomeRun Locking",
-                    "hdhr.locking",
-                    "This enables when using HDHomeRun Native Tuning, the program to put" +
-                            " the tuner in a locked state when it is in use. This should" +
-                            " generally not be disabled. The affected capture devices need" +
-                            " to be re-loaded for this setting to take effect."
-            );
+                hdhrLock = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.locking", true),
+                        false,
+                        "HDHomeRun Locking",
+                        "hdhr.locking",
+                        "This enables when using HDHomeRun Native Tuning, the program to put" +
+                                " the tuner in a locked state when it is in use. This should" +
+                                " generally not be disabled. The affected capture devices need" +
+                                " to be re-loaded for this setting to take effect."
+                );
 
-            Config.mapDeviceOptions(
-                    deviceOptions,
-                    offlineDetectionSeconds,
-                    offlineDetectionMinBytes,
-                    retunePolling,
-                    streamingWait,
-                    httpTuning,
-                    hdhrTuning,
-                    autoMapReference,
-                    autoMapTuning,
-                    fastTune,
-                    hdhrLock
-            );
+                Config.mapDeviceOptions(
+                        deviceOptions,
+                        offlineDetectionSeconds,
+                        offlineDetectionMinBytes,
+                        retunePolling,
+                        streamingWait,
+                        httpTuning,
+                        hdhrTuning,
+                        autoMapReference,
+                        autoMapTuning,
+                        fastTune,
+                        hdhrLock
+                );
 
-        } catch (DeviceOptionException e) {
-            logger.error("Unable to configure device options for UpnpDiscoverer => ", e);
+            } catch (DeviceOptionException e) {
+                logger.error("Unable to configure device options for HDHomeRunDiscoverer." +
+                        " Reverting to defaults. => ", e);
+
+                Config.setInteger("upnp.dct.wait_for_streaming", 8500);
+                Config.setInteger("upnp.dct.wait_for_offline_detection_s", 18);
+                Config.setInteger("upnp.dct.offline_detection_min_bytes", 18800);
+                Config.setInteger("upnp.retune_poll_s", 1);
+                Config.setBoolean("upnp.dct.http_tuning", true);
+                Config.setBoolean("upnp.dct.hdhr_tuning", true);
+                Config.setBoolean("upnp.qam.automap_reference_lookup", true);
+                Config.setBoolean("upnp.qam.automap_tuning_lookup", false);
+                Config.setBoolean("upnp.dct.fast_tuning", false);
+                Config.setBoolean("hdhr.locking", true);
+
+
+                continue;
+            }
+
+            break;
         }
     }
 

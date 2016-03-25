@@ -17,6 +17,7 @@
 package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -204,6 +205,7 @@ public class SageTVTuningMonitor {
     public static class MonitoredRecording {
         protected boolean active = true;
         protected Thread retuneThread = null;
+        protected String filename = null;
         protected long lessThanRecordedBytes = 0;
         protected long lessThanProducedPackets = 0;
 
@@ -254,7 +256,7 @@ public class SageTVTuningMonitor {
                     long currentTime = System.currentTimeMillis();
 
                     for (Map.Entry<String, MonitoredRecording> entry : recordingQueue.entrySet()) {
-                        MonitoredRecording recording = entry.getValue();
+                        final MonitoredRecording recording = entry.getValue();
 
                         // This keeps the monitoring from holding up new tuning requests.
                         if (queueLock.hasQueuedThreads()) {
@@ -294,23 +296,27 @@ public class SageTVTuningMonitor {
                                 @Override
                                 public void run() {
                                     boolean tuned;
-                                    String filename = captureDevice.getRecordFilename();
+                                    String localFilename = captureDevice.getRecordFilename();
 
-                                    if (filename == null) {
+                                    if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
                                         logger.error(
                                                 "Unable to re-tune because there isn't a filename."
                                         );
                                         return;
                                     }
 
+                                    if (!Util.isNullOrEmpty(localFilename)) {
+                                        recording.filename = localFilename;
+                                    }
+
                                     if (captureDevice.isLocked()) {
                                         if (uploadID > 0) {
                                             tuned = captureDevice.startEncoding(
-                                                    channel, filename, encodingQuality, bufferSize,
+                                                    channel, recording.filename, encodingQuality, bufferSize,
                                                     uploadID, remoteAddress);
                                         } else {
                                             tuned = captureDevice.startEncoding(
-                                                    channel, filename, encodingQuality, bufferSize);
+                                                    channel, recording.filename, encodingQuality, bufferSize);
                                         }
                                     } else {
                                         logger.info("Re-tune was cancelled because the capture" +
@@ -320,24 +326,28 @@ public class SageTVTuningMonitor {
 
                                     // If the channel still won't tune in, start over.
                                     if (!tuned) {
-                                        filename = captureDevice.getRecordFilename();
+                                        localFilename = captureDevice.getRecordFilename();
 
-                                        if (filename == null) {
+                                        if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
                                             logger.error(
                                                     "Unable to tune because there isn't a filename."
                                             );
                                             return;
                                         }
 
+                                        if (!Util.isNullOrEmpty(localFilename)) {
+                                            recording.filename = localFilename;
+                                        }
+
                                         captureDevice.stopEncoding();
 
                                         if (captureDevice.isLocked()) {
                                             if (uploadID > 0) {
-                                                captureDevice.startEncoding(channel, filename,
+                                                captureDevice.startEncoding(channel, recording.filename,
                                                         encodingQuality, bufferSize,
                                                         uploadID, remoteAddress);
                                             } else {
-                                                captureDevice.startEncoding(channel, filename,
+                                                captureDevice.startEncoding(channel, recording.filename,
                                                         encodingQuality, bufferSize);
                                             }
                                         }

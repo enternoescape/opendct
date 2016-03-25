@@ -42,7 +42,7 @@ public class FFmpegContext {
     private final static HashMap<Pointer, FFmpegWriter> writerMap = new HashMap<>();
     private final static AtomicLong callbackAddress = new AtomicLong();
     public final Pointer OPAQUE;
-    private Pointer writerOpaque;
+    protected Pointer writerOpaque;
 
     //private FFmpegWriter writer;
     public final StringBuilder DUMP_BUFFER;

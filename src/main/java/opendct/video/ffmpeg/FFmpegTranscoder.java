@@ -70,7 +70,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             Config.getInteger("consumer.ffmpeg.transcode_limit",
                     (Runtime.getRuntime().availableProcessors() - 1) * 2);
 
-
+    private static final AVRational AV_TIME_BASE_Q = av_make_q(1, AV_TIME_BASE);
+    private static final float dts_delta_threshold = 10;
     private long firstDtsByStreamIndex[] = new long[0];
     private long firstPtsByStreamIndex[] = new long[0];
     private long lastDtsByStreamIndex[] = new long[0];
@@ -545,6 +546,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     public synchronized void streamOutput() throws FFmpegException {
         int ret = 0;
 
+        // This value will be adjusted as needed to keep the entire stream on the same time code.
+        long tsOffset = 0;
+
         int switchFlag;
         long dts;
         long pts;
@@ -598,34 +602,92 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 dts = packet.dts();
                 pts = packet.pts();
 
-                /*if (inputStreamIndex == ctx.preferredVideo) {
-                    logPacket(ctx.avfCtxInput, packet, "dts-filter-in");
-                }*/
+                if (dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE) {
+                    /*logger.debug("stream {}, dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE," +
+                            " discarding frame.", inputStreamIndex);*/
 
-                if (dts < 0 || dts > 8589934592L) {
                     av_packet_unref(packet);
                     continue;
-                } else if (lastDtsByStreamIndex[outputStreamIndex] >= dts) {
-                    if (pts > lastPtsByStreamIndex[outputStreamIndex]) {
-                        lastPtsByStreamIndex[outputStreamIndex] = pts;
-                        lastDtsByStreamIndex[outputStreamIndex] += 1;
-                        packet.dts(lastDtsByStreamIndex[outputStreamIndex]);
-                    } else if (lastDtsByStreamIndex[outputStreamIndex] - dts > 100000) {
-                        // Wrap-around.
-                        lastPtsByStreamIndex[outputStreamIndex] = pts;
-                        lastDtsByStreamIndex[outputStreamIndex] = dts;
-                    } else {
-                        av_packet_unref(packet);
-                        continue;
-                    }
-                } else {
-                    lastPtsByStreamIndex[outputStreamIndex] = pts;
-                    lastDtsByStreamIndex[outputStreamIndex] = dts;
                 }
 
-                /*if (inputStreamIndex == ctx.preferredVideo) {
-                    logPacket(ctx.avfCtxInput, packet, "dts-filter-out");
-                }*/
+                dts += tsOffset;
+                pts += tsOffset;
+
+                if ((ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type() == AVMEDIA_TYPE_VIDEO ||
+                        ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type() == AVMEDIA_TYPE_AUDIO) &&
+                        lastDtsByStreamIndex[inputStreamIndex] > 0) {
+
+                    long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
+                    long increment;
+
+                    // This is tuned for MPEG-TS. This checks if basically a whole second went
+                    // missing or if there is a less than one second decode time stamp discontinuity
+                    // that typically results from fixing the timeline. If any of those conditions
+                    // are true, then the timeline is corrected.
+                    if (diff < -90000 ||
+                            diff > 90000 ||
+                            (dts < lastDtsByStreamIndex[inputStreamIndex] &&
+                                    lastDtsByStreamIndex[inputStreamIndex] - dts < 90000)) {
+
+                        // There are probably many other situations that could come up making this
+                        // value incorrect, but this is only optimizing for typical MPEG-TS input
+                        // and MPEG-TS/PS output.
+                        increment = Math.max(packet.duration(), 0);
+
+                        long oldDts = dts;
+                        long oldPts = pts;
+
+                        dts = (dts - diff) + increment;
+                        pts = (pts - diff) + increment;
+
+                        tsOffset = (tsOffset - diff);
+
+                        logger.debug("fixing stream {} timestamp discontinuity diff = {}, " +
+                                "new offset = {}, dts = {}, new dts {}, last dts = {}," +
+                                " new pts = {}, pts = {}, last pts = {}",
+                                inputStreamIndex, diff,
+                                tsOffset, oldDts, dts, lastDtsByStreamIndex[inputStreamIndex],
+                                oldPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
+                    }
+
+                    if (dts <= lastDtsByStreamIndex[inputStreamIndex] || dts > 8707216918L) {
+                        increment = Math.max(packet.duration(), 1);
+
+                        if (lastPtsByStreamIndex[inputStreamIndex] + increment >= pts) {
+                            increment = 1;
+                        }
+
+                        if (lastDtsByStreamIndex[inputStreamIndex] + increment < pts) {
+                            long oldDts = dts;
+                            lastDtsByStreamIndex[inputStreamIndex] += increment;
+                            dts = lastDtsByStreamIndex[inputStreamIndex];
+
+                            logger.debug("fixing stream {} dts increment = {}," +
+                                    " dts = {}, new dts = {}, last dts = {}," +
+                                    " pts = {}, last pts = {}",
+                                    inputStreamIndex, increment,
+                                    oldDts, dts, lastDtsByStreamIndex[inputStreamIndex],
+                                    pts, lastPtsByStreamIndex[inputStreamIndex]);
+                        } else {
+                            // If the presentation time stamp is behind the last one, discard the
+                            // frame. There isn't a simple way to know if the frame can be put in
+                            // the assumed correct place without putting a ripple in the timeline.
+                            logger.debug("stream {}, dts {} <= last dts {}," +
+                                    " pts {} <= last pts {}, discarding frame.",
+                                    inputStreamIndex,
+                                    dts, lastDtsByStreamIndex[inputStreamIndex],
+                                    pts, lastPtsByStreamIndex[inputStreamIndex]);
+                            av_packet_unref(packet);
+                            continue;
+                        }
+                    }
+                }
+
+                packet.dts(dts);
+                packet.pts(pts);
+
+                lastDtsByStreamIndex[inputStreamIndex] = dts;
+                lastPtsByStreamIndex[inputStreamIndex] = pts;
 
                 // If this gets enabled on interlaced content, it may remove all of the even or odd
                 // frames since they typically have an out of order PTS.
@@ -649,15 +711,16 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     if (switchFlag > 0 || System.currentTimeMillis() >= switchTimeout) {
                         logger.debug("Video key frame flag: {}", switchFlag);
 
-                        try {
-                            switchStreamOutput();
-                        } catch (InterruptedException e) {
-                            logger.debug("Switching was interrupted.");
-                            break;
-                        }
-                        switching = false;
-
                         synchronized (switchLock) {
+                            try {
+                                switchStreamOutput();
+                            } catch (InterruptedException e) {
+                                logger.debug("Switching was interrupted.");
+                                av_packet_unref(packet);
+                                break;
+                            }
+                            switching = false;
+
                             switchLock.notifyAll();
                         }
 

@@ -676,6 +676,8 @@
   Debian package.
 
 #### 0.4.38-RC3
+> *FFmpeg transcoding consumer can now fix invalid dts issues.
+
 > *Improved HDHomeRun discovery so it only runs at startup, standby and
   if a device is unreachable. This was done because the discovery
   feedback can still very much interfere with active recordings using
@@ -688,4 +690,12 @@
   unlikely to be a problem since it only tunes if it doesn't know the 
   channel and it will not unlock an in-use capture device.
   
+> *Increased wait from 2 to 5 seconds for InfiniTV http timeout.
+
+> *The default wait before returning OK to SageTV regardless of if the
+  consumer says it's streaming or not is now 8500ms for all capture
+  device implementations. 5000ms was too low.
+
+> *Fixed a possibility to lose the filename while re-tuning.
+
 > *Capture device pooling is now considered stable.

@@ -96,7 +96,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         while (true) {
             try {
                 streamingWait = new LongDeviceOption(
-                        Config.getInteger("hdhr.wait_for_streaming", 5000),
+                        Config.getInteger("hdhr.wait_for_streaming", 8500),
                         false,
                         "Return to SageTV",
                         "hdhr.wait_for_streaming",

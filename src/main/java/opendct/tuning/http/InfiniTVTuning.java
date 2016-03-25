@@ -357,7 +357,7 @@ public class InfiniTVTuning {
                 @Override
                 public void run() {
                     try {
-                        Thread.sleep(2000);
+                        Thread.sleep(5000);
                     } catch (InterruptedException e) {
                         return;
                     }
@@ -377,7 +377,8 @@ public class InfiniTVTuning {
 
             inputStream.close();
         } catch (IOException e) {
-            logger.error("Unable to read reply => {}", e.toString());
+            logger.error("Unable to read reply. Capture device is not available => {}",
+                    e.toString());
         }
 
         return logger.exit(true);

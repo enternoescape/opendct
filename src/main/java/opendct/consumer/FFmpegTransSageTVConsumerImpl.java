@@ -515,8 +515,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                 asyncFileChannel.close();
                             } catch (Exception e) {
                                 logger.debug("Exception while closing missing file => ", e);
-                            } finally {
-                                asyncFileChannel = null;
                             }
 
                             while (ctx != null && !ctx.isInterrupted()) {
@@ -568,8 +566,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         } catch (IOException e0) {
                             logger.debug("Consumer created an exception while" +
                                     " closing the current file => {}", e0);
-                        } finally {
-                            asyncFileChannel = null;
                         }
                     }
 
@@ -596,6 +592,18 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             if (firstWrite) {
                 bytesStreamed.set(0);
                 firstWrite = false;
+            }
+
+            if (asyncFileChannel == null) {
+                try {
+                    asyncFileChannel = AsynchronousFileChannel.open(
+                            Paths.get(directFilename),
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.CREATE);
+                } catch (IOException e1) {
+                    logger.error("Unable to open file '{}' => ", directFilename, e1);
+                    return -1;
+                }
             }
 
             int bytesToStream = data.remaining();
@@ -638,12 +646,14 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         @Override
         public void closeFile() {
-            try {
-                // This closes the channel too.
-                asyncFileChannel.close();
-            } catch (IOException e) {
-                logger.error("Unable to close the file '{}' => ",
-                        directFilename, e);
+            if (asyncFileChannel != null && asyncFileChannel.isOpen()) {
+                try {
+                    // This closes the channel too.
+                    asyncFileChannel.close();
+                } catch (IOException e) {
+                    logger.error("Unable to close the file '{}' => ",
+                            directFilename, e);
+                }
             }
         }
 

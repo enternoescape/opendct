@@ -508,15 +508,23 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         // not be thrown. This handles the possible scenario. This also means
                         // previously written data is now lost.
 
-                        if (!recordingFile.exists() || (bytesStreamed.get() > 0 && recordingFile.length() == 0)) {
+                        if (!recordingFile.exists() || (bytesStreamed.get() > 0 &&
+                                recordingFile.length() == 0)) {
+
                             try {
                                 asyncFileChannel.close();
                             } catch (Exception e) {
                                 logger.debug("Exception while closing missing file => ", e);
+                            } finally {
+                                asyncFileChannel = null;
                             }
 
                             while (ctx != null && !ctx.isInterrupted()) {
                                 try {
+                                    // Sleep one second before trying to re-open the file in case
+                                    // this is not the first time a this situation has happened.
+                                    Thread.sleep(1000);
+
                                     asyncFileChannel = AsynchronousFileChannel.open(
                                             Paths.get(directFilename),
                                             StandardOpenOption.WRITE,
@@ -530,7 +538,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                             directFilename, e);
 
                                     try {
-                                        Thread.sleep(500);
+                                        Thread.sleep(1000);
                                     } catch (InterruptedException e1) {
                                         logger.debug("Interrupted while trying to re-create recording file.");
                                         break;
@@ -553,6 +561,17 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 @Override
                 public void failed(Throwable e, Object attachment) {
                     logger.error("File '{}' write failed => ", directFilename, e);
+
+                    if (asyncFileChannel != null && asyncFileChannel.isOpen()) {
+                        try {
+                            asyncFileChannel.close();
+                        } catch (IOException e0) {
+                            logger.debug("Consumer created an exception while" +
+                                    " closing the current file => {}", e0);
+                        } finally {
+                            asyncFileChannel = null;
+                        }
+                    }
 
                     try {
                         asyncFileChannel = AsynchronousFileChannel.open(

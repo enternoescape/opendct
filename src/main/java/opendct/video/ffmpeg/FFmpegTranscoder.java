@@ -562,7 +562,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         AVStream iavStream;
         AVCodecContext iavCodecContext;
         int inputStreamIndex;
-        int type;
+        int codecType;
         int got_frame[] = new int[] { 0 };
 
 
@@ -613,8 +613,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 dts += tsOffset;
                 pts += tsOffset;
 
-                if ((ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type() == AVMEDIA_TYPE_VIDEO ||
-                        ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type() == AVMEDIA_TYPE_AUDIO) &&
+                codecType = ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type();
+
+                if ((codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_AUDIO) &&
                         lastDtsByStreamIndex[inputStreamIndex] > 0) {
 
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
@@ -637,10 +638,13 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         long oldDts = dts;
                         long oldPts = pts;
 
-                        dts = (dts - diff) + increment;
-                        pts = (pts - diff) + increment;
+                        dts -= diff;
+                        pts -= diff;
 
-                        tsOffset = (tsOffset - diff);
+                        dts += increment;
+                        pts += increment;
+
+                        tsOffset -= diff;
 
                         logger.debug("fixing stream {} timestamp discontinuity diff = {}, " +
                                 "new offset = {}, dts = {}, new dts {}, last dts = {}," +
@@ -730,7 +734,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 iavStream = ctx.avfCtxInput.streams(inputStreamIndex);
                 iavCodecContext = iavStream.codec();
-                type = iavStream.codec().codec_type();
+                codecType = iavStream.codec().codec_type();
 
                 //logger.trace("Demuxer gave frame of streamIndex {}", inputStreamIndex);
 
@@ -751,7 +755,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                     //logPacket(ctx.avfCtxInput, packet, "trans-dec-out");
 
-                    if (type == AVMEDIA_TYPE_VIDEO) {
+                    if (codecType == AVMEDIA_TYPE_VIDEO) {
                         ret = avcodec_decode_video2(
                                 ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
                                 got_frame, packet);
@@ -802,25 +806,27 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 av_packet_unref(packet);
             }
 
-            int nbStreams = ctx.avfCtxInput.nb_streams();
+            int numInputStreams = ctx.avfCtxInput.nb_streams();
 
             // flush filters and encoders
-            for (int i = 0; i < nbStreams; i++) {
+            for (int i = 0; i < numInputStreams; i++) {
 
-                // flush filter
-                if (filter_ctx[i].filter_graph == null)
-                    continue;
+                if (filter_ctx != null && i < filter_ctx.length) {
+                    // flush filter
+                    if (filter_ctx[i].filter_graph == null)
+                        continue;
 
-                ret = filterEncodeWriteFrame(null, i);
+                    ret = filterEncodeWriteFrame(null, i);
 
-                if (ret < 0) {
-                    throw new FFmpegException("Flushing filter failed", ret);
+                    if (ret < 0) {
+                        logger.error("Flushing filter failed: {}", ret);
+                    }
                 }
 
-            /* flush encoder */
+                // flush encoder
                 ret = flushEncoder(i);
                 if (ret < 0) {
-                    throw new FFmpegException("Flushing encoder failed", ret);
+                    logger.error("Flushing encoder failed: {}", ret);
                 }
             }
 
@@ -841,14 +847,16 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         // flush filters and encoders
         for (int i = 0; i < numInputStreams; i++) {
 
-            // flush filter
-            if (filter_ctx[i].filter_graph == null)
-                continue;
+            if (filter_ctx != null && i < filter_ctx.length) {
+                // flush filter
+                if (filter_ctx[i].filter_graph == null)
+                    continue;
 
-            ret = filterEncodeWriteFrame(null, i);
+                ret = filterEncodeWriteFrame(null, i);
 
-            if (ret < 0) {
-                logger.error("Flushing filter failed: {}", ret);
+                if (ret < 0) {
+                    logger.error("Flushing filter failed: {}", ret);
+                }
             }
 
             /* flush encoder */
@@ -1287,7 +1295,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     private int flushEncoder(int stream_index) {
-        if (ctx.streamMap[stream_index].outStreamIndex == NO_STREAM_IDX) {
+        if (ctx.streamMap == null ||
+                ctx.streamMap.length <= stream_index ||
+                ctx.streamMap[stream_index].outStreamIndex == NO_STREAM_IDX) {
+
             return 0;
         }
 

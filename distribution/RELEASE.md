@@ -696,6 +696,12 @@
   consumer says it's streaming or not is now 8500ms for all capture
   device implementations. 5000ms was too low.
 
-> *Fixed a possibility to lose the filename while re-tuning.
+> *Fixed the file not being closed before re-opening when the async
+  writer in the FFmpeg transcoder fails to write. Thanks troll5501.
+
+> *Fixed a possibility of losing the filename while re-tuning.
+
+> *Fixed another possible InfiniTV tuning long wait while recovering
+  from the device not being available. 
 
 > *Capture device pooling is now considered stable.

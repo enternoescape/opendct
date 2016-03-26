@@ -79,9 +79,25 @@ public class InfiniTVStatus {
         URL url = new URL("http://" + deviceAddress + "/get_var?i=" + tunerIndex + "&s=" + service + "&v=" + value);
         logger.debug("Connecting to InfiniTV tuner using the URL '{}'", url);
 
-        HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+        final HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+
+        Thread httpTimeout = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+
+                httpURLConnection.disconnect();
+            }
+        });
+
+        httpTimeout.start();
         InputStreamReader inputStreamReader = new InputStreamReader(httpURLConnection.getInputStream());
         BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+        httpTimeout.interrupt();
 
         String line = bufferedReader.readLine();
         logger.debug("InfiniTV DCT returned the value '{}'", line);

@@ -70,7 +70,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             Config.getInteger("consumer.ffmpeg.transcode_limit",
                     (Runtime.getRuntime().availableProcessors() - 1) * 2);
 
-    private static final AVRational AV_TIME_BASE_Q = av_make_q(1, AV_TIME_BASE);
     private static final float dts_delta_threshold = 10;
     private long firstDtsByStreamIndex[] = new long[0];
     private long firstPtsByStreamIndex[] = new long[0];
@@ -548,6 +547,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         // This value will be adjusted as needed to keep the entire stream on the same time code.
         long tsOffset = 0;
+        AVRational currentTimeBase;
 
         int switchFlag;
         long dts;
@@ -619,21 +619,23 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         lastDtsByStreamIndex[inputStreamIndex] > 0) {
 
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
-                    long increment;
+                    long increment = Math.max(packet.duration(), 0);
+                    long tolerance = increment * 100;
 
                     // This is tuned for MPEG-TS. This checks if basically a whole second went
                     // missing or if there is a less than one second decode time stamp discontinuity
                     // that typically results from fixing the timeline. If any of those conditions
                     // are true, then the timeline is corrected.
-                    if (diff < -90000 ||
-                            diff > 90000 ||
+                    if (diff < -tolerance ||
+                            diff > tolerance ||
                             (dts < lastDtsByStreamIndex[inputStreamIndex] &&
-                                    lastDtsByStreamIndex[inputStreamIndex] - dts < 90000)) {
+                                    lastDtsByStreamIndex[inputStreamIndex] - dts < tolerance)) {
 
                         // There are probably many other situations that could come up making this
                         // value incorrect, but this is only optimizing for typical MPEG-TS input
-                        // and MPEG-TS/PS output.
-                        increment = Math.max(packet.duration(), 0);
+                        // and MPEG-TS/PS output. This has the potential to introduce a rounding
+                        // error since it is not based on the rational.
+                        //increment = Math.max(packet.duration(), 0);
 
                         long oldDts = dts;
                         long oldPts = pts;
@@ -645,6 +647,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         pts += increment;
 
                         tsOffset -= diff;
+                        tsOffset += increment;
 
                         logger.debug("fixing stream {} timestamp discontinuity diff = {}, " +
                                 "new offset = {}, dts = {}, new dts {}, last dts = {}," +

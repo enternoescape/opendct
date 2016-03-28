@@ -221,7 +221,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                     }
 
                     if (isInterrupted()) {
-                        throw new InterruptedIOException("Interrupted while attempting to start writting via upload id.");
+                        throw new InterruptedIOException("Interrupted while attempting to start writing via upload id.");
                     }
                 }
             } else if (currentFileOutputStream != null) {

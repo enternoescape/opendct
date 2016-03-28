@@ -548,7 +548,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         // This value will be adjusted as needed to keep the entire stream on the same time code.
         long tsOffset = 0;
         long lastErrorTime = 0;
-        long lastErrorTimeLimit = 60000;
+        long lastErrorTimeLimit = 1000;
         int errors = 0;
         int errorLimit = 30;
 
@@ -632,7 +632,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         synchronized (switchLock) {
                             try {
                                 switchStreamOutput();
-                                tsOffset = 0;
                                 errors = 0;
                             } catch (InterruptedException e) {
                                 logger.debug("Switching was interrupted.");
@@ -649,14 +648,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 }
 
                 long currentTime = System.currentTimeMillis();
-                if (currentTime - lastErrorTime > lastErrorTimeLimit) {
+                if (lastErrorTime != 0 && currentTime - lastErrorTime > lastErrorTimeLimit) {
                     errors = 0;
                     lastErrorTime = 0;
                 } else if (errors ==  1 && lastErrorTime == 0) {
                     lastErrorTime = currentTime;
                 }
 
-                if (errors > errorLimit || dts + tsOffset >= 8589934592L) {
+                if (errors > errorLimit) {
                     logger.info("Restarting stream. Errors = {}", errors);
                     synchronized (switchLock) {
                         try {
@@ -689,9 +688,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     int tolerance = 180000;
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
 
-                    if (diff < -tolerance ||
-                            diff > tolerance ||
-                            dts < lastDtsByStreamIndex[inputStreamIndex]) {
+                    if (diff < -tolerance || diff > tolerance) {
 
                         long oldDts = dts;
                         long oldPts = pts;
@@ -713,7 +710,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                                 oldPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
                     }
 
-                    if (dts <= lastDtsByStreamIndex[inputStreamIndex] || dts > 8589934592L) {
+                    if (dts <= lastDtsByStreamIndex[inputStreamIndex]) {
                         increment = 1;
 
                         if (lastDtsByStreamIndex[inputStreamIndex] != dts &&

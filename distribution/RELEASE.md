@@ -718,7 +718,7 @@
 
 > *Internal: some code cleanup.
 
-#### 0.4.39-RC5
+#### 0.4.40-RC5
 > *Duplicate log entries are now reported at the same log level as the
   duplicates so that you don't see the duplicate entry, yet no previous
   logging associated.
@@ -727,3 +727,6 @@
 > than 30 errors are encountered in under a second. Most players can
 > handle this, the FFmpeg remuxer cannot deal with timestamps that are
 > not monotonic.
+
+> *Removed 33-bit dts limit checking since it appears that FFmpeg will
+> take care of that automatically.

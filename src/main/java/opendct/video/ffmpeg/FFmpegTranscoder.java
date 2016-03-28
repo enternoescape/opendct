@@ -589,9 +589,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     continue;
                 }
 
-                if (firstFrame[outputStreamIndex] && (packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
-                    av_packet_unref(packet);
-                    continue;
+                if (firstFrame[outputStreamIndex]) {
+                    if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
+                        av_packet_unref(packet);
+                        continue;
+                    } else {
+                        logger.debug("stream {}, first dts = {}, first pts = {}",
+                                inputStreamIndex, packet.dts(), packet.pts());
+                    }
                 }
 
                 firstFrame[outputStreamIndex] = false;
@@ -618,32 +623,25 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 if ((codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_AUDIO) &&
                         lastDtsByStreamIndex[inputStreamIndex] > 0) {
 
+                    // There are probably many other situations that could come up making this value
+                    // incorrect, but this is only optimizing for typical MPEG-TS input and
+                    // MPEG-TS/PS output. This has the potential to introduce a rounding error since
+                    // it is not based on the stream time base rational.
+                    int increment = Math.max(packet.duration(), 0);
+                    int tolerance = 900000;
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
-                    long increment = Math.max(packet.duration(), 0);
-                    long tolerance = increment * 100;
 
-                    // This is tuned for MPEG-TS. This checks if basically a whole second went
-                    // missing or if there is a less than one second decode time stamp discontinuity
-                    // that typically results from fixing the timeline. If any of those conditions
-                    // are true, then the timeline is corrected.
                     if (diff < -tolerance ||
                             diff > tolerance ||
-                            (dts < lastDtsByStreamIndex[inputStreamIndex] &&
-                                    lastDtsByStreamIndex[inputStreamIndex] - dts < tolerance)) {
-
-                        // There are probably many other situations that could come up making this
-                        // value incorrect, but this is only optimizing for typical MPEG-TS input
-                        // and MPEG-TS/PS output. This has the potential to introduce a rounding
-                        // error since it is not based on the rational.
-                        //increment = Math.max(packet.duration(), 0);
+                            dts < lastDtsByStreamIndex[inputStreamIndex]) {
 
                         long oldDts = dts;
                         long oldPts = pts;
 
                         dts -= diff;
-                        pts -= diff;
-
                         dts += increment;
+
+                        pts -= diff;
                         pts += increment;
 
                         tsOffset -= diff;
@@ -658,13 +656,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     }
 
                     if (dts <= lastDtsByStreamIndex[inputStreamIndex] || dts > 8707216918L) {
-                        increment = Math.max(packet.duration(), 1);
+                        increment = 1;
 
-                        if (lastPtsByStreamIndex[inputStreamIndex] + increment >= pts) {
-                            increment = 1;
-                        }
+                        if (lastDtsByStreamIndex[inputStreamIndex] != dts &&
+                                lastDtsByStreamIndex[inputStreamIndex] + increment < pts) {
 
-                        if (lastDtsByStreamIndex[inputStreamIndex] + increment < pts) {
                             long oldDts = dts;
                             lastDtsByStreamIndex[inputStreamIndex] += increment;
                             dts = lastDtsByStreamIndex[inputStreamIndex];

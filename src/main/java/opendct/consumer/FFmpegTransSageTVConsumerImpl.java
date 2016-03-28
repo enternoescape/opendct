@@ -23,6 +23,7 @@ import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.ffmpeg.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ObjectArrayMessage;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,10 +32,10 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
+import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -455,19 +456,27 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         private volatile long bytesFlushCounter;
         private volatile long autoOffset;
 
-        private BlockingQueue<ByteBuffer> buffers;
-        private CompletionHandler<Integer, Object> handler;
-        private AsynchronousFileChannel asyncFileChannel;
+        private final BlockingQueue<ByteBuffer> returnedBuffers;
+        private final BlockingQueue<ByteBuffer> writeBuffers;
+
+        private Thread asyncWriter;
+        private FileChannel fileChannel;
         private final String directFilename;
         private final File recordingFile;
         private boolean firstWrite;
+        private boolean closed;
 
         public FFmpegDirectWriter(final String filename) throws IOException {
-            buffers = new ArrayBlockingQueue<>(3);
+            returnedBuffers = new LinkedBlockingQueue<>(1);
+            writeBuffers = new LinkedBlockingQueue<>(2);
 
-            buffers.add(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
+            try {
+                returnedBuffers.put(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
+            } catch (InterruptedException e) {
+                throw new IOException("Unable to queue the first buffer!");
+            }
 
-            asyncFileChannel = AsynchronousFileChannel.open(
+            fileChannel = FileChannel.open(
                     Paths.get(filename),
                     StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE);
@@ -478,15 +487,173 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             autoOffset = 0;
             bytesFlushCounter = 0;
             firstWrite = false;
+            closed = false;
 
-            handler = new CompletionHandler<Integer, Object>() {
-                @Override
-                public void completed(Integer result, Object attachment) {
+            asyncWriter = new Thread(new AsyncWriter());
+            asyncWriter.setName("AsyncWriter-" + asyncWriter.getId());
+            asyncWriter.start();
+        }
+
+        @Override
+        public int write(ByteBuffer data) throws IOException {
+            if (closed) {
+                return -1;
+            }
+
+            ByteBuffer currentWrite;
+
+            if (firstWrite) {
+                bytesStreamed.set(0);
+                firstWrite = false;
+            }
+
+            try {
+                currentWrite = returnedBuffers.take();
+            } catch (InterruptedException e) {
+                logger.error("Interrupted while waiting for buffer to return.");
+                return -1;
+            }
+
+            if (fileChannel == null) {
+                try {
+                    fileChannel = FileChannel.open(
+                            Paths.get(directFilename),
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.CREATE);
+                } catch (IOException e1) {
+                    logger.error("Unable to open file '{}' => ", directFilename, e1);
+                    return -1;
+                }
+            }
+
+            int bytesToStream = data.remaining();
+
+            if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + bytesToStream) {
+                ByteBuffer slice = data.slice();
+                slice.limit((int) (stvRecordBufferSize - autoOffset));
+
+                currentWrite.clear();
+                currentWrite.put(slice);
+                currentWrite.flip();
+
+                try {
+                    writeBuffers.put(currentWrite);
+                    currentWrite = returnedBuffers.take();
+                } catch (InterruptedException e) {
+                    logger.error("Interrupted while queuing the next write for the file '{}' => ",
+                            directFilename, e);
+                }
+
+                data.position((int) (data.position() + (stvRecordBufferSize - autoOffset)));
+                autoOffset = 0;
+            }
+
+
+            try {
+                currentWrite.clear();
+                currentWrite.put(data);
+                currentWrite.flip();
+
+                writeBuffers.put(currentWrite);
+            } catch (InterruptedException e) {
+                logger.error("Interrupted while queuing the next write for the file '{}' => ",
+                        directFilename, e);
+                return -1;
+            }
+
+            return bytesToStream;
+        }
+
+        @Override
+        public void closeFile() {
+            closed = true;
+            ByteBuffer zeroBuffer = ByteBuffer.allocate(0);
+
+            if (!writeBuffers.offer(zeroBuffer)) {
+                try {
+                    while (!writeBuffers.offer(zeroBuffer, 500, TimeUnit.MILLISECONDS)) {
+                        logger.error("Unable to queue close file buffer.");
+                    }
+                } catch (InterruptedException e) {
+                    logger.error("Interrupted while waiting to re-try queuing file close => ", e);
+                }
+            }
+        }
+
+        @Override
+        public Logger getLogger() {
+            return logger;
+        }
+
+        public class AsyncWriter implements Runnable {
+
+            @Override
+            public void run() {
+                while (true) {
+                    int writeBytes;
+                    ByteBuffer byteBuffer;
 
                     try {
-                        buffers.put((ByteBuffer)attachment);
+                        byteBuffer = writeBuffers.take();
                     } catch (InterruptedException e) {
-                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
+                        // This thread should never be getting interrupted.
+                        logger.error("The async writing thread was interrupted => ", e);
+                        return;
+                    }
+
+                    if (byteBuffer == null) {
+                        continue;
+                    }
+
+                    // For some reason if this isn't assigned to a variable sometimes it doesn't
+                    // evaluate as 0.
+                    int limit = byteBuffer.limit();
+                    if (limit == 0) {
+                        if (fileChannel != null && fileChannel.isOpen()) {
+                            logger.info("Closing the file '{}'", directFilename);
+
+                            try {
+                                fileChannel.close();
+                            } catch (IOException e) {
+                                logger.error("Unable to close the file '{}' => ",
+                                        directFilename, e);
+                            }
+                        }
+                        return;
+                    }
+
+                    writeBytes = byteBuffer.remaining();
+
+                    try {
+                        fileChannel.write(byteBuffer, autoOffset);
+                    } catch (Exception e) {
+                        logger.error("File '{}' write failed => ", directFilename, e);
+
+                        if (fileChannel != null && fileChannel.isOpen()) {
+                            try {
+                                fileChannel.close();
+                            } catch (IOException e0) {
+                                logger.debug("Consumer created an exception while" +
+                                        " closing the current file => {}", e0);
+                            }
+                        }
+
+                        try {
+                            fileChannel = FileChannel.open(
+                                    Paths.get(directFilename),
+                                    StandardOpenOption.WRITE,
+                                    StandardOpenOption.CREATE);
+                        } catch (IOException e0) {
+                            logger.error("Unable to re-open file '{}' => ", directFilename, e0);
+                        }
+
+                        try {
+                            returnedBuffers.put(byteBuffer);
+                        } catch (InterruptedException e0) {
+                            logger.debug("Interrupted while returning byte buffer to queue => ", e0);
+                        }
+
+                        continue;
                     }
 
                     if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush)) {
@@ -498,7 +665,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                         if (bytesStreamed.get() > 0 && recordingFile.length() == 0) {
                             try {
-                                asyncFileChannel.force(true);
+                                fileChannel.force(true);
                             } catch (IOException e) {
                                 logger.info("Unable to flush output => ", e);
                             }
@@ -512,10 +679,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                 recordingFile.length() == 0)) {
 
                             try {
-                                asyncFileChannel.close();
+                                fileChannel.close();
                             } catch (Exception e) {
                                 logger.debug("Exception while closing missing file => ", e);
                             }
+
+                            autoOffset = 0;
 
                             while (ctx != null && !ctx.isInterrupted()) {
                                 try {
@@ -523,7 +692,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                     // this is not the first time a this situation has happened.
                                     Thread.sleep(1000);
 
-                                    asyncFileChannel = AsynchronousFileChannel.open(
+                                    fileChannel = FileChannel.open(
                                             Paths.get(directFilename),
                                             StandardOpenOption.WRITE,
                                             StandardOpenOption.CREATE);
@@ -531,6 +700,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                     bytesStreamed.set(0);
                                     logger.warn("The file '{}' is missing and was re-created.",
                                             directFilename);
+
+                                    break;
                                 } catch (Exception e) {
                                     logger.error("The file '{}' is missing and cannot be re-created => ",
                                             directFilename, e);
@@ -547,7 +718,15 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         }
                     }
 
-                    long currentBytes = bytesStreamed.addAndGet(result);
+                    long currentBytes = bytesStreamed.addAndGet(writeBytes);
+                    autoOffset += writeBytes;
+                    bytesFlushCounter += writeBytes;
+
+                    try {
+                        returnedBuffers.put(byteBuffer);
+                    } catch (InterruptedException e) {
+                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
+                    }
 
                     if (currentBytes > initBufferedData) {
                         synchronized (streamingMonitor) {
@@ -555,111 +734,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         }
                     }
                 }
-
-                @Override
-                public void failed(Throwable e, Object attachment) {
-                    logger.error("File '{}' write failed => ", directFilename, e);
-
-                    if (asyncFileChannel != null && asyncFileChannel.isOpen()) {
-                        try {
-                            asyncFileChannel.close();
-                        } catch (IOException e0) {
-                            logger.debug("Consumer created an exception while" +
-                                    " closing the current file => {}", e0);
-                        }
-                    }
-
-                    try {
-                        asyncFileChannel = AsynchronousFileChannel.open(
-                                Paths.get(directFilename),
-                                StandardOpenOption.WRITE,
-                                StandardOpenOption.CREATE);
-                    } catch (IOException e1) {
-                        logger.error("Unable to re-open file '{}' => ", directFilename, e);
-                    }
-
-                    try {
-                        buffers.put((ByteBuffer)attachment);
-                    } catch (InterruptedException e0) {
-                        logger.debug("Interrupted while returning byte buffer to queue => ", e0);
-                    }
-                }
-            };
-        }
-
-        @Override
-        public synchronized int write(ByteBuffer data) throws IOException {
-            if (firstWrite) {
-                bytesStreamed.set(0);
-                firstWrite = false;
             }
-
-            if (asyncFileChannel == null) {
-                try {
-                    asyncFileChannel = AsynchronousFileChannel.open(
-                            Paths.get(directFilename),
-                            StandardOpenOption.WRITE,
-                            StandardOpenOption.CREATE);
-                } catch (IOException e1) {
-                    logger.error("Unable to open file '{}' => ", directFilename, e1);
-                    return -1;
-                }
-            }
-
-            int bytesToStream = data.remaining();
-
-            if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + bytesToStream) {
-                ByteBuffer slice = data.slice();
-                slice.limit((int) (stvRecordBufferSize - autoOffset));
-
-                try {
-                    ByteBuffer writeBuffer = buffers.take();
-                    writeBuffer.clear();
-                    writeBuffer.put(slice);
-                    writeBuffer.flip();
-                    asyncFileChannel.write(writeBuffer, autoOffset, writeBuffer, handler);
-                } catch (InterruptedException e) {
-                    return -1;
-                }
-
-                data.position((int) (data.position() + (stvRecordBufferSize - autoOffset)));
-                autoOffset = 0;
-            }
-
-            try {
-                ByteBuffer writeBuffer = buffers.take();
-
-                writeBuffer.clear();
-                writeBuffer.put(data);
-                writeBuffer.flip();
-
-                asyncFileChannel.write(writeBuffer, autoOffset, writeBuffer, handler);
-            } catch (InterruptedException e) {
-                return -1;
-            }
-
-            autoOffset += bytesToStream;
-            bytesFlushCounter += bytesToStream;
-
-            return bytesToStream;
-        }
-
-        @Override
-        public void closeFile() {
-            if (asyncFileChannel != null && asyncFileChannel.isOpen()) {
-                try {
-                    // This closes the channel too.
-                    asyncFileChannel.close();
-                } catch (IOException e) {
-                    logger.error("Unable to close the file '{}' => ",
-                            directFilename, e);
-                }
-            }
-        }
-
-        @Override
-        public Logger getLogger() {
-            return logger;
         }
     }
 

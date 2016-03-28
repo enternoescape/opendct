@@ -705,3 +705,15 @@
   from the device not being available. 
 
 > *Capture device pooling is now considered stable.
+
+#### 0.4.39-RC4
+> *Reworked FFmpeg transcoder dts correction logic so it will be less
+> aggressive.
+
+> *Changed writer for FFmpeg consumer to ensure that files don't
+  accidentally get re-opened when closing while a write is still in 
+  progress.
+  
+> *Changed default consumer to the FFmpeg transcoding consumer.
+
+> *Internal: some code cleanup.

@@ -722,3 +722,8 @@
 > *Duplicate log entries are now reported at the same log level as the
   duplicates so that you don't see the duplicate entry, yet no previous
   logging associated.
+  
+> *Dts corrective code will now transparently restart the muxer if more
+> than 30 errors are encountered in under a second. Most players can
+> handle this, the FFmpeg remuxer cannot deal with timestamps that are
+> not monotonic.

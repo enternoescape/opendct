@@ -547,7 +547,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         // This value will be adjusted as needed to keep the entire stream on the same time code.
         long tsOffset = 0;
-        AVRational currentTimeBase;
+        long lastErrorTime = 0;
+        long lastErrorTimeLimit = 60000;
+        int errors = 0;
+        int errorLimit = 30;
 
         int switchFlag;
         long dts;
@@ -615,6 +618,61 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     continue;
                 }
 
+                if (switching && inputStreamIndex == ctx.preferredVideo) {
+
+                    switchFlag = packet.flags() & AV_PKT_FLAG_KEY;
+
+                    // Check if we are at least on a flagged video key frame. Then switch before the
+                    // frame is actually processed. This ensures that if we are muxing, we are
+                    // starting with hopefully an I frame and if we are transcoding this is likely a
+                    // good transition point.
+                    if (switchFlag > 0 || System.currentTimeMillis() >= switchTimeout) {
+                        logger.debug("Video key frame flag: {}", switchFlag);
+
+                        synchronized (switchLock) {
+                            try {
+                                switchStreamOutput();
+                                tsOffset = 0;
+                                errors = 0;
+                            } catch (InterruptedException e) {
+                                logger.debug("Switching was interrupted.");
+                                av_packet_unref(packet);
+                                break;
+                            }
+                            switching = false;
+
+                            switchLock.notifyAll();
+                        }
+
+                        logger.info("SWITCH successful: {}ms.", System.currentTimeMillis() - (switchTimeout - 10000));
+                    }
+                }
+
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastErrorTime > lastErrorTimeLimit) {
+                    errors = 0;
+                    lastErrorTime = 0;
+                } else if (errors ==  1 && lastErrorTime == 0) {
+                    lastErrorTime = currentTime;
+                }
+
+                if (errors > errorLimit || dts + tsOffset >= 8589934592L) {
+                    logger.info("Restarting stream. Errors = {}", errors);
+                    synchronized (switchLock) {
+                        try {
+                            newWriter = FFmpegContext.getWriterContext(ctx.writerOpaque);
+                            newFilename = ctx.outputFilename;
+                            switchStreamOutput();
+                            tsOffset = 0;
+                            errors = 0;
+                        } catch (InterruptedException e) {
+                            logger.debug("Switching was interrupted.");
+                            av_packet_unref(packet);
+                            break;
+                        }
+                    }
+                }
+
                 dts += tsOffset;
                 pts += tsOffset;
 
@@ -628,7 +686,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     // MPEG-TS/PS output. This has the potential to introduce a rounding error since
                     // it is not based on the stream time base rational.
                     int increment = Math.max(packet.duration(), 0);
-                    int tolerance = 900000;
+                    int tolerance = 180000;
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
 
                     if (diff < -tolerance ||
@@ -655,7 +713,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                                 oldPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
                     }
 
-                    if (dts <= lastDtsByStreamIndex[inputStreamIndex] || dts > 8707216918L) {
+                    if (dts <= lastDtsByStreamIndex[inputStreamIndex] || dts > 8589934592L) {
                         increment = 1;
 
                         if (lastDtsByStreamIndex[inputStreamIndex] != dts &&
@@ -663,12 +721,13 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                             long oldDts = dts;
                             lastDtsByStreamIndex[inputStreamIndex] += increment;
+                            errors += 1;
                             dts = lastDtsByStreamIndex[inputStreamIndex];
 
-                            logger.debug("fixing stream {} dts increment = {}," +
+                            logger.debug("fixing stream {} dts increment = {}, new offset = {}" +
                                     " dts = {}, new dts = {}, last dts = {}," +
                                     " pts = {}, last pts = {}",
-                                    inputStreamIndex, increment,
+                                    inputStreamIndex, increment, tsOffset,
                                     oldDts, dts, lastDtsByStreamIndex[inputStreamIndex],
                                     pts, lastPtsByStreamIndex[inputStreamIndex]);
                         } else {
@@ -676,7 +735,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             // frame. There isn't a simple way to know if the frame can be put in
                             // the assumed correct place without putting a ripple in the timeline.
                             logger.debug("stream {}, dts {} <= last dts {}," +
-                                    " pts {} <= last pts {}, discarding frame.",
+                                    " pts {}, last pts {}, discarding frame.",
                                     inputStreamIndex,
                                     dts, lastDtsByStreamIndex[inputStreamIndex],
                                     pts, lastPtsByStreamIndex[inputStreamIndex]);
@@ -700,34 +759,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         continue;
                     } else {
                         lastPtsByStreamIndex[outputStreamIndex] = pts;
-                    }
-                }
-
-                if (switching && inputStreamIndex == ctx.preferredVideo) {
-
-                    switchFlag = packet.flags() & AV_PKT_FLAG_KEY;
-
-                    // Check if we are at least on a flagged video key frame. Then switch before the
-                    // frame is actually processed. This ensures that if we are muxing, we are
-                    // starting with hopefully an I frame and if we are transcoding this is likely a
-                    // good transition point.
-                    if (switchFlag > 0 || System.currentTimeMillis() >= switchTimeout) {
-                        logger.debug("Video key frame flag: {}", switchFlag);
-
-                        synchronized (switchLock) {
-                            try {
-                                switchStreamOutput();
-                            } catch (InterruptedException e) {
-                                logger.debug("Switching was interrupted.");
-                                av_packet_unref(packet);
-                                break;
-                            }
-                            switching = false;
-
-                            switchLock.notifyAll();
-                        }
-
-                        logger.info("SWITCH successful: {}ms.", System.currentTimeMillis() - (switchTimeout - 10000));
                     }
                 }
 

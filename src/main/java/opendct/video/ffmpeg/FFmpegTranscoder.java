@@ -589,9 +589,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     continue;
                 }
 
-                if (firstFrame[outputStreamIndex] && (packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
-                    av_packet_unref(packet);
-                    continue;
+                if (firstFrame[outputStreamIndex]) {
+                    if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
+                        av_packet_unref(packet);
+                        continue;
+                    } else {
+                        logger.debug("stream {}, first dts = {}, first pts = {}",
+                                inputStreamIndex, packet.dts(), packet.pts());
+                    }
                 }
 
                 firstFrame[outputStreamIndex] = false;
@@ -628,8 +633,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                     if (diff < -tolerance ||
                             diff > tolerance ||
-                            (dts < lastDtsByStreamIndex[inputStreamIndex] &&
-                                    lastDtsByStreamIndex[inputStreamIndex] - dts < tolerance)) {
+                            dts < lastDtsByStreamIndex[inputStreamIndex]) {
 
                         long oldDts = dts;
                         long oldPts = pts;
@@ -652,13 +656,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     }
 
                     if (dts <= lastDtsByStreamIndex[inputStreamIndex] || dts > 8707216918L) {
-                        increment = Math.max(packet.duration(), 1);
+                        increment = 1;
 
-                        if (lastPtsByStreamIndex[inputStreamIndex] + increment >= pts) {
-                            increment = 1;
-                        }
+                        if (lastDtsByStreamIndex[inputStreamIndex] != dts &&
+                                lastDtsByStreamIndex[inputStreamIndex] + increment < pts) {
 
-                        if (lastDtsByStreamIndex[inputStreamIndex] + increment < pts) {
                             long oldDts = dts;
                             lastDtsByStreamIndex[inputStreamIndex] += increment;
                             dts = lastDtsByStreamIndex[inputStreamIndex];

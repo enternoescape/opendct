@@ -649,14 +649,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 }
 
                 long currentTime = System.currentTimeMillis();
-                if (currentTime - lastErrorTime > lastErrorTimeLimit) {
+                if (lastErrorTime != 0 && currentTime - lastErrorTime > lastErrorTimeLimit) {
                     errors = 0;
                     lastErrorTime = 0;
                 } else if (errors ==  1 && lastErrorTime == 0) {
                     lastErrorTime = currentTime;
                 }
 
-                if (errors > errorLimit || dts + tsOffset >= 8589934592L) {
+                if (errors > errorLimit) {
                     logger.info("Restarting stream. Errors = {}", errors);
                     synchronized (switchLock) {
                         try {
@@ -691,7 +691,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                     if (diff < -tolerance ||
                             diff > tolerance ||
-                            dts < lastDtsByStreamIndex[inputStreamIndex]) {
+                            (dts < lastDtsByStreamIndex[inputStreamIndex] &&
+                                    lastDtsByStreamIndex[inputStreamIndex] - dts > tolerance)) {
 
                         long oldDts = dts;
                         long oldPts = pts;
@@ -713,7 +714,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                                 oldPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
                     }
 
-                    if (dts <= lastDtsByStreamIndex[inputStreamIndex] || dts > 8589934592L) {
+                    if (dts <= lastDtsByStreamIndex[inputStreamIndex]) {
                         increment = 1;
 
                         if (lastDtsByStreamIndex[inputStreamIndex] != dts &&

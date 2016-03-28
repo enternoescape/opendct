@@ -727,3 +727,6 @@
 > than 30 errors are encountered in under a second. Most players can
 > handle this, the FFmpeg remuxer cannot deal with timestamps that are
 > not monotonic.
+
+> *Removed 33-bit dts limit checking since it appears that FFmpeg will
+> take care of that automatically.

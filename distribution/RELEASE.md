@@ -718,7 +718,7 @@
 
 > *Internal: some code cleanup.
 
-#### 0.4.39-RC5
+#### 0.4.40-RC5
 > *Duplicate log entries are now reported at the same log level as the
   duplicates so that you don't see the duplicate entry, yet no previous
   logging associated.

@@ -618,32 +618,26 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 if ((codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_AUDIO) &&
                         lastDtsByStreamIndex[inputStreamIndex] > 0) {
 
+                    // There are probably many other situations that could come up making this value
+                    // incorrect, but this is only optimizing for typical MPEG-TS input and
+                    // MPEG-TS/PS output. This has the potential to introduce a rounding error since
+                    // it is not based on the stream time base rational.
+                    int increment = Math.max(packet.duration(), 0);
+                    int tolerance = increment * 100;
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
-                    long increment = Math.max(packet.duration(), 0);
-                    long tolerance = increment * 100;
 
-                    // This is tuned for MPEG-TS. This checks if basically a whole second went
-                    // missing or if there is a less than one second decode time stamp discontinuity
-                    // that typically results from fixing the timeline. If any of those conditions
-                    // are true, then the timeline is corrected.
                     if (diff < -tolerance ||
                             diff > tolerance ||
                             (dts < lastDtsByStreamIndex[inputStreamIndex] &&
                                     lastDtsByStreamIndex[inputStreamIndex] - dts < tolerance)) {
 
-                        // There are probably many other situations that could come up making this
-                        // value incorrect, but this is only optimizing for typical MPEG-TS input
-                        // and MPEG-TS/PS output. This has the potential to introduce a rounding
-                        // error since it is not based on the rational.
-                        //increment = Math.max(packet.duration(), 0);
-
                         long oldDts = dts;
                         long oldPts = pts;
 
                         dts -= diff;
-                        pts -= diff;
-
                         dts += increment;
+
+                        pts -= diff;
                         pts += increment;
 
                         tsOffset -= diff;

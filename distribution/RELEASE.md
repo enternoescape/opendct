@@ -717,3 +717,8 @@
 > *Changed default consumer to the FFmpeg transcoding consumer.
 
 > *Internal: some code cleanup.
+
+#### 0.4.39-RC5
+> *Duplicate log entries are now reported at the same log level as the
+  duplicates so that you don't see the duplicate entry, yet no previous
+  logging associated.

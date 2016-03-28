@@ -623,7 +623,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     // MPEG-TS/PS output. This has the potential to introduce a rounding error since
                     // it is not based on the stream time base rational.
                     int increment = Math.max(packet.duration(), 0);
-                    int tolerance = increment * 100;
+                    int tolerance = 900000;
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
 
                     if (diff < -tolerance ||

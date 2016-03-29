@@ -61,6 +61,13 @@ public class Config {
     public static final String NEW_LINE = System.lineSeparator();
     public static final String DIR_SEPARATOR = File.separator;
 
+    /**
+     *  This is if the JVM is 64-bit, not the OS.
+     */
+    public static final boolean IS_64BIT = System.getProperty("sun.arch.data.model").contains("64");
+    public static final String PROJECT_DIR = System.getProperty("user.dir");
+    public static final String BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+
     private static int exitCode = 0;
 
     private static final String configFileName = "opendct.properties";

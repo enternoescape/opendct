@@ -70,6 +70,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private String currentRecordingQuality;
     private boolean consumeToNull;
 
+    private boolean ccExtractor = FFmpegConfig.getCcExtractor();
+    private boolean ccExtractorAllStreams = FFmpegConfig.getCcExtractorAllStreams();
+
     // Atomic because long values take two clocks just to store in 32-bit. We could get incomplete
     // values otherwise. Don't ever forget to set this value and increment it correctly. This is
     // crucial to playback in SageTV.

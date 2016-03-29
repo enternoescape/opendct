@@ -19,6 +19,9 @@ Thumbs.db
 /.gradle
 /build/
 
+# Native Compiling
+/bin/compile/ccextractor/ccextractor/
+
 # Debug
 /archive/
 /opendct*.log*

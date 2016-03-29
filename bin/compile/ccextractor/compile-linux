@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+cd ccextractor/linux
+
+echo "Compile 32-bit binary."
+make clean
+make CFLAGS="-m32 -O3 -std=gnu99" LDFLAGS="-m32 -lm"
+mkdir -p ../../../../linux-x86/ccextractor
+cp -f ./ccextractor ../../../../linux-x86/ccextractor/ccextractor
+
+echo "Compile 64-bit binary."
+make clean
+make
+mkdir -p ../../../../linux-x86_64/ccextractor
+cp -f ./ccextractor ../../../../linux-x86_64/ccextractor/ccextractor
+
+echo "Created 32-bit and 64-bit binaries."
+file ../../../../linux-x86/ccextractor/ccextractor
+file ../../../../linux-x86_64/ccextractor/ccextractor

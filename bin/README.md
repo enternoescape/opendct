@@ -14,14 +14,18 @@ an eventual goal of hosting on Bintray.
 *Git and make must be installed before proceeding.*
 
 1) Run ./download-git
+
 2) Run ./compile-linux
 
 ##### Updating the Binary for Windows
 *Git and Visual Studio 2013 must be be installed before proceeding.*
 
 1) Run download-git.cmd
+
 2) Open the project ccextractor.sln under .\ccextractor\windows
+
 3) Compile the project for 32-bit and 64-bit.
+
 4) Copy resulting binary into the directories
    ..\windows-x86\ccextractor and ..\windows-x86_64\ccextractor
    respectively.

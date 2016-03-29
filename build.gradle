@@ -56,7 +56,7 @@ ext {
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
     minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
     buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
-    buildType = "RC5"
+    buildType = "RC6"
 
     javaVersion = '1.7'
     buildVersion = "${majorVersion}.${minorVersion}.${buildVersion}"

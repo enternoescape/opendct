@@ -42,6 +42,8 @@ public class FFmpegConfig {
     private static IntegerDeviceOption threadPriority;
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption h264PtsHack;
+    private static BooleanDeviceOption ccExtractor;
+    private static BooleanDeviceOption ccExtractorAllStreams;
 
     static {
         deviceOptions = new ConcurrentHashMap<>();
@@ -60,7 +62,9 @@ public class FFmpegConfig {
                 minDirectFlush,
                 threadPriority,
                 uploadIdPort,
-                h264PtsHack
+                h264PtsHack,
+                ccExtractor,
+                ccExtractorAllStreams
         );
     }
 
@@ -198,8 +202,27 @@ public class FFmpegConfig {
                                 " video not playing back smoothly."
                         );
 
+                ccExtractor = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.ccextractor_enabled", false),
+                        false,
+                        "Enable CCExtractor",
+                        "consumer.ffmpeg.ccextractor_enabled",
+                        "This enables the creation of .srt files live while recording. This" +
+                                " option will not do anything when Upload ID is enabled."
+                );
+
+                ccExtractorAllStreams = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.ccextractor_all_streams", true),
+                        false,
+                        "Extract All CCExtractor Streams",
+                        "consumer.ffmpeg.ccextractor_all_streams",
+                        "This enables the creation of all possible .srt files if CCExtractor is" +
+                                " enabled. If this option is disabled, only the first stream will" +
+                                " be extracted (CC1)."
+                );
+
             } catch (DeviceOptionException e) {
-                logger.warn("Invalid options. Reverting to defaults => ", e);
+                logger.warn("Invalid option {}. Reverting to defaults => ", e.deviceOption, e);
 
                 Config.setBoolean("consumer.ffmpeg.upload_id_enabled", false);
                 Config.setInteger("consumer.ffmpeg.circular_buffer_size", 7864320);
@@ -212,6 +235,8 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2);
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
                 Config.setBoolean("consumer.ffmpeg.h264_pts_hack", false);
+                Config.setBoolean("consumer.ffmpeg.ccextractor_enabled", false);
+                Config.setBoolean("consumer.ffmpeg.ccextractor_all_streams", true);
                 continue;
             }
 

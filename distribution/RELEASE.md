@@ -730,3 +730,13 @@
 
 > *Removed 33-bit dts limit checking since it appears that FFmpeg will
 > take care of that automatically.
+
+#### 0.4.41-RC6
+> *Removed remuxer restarting code since it technically isn't needed if
+  the dts can go as high as it wants and the muxer will continue to work
+  with it.
+  
+> *Increased dts threshold to differences of over 10 seconds.
+
+> *The threshold will now dynamically increase if more than 50
+  corrections are made over 5 seconds.

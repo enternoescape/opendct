@@ -81,7 +81,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
     private FFmpegContext ctx = null;
     private boolean interlaced = false;
-    private FilteringContext filter_ctx[];
+    private FilteringContext filter_ctx[] = new FilteringContext[0];
 
     private class FilteringContext {
         private AVFilterContext buffersink_ctx;
@@ -548,9 +548,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         // This value will be adjusted as needed to keep the entire stream on the same time code.
         long tsOffset = 0;
         long lastErrorTime = 0;
-        long lastErrorTimeLimit = 1000;
+        long lastErrorTimeLimit = 5000;
         int errors = 0;
-        int errorLimit = 30;
+        int errorLimit = 50;
+        int discontinuityTolerance = 450000;
 
         int switchFlag;
         long dts;
@@ -604,12 +605,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 firstFrame[outputStreamIndex] = false;
 
-                // Some streams will provide a dts value that's <= to the last value. Sometimes they
-                // don't even have a dts value. These frames are discarded since they are normally
-                // redundant.
                 dts = packet.dts();
                 pts = packet.pts();
 
+                // Discard all frames that don't have any timestamps since without a presentation
+                // timestamp, the frame will never be displayed anyway.
                 if (dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE) {
                     /*logger.debug("stream {}, dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE," +
                             " discarding frame.", inputStreamIndex);*/
@@ -656,20 +656,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 }
 
                 if (errors > errorLimit) {
-                    logger.info("Restarting stream. Errors = {}", errors);
-                    synchronized (switchLock) {
-                        try {
-                            newWriter = FFmpegContext.getWriterContext(ctx.writerOpaque);
-                            newFilename = ctx.outputFilename;
-                            switchStreamOutput();
-                            tsOffset = 0;
-                            errors = 0;
-                        } catch (InterruptedException e) {
-                            logger.debug("Switching was interrupted.");
-                            av_packet_unref(packet);
-                            break;
-                        }
-                    }
+                    discontinuityTolerance += 450000;
+                    logger.info("Adjusting threshold to {}. Errors = {}", discontinuityTolerance, errors);
+                    errors = 0;
                 }
 
                 dts += tsOffset;
@@ -685,10 +674,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     // MPEG-TS/PS output. This has the potential to introduce a rounding error since
                     // it is not based on the stream time base rational.
                     int increment = Math.max(packet.duration(), 0);
-                    int tolerance = 180000;
                     long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
 
-                    if (diff < -tolerance || diff > tolerance) {
+                    if (Math.abs(diff) > discontinuityTolerance) {
+                        errors += 1;
 
                         long oldDts = dts;
                         long oldPts = pts;
@@ -718,7 +707,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                             long oldDts = dts;
                             lastDtsByStreamIndex[inputStreamIndex] += increment;
-                            errors += 1;
                             dts = lastDtsByStreamIndex[inputStreamIndex];
 
                             logger.debug("fixing stream {} dts increment = {}, new offset = {}" +

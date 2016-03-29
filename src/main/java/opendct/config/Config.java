@@ -749,24 +749,60 @@ public class Config {
         logger.exit();
     }
 
+    /**
+     * Set an IP address from a property.
+     * <p/>
+     * Providing <i>null</i> for the value will make the property empty.
+     *
+     * @param key The key for this property.
+     * @param value The value to set this property.
+     */
     public static void setInetAddress(String key, InetAddress value) {
         logger.entry(key, value);
 
-        properties.setProperty(key, value.getHostAddress());
+        if (value == null) {
+            properties.setProperty(key, "");
+        } else {
+            properties.setProperty(key, value.getHostAddress());
+        }
 
         logger.exit();
     }
 
+    /**
+     * Get an IP address from a property.
+     * <p/>
+     * Providing <i>null</i> for the default value will allow the property to be empty.
+     *
+     * @param key The key for this property.
+     * @param defaultValue The default value to return if the property does not already exist.
+     * @return The IP address associated with the key. <i>null</i> will be returned if the property
+     * is empty.
+     */
     public static InetAddress getInetAddress(String key, InetAddress defaultValue) {
         logger.entry(key, defaultValue);
 
         InetAddress returnValue;
-        String stringValue = properties.getProperty(key, defaultValue.getHostAddress());
-        try {
-            returnValue = InetAddress.getByName(stringValue);
-        } catch (Exception e) {
-            logger.error("The property '{}' should be an IP address, but '{}' was returned. Using the default value of '{}'", key, stringValue, defaultValue.getHostAddress());
-            returnValue = defaultValue;
+        String stringValue;
+
+        if (defaultValue == null) {
+            stringValue = properties.getProperty(key, "");
+        } else {
+            stringValue = properties.getProperty(key, defaultValue.getHostAddress());
+        }
+
+        if (Util.isNullOrEmpty(stringValue)) {
+            returnValue = null;
+        } else {
+            try {
+                returnValue = InetAddress.getByName(stringValue);
+            } catch (Exception e) {
+                logger.error("The property '{}' should be an IP address, but '{}' was returned." +
+                        " Using the default value of '{}'",
+                        key, stringValue,
+                        defaultValue.getHostAddress());
+                returnValue = defaultValue;
+            }
         }
 
         setInetAddress(key, returnValue);

@@ -242,7 +242,10 @@ public class DCTCaptureDeviceImpl extends RTPCaptureDevice implements CaptureDev
         }
 
         try {
-            localIPAddress = Config.getInetAddress( propertiesDeviceParent + "local_ip_override", Util.getLocalIPForRemoteIP(rtpStreamRemoteIP));
+            localIPAddress = Config.getInetAddress(propertiesDeviceParent + "local_ip_override", null);
+            if (localIPAddress == null) {
+                localIPAddress = Util.getLocalIPForRemoteIP(rtpStreamRemoteIP);
+            }
         } catch (SocketException e) {
             logger.error("Unable to get the IP address for localhost => ", e);
         }

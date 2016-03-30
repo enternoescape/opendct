@@ -83,7 +83,11 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         av_log_format_line(source, level, formatStr, params, loggerObject.messageBytes, loggerObject.messageBytes.length, loggerObject.printPrefix);
 
-        trim(loggerObject);
+        try {
+            trim(loggerObject);
+        } catch (Exception e) {
+            defaultLogger.error("There was a problem processing a log entry => ", e);
+        }
 
         Logger logger;
 

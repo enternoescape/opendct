@@ -552,10 +552,13 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int errors = 0;
         int errorLimit = 50;
         int discontinuityTolerance = 450000;
+        long currentTime;
 
         int switchFlag;
         long dts;
         long pts;
+        int increment;
+        long diff;
         boolean firstFrame[] = new boolean[firstDtsByStreamIndex.length];
         Arrays.fill(firstFrame, true);
 
@@ -566,6 +569,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         AVStream iavStream;
         AVCodecContext iavCodecContext;
         int inputStreamIndex;
+        int outputStreamIndex;
         int codecType;
         int got_frame[] = new int[] { 0 };
 
@@ -583,7 +587,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 }
 
                 inputStreamIndex = packet.stream_index();
-                int outputStreamIndex;
 
                 if (inputStreamIndex >= ctx.streamMap.length ||
                         (outputStreamIndex = ctx.streamMap[inputStreamIndex].outStreamIndex)
@@ -647,7 +650,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     }
                 }
 
-                long currentTime = System.currentTimeMillis();
+                currentTime = System.currentTimeMillis();
                 if (lastErrorTime != 0 && currentTime - lastErrorTime > lastErrorTimeLimit) {
                     errors = 0;
                     lastErrorTime = 0;
@@ -673,8 +676,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     // incorrect, but this is only optimizing for typical MPEG-TS input and
                     // MPEG-TS/PS output. This has the potential to introduce a rounding error since
                     // it is not based on the stream time base rational.
-                    int increment = Math.max(packet.duration(), 0);
-                    long diff = dts - lastDtsByStreamIndex[inputStreamIndex];
+                    increment = Math.max(packet.duration(), 0);
+                    diff = dts - lastDtsByStreamIndex[inputStreamIndex];
 
                     if (Math.abs(diff) > discontinuityTolerance) {
                         errors += 1;

@@ -745,3 +745,6 @@
 > *The local IP address override is now created, but not automatically
   populated. If needed, you can set the IP address, but while it is
   blank, it will be determined automatically.
+  
+> *FFmpeg logger now recycles most temporary objects and avoids creating
+  strings as much as possible.

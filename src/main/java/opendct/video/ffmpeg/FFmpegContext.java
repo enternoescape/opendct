@@ -269,7 +269,7 @@ public class FFmpegContext {
             FFmpegContext context = getContext(opaque);
 
             if (context.interrupted) {
-                context.logger.info("Interrupt callback is returning 1");
+                FFmpegContext.logger.info("Interrupt callback is returning 1");
                 return 1;
             }
 
@@ -289,7 +289,7 @@ public class FFmpegContext {
             try {
                 returnValue = context.SEEK_BUFFER.seek(whence, offset);
             } catch (Exception e) {
-                context.logger.error("There was an exception while seeking => ", e);
+                FFmpegContext.logger.error("There was an exception while seeking => ", e);
             }
 
             return returnValue;
@@ -307,23 +307,21 @@ public class FFmpegContext {
 
             if (!context.isInterrupted()) {
                 try {
-                    ByteBuffer readBuffer = buf.position(0).limit(bufSize).asBuffer();
-
-                    nBytes = context.SEEK_BUFFER.read(readBuffer);
+                    nBytes = context.SEEK_BUFFER.read(buf.position(0).limit(bufSize).asBuffer());
 
                 } catch (Exception e) {
                     if (e instanceof InterruptedException) {
                         context.interrupted = true;
                         context.SEEK_BUFFER.close();
-                        context.logger.debug("FFmpeg consumer was interrupted while reading.");
+                        FFmpegContext.logger.debug("FFmpeg consumer was interrupted while reading.");
                     } else {
-                        context.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
+                        FFmpegContext.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
                     }
                 }
             }
 
             if (nBytes == -1) {
-                context.logger.info("Returning AVERROR_EOF in readCallback.call()");
+                FFmpegContext.logger.info("Returning AVERROR_EOF in readCallback.call()");
                 return AVERROR_EOF;
             }
 
@@ -342,9 +340,7 @@ public class FFmpegContext {
             int numBytesWritten = 0;
 
             try {
-                ByteBuffer writeBuffer = buf.position(0).limit(bufSize).asByteBuffer();
-
-                numBytesWritten = context.write(writeBuffer);
+                numBytesWritten = context.write(buf.position(0).limit(bufSize).asByteBuffer());
             } catch (IOException e) {
                 Logger logger = context.getLogger();
                 if (logger != null) {

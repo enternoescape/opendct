@@ -219,39 +219,34 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     }
 
     private String getClass(FFmpegLoggerObject loggerObject) {
-        String returnValue = FFMPEG;
-        String classNameTemp;
+        String className;
         boolean match;
 
         for (int i = 0; i < classNames.length; i++) {
-            classNameTemp = classNames[i];
+            className = classNames[i];
 
-            if (classNameTemp == null) {
-                classNameTemp = "ffmpeg." + new String(loggerObject.messageBytes, loggerObject.classStart, loggerObject.classEnd, StandardCharsets.UTF_8);
-                addClass(classNameTemp);
-                return classNameTemp;
-            } else if (classNameTemp.length() != loggerObject.classNameLen + 8) {
+            if (className == null) {
+                className = "ffmpeg." + new String(loggerObject.messageBytes, loggerObject.classStart, loggerObject.classEnd, StandardCharsets.UTF_8);
+                addClass(className);
+                return className;
+            } else if (className.length() != loggerObject.classNameLen + 8) {
                 continue;
             }
 
             match = true;
             for (int j = 0; j < loggerObject.classNameLen; j++) {
-                if (loggerObject.messageBytes[j + loggerObject.classStart] != classNameTemp.charAt(j + 7)) {
+                if (loggerObject.messageBytes[j + loggerObject.classStart] != className.charAt(j + 7)) {
                     match = false;
                     break;
                 }
             }
 
-            if (!match) {
-                continue;
-            } else {
-                returnValue = classNameTemp;
+            if (match) {
+                return className;
             }
-
-            break;
         }
 
-        return returnValue;
+        return "ffmpeg." + new String(loggerObject.messageBytes, loggerObject.classStart, loggerObject.classEnd, StandardCharsets.UTF_8);
     }
 
     private Level convertLogLevel(int level) {

@@ -25,6 +25,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 
 public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDeviceParent {
@@ -32,13 +33,15 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
 
     private InetAddress localAddress;
 
-    protected String propertiesLocalAddressOverride = propertiesDeviceParent + "local_ip_override";
+    protected final String propertiesLocalAddressOverride = propertiesDeviceParent + "local_ip_override";
 
     public NetworkDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress) {
         super(name, parentId);
 
-        if (!Util.isNullOrEmpty(Config.getString(propertiesLocalAddressOverride))) {
-            localAddress = Config.getInetAddress(propertiesLocalAddressOverride, localAddress);
+        InetAddress overrideAddress = Config.getInetAddress(propertiesLocalAddressOverride, null);
+
+        if (overrideAddress != null) {
+            localAddress = overrideAddress;
         }
 
         this.localAddress = localAddress;
@@ -84,7 +87,19 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
         for (DeviceOption option : deviceOptions) {
             if (option.getProperty().equals(propertiesLocalAddressOverride)) {
                 try {
-                    localAddress = InetAddress.getByName(option.getValue());
+                    String setValue = option.getValue();
+
+                    if (!Util.isNullOrEmpty(setValue)) {
+                        localAddress = InetAddress.getByName(setValue);
+                    } else {
+                        try {
+                            localAddress = Util.getLocalIPForRemoteIP(getRemoteAddress());
+                        } catch (SocketException e) {
+                            logger.error("Unable to automatically set the local IP address => ", e);
+                            throw new UnknownHostException(e.toString());
+                        }
+                    }
+
                     Config.setDeviceOption(option);
                 } catch (UnknownHostException e) {
                     throw new DeviceOptionException("The provided address is not a valid hostname" +

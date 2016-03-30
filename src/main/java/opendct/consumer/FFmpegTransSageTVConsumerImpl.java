@@ -589,9 +589,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             @Override
             public void run() {
+                int limit;
+                int writeBytes;
+                long currentBytes;
+                ByteBuffer byteBuffer;
+
                 while (true) {
-                    int writeBytes;
-                    ByteBuffer byteBuffer;
+                    byteBuffer = null;
 
                     try {
                         byteBuffer = writeBuffers.take();
@@ -607,7 +611,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                     // For some reason if this isn't assigned to a variable sometimes it doesn't
                     // evaluate as 0.
-                    int limit = byteBuffer.limit();
+                    limit = byteBuffer.limit();
                     if (limit == 0) {
                         if (fileChannel != null && fileChannel.isOpen()) {
                             logger.info("Closing the file '{}'", directFilename);
@@ -718,7 +722,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         }
                     }
 
-                    long currentBytes = bytesStreamed.addAndGet(writeBytes);
+                    currentBytes = bytesStreamed.addAndGet(writeBytes);
                     autoOffset += writeBytes;
                     bytesFlushCounter += writeBytes;
 

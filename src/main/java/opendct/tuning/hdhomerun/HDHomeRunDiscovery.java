@@ -272,11 +272,11 @@ public class HDHomeRunDiscovery implements Runnable {
 
             HDHomeRunPacket rxPacket = rxPackets[listenIndex];
             DatagramChannel datagramChannel = datagramChannels[listenIndex];
+            InetSocketAddress socketAddress;
 
             while (sendThread != null && sendThread.isAlive()) {
                 rxPacket.BUFFER.clear();
 
-                InetSocketAddress socketAddress;
                 try {
                     socketAddress = (InetSocketAddress) datagramChannel.receive(rxPacket.BUFFER);
                 } catch (ClosedChannelException e) {

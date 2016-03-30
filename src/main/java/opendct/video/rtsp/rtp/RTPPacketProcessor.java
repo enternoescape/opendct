@@ -34,6 +34,12 @@ public class RTPPacketProcessor {
     int currentRTPPacket = 0;
     int lastRTPPacket = -1;
 
+    boolean unexpectedRTPPacket;
+    boolean rollover;
+    int protocol;
+    int timeStamp;
+    int ssrc;
+
     public void ResetCounters() {
         statisticLock.writeLock().lock();
         try {
@@ -78,7 +84,7 @@ public class RTPPacketProcessor {
     public boolean findMissingRTPPackets(byte[] datagramPacket) {
         logger.entry();
 
-        boolean unexpectedRTPPacket = false;
+        unexpectedRTPPacket = false;
 
         statisticLock.writeLock().lock();
 
@@ -108,36 +114,38 @@ public class RTPPacketProcessor {
     public boolean findMissingRTPPackets(ByteBuffer datagramPacket) {
         logger.entry();
 
-        boolean unexpectedRTPPacket = false;
+        unexpectedRTPPacket = false;
 
         statisticLock.writeLock().lock();
 
         try {
-            int protocol = datagramPacket.getShort() & 0xffff;
+            //protocol = datagramPacket.getShort() & 0xffff;
+            datagramPacket.position(datagramPacket.position() + 2);
             currentRTPPacket = datagramPacket.getShort() & 0xffff;
-            int timeStamp = datagramPacket.getInt();
-            int ssrc = datagramPacket.getInt();
-            //int ssrcList = datagramPacket.getInt();
+            datagramPacket.position(datagramPacket.position() + 8);
+            //timeStamp = datagramPacket.getInt();
+            //ssrc = datagramPacket.getInt();
+            //ssrcList = datagramPacket.getInt();
 
             // datagramPacket will return with the read index at
             // 12 which is where we want it.
 
             //65535
             if (lastRTPPacket != -1) {
-                boolean rollover = false;
+                rollover = false;
 
                 if (lastRTPPacket == 65535 && currentRTPPacket == 0) {
                     rollover = true;
                 } else if (lastRTPPacket == 65535) {
                     if (logger.isWarnEnabled()) {
-                        logger.warn("Expected frame number {}, received frame number {}", 0, currentRTPPacket);
+                        logger.warn("Expected frame number {}, got {}", 0, currentRTPPacket);
                     }
                     rollover = true;
                 }
 
                 if (!rollover && (lastRTPPacket + 1) != currentRTPPacket) {
                     if (logger.isWarnEnabled()) {
-                        logger.warn("Expected frame number {}, received frame number {}", (lastRTPPacket + 1), currentRTPPacket);
+                        logger.warn("Expected frame number {}, got {}", (lastRTPPacket + 1), currentRTPPacket);
                     }
                     missedRTPPackets++;
                     unexpectedRTPPacket = true;

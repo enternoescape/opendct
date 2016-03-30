@@ -748,3 +748,8 @@
   
 > *FFmpeg logger now recycles most temporary objects and avoids creating
   strings as much as possible.
+  
+> *Adjusted some other polling times to reduce the number of shortly
+  lived objects being created and overall CPU utilization.
+  
+> *Profiled streaming code and optimized when possible.

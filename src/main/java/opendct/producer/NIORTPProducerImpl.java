@@ -173,6 +173,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
                 logger.info("Producer packet monitoring thread is running.");
                 boolean firstPacketsReceived = true;
+                int timeout;
 
                 while(!stop.get() && !Thread.currentThread().isInterrupted()) {
                     synchronized (receiveMonitor) {
@@ -182,7 +183,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                     long recentPackets;
 
                     try {
-                        int timeout = stalledTimeout;
+                        timeout = stalledTimeout;
 
                         while (!Thread.currentThread().isInterrupted() && timeout-- > 0) {
                             Thread.sleep(1000);

@@ -494,13 +494,15 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             asyncWriter.start();
         }
 
+        private ByteBuffer currentWrite;
+
         @Override
         public int write(ByteBuffer data) throws IOException {
             if (closed) {
                 return -1;
             }
 
-            ByteBuffer currentWrite;
+            currentWrite = null;
 
             if (firstWrite) {
                 bytesStreamed.set(0);

@@ -656,12 +656,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         synchronized (switchLock) {
                             try {
                                 switchStreamOutput();
-
-                                // If the last stream was very broken, try not to bring that into
-                                // the next stream.
-                                Arrays.fill(lastDtsByStreamIndex, Integer.MIN_VALUE);
-                                Arrays.fill(lastPtsByStreamIndex, Integer.MIN_VALUE);
-
                                 errorCounter = 0;
                             } catch (InterruptedException e) {
                                 logger.debug("Switching was interrupted.");

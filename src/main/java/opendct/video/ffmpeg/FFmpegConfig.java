@@ -42,6 +42,7 @@ public class FFmpegConfig {
     private static IntegerDeviceOption threadPriority;
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption h264PtsHack;
+    private static BooleanDeviceOption fixStream;
 
     static {
         deviceOptions = new ConcurrentHashMap<>();
@@ -60,7 +61,8 @@ public class FFmpegConfig {
                 minDirectFlush,
                 threadPriority,
                 uploadIdPort,
-                h264PtsHack
+                h264PtsHack,
+                fixStream
         );
     }
 
@@ -198,6 +200,18 @@ public class FFmpegConfig {
                                 " video not playing back smoothly."
                         );
 
+                fixStream = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.fix_stream", true),
+                        false,
+                        "Fix Stream",
+                        "consumer.ffmpeg.fix_stream",
+                        "This enables discontinuity repairs. If you are experiencing excessive" +
+                                " logging regarding these repairs, you can try disabling this. Be" +
+                                " warned that if your provider does anything significantly wrong" +
+                                " regarding the stream continuity, you may end up with bad" +
+                                " recordings at times."
+                );
+
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid options. Reverting to defaults => ", e);
 
@@ -212,6 +226,7 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2);
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
                 Config.setBoolean("consumer.ffmpeg.h264_pts_hack", false);
+                Config.setBoolean("consumer.ffmpeg.fix_stream", true);
                 continue;
             }
 
@@ -246,7 +261,8 @@ public class FFmpegConfig {
                 minDirectFlush,
                 threadPriority,
                 uploadIdPort,
-                h264PtsHack
+                h264PtsHack,
+                fixStream
         };
     }
 
@@ -326,5 +342,9 @@ public class FFmpegConfig {
 
     public static boolean getH264PtsHack() {
         return h264PtsHack.getBoolean();
+    }
+
+    public static boolean getFixStream() {
+        return fixStream.getBoolean();
     }
 }

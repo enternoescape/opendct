@@ -158,7 +158,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             loggerObject.len--;
         }
 
-        if ((char)loggerObject.messageBytes[0] == '[') {
+        if (enhancedLogging && (char)loggerObject.messageBytes[0] == '[') {
             loggerObject.classStart = 1;
             loggerObject.index = 2;
 

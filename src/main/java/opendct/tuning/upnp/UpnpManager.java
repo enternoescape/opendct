@@ -156,7 +156,7 @@ public class UpnpManager implements PowerEventListener {
                         }
                     }
 
-                    logger.info("Capture device count reached. UPnP discovery thread has stopped.");
+                    logger.info("UPnP discovery thread has stopped.");
                 }
             });
             discoveryThread.setName("UPnPDiscovery-" + discoveryThread.getId());

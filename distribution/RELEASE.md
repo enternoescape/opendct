@@ -743,7 +743,8 @@
   
 #### 0.4.42-RC7
 > *Changed the old FFmpeg consumer to only do == last dts discarding
-  since that's the way it used to do it. It still no longer the default.
+  since that's the way it used to do it. It is still no longer the
+  default.
  
 > *Changed the dts fixing code so it will deal with streams
   individually, then sync them when it makes sense or a limit is

@@ -557,7 +557,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         //long tsOffset = 0;
         long tsOffsets[] = new long[firstDtsByStreamIndex.length];
         Arrays.fill(tsOffsets, 0);
-        // This value indicates what streams are currently in use.
+        // This value indicates what streams are currently in use and are desirable to be in
+        // agreement with the other streams.
         boolean tsActiveOffsets[] = new boolean[firstDtsByStreamIndex.length];
         Arrays.fill(tsActiveOffsets, false);
         // This is set when the offset for any stream has changed, so we know it needs to be synced.
@@ -569,7 +570,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int errorCounter = 0;
         int errorLimit = 50;
         int adjustments = 0;
-        int discontinuityTolerance = 180000;
+        int discontinuityTolerance = 450000;
 
         final boolean fixingEnabled = FFmpegConfig.getFixStream();
 
@@ -616,6 +617,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     continue;
                 }
 
+                preOffsetDts = packet.dts();
+                preOffsetPts = packet.pts();
+
                 if (firstFrame[outputStreamIndex]) {
                     if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
 
@@ -623,17 +627,23 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         continue;
                     } else {
                         logger.debug("stream {}, first dts = {}, first pts = {}",
-                                inputStreamIndex, packet.dts(), packet.pts());
+                                inputStreamIndex, preOffsetDts, preOffsetPts);
+
+                        /*codecType = ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type();
+                        if (codecType == AVMEDIA_TYPE_VIDEO ||
+                                codecType ==AVMEDIA_TYPE_AUDIO) {
+
+                            tsOffsets[inputStreamIndex] = -Math.min(preOffsetDts, preOffsetPts);
+                            tsOffsetChanged = true;
+                            tsActiveOffsets[inputStreamIndex] = true;
+                        }*/
                     }
                 }
 
                 firstFrame[outputStreamIndex] = false;
 
-                preOffsetDts = packet.dts();
-                preOffsetPts = packet.pts();
-
-                // Discard all frames that don't have any timestamps since without a presentation
-                // timestamp, the frame will never be displayed anyway.
+                // Discard all frames that don't have any timestamps since especially without a
+                // presentation timestamp, the frame will never be displayed anyway.
                 if (preOffsetDts == AV_NOPTS_VALUE || preOffsetPts == AV_NOPTS_VALUE) {
                     /*logger.debug("stream {}, dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE," +
                             " discarding frame.", inputStreamIndex);*/
@@ -689,20 +699,25 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     errorCounter = 0;
                 }
 
-                tsActiveOffsets[inputStreamIndex] = true;
                 dts = preOffsetDts + tsOffsets[inputStreamIndex];
                 pts = preOffsetPts + tsOffsets[inputStreamIndex];
 
-                // This makes sure we don't wrap around to a negative number thanks to signed long
-                // in Java.
+                // This makes sure we only have a 33-bit number. Doing this will help prevent a
+                // discontinuity correction if all things are perfect.
                 dts &= 0x1ffffffffL;
                 pts &= 0x1ffffffffL;
 
-                codecType = ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type();
+                // These are referenced several times. This keeps these variables from constantly
+                // being copied into the JVM.
+                iavStream = ctx.avfCtxInput.streams(inputStreamIndex);
+                iavCodecContext = iavStream.codec();
+                codecType = iavStream.codec().codec_type();
 
                 if ((codecType == AVMEDIA_TYPE_VIDEO ||
                         codecType ==AVMEDIA_TYPE_AUDIO) &&
                         lastDtsByStreamIndex[inputStreamIndex] > 0) {
+
+                    tsActiveOffsets[inputStreamIndex] = true;
 
                     // There are probably many other situations that could come up making this value
                     // incorrect, but this is only optimizing for typical MPEG-TS input and
@@ -727,6 +742,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         tsOffsets[inputStreamIndex] -= diff;
                         tsOffsetChanged = true;
 
+                        // This is done in case 33-bits have been exceeded so the last dts values
+                        // will be accurate and not set off discontinuity corrections.
+                        dts &= 0x1ffffffffL;
+                        pts &= 0x1ffffffffL;
+
                         logger.debug("fixing stream {} timestamp discontinuity diff = {}," +
                                         " offset = {}, new offset = {}," +
                                         " preoff dts = {}, dts = {}, new dts {}, last dts = {}," +
@@ -739,7 +759,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         // If the offset is changed for any one of the streams, we need to make sure
                         // they are all using the same offset once the event is over or they may
                         // slowly get out of sync.
-                        long maxOffset = 0;
+                        long maxOffset = Long.MIN_VALUE;
                         long minOffset = Long.MAX_VALUE;
 
                         for (int i = 0; i < tsOffsets.length; i++) {
@@ -751,7 +771,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                                 minOffset = tsOffsets[i];
                             }
 
-                            if (tsOffsets[i] > maxOffset) {
+                            if (maxOffset == Long.MIN_VALUE || tsOffsets[i] > maxOffset) {
                                 maxOffset = tsOffsets[i];
                             }
                         }
@@ -765,24 +785,25 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             // This is a good spot to correct the offset before it reaches the long
                             // wrap around limit. If this is going backwards so much that it wraps
                             // around backwards you likely would have noticed just based on the poor
-                            // quality of the stream.
+                            // playback of the stream. Subtracting this value will effectively
+                            // result in the exact same offset.
                             if (maxOffset > WRAP_0) {
                                 maxOffset -= WRAP_0;
                             }
 
                             if (tsOffsetAttempts > 20) {
-                                logger.debug("force sync offsets {} to {}, diff = {}", tsOffsets, maxOffset, offsetDiff);
+                                logger.debug("force sync offsets {} to {}, diff = {}, attempts = {}",
+                                        tsOffsets, maxOffset, offsetDiff, tsOffsetAttempts);
                             } else {
-                                logger.debug("sync offsets {} to {}, diff = {}", tsOffsets, maxOffset, offsetDiff);
+                                logger.debug("sync offsets {} to {}, diff = {}, attempts = {}",
+                                        tsOffsets, maxOffset, offsetDiff, tsOffsetAttempts);
                             }
 
                             tsOffsetChanged = false;
                             tsOffsetAttempts = 0;
 
                             for (int i = 0; i < tsOffsets.length; i++) {
-                                if (tsActiveOffsets[i]) {
-                                    tsOffsets[i] = maxOffset;
-                                }
+                                tsOffsets[i] = maxOffset;
                             }
                         } else {
                             /*logger.debug("syncing offsets is not yet possible." +
@@ -871,10 +892,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         lastPtsByStreamIndex[outputStreamIndex] = pts;
                     }
                 }
-
-                iavStream = ctx.avfCtxInput.streams(inputStreamIndex);
-                iavCodecContext = iavStream.codec();
-                codecType = iavStream.codec().codec_type();
 
                 //logger.trace("Demuxer gave frame of streamIndex {}", inputStreamIndex);
 

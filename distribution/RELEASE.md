@@ -742,9 +742,23 @@
   corrections are made over 5 seconds.
   
 #### 0.4.42-RC7
+> *Changed the old FFmpeg consumer to only do == last dts discarding
+  since that's the way it used to do it. It still no longer the default.
+ 
+> *Changed the dts fixing code so it will deal with streams
+  individually, then sync them when it makes sense or a limit is
+  reached.
+
 > *The local IP address override is now created, but not automatically
   populated. If needed, you can set the IP address, but while it is
   blank, it will be determined automatically.
   
 > *FFmpeg logger now recycles most temporary objects and avoids creating
   strings as much as possible.
+  
+> *Adjusted some other polling times to reduce the number of shortly
+  lived objects being created and overall CPU utilization.
+  
+> *Profiled streaming code and optimized when possible.
+
+> *Internal: Removed some logging stack traces that don't need to exist.

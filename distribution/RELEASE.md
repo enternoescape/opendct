@@ -743,7 +743,8 @@
   
 #### 0.4.42-RC7
 > *Changed the old FFmpeg consumer to only do == last dts discarding
-  since that's the way it used to do it. It still no longer the default.
+  since that's the way it used to do it. It is still no longer the
+  default.
  
 > *Changed the dts fixing code so it will deal with streams
   individually, then sync them when it makes sense or a limit is
@@ -762,3 +763,13 @@
 > *Profiled streaming code and optimized when possible.
 
 > *Internal: Removed some logging stack traces that don't need to exist.
+
+#### 0.4.43-RC8
+> *Java heap size is now defined at 128MB minimum and 768MB maximum.
+
+> *Removed 33-bit corrections. 
+
+> *FFmpeg logger now calls out what exactly repeated.
+
+> *Internal: Added more commenting on what everything does in the new
+> FFmpeg remuxer.

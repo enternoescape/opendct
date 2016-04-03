@@ -142,8 +142,8 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         int repeatCount = repeated.get();
         if (repeatCount > 0) {
-            logger.log(callLogLevel, "Last message repeated {} time{}.", repeatCount, repeatCount > 1 ? "s" : "");
-            repeated.addAndGet(-1 * repeatCount);
+            logger.log(callLogLevel, "Repeated {} time{}: {}.", holdMessage, repeatCount, repeatCount > 1 ? "s" : "");
+            repeated.addAndGet(-repeatCount);
         }
 
         lastMessage = message;

@@ -763,3 +763,13 @@
 > *Profiled streaming code and optimized when possible.
 
 > *Internal: Removed some logging stack traces that don't need to exist.
+
+#### 0.4.43-RC8
+> *Java heap size is now defined at 128MB minimum and 768MB maximum.
+
+> *Removed 33-bit corrections. 
+
+> *FFmpeg logger now calls out what exactly repeated.
+
+> *Internal: Added more commenting on what everything does in the new
+> FFmpeg remuxer.

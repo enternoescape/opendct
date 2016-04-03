@@ -442,7 +442,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
 
         // This number will increase as interlaced flags are found. If no frames are found after 60
-        // frames, we give up.
+        // frames, give up.
         int frameLimit = 90;
 
         // This is is the absolute frame limit. Once this number is reached the method will return
@@ -557,20 +557,39 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         //long tsOffset = 0;
         long tsOffsets[] = new long[firstDtsByStreamIndex.length];
         Arrays.fill(tsOffsets, 0);
+
         // This value indicates what streams are currently in use and are desirable to be in
         // agreement with the other streams.
         boolean tsActiveOffsets[] = new boolean[firstDtsByStreamIndex.length];
         Arrays.fill(tsActiveOffsets, false);
         // This is set when the offset for any stream has changed, so we know it needs to be synced.
         boolean tsOffsetChanged = false;
+        // This value is used to determine when to force the offsets to sync up. Currently the loop
+        // will try to sync up for up to 20 frames that are not out of sync before everything if
+        // forced to sync to the largest offset.
         int tsOffsetAttempts = 0;
 
+        // This is incremented by frame duration. It does not distinguish between streams, so if
+        // multiple streams are being corrected, this value will increase faster that the assumed
+        // duration. This is an acceptable compromise vs iterating an array or calculating the most
+        // accurate value on each update.
         long lastErrorTime = 0;
         long lastErrorTimeLimit = 5 * TS_TIME_BASE;
+        // This is the number of time the error time has increased due to an error.
         int errorCounter = 0;
+        // This is the maximum number of errors within the error time limit allowed before the
+        // discontinuity tolerance is increased.
         int errorLimit = 50;
+        // This is the number of times the discontinuity tolerance has been increased.
         int adjustments = 0;
+        // This is the last stream that adjusted it's offset. This is used as the correct offset
+        // value after everything is synced up.
+        int lastToAdjust = 0;
+        // This is the number of ticks off +/- from the expected timestamp allowed before corrective
+        // action is taken. This number will increase automatically if it is determined to be too
+        // low.
         int discontinuityTolerance = 450000;
+        long expectedDts;
 
         final boolean fixingEnabled = FFmpegConfig.getFixStream();
 
@@ -581,6 +600,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         long preOffsetPts;
         int increment;
         long diff = 0;
+
+        // Used when streaming first starts to keep the first frame from being a known bad frame.
+        // This helps with some players that otherwise would just assume it must be a bad video.
         boolean firstFrame[] = new boolean[firstDtsByStreamIndex.length];
         Arrays.fill(firstFrame, true);
 
@@ -666,6 +688,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         synchronized (switchLock) {
                             try {
                                 switchStreamOutput();
+
+                                // This will cause the frame timestamps to be displayed again and
+                                // also drop any bad frames since we are starting a new file.
+                                Arrays.fill(firstFrame, true);
                                 errorCounter = 0;
                             } catch (InterruptedException e) {
                                 logger.debug("Switching was interrupted.");
@@ -694,18 +720,18 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     logger.info("adjusting tolerance to {}. errors = {}, adjustments = {}",
                             discontinuityTolerance, errorCounter, adjustments);
 
+                    errorCounter = 0;
                     adjustments += 1;
                     lastErrorTime = 0;
-                    errorCounter = 0;
                 }
 
                 dts = preOffsetDts + tsOffsets[inputStreamIndex];
                 pts = preOffsetPts + tsOffsets[inputStreamIndex];
 
-                // This makes sure we only have a 33-bit number. Doing this will help prevent a
+                // This limits the timestamps to a 33-bit number. Doing this will help prevent a
                 // discontinuity correction if all things are perfect.
-                dts &= 0x1ffffffffL;
-                pts &= 0x1ffffffffL;
+                //dts &= 0x1ffffffffL;
+                //pts &= 0x1ffffffffL;
 
                 // These are referenced several times. This keeps these variables from constantly
                 // being copied into the JVM.
@@ -725,7 +751,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     // it is not based on the stream time base rational.
                     increment = Math.max(packet.duration(), 0);
 
-                    diff = dts - (lastDtsByStreamIndex[inputStreamIndex] + increment);
+                    expectedDts = (lastDtsByStreamIndex[inputStreamIndex] + increment); // & 0x1ffffffffL;
+                    diff = dts - expectedDts;
 
                     if (fixingEnabled &&
                             (diff > discontinuityTolerance || diff < -discontinuityTolerance)) {
@@ -741,11 +768,17 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         pts -= diff;
                         tsOffsets[inputStreamIndex] -= diff;
                         tsOffsetChanged = true;
+                        lastToAdjust = inputStreamIndex;
+
+                        // This will keep the per stream offset in line with 33-bits.
+                        /*if (tsOffsets[inputStreamIndex] > WRAP_0) {
+                            tsOffsets[inputStreamIndex] -= WRAP_0;
+                        }*/
 
                         // This is done in case 33-bits have been exceeded so the last dts values
-                        // will be accurate and not set off discontinuity corrections.
-                        dts &= 0x1ffffffffL;
-                        pts &= 0x1ffffffffL;
+                        // will be accurate and not set off further discontinuity corrections.
+                        //dts &= 0x1ffffffffL;
+                        //pts &= 0x1ffffffffL;
 
                         logger.debug("fixing stream {} timestamp discontinuity diff = {}," +
                                         " offset = {}, new offset = {}," +
@@ -787,24 +820,26 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             // around backwards you likely would have noticed just based on the poor
                             // playback of the stream. Subtracting this value will effectively
                             // result in the exact same offset.
-                            if (maxOffset > WRAP_0) {
+                            /*if (maxOffset > WRAP_0) {
                                 maxOffset -= WRAP_0;
-                            }
+                            }*/
 
                             if (tsOffsetAttempts > 20) {
                                 logger.debug("force sync offsets {} to {}, diff = {}, attempts = {}",
-                                        tsOffsets, maxOffset, offsetDiff, tsOffsetAttempts);
+                                        tsOffsets, tsOffsets[lastToAdjust], offsetDiff, tsOffsetAttempts);
                             } else {
                                 logger.debug("sync offsets {} to {}, diff = {}, attempts = {}",
-                                        tsOffsets, maxOffset, offsetDiff, tsOffsetAttempts);
+                                        tsOffsets, tsOffsets[lastToAdjust], offsetDiff, tsOffsetAttempts);
                             }
 
                             tsOffsetChanged = false;
                             tsOffsetAttempts = 0;
 
                             for (int i = 0; i < tsOffsets.length; i++) {
-                                tsOffsets[i] = maxOffset;
+                                tsOffsets[i] = tsOffsets[lastToAdjust];
                             }
+
+                            lastToAdjust = ctx.preferredVideo;
                         } else {
                             /*logger.debug("syncing offsets is not yet possible." +
                                     " diff = {}, offsets = {}",
@@ -846,25 +881,40 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         // at least the presentation time stamps are in the right place going
                         // forward. If they are, adjust the decode time stamp so the frame can be
                         // used and the muxer will not complain.
-                        if (diff > -TS_TIME_BASE && lastDtsByStreamIndex[inputStreamIndex] + increment < pts) {
+                        if (diff > -TS_TIME_BASE && pts > lastDtsByStreamIndex[inputStreamIndex]) {
 
                             long oldDts = dts;
-                            lastDtsByStreamIndex[inputStreamIndex] += 1;
-                            dts = lastDtsByStreamIndex[inputStreamIndex];
+
+                            dts = lastDtsByStreamIndex[inputStreamIndex] + 1;
+                            if (pts < dts) {
+                                pts = dts;
+                            }
 
                             // This will be seen a lot on 1080i H.264 content, so it will only log
                             // if the gap is larger than expected, but still sane enough to make an
                             // adjustment that doesn't need to be logged.
-                            if (diff < -6006 || diff > 0) {
-                                logger.debug("re-ordering stream {}, diff ={}, offset = {}" +
-                                                " preoff dts = {}, dts = {}, new dts = {}, last dts = {}," +
+                            if (diff < -6006) {
+                                logger.debug("re-ordering stream {}, diff = {}, offset = {}" +
+                                                " preoff dts = {}, dts = {}, new dts = {}," +
+                                                " last dts = {}," +
                                                 " preoff pts = {}, pts = {}, last pts = {}",
                                         diff, inputStreamIndex, tsOffsets[inputStreamIndex],
-                                        preOffsetDts, oldDts, dts, lastDtsByStreamIndex[inputStreamIndex],
+                                        preOffsetDts, oldDts, dts,
+                                        lastDtsByStreamIndex[inputStreamIndex],
+                                        preOffsetPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
+                            } else if (logger.isTraceEnabled()) {
+                                logger.trace("re-ordering stream {}, diff = {}, offset = {}" +
+                                                " preoff dts = {}, dts = {}, new dts = {}," +
+                                                " last dts = {}," +
+                                                " preoff pts = {}, pts = {}, last pts = {}",
+                                        diff, inputStreamIndex, tsOffsets[inputStreamIndex],
+                                        preOffsetDts, oldDts, dts,
+                                        lastDtsByStreamIndex[inputStreamIndex],
                                         preOffsetPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
                             }
                         } else {
-                            logger.debug("discarding packet stream {}, dts {} < last dts {}," +
+                            logger.debug("discarding packet stream {}," +
+                                            " dts {} < last dts {}," +
                                             " pts {}, last pts {}",
                                     inputStreamIndex,
                                     dts, lastDtsByStreamIndex[inputStreamIndex],
@@ -901,7 +951,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                     frame = av_frame_alloc();
                     if (frame == null) {
-                        throw new FFmpegException("av_frame_alloc: Unable to allocate frame.", ENOMEM);
+                        throw new FFmpegException("av_frame_alloc: Unable to allocate frame.",
+                                ENOMEM);
                     }
 
                     //logPacket(ctx.avfCtxInput, packet, "trans-dec-in");

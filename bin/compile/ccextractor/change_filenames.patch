@@ -1,0 +1,63 @@
+diff --git a/src/lib_ccx/ccx_encoders_common.c b/src/lib_ccx/ccx_encoders_common.c
+index 057b103..4b342c1 100644
+--- a/src/lib_ccx/ccx_encoders_common.c
++++ b/src/lib_ccx/ccx_encoders_common.c
+@@ -1081,9 +1081,9 @@ static int init_output_ctx(struct encoder_ctx *ctx, struct encoder_cfg *cfg)
+ 				basefilename = get_basename(cfg->output_filename);
+ 				extension = get_file_extension(cfg->write_format);
+ 
+-				ret = init_write(&ctx->out[0], strdup(cfg->output_filename));
++				ret = init_write(&ctx->out[0], create_outfilename(basefilename, ".CC1", extension));
+ 				check_ret(cfg->output_filename);
+-				ret = init_write(&ctx->out[1], create_outfilename(basefilename, "_2", extension));
++				ret = init_write(&ctx->out[1], create_outfilename(basefilename, ".CC2", extension));
+ 				check_ret(ctx->out[1].filename);
+ 			}
+ 			else if (cfg->extract == 1)
+@@ -1104,9 +1104,9 @@ static int init_output_ctx(struct encoder_ctx *ctx, struct encoder_cfg *cfg)
+ 
+ 			if (cfg->extract == 12)
+ 			{
+-				ret = init_write(&ctx->out[0], create_outfilename(basefilename, "_1", extension));
++				ret = init_write(&ctx->out[0], create_outfilename(basefilename, ".CC1", extension));
+ 				check_ret(ctx->out[0].filename);
+-				ret = init_write(&ctx->out[1], create_outfilename(basefilename, "_2", extension));
++				ret = init_write(&ctx->out[1], create_outfilename(basefilename, ".CC2", extension));
+ 				check_ret(ctx->out[1].filename);
+ 			}
+ 			else if (cfg->extract == 1)
+diff --git a/src/lib_ccx/lib_ccx.c b/src/lib_ccx/lib_ccx.c
+index bdf0530..18598ba 100644
+--- a/src/lib_ccx/lib_ccx.c
++++ b/src/lib_ccx/lib_ccx.c
+@@ -342,7 +342,7 @@ struct encoder_ctx *update_encoder_list_cinfo(struct lib_ccx_ctx *ctx, struct ca
+ 			freep(&ccx_options.enc_cfg.output_filename);
+ 			ccx_options.enc_cfg.output_filename = malloc(len);
+ 
+-			sprintf(ccx_options.enc_cfg.output_filename, "%s_%06d%s", ctx->basefilename, ctx->segment_counter+1, extension);
++			sprintf(ccx_options.enc_cfg.output_filename, "%s.CC%06d%s", ctx->basefilename, ctx->segment_counter+1, extension);
+ 		}
+ 		if (list_empty(&ctx->enc_ctx_head))
+ 		{
+@@ -368,7 +368,7 @@ struct encoder_ctx *update_encoder_list_cinfo(struct lib_ccx_ctx *ctx, struct ca
+ 			return NULL;
+ 		}
+ 
+-		sprintf(ccx_options.enc_cfg.output_filename, "%s_%d%s", ctx->basefilename, pn, extension);
++		sprintf(ccx_options.enc_cfg.output_filename, "%s.CC%d%s", ctx->basefilename, pn, extension);
+ 		enc_ctx = init_encoder(&ccx_options.enc_cfg);
+ 		if (!enc_ctx)
+ 		{
+diff --git a/src/lib_ccx/lib_ccx.h b/src/lib_ccx/lib_ccx.h
+index dbe73da..f68f776 100644
+--- a/src/lib_ccx/lib_ccx.h
++++ b/src/lib_ccx/lib_ccx.h
+@@ -1,7 +1,7 @@
+ #ifndef CCX_CCEXTRACTOR_H
+ #define CCX_CCEXTRACTOR_H
+ 
+-#define VERSION "0.79"
++#define VERSION "0.79-MOD"
+ 
+ // Load common includes and constants for library usage
+ #include "ccx_common_platform.h"

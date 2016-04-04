@@ -32,7 +32,6 @@ public class FFmpegConfig {
 
     private static final ConcurrentHashMap<String, DeviceOption> deviceOptions;
 
-    private static String ccExtractorExecutable;
     private static BooleanDeviceOption uploadIdEnabled;
     private static IntegerDeviceOption circularBufferSize;
     private static IntegerDeviceOption minProbeSize;
@@ -68,16 +67,6 @@ public class FFmpegConfig {
                 ccExtractor,
                 ccExtractorAllStreams
         );
-
-        if (Config.IS_WINDOWS) {
-            ccExtractorExecutable = Config.BIN_DIR + "ccextractor\\ccextractorwin.exe";
-
-        } else if (Config.IS_LINUX) {
-            ccExtractorExecutable = Config.BIN_DIR + "ccextractor/ccextractor";
-
-        } else {
-            ccExtractorExecutable = "";
-        }
     }
 
     private static void initDeviceOptions() {

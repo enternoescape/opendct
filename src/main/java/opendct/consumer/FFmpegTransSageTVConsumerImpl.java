@@ -597,8 +597,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 ByteBuffer byteBuffer;
 
                 while (true) {
-                    byteBuffer = null;
-
                     try {
                         byteBuffer = writeBuffers.take();
                     } catch (InterruptedException e) {

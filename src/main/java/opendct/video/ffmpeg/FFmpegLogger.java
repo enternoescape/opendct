@@ -142,8 +142,8 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         int repeatCount = repeated.get();
         if (repeatCount > 0) {
-            logger.log(callLogLevel, "Last message repeated {} time{}.", repeatCount, repeatCount > 1 ? "s" : "");
-            repeated.addAndGet(-1 * repeatCount);
+            logger.log(callLogLevel, "Repeated {} time{}: {}.", holdMessage, repeatCount, repeatCount > 1 ? "s" : "");
+            repeated.addAndGet(-repeatCount);
         }
 
         lastMessage = message;
@@ -158,7 +158,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             loggerObject.len--;
         }
 
-        if ((char)loggerObject.messageBytes[0] == '[') {
+        if (enhancedLogging && (char)loggerObject.messageBytes[0] == '[') {
             loggerObject.classStart = 1;
             loggerObject.index = 2;
 
@@ -175,7 +175,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             }
 
             if (!loggerObject.noClassName) {
-                if (threadRename && loggerObject.index + 2 + addressSize + 2 < loggerObject.len &&
+                if (threadRename && loggerObject.index + addressSize + 4 < loggerObject.len &&
                         (char) loggerObject.messageBytes[loggerObject.index] == '@' &&
                         (char) loggerObject.messageBytes[loggerObject.index + 1] == ' ') {
 
@@ -191,9 +191,9 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
                         if (currentThreadName.startsWith("Thread-")) {
                             Thread.currentThread().setName(loggerObject.threadName);
-                            loggerObject.index = loggerObject.index + 2 + addressSize + 2;
+                            loggerObject.index = loggerObject.index + addressSize + 4;
                         } else if (currentThreadName.equals(loggerObject.threadName)) {
-                            loggerObject.index = loggerObject.index + 2 + addressSize + 2;
+                            loggerObject.index = loggerObject.index + addressSize + 4;
                         } else {
                             loggerObject.index += 1;
                             loggerObject.messageBytes[loggerObject.index] = (byte)'[';
@@ -203,6 +203,9 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                     loggerObject.index += 1;
                     loggerObject.messageBytes[loggerObject.index] = (byte)'[';
                 }
+            } else {
+                // Return the index back to 0 or nothing will be displayed in the log.
+                loggerObject.index = 0;
             }
         }
 

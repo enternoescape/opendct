@@ -250,8 +250,8 @@ public abstract class FFmpegUtil {
         }
 
         // 90000hz is standard for most MPEG-TS streams.
-        //out_stream.time_base(av_make_q(1, 90000));
-        out_stream.time_base(in_stream.time_base());
+        out_stream.time_base(av_make_q(1, 90000));
+        //out_stream.time_base(in_stream.time_base());
 
         // The language is not always available, but it's nice to have when it is.
         /*AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);
@@ -335,7 +335,8 @@ public abstract class FFmpegUtil {
             enc_ctx.framerate(dec_ctx.framerate());
 
             // These are needed for the re-muxer to not complain.
-            out_stream.time_base(in_stream.time_base());
+            out_stream.time_base(av_make_q(1, 90000));
+            //out_stream.time_base(in_stream.time_base());
             out_stream.avg_frame_rate(in_stream.avg_frame_rate());
             out_stream.r_frame_rate(in_stream.r_frame_rate());
 
@@ -368,7 +369,8 @@ public abstract class FFmpegUtil {
             enc_ctx.time_base().den(dec_ctx.sample_rate());
 
             // These are needed for the re-muxer to not complain.
-            out_stream.time_base(in_stream.time_base());
+            out_stream.time_base(av_make_q(1, 90000));
+            //out_stream.time_base(in_stream.time_base());
             out_stream.avg_frame_rate(in_stream.avg_frame_rate());
             out_stream.r_frame_rate(in_stream.r_frame_rate());
         }

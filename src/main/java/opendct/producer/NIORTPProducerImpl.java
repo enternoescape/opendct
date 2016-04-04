@@ -173,6 +173,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
                 logger.info("Producer packet monitoring thread is running.");
                 boolean firstPacketsReceived = true;
+                int timeout;
 
                 while(!stop.get() && !Thread.currentThread().isInterrupted()) {
                     synchronized (receiveMonitor) {
@@ -182,7 +183,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                     long recentPackets;
 
                     try {
-                        int timeout = stalledTimeout;
+                        timeout = stalledTimeout;
 
                         while (!Thread.currentThread().isInterrupted() && timeout-- > 0) {
                             Thread.sleep(1000);
@@ -319,11 +320,11 @@ public class NIORTPProducerImpl implements RTPProducer {
                     }
                 }
             } catch (ClosedByInterruptException e) {
-                logger.debug("Producer was closed by an interrupt exception => ", e);
+                logger.debug("Producer was closed by an interrupt exception => ", e.toString());
             } catch (AsynchronousCloseException e) {
-                logger.debug("Producer was closed by an asynchronous close exception => ", e);
+                logger.debug("Producer was closed by an asynchronous close exception => ", e.toString());
             } catch (ClosedChannelException e) {
-                logger.debug("Producer was closed by a close channel exception => ", e);
+                logger.debug("Producer was closed by a close channel exception => ", e.toString());
             } catch (Exception e) {
                 logger.error("Producer created an unexpected exception => ", e);
             } finally {

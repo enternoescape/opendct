@@ -1173,21 +1173,14 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
                 // the result is video corruption. [js]
                 //
                 // Returned to old behavior since it turns out that missing these frames was not the
-                // source of video corruption. The program will discard anything that's <= to the
+                // source of video corruption. The program will discard anything that's == to the
                 // last dts and frames that do not have a dts value instead of just checking for the
                 // same dts. [js]
                 long dts = pkt.dts();
                 boolean dtsChanged = true;
 
-                if (dts < 0 || dts > 8589934592L) {
+                if (lastDtsByStreamIndex[outputStreamIndex] == dts) {
                     dtsChanged = false;
-                } else if (lastDtsByStreamIndex[outputStreamIndex] >= dts) {
-                    if (lastDtsByStreamIndex[outputStreamIndex] - dts > 100000) {
-                        // Wrap-around.
-                        lastDtsByStreamIndex[outputStreamIndex] = dts;
-                    } else {
-                        dtsChanged = false;
-                    }
                 } else {
                     lastDtsByStreamIndex[outputStreamIndex] = dts;
                 }

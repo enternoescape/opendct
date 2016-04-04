@@ -58,6 +58,14 @@ import static org.bytedeco.javacpp.avutil.*;
 public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private static final Logger logger = LogManager.getLogger(FFmpegTranscoder.class);
 
+    private static final long WRAP_0 = 8589934592L;
+    private static final long WRAP_1 = 8589934592L / 2L;
+    private static final long WRAP_0_LOW = WRAP_0 - 90000;
+    private static final long WRAP_0_HIGH = WRAP_0 + 90000;
+    private static final long WRAP_1_LOW = WRAP_1 - 90000;
+    private static final long WRAP_1_HIGH = WRAP_1 + 90000;
+    private static final int TS_TIME_BASE = 90000;
+
     private boolean switching = false;
     private long switchTimeout = 0;
     private FFmpegWriter newWriter = null;
@@ -434,7 +442,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
 
         // This number will increase as interlaced flags are found. If no frames are found after 60
-        // frames, we give up.
+        // frames, give up.
         int frameLimit = 90;
 
         // This is is the absolute frame limit. Once this number is reached the method will return
@@ -546,19 +554,55 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int ret = 0;
 
         // This value will be adjusted as needed to keep the entire stream on the same time code.
-        long tsOffset = 0;
+        //long tsOffset = 0;
+        long tsOffsets[] = new long[firstDtsByStreamIndex.length];
+        Arrays.fill(tsOffsets, 0);
+
+        // This value indicates what streams are currently in use and are desirable to be in
+        // agreement with the other streams.
+        boolean tsActiveOffsets[] = new boolean[firstDtsByStreamIndex.length];
+        Arrays.fill(tsActiveOffsets, false);
+        // This is set when the offset for any stream has changed, so we know it needs to be synced.
+        boolean tsOffsetChanged = false;
+        // This value is used to determine when to force the offsets to sync up. Currently the loop
+        // will try to sync up for up to 20 frames that are not out of sync before everything if
+        // forced to sync to the largest offset.
+        int tsOffsetAttempts = 0;
+
+        // This is incremented by frame duration. It does not distinguish between streams, so if
+        // multiple streams are being corrected, this value will increase faster that the assumed
+        // duration. This is an acceptable compromise vs iterating an array or calculating the most
+        // accurate value on each update.
         long lastErrorTime = 0;
-        long lastErrorTimeLimit = 5000;
-        int errors = 0;
+        long lastErrorTimeLimit = 5 * TS_TIME_BASE;
+        // This is the number of time the error time has increased due to an error.
+        int errorCounter = 0;
+        // This is the maximum number of errors within the error time limit allowed before the
+        // discontinuity tolerance is increased.
         int errorLimit = 50;
+        // This is the number of times the discontinuity tolerance has been increased.
+        int adjustments = 0;
+        // This is the last stream that adjusted it's offset. This is used as the correct offset
+        // value after everything is synced up.
+        int lastToAdjust = 0;
+        // This is the number of ticks off +/- from the expected timestamp allowed before corrective
+        // action is taken. This number will increase automatically if it is determined to be too
+        // low.
         int discontinuityTolerance = 450000;
-        long currentTime;
+        long expectedDts;
+
+        final boolean fixingEnabled = FFmpegConfig.getFixStream();
 
         int switchFlag;
         long dts;
         long pts;
+        long preOffsetDts;
+        long preOffsetPts;
         int increment;
-        long diff;
+        long diff = 0;
+
+        // Used when streaming first starts to keep the first frame from being a known bad frame.
+        // This helps with some players that otherwise would just assume it must be a bad video.
         boolean firstFrame[] = new boolean[firstDtsByStreamIndex.length];
         Arrays.fill(firstFrame, true);
 
@@ -572,7 +616,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int outputStreamIndex;
         int codecType;
         int got_frame[] = new int[] { 0 };
-
 
         // This needs to start out null or Java complains about the cleanup.
         AVFrame frame = null;
@@ -596,24 +639,34 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     continue;
                 }
 
+                preOffsetDts = packet.dts();
+                preOffsetPts = packet.pts();
+
                 if (firstFrame[outputStreamIndex]) {
                     if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
+
                         av_packet_unref(packet);
                         continue;
                     } else {
                         logger.debug("stream {}, first dts = {}, first pts = {}",
-                                inputStreamIndex, packet.dts(), packet.pts());
+                                inputStreamIndex, preOffsetDts, preOffsetPts);
+
+                        /*codecType = ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type();
+                        if (codecType == AVMEDIA_TYPE_VIDEO ||
+                                codecType ==AVMEDIA_TYPE_AUDIO) {
+
+                            tsOffsets[inputStreamIndex] = -Math.min(preOffsetDts, preOffsetPts);
+                            tsOffsetChanged = true;
+                            tsActiveOffsets[inputStreamIndex] = true;
+                        }*/
                     }
                 }
 
                 firstFrame[outputStreamIndex] = false;
 
-                dts = packet.dts();
-                pts = packet.pts();
-
-                // Discard all frames that don't have any timestamps since without a presentation
-                // timestamp, the frame will never be displayed anyway.
-                if (dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE) {
+                // Discard all frames that don't have any timestamps since especially without a
+                // presentation timestamp, the frame will never be displayed anyway.
+                if (preOffsetDts == AV_NOPTS_VALUE || preOffsetPts == AV_NOPTS_VALUE) {
                     /*logger.debug("stream {}, dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE," +
                             " discarding frame.", inputStreamIndex);*/
 
@@ -635,7 +688,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         synchronized (switchLock) {
                             try {
                                 switchStreamOutput();
-                                errors = 0;
+
+                                // This will cause the frame timestamps to be displayed again and
+                                // also drop any bad frames since we are starting a new file.
+                                Arrays.fill(firstFrame, true);
+                                errorCounter = 0;
                             } catch (InterruptedException e) {
                                 logger.debug("Switching was interrupted.");
                                 av_packet_unref(packet);
@@ -646,87 +703,223 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             switchLock.notifyAll();
                         }
 
-                        logger.info("SWITCH successful: {}ms.", System.currentTimeMillis() - (switchTimeout - 10000));
+                        logger.info("SWITCH successful: {}ms.",
+                                System.currentTimeMillis() - (switchTimeout - 10000));
                     }
                 }
 
-                currentTime = System.currentTimeMillis();
-                if (lastErrorTime != 0 && currentTime - lastErrorTime > lastErrorTimeLimit) {
-                    errors = 0;
+                if (lastErrorTime > lastErrorTimeLimit) {
+                    errorCounter = 0;
+                    adjustments = 0;
                     lastErrorTime = 0;
-                } else if (errors ==  1 && lastErrorTime == 0) {
-                    lastErrorTime = currentTime;
                 }
 
-                if (errors > errorLimit) {
-                    discontinuityTolerance += 450000;
-                    logger.info("Adjusting threshold to {}. Errors = {}", discontinuityTolerance, errors);
-                    errors = 0;
+                if (errorCounter > errorLimit) {
+
+                    discontinuityTolerance *= 2;
+                    logger.info("adjusting tolerance to {}. errors = {}, adjustments = {}",
+                            discontinuityTolerance, errorCounter, adjustments);
+
+                    errorCounter = 0;
+                    adjustments += 1;
+                    lastErrorTime = 0;
                 }
 
-                dts += tsOffset;
-                pts += tsOffset;
+                dts = preOffsetDts + tsOffsets[inputStreamIndex];
+                pts = preOffsetPts + tsOffsets[inputStreamIndex];
 
-                codecType = ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type();
+                // This limits the timestamps to a 33-bit number. Doing this will help prevent a
+                // discontinuity correction if all things are perfect.
+                //dts &= 0x1ffffffffL;
+                //pts &= 0x1ffffffffL;
 
-                if ((codecType == AVMEDIA_TYPE_VIDEO || codecType == AVMEDIA_TYPE_AUDIO) &&
+                // These are referenced several times. This keeps these variables from constantly
+                // being copied into the JVM.
+                iavStream = ctx.avfCtxInput.streams(inputStreamIndex);
+                iavCodecContext = iavStream.codec();
+                codecType = iavStream.codec().codec_type();
+
+                if ((codecType == AVMEDIA_TYPE_VIDEO ||
+                        codecType ==AVMEDIA_TYPE_AUDIO) &&
                         lastDtsByStreamIndex[inputStreamIndex] > 0) {
+
+                    tsActiveOffsets[inputStreamIndex] = true;
 
                     // There are probably many other situations that could come up making this value
                     // incorrect, but this is only optimizing for typical MPEG-TS input and
                     // MPEG-TS/PS output. This has the potential to introduce a rounding error since
                     // it is not based on the stream time base rational.
                     increment = Math.max(packet.duration(), 0);
-                    diff = dts - lastDtsByStreamIndex[inputStreamIndex];
 
-                    if (Math.abs(diff) > discontinuityTolerance) {
-                        errors += 1;
+                    expectedDts = (lastDtsByStreamIndex[inputStreamIndex] + increment); // & 0x1ffffffffL;
+                    diff = dts - expectedDts;
+
+                    if (fixingEnabled &&
+                            (diff > discontinuityTolerance || diff < -discontinuityTolerance)) {
+
+                        errorCounter += 1;
+                        lastErrorTime += increment;
 
                         long oldDts = dts;
                         long oldPts = pts;
+                        long oldOffset = tsOffsets[inputStreamIndex];
 
                         dts -= diff;
-                        dts += increment;
-
                         pts -= diff;
-                        pts += increment;
+                        tsOffsets[inputStreamIndex] -= diff;
+                        tsOffsetChanged = true;
+                        lastToAdjust = inputStreamIndex;
 
-                        tsOffset -= diff;
-                        tsOffset += increment;
+                        // This will keep the per stream offset in line with 33-bits.
+                        /*if (tsOffsets[inputStreamIndex] > WRAP_0) {
+                            tsOffsets[inputStreamIndex] -= WRAP_0;
+                        }*/
 
-                        logger.debug("fixing stream {} timestamp discontinuity diff = {}, " +
-                                "new offset = {}, dts = {}, new dts {}, last dts = {}," +
-                                " new pts = {}, pts = {}, last pts = {}",
+                        // This is done in case 33-bits have been exceeded so the last dts values
+                        // will be accurate and not set off further discontinuity corrections.
+                        //dts &= 0x1ffffffffL;
+                        //pts &= 0x1ffffffffL;
+
+                        logger.debug("fixing stream {} timestamp discontinuity diff = {}," +
+                                        " offset = {}, new offset = {}," +
+                                        " preoff dts = {}, dts = {}, new dts {}, last dts = {}," +
+                                        " preoff pts = {}, pts = {}, new pts = {}, last pts = {}",
                                 inputStreamIndex, diff,
-                                tsOffset, oldDts, dts, lastDtsByStreamIndex[inputStreamIndex],
-                                oldPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
+                                oldOffset, tsOffsets[inputStreamIndex],
+                                preOffsetDts, oldDts, dts, lastDtsByStreamIndex[inputStreamIndex],
+                                preOffsetPts, oldPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
+                    } else if (tsOffsetChanged) {
+                        // If the offset is changed for any one of the streams, we need to make sure
+                        // they are all using the same offset once the event is over or they may
+                        // slowly get out of sync.
+                        long maxOffset = Long.MIN_VALUE;
+                        long minOffset = Long.MAX_VALUE;
+
+                        for (int i = 0; i < tsOffsets.length; i++) {
+                            if (!tsActiveOffsets[i]) {
+                                continue;
+                            }
+
+                            if (minOffset == Long.MAX_VALUE || tsOffsets[i] < minOffset) {
+                                minOffset = tsOffsets[i];
+                            }
+
+                            if (maxOffset == Long.MIN_VALUE || tsOffsets[i] > maxOffset) {
+                                maxOffset = tsOffsets[i];
+                            }
+                        }
+
+                        long offsetDiff = maxOffset - minOffset;
+
+                        if ((offsetDiff > -discontinuityTolerance &&
+                                offsetDiff < discontinuityTolerance) ||
+                                tsOffsetAttempts > 20) {
+
+                            // This is a good spot to correct the offset before it reaches the long
+                            // wrap around limit. If this is going backwards so much that it wraps
+                            // around backwards you likely would have noticed just based on the poor
+                            // playback of the stream. Subtracting this value will effectively
+                            // result in the exact same offset.
+                            /*if (maxOffset > WRAP_0) {
+                                maxOffset -= WRAP_0;
+                            }*/
+
+                            if (tsOffsetAttempts > 20) {
+                                logger.debug("force sync offsets {} to {}, diff = {}, attempts = {}",
+                                        tsOffsets, tsOffsets[lastToAdjust], offsetDiff, tsOffsetAttempts);
+                            } else {
+                                logger.debug("sync offsets {} to {}, diff = {}, attempts = {}",
+                                        tsOffsets, tsOffsets[lastToAdjust], offsetDiff, tsOffsetAttempts);
+                            }
+
+                            tsOffsetChanged = false;
+                            tsOffsetAttempts = 0;
+
+                            for (int i = 0; i < tsOffsets.length; i++) {
+                                tsOffsets[i] = tsOffsets[lastToAdjust];
+                            }
+
+                            lastToAdjust = ctx.preferredVideo;
+                        } else {
+                            /*logger.debug("syncing offsets is not yet possible." +
+                                    " diff = {}, offsets = {}",
+                                    offsetDiff, tsOffsets);*/
+
+                            tsOffsetAttempts += 1;
+                        }
+                    } else if (!fixingEnabled && diff > 162000000) {
+                        // If the stream is more than 30 minutes ahead, discard it. Leaving it alone
+                        // will do nothing but break things since we are not trying to fix errors.
+                        logger.debug("discarding frame stream {}, dts {} - last dts {}" +
+                                        " > 162000000, pts {}, last pts {}",
+                                inputStreamIndex, dts, lastDtsByStreamIndex[inputStreamIndex],
+                                pts, lastPtsByStreamIndex[inputStreamIndex]);
+
+                        errorCounter += 1;
+                        lastErrorTime += increment;
+
+                        av_packet_unref(packet);
+                        continue;
                     }
 
                     if (dts <= lastDtsByStreamIndex[inputStreamIndex]) {
-                        increment = 1;
 
-                        if (lastDtsByStreamIndex[inputStreamIndex] != dts &&
-                                lastDtsByStreamIndex[inputStreamIndex] + increment < pts) {
+                        // If the decode time stamp is equal to the last one, discard the frame.
+                        // There isn't a simple way to know if the frame can be put in the assumed
+                        // correct place without putting a ripple in the timeline.
+                        if (lastDtsByStreamIndex[inputStreamIndex] == dts) {
+                            logger.debug("discarding frame stream {}, dts {} == last dts {}," +
+                                            " pts {}, last pts {}",
+                                    inputStreamIndex, dts, lastDtsByStreamIndex[inputStreamIndex],
+                                    pts, lastPtsByStreamIndex[inputStreamIndex]);
+
+                            av_packet_unref(packet);
+                            continue;
+                        }
+
+                        // If the decode time stamp is less than (assumed) 1 second behind, check if
+                        // at least the presentation time stamps are in the right place going
+                        // forward. If they are, adjust the decode time stamp so the frame can be
+                        // used and the muxer will not complain.
+                        if (diff > -TS_TIME_BASE && pts > lastDtsByStreamIndex[inputStreamIndex]) {
 
                             long oldDts = dts;
-                            lastDtsByStreamIndex[inputStreamIndex] += increment;
-                            dts = lastDtsByStreamIndex[inputStreamIndex];
 
-                            logger.debug("fixing stream {} dts increment = {}, new offset = {}" +
-                                    " dts = {}, new dts = {}, last dts = {}," +
-                                    " pts = {}, last pts = {}",
-                                    inputStreamIndex, increment, tsOffset,
-                                    oldDts, dts, lastDtsByStreamIndex[inputStreamIndex],
-                                    pts, lastPtsByStreamIndex[inputStreamIndex]);
+                            dts = lastDtsByStreamIndex[inputStreamIndex] + 1;
+                            if (pts < dts) {
+                                pts = dts;
+                            }
+
+                            // This will be seen a lot on 1080i H.264 content, so it will only log
+                            // if the gap is larger than expected, but still sane enough to make an
+                            // adjustment that doesn't need to be logged.
+                            if (diff < -6006) {
+                                logger.debug("re-ordering stream {}, diff = {}, offset = {}" +
+                                                " preoff dts = {}, dts = {}, new dts = {}," +
+                                                " last dts = {}," +
+                                                " preoff pts = {}, pts = {}, last pts = {}",
+                                        diff, inputStreamIndex, tsOffsets[inputStreamIndex],
+                                        preOffsetDts, oldDts, dts,
+                                        lastDtsByStreamIndex[inputStreamIndex],
+                                        preOffsetPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
+                            } else if (logger.isTraceEnabled()) {
+                                logger.trace("re-ordering stream {}, diff = {}, offset = {}" +
+                                                " preoff dts = {}, dts = {}, new dts = {}," +
+                                                " last dts = {}," +
+                                                " preoff pts = {}, pts = {}, last pts = {}",
+                                        diff, inputStreamIndex, tsOffsets[inputStreamIndex],
+                                        preOffsetDts, oldDts, dts,
+                                        lastDtsByStreamIndex[inputStreamIndex],
+                                        preOffsetPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
+                            }
                         } else {
-                            // If the presentation time stamp is behind the last one, discard the
-                            // frame. There isn't a simple way to know if the frame can be put in
-                            // the assumed correct place without putting a ripple in the timeline.
-                            logger.debug("stream {}, dts {} <= last dts {}," +
-                                    " pts {}, last pts {}, discarding frame.",
+                            logger.debug("discarding packet stream {}," +
+                                            " dts {} < last dts {}," +
+                                            " pts {}, last pts {}",
                                     inputStreamIndex,
                                     dts, lastDtsByStreamIndex[inputStreamIndex],
                                     pts, lastPtsByStreamIndex[inputStreamIndex]);
+
                             av_packet_unref(packet);
                             continue;
                         }
@@ -750,10 +943,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     }
                 }
 
-                iavStream = ctx.avfCtxInput.streams(inputStreamIndex);
-                iavCodecContext = iavStream.codec();
-                codecType = iavStream.codec().codec_type();
-
                 //logger.trace("Demuxer gave frame of streamIndex {}", inputStreamIndex);
 
                 if (filter_ctx[inputStreamIndex].filter_graph != null) {
@@ -762,7 +951,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                     frame = av_frame_alloc();
                     if (frame == null) {
-                        throw new FFmpegException("av_frame_alloc: Unable to allocate frame.", ENOMEM);
+                        throw new FFmpegException("av_frame_alloc: Unable to allocate frame.",
+                                ENOMEM);
                     }
 
                     //logPacket(ctx.avfCtxInput, packet, "trans-dec-in");

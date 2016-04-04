@@ -177,7 +177,7 @@ public class RTCPClient implements Runnable {
                     // This starts a new listening thread, so we need to completely exit this thread.
                     return;
                 } else {
-                    logger.debug("The RTCP thread has been requested to stop => ", e);
+                    logger.debug("The RTCP thread has been requested to stop => ", e.toString());
                     break;
                 }
             } catch (Exception e) {

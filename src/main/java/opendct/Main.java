@@ -268,6 +268,7 @@ public class Main {
         }
 
         Config.saveConfig();
+
         if (CommandLine.isConfigOnly()) {
             logger.info("Running in config only mode for '{}' seconds...", CommandLine.getRunSeconds());
             Thread.sleep(CommandLine.getRunSeconds() * 1000);

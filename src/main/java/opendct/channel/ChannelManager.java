@@ -651,6 +651,8 @@ public class ChannelManager implements PowerEventListener {
                     return;
                 }
 
+                Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+
                 try {
                     // Wait one minute for things to settle before trying to do any scans or
                     // updates. Any updates that need to be done immediately or the capture device
@@ -661,8 +663,9 @@ public class ChannelManager implements PowerEventListener {
                     while (!Thread.currentThread().isInterrupted()) {
                         try {
                             if (!Thread.currentThread().isInterrupted()) {
-                                // No update schedules should be happening this quickly.
-                                Thread.sleep(1000);
+                                // As long as it happens around the expected minute, we should be
+                                // ok.
+                                Thread.sleep(30000);
                                 updateChannelLineups(false);
 
                                 // We should not be starting this kind of lengthy process while we

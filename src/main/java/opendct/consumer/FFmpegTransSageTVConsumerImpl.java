@@ -495,9 +495,19 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 // Create the CCExtractor instance before the recording file so that the .srt files
                 // will already exist before the transition.
                 if (ccExtractorAllStreams) {
-                    ccInstance = new CCExtractorSrtInstance(" -12 -nobi -latin1 ", baseFilename);
+                    if (filename.endsWith(".mpg")) {
+                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ps -12 -latin1 ", baseFilename);
+                    } else {
+                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ts -12 -latin1 ", baseFilename);
+                    }
+
                 } else {
-                    ccInstance = new CCExtractorSrtInstance(" -nobi -latin1 ", baseFilename);
+                    if (filename.endsWith(".mpg")) {
+                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ps -latin1 ", baseFilename);
+                    } else {
+                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ts -latin1 ", baseFilename);
+                    }
+
                 }
             }
 
@@ -655,9 +665,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     writeBytes = byteBuffer.remaining();
 
                     try {
-                        if (ccExtractorEnabled) {
+                        /*if (ccExtractorEnabled) {
                             ccInstance.streamIn(byteBuffer);
-                        }
+                        }*/
 
                         fileChannel.write(byteBuffer, autoOffset);
                     } catch (Exception e) {

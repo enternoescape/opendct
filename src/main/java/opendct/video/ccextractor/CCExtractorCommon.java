@@ -37,7 +37,7 @@ public class CCExtractorCommon {
         String newExec;
 
         if (Config.IS_WINDOWS) {
-            newExec = Config.BIN_DIR + "ccextractor\\ccextractorwin.exe";
+            newExec = Config.BIN_DIR + "ccextractor\\ccextractor.exe";
 
         } else if (Config.IS_LINUX) {
             newExec = Config.BIN_DIR + "ccextractor/ccextractor";
@@ -50,9 +50,9 @@ public class CCExtractorCommon {
             // The program is probably running in an IDE.
             if (Config.IS_WINDOWS) {
                 if (Config.IS_64BIT) {
-                    newExec = Config.BIN_DIR + "windows-x86_64\\ccextractor\\ccextractorwin.exe";
+                    newExec = Config.BIN_DIR + "windows-x86_64\\ccextractor\\ccextractor.exe";
                 } else {
-                    newExec = Config.BIN_DIR + "windows-x86\\ccextractor\\ccextractorwin.exe";
+                    newExec = Config.BIN_DIR + "windows-x86\\ccextractor\\ccextractor.exe";
                 }
 
             } else if (Config.IS_LINUX) {
@@ -68,8 +68,8 @@ public class CCExtractorCommon {
 
         CC_BINARY = newExec;
 
-        STD_BIN_PARAMETERS = " -stdin -stdout -out=bin --gui_mode_reports --no_progress_bar ";
-        STD_SRT_PARAMETERS = " -stdin -out=srt --gui_mode_reports --no_progress_bar ";
+        STD_BIN_PARAMETERS = " -stdin -stdout -out=bin --gui_mode_reports --no_progress_bar --stream";
+        STD_SRT_PARAMETERS = " -out=srt --stream --gui_mode_reports";
         SUGGESTED_PARAMETERS = "-nobi -latin1";
     }
 }

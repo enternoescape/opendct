@@ -31,7 +31,7 @@ public class CCExtractorSrtInstance {
     private Process ccExtractor;
     private InputStreamReader inputStdStream;
     private InputStreamReader inputErrStream;
-    private OutputStream outputStream;
+    private BufferedOutputStream outputStream;
     private ReadOutput outputStdStream;
     private ReadOutput outputErrStream;
     private byte streamOutBuffer[];
@@ -45,11 +45,11 @@ public class CCExtractorSrtInstance {
             parameters = SUGGESTED_PARAMETERS;
         }
 
-        ccExtractor = RUNTIME.exec(CC_BINARY + STD_SRT_PARAMETERS + parameters);
+        ccExtractor = RUNTIME.exec(CC_BINARY + STD_SRT_PARAMETERS + parameters + "-o \"" + baseFilename + ".srt\"");
 
         inputStdStream = new InputStreamReader(ccExtractor.getInputStream());
         inputErrStream = new InputStreamReader(ccExtractor.getErrorStream());
-        outputStream = ccExtractor.getOutputStream();
+        outputStream = new BufferedOutputStream(ccExtractor.getOutputStream());
 
         // Create these files ahead of time so SageTV will report that the subtitles exist when the
         // recording first starts.
@@ -113,6 +113,12 @@ public class CCExtractorSrtInstance {
      */
     public synchronized void setClosed() {
         try {
+            ccExtractor.destroy();
+        } catch (Exception e) {
+            logger.debug("Exception while waiting for CCExtractor to exit =>, e");
+        }
+
+        try {
             outputStream.close();
         } catch (IOException e) {
             logger.error("Error while closing CCExtractor stdin stream => ", e);
@@ -120,12 +126,6 @@ public class CCExtractorSrtInstance {
 
         outputStdStream.setClosed();
         outputErrStream.setClosed();
-
-        try {
-            ccExtractor.waitFor();
-        } catch (InterruptedException e) {
-            logger.debug("Interrupted while waiting for CCExtractor to exit =>, e");
-        }
     }
 
     private void startReadOutput() {
@@ -186,17 +186,21 @@ public class CCExtractorSrtInstance {
 
                 for (int i = 0; i < readLen; i++) {
                     if (buffer[i] == '\n') {
-                        logger.debug("{}: {}", streamType, builder.toString());
+                        logger.info("{}: {}", streamType, builder.toString());
                         builder.setLength(0);
-                    } else if (buffer[i] == '\r') {
+                    }
+
+                    if (buffer[i] == '\r') {
                         continue;
                     }
 
                     builder.append(buffer[i]);
                 }
+
+                //logger.info(new String(buffer, 0, readLen));
             }
 
-            logger.debug("CCExtractor {} thread stopped.", streamType);
+            logger.info("CCExtractor {} thread stopped.", streamType);
         }
     }
 }

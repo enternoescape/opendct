@@ -21,7 +21,6 @@ an eventual goal of hosting on Bintray.
 
 1. Run download-git.cmd
 2. Open the project ccextractor.sln under .\ccextractor\windows
-3. Compile the project for 32-bit and 64-bit.
+3. Compile the project.
 4. Copy resulting binary into the directories
-   ..\windows-x86\ccextractor and ..\windows-x86_64\ccextractor
-   respectively.
+   ..\windows-x86\ccextractor and ..\windows-x86_64\ccextractor.

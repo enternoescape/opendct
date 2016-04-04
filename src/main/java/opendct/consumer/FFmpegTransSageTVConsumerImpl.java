@@ -745,7 +745,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public class FFmpegNullWriter implements FFmpegWriter {
-        boolean firstWrite = false;
+        boolean firstWrite = true;
 
         @Override
         public int write(ByteBuffer data) throws IOException {

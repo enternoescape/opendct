@@ -2,4 +2,4 @@
 
 git clone https://github.com/CCExtractor/ccextractor.git
 cd ccextractor
-git apply ../change_filenames.patch
+git apply ../change_filenames_win.patch

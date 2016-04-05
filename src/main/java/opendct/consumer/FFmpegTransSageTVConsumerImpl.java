@@ -16,6 +16,7 @@
 
 package opendct.consumer;
 
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBuffer;
@@ -27,9 +28,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -63,7 +64,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final int ffmpegThreadPriority = FFmpegConfig.getThreadPriority();
 
     private int uploadIDPort = FFmpegConfig.getUploadIdPort();
-    private final long initBufferedData = 786432;
+
+    private final boolean ccExtractorEnabled = FFmpegConfig.getCcExtractor();
+    private final boolean ccExtractorAllStreams = FFmpegConfig.getCcExtractorAllStreams();
+    private boolean ccExtractorAvailable = false;
+
+    private final long initBufferedData = 1048576;
 
     private String currentRecordingQuality;
     private boolean consumeToNull;
@@ -79,6 +85,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private String currentEncoderFilename = "";
     private FFmpegWriter currentWriter = null;
     private FFmpegWriter switchWriter = null;
+    private FFmpegWriter currentCcWriter = null;
+    private FFmpegWriter switchCcWriter = null;
     private int currentUploadID = 0;
     private long stvRecordBufferSize = 0;
     private final Object streamingMonitor = new Object();
@@ -113,6 +121,19 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         logger.debug("Thread priority is {}.", ffmpegThreadPriority);
         Thread.currentThread().setPriority(ffmpegThreadPriority);
 
+        if (ccExtractorEnabled &&
+                stvRecordBufferSize == 0 &&
+                currentWriter instanceof FFmpegDirectWriter) {
+
+            ccExtractorAvailable = true;
+
+            try {
+                currentCcWriter = new FFmpegCCExtractorWriter(currentEncoderFilename);
+            } catch (IOException e) {
+                logger.error("Unable to create CCExtractor writer => ", e);
+            }
+        }
+
         try {
             ctx = new FFmpegContext(circularBuffer, RW_BUFFER_SIZE, new FFmpegTranscoder());
 
@@ -127,7 +148,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 return;
             }
 
-            ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter);
+            ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter, currentCcWriter);
 
             ctx.STREAM_PROCESSOR.streamOutput();
 
@@ -149,6 +170,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             }
 
             ctx.dispose();
+
+            if (currentCcWriter != null) {
+                currentCcWriter.closeFile();
+            }
 
             stateMessage = "Stopped.";
             running.set(false);
@@ -252,7 +277,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         try {
             switchWriter = new FFmpegUploadIDWriter(uploadSocketAddress, filename, uploadId);
 
-            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter);
+            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter, null);
 
             currentWriter.closeFile();
             currentUploadID = uploadId;
@@ -279,12 +304,20 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         try {
             switchWriter = new FFmpegDirectWriter(filename);
+            if (ccExtractorAvailable) {
+                switchCcWriter = new FFmpegCCExtractorWriter(filename);
+            }
 
-            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter);
+            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter, switchCcWriter);
 
             currentWriter.closeFile();
             currentEncoderFilename = filename;
             currentWriter = switchWriter;
+
+            if (ccExtractorAvailable) {
+                currentCcWriter.closeFile();
+                currentCcWriter = switchCcWriter;
+            }
         } catch (IOException e) {
             logger.error("Unable to open '{}' for writing => ", filename, e);
             return false;
@@ -450,6 +483,118 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
     }
 
+    public class FFmpegCCExtractorWriter implements FFmpegWriter {
+        private CCExtractorSrtInstance ccInstance;
+        protected DatagramChannel datagramChannel;
+        protected SocketAddress targetAddress;
+        protected int portNumber;
+
+        public FFmpegCCExtractorWriter(String filename) throws IOException {
+            StringBuilder paramBuilder = new StringBuilder(1024);
+
+            if (Config.IS_LINUX) {
+                paramBuilder.append(" -nobi -stdin");
+            } else {
+                // UDP is a work around until -stdin option on Windows is fixed.
+
+                portNumber = Config.getFreeRTSPPort(Thread.currentThread().getName());
+
+                // Unfortunately -stdin is not functional, so this is the only option.
+                paramBuilder.append(" -nobi -udp ")
+                        .append(Inet4Address.getLoopbackAddress().getHostAddress())
+                        .append(":")
+                        .append(portNumber);
+
+                targetAddress = new InetSocketAddress(Inet4Address.getLoopbackAddress(), portNumber);
+                datagramChannel = DatagramChannel.open();
+                datagramChannel.connect(targetAddress);
+            }
+
+            if (filename.endsWith(".mpg")) {
+                paramBuilder.append(" -in=ps ");
+            } else {
+                paramBuilder.append(" -in=ts ");
+            }
+
+            if(ccExtractorAllStreams) {
+                paramBuilder.append("-12 ");
+            } else {
+                paramBuilder.append("-1 ");
+            }
+
+            int extIndex = filename.lastIndexOf(".");
+            String baseFilename;
+
+            if (extIndex > 0) {
+                baseFilename = filename.substring(0, extIndex);
+            } else {
+                baseFilename = filename;
+            }
+
+            // Create the CCExtractor instance before the recording file so that the .srt files will
+            // already exist providing the subtitle option during playback.
+            ccInstance = new CCExtractorSrtInstance(paramBuilder.toString(), baseFilename);
+        }
+
+        @Override
+        public synchronized int write(ByteBuffer data) throws IOException {
+            int length = data.remaining();
+            int bytesSent = length;
+
+            if (ccInstance != null) {
+                bytesSent = 0;
+
+                if (datagramChannel != null) {
+                    if (length > 32768) {
+                        ByteBuffer slice;
+                        int increment;
+                        while (data.hasRemaining()) {
+                            increment = Math.min(32768, data.remaining());
+                            slice = data.slice();
+                            slice.limit(increment);
+                            data.position(data.position() + increment);
+
+                            while (slice.hasRemaining()) {
+                                bytesSent += datagramChannel.write(slice);
+                                try {
+                                    Thread.sleep(1);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    } else {
+                        while (data.hasRemaining()) {
+                            bytesSent += datagramChannel.write(data);
+                        }
+                    }
+                } else {
+                    ccInstance.streamIn(data);
+                }
+            }
+
+            return bytesSent;
+        }
+
+        @Override
+        public synchronized void closeFile() {
+            if (ccInstance != null) {
+                ccInstance.setClosed();
+            }
+
+            ccInstance = null;
+
+            if (datagramChannel != null) {
+                Config.returnFreeRTSPPort(portNumber);
+            }
+        }
+
+        @Override
+        public Logger getLogger() {
+            return logger;
+        }
+    }
+
     public class FFmpegDirectWriter implements FFmpegWriter {
         private volatile long bytesFlushCounter;
         private volatile long autoOffset;
@@ -464,10 +609,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         private final String directFilename;
         private final File recordingFile;
 
-        private boolean ccExtractorEnabled;
-        private boolean ccExtractorAllStreams;
-        private CCExtractorSrtInstance ccInstance;
-
         public FFmpegDirectWriter(final String filename) throws IOException {
             returnedBuffers = new LinkedBlockingQueue<>(1);
             writeBuffers = new LinkedBlockingQueue<>(2);
@@ -476,39 +617,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 returnedBuffers.put(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
             } catch (InterruptedException e) {
                 throw new IOException("Unable to queue the first buffer!");
-            }
-
-            // Don't use CCExtractor on channel previews.
-            ccExtractorEnabled = FFmpegConfig.getCcExtractor() && !filename.endsWith(".mpgbuf");
-            ccExtractorAllStreams = FFmpegConfig.getCcExtractorAllStreams();
-
-            if (ccExtractorEnabled) {
-                int extIndex = filename.lastIndexOf(".");
-                String baseFilename;
-
-                if (extIndex > 0) {
-                    baseFilename = filename.substring(0, extIndex);
-                } else {
-                    baseFilename = filename;
-                }
-
-                // Create the CCExtractor instance before the recording file so that the .srt files
-                // will already exist before the transition.
-                if (ccExtractorAllStreams) {
-                    if (filename.endsWith(".mpg")) {
-                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ps -12 -latin1 ", baseFilename);
-                    } else {
-                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ts -12 -latin1 ", baseFilename);
-                    }
-
-                } else {
-                    if (filename.endsWith(".mpg")) {
-                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ps -latin1 ", baseFilename);
-                    } else {
-                        ccInstance = new CCExtractorSrtInstance(" " + filename + " -nobi -in=ts -latin1 ", baseFilename);
-                    }
-
-                }
             }
 
             fileChannel = FileChannel.open(
@@ -659,20 +767,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             }
                         }
 
-                        if (ccExtractorEnabled) {
-                            ccInstance.setClosed();
-                        }
-
                         return;
                     }
 
                     writeBytes = byteBuffer.remaining();
 
                     try {
-                        /*if (ccExtractorEnabled) {
-                            ccInstance.streamIn(byteBuffer);
-                        }*/
-
                         fileChannel.write(byteBuffer, autoOffset);
                     } catch (Exception e) {
                         logger.error("File '{}' write failed => ", directFilename, e);

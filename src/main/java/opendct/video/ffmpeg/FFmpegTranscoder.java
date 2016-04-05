@@ -69,6 +69,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private boolean switching = false;
     private long switchTimeout = 0;
     private FFmpegWriter newWriter = null;
+    private FFmpegWriter newWriter2 = null;
     private String newFilename = null;
     private final Object switchLock = new Object();
 
@@ -141,12 +142,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
     }
 
-    public boolean switchOutput(String newFilename, FFmpegWriter writer) {
+    @Override
+    public boolean switchOutput(String newFilename, FFmpegWriter writer, FFmpegWriter writer2) {
         synchronized (switchLock) {
             logger.info("SWITCH started.");
 
             this.newFilename = newFilename;
             newWriter = writer;
+            newWriter2 = writer2;
             switchTimeout = System.currentTimeMillis() + 10000;
             switching = true;
 
@@ -171,10 +174,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     @Override
-    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer)
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename,
+                                 FFmpegWriter writer, FFmpegWriter writer2)
             throws FFmpegException, InterruptedException {
 
-        initStreamOutput(ctx, outputFilename, writer, true);
+        initStreamOutput(ctx, outputFilename, writer, writer2, true);
     }
 
     /**
@@ -190,7 +194,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
      * @throws InterruptedException This is thrown if initialization is is interrupted.
      */
     public void initStreamOutput(FFmpegContext ctx, String outputFilename,
-                                 FFmpegWriter writer, boolean firstRun)
+                                 FFmpegWriter writer, FFmpegWriter writer2, boolean firstRun)
             throws FFmpegException, InterruptedException {
 
         int ret;
@@ -206,10 +210,21 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             ctx.dumpInputFormat();
         }
 
-        // Creates the output container and AVFormatContext.
-        ctx.allocAvfContainerOutputContext(outputFilename);
+        ctx.secondaryStream = writer2 != null;
 
         int numInputStreams = ctx.avfCtxInput.nb_streams();
+
+        // Creates the output container and AVFormatContext.
+        ctx.allocAvfContainerOutputContext(outputFilename);
+        if (ctx.secondaryStream) {
+            ctx.allocAvfContainerOutputContext2(outputFilename);
+
+            ctx.streamMap2 = new OutputStreamMap[numInputStreams];
+
+            for (int i = 0; i < ctx.streamMap2.length; i++) {
+                ctx.streamMap2[i] = new OutputStreamMap();
+            }
+        }
 
         lastDtsByStreamIndex = new long[numInputStreams];
         Arrays.fill(lastDtsByStreamIndex, Integer.MIN_VALUE);
@@ -346,6 +361,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             }
         }
 
+        if (ctx.secondaryStream) {
+            if ((ctx.videoOutStream2 = addCopyStreamToContext(ctx.avfCtxOutput2, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
+                throw new FFmpegException("Could not find a video stream for output 2", -1);
+            }
+
+            ctx.streamMap2[ctx.preferredVideo].outStreamIndex = ctx.videoOutStream.id();
+        }
+
         if ((ctx.audioOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredAudio))) == null) {
             throw new FFmpegException("Could not find a audio stream", -1);
         }
@@ -380,8 +403,18 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
 
         ctx.dumpOutputFormat();
-
         ctx.allocIoOutputContext(writer);
+
+        if (ctx.secondaryStream) {
+            ctx.dumpOutputFormat2();
+            ctx.allocIoOutputContext2(writer2);
+            ret = avformat_write_header(ctx.avfCtxOutput2, (PointerPointer<avutil.AVDictionary>) null);
+
+            if (ret < 0) {
+                deallocFilterGraphs();
+                throw new FFmpegException("Error while writing header to file 2 '" + outputFilename + "'", ret);
+            }
+        }
 
         if (ctx.isInterrupted()) {
             deallocFilterGraphs();
@@ -608,6 +641,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         AVPacket packet = new AVPacket();
         packet.data(null);
+        packet.size(0);
+
+        AVPacket copyPacket = new AVPacket();
+        copyPacket.data(null);
         packet.size(0);
 
         AVStream iavStream;
@@ -943,6 +980,28 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     }
                 }
 
+                if (ctx.secondaryStream && inputStreamIndex == ctx.preferredVideo) {
+                    av_copy_packet(copyPacket, packet);
+                    av_packet_copy_props(copyPacket, packet);
+
+                    //logPacket(ctx.avfCtxInput, copyPacket, "copy2-in");
+
+                    // remux this frame without re-encoding
+                    av_packet_rescale_ts(copyPacket,
+                            ctx.avfCtxInput.streams(inputStreamIndex).time_base(),
+                            ctx.avfCtxOutput2.streams(outputStreamIndex).time_base());
+
+                    //logPacket(ctx.avfCtxInput, copyPacket, "copy2-out");
+
+                    copyPacket.stream_index(ctx.streamMap2[inputStreamIndex].outStreamIndex);
+
+                    ret = av_interleaved_write_frame(ctx.avfCtxOutput2, copyPacket);
+
+                    if (ret < 0) {
+                        logger.error("Error from av_interleaved_write_frame output 2: {}", ret);
+                    }
+                }
+
                 //logger.trace("Demuxer gave frame of streamIndex {}", inputStreamIndex);
 
                 if (filter_ctx[inputStreamIndex].filter_graph != null) {
@@ -1076,14 +1135,19 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         av_write_trailer(ctx.avfCtxOutput);
 
+        deallocFilterGraphs();
+        ctx.deallocOutputContext();
+
+        if (ctx.secondaryStream) {
+            av_write_trailer(ctx.avfCtxOutput2);
+            ctx.deallocOutputContext2();
+        }
+
         if (ctx.isInterrupted()) {
             return;
         }
 
-        deallocFilterGraphs();
-        ctx.deallocOutputContext();
-
-        initStreamOutput(ctx, newFilename, newWriter, false);
+        initStreamOutput(ctx, newFilename, newWriter, newWriter2, false);
     }
 
     private void endStreamOutput(AVPacket packet, AVFrame frame) {

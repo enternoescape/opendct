@@ -26,12 +26,15 @@ public interface FFmpegStreamProcessor {
      *                       output container.
      * @param writer A writer implementation to be used for writing the results of the FFmpeg
      *               transcoding/remuxing.
+     * @param videoOnly A writer implementation to be used for writing only video. This is primary
+     *                  for extracting closed captions from the original raw video.
      * @throws FFmpegException Thrown if there is a problem initializing. This exception will not
      *                         de-allocate anything provided by stream detection.
      * @throws InterruptedException If the thread is interrupted. This exception will not
      *                              de-allocate anything provided by stream detection.
      */
-    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer)
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename,
+                                 FFmpegWriter writer, FFmpegWriter videoOnly)
             throws FFmpegException, InterruptedException;
 
     /**
@@ -54,9 +57,12 @@ public interface FFmpegStreamProcessor {
      * @param writer A new writer implementation to be used for writing the results of the FFmpeg
      *               transcoding/remuxing. The old writer will be removed from the HashMap
      *               automatically.
+     * @param videoOnly A writer implementation to be used for writing only video. This is primary
+     *                  for extracting closed captions from the original raw video.
      * @return <i>true</i> if the transition was successful.
      * @throws FFmpegException Thrown if there is an impassible problem re-initializing. This
      *                         exception will not de-allocate anything provided by stream detection.
      */
-    public boolean switchOutput(String newFilename, FFmpegWriter writer) throws FFmpegException;
+    public boolean switchOutput(String newFilename, FFmpegWriter writer, FFmpegWriter videoOnly)
+            throws FFmpegException;
 }

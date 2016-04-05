@@ -65,7 +65,7 @@ public class CCExtractorSrtInstance {
      * Write data to be processed by CCExtractor.
      *
      * @param data The incoming data needs to already be flipped. The parameter will return
-     *             unmodified.
+     *             with nothing remaining.
      */
     public synchronized void streamIn(ByteBuffer data) {
         int length = data.remaining();
@@ -78,8 +78,7 @@ public class CCExtractorSrtInstance {
             streamOutBuffer = new byte[length * 2];
         }
 
-        ByteBuffer slice = data.slice();
-        slice.get(streamOutBuffer, 0, length);
+        data.get(streamOutBuffer, 0, length);
 
         try {
             outputStream.write(streamOutBuffer, 0, length);
@@ -91,8 +90,7 @@ public class CCExtractorSrtInstance {
     /**
      * Write data to be processed by CCExtractor.
      *
-     * @param data The incoming data needs to already be flipped. The parameter will return
-     *             unmodified.
+     * @param data The incoming data needs to already be flipped.
      * @param position The position to start reading from the array.
      * @param length The number of bytes to read from the array.
      */

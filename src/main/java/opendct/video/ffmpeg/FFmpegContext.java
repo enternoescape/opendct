@@ -43,8 +43,8 @@ public class FFmpegContext {
     private final static AtomicLong callbackAddress = new AtomicLong();
     public final Pointer OPAQUE;
     protected Pointer writerOpaque;
+    protected Pointer writerOpaque2;
 
-    //private FFmpegWriter writer;
     public final StringBuilder DUMP_BUFFER;
     public final FFmpegCircularBuffer SEEK_BUFFER;
     public final FFmpegStreamProcessor STREAM_PROCESSOR;
@@ -57,14 +57,18 @@ public class FFmpegContext {
     // These are left protected because a getter and setter will just add latency.
     protected AVFormatContext avfCtxInput;
     protected AVFormatContext avfCtxOutput;
+    protected AVFormatContext avfCtxOutput2;
     protected AVIOContext avioCtxInput;
     protected AVIOContext avioCtxOutput;
+    protected AVIOContext avioCtxOutput2;
 
     protected int preferredVideo;
     protected int preferredAudio;
 
     // These are freed on avformat_close_input.
     protected AVStream videoOutStream;
+    protected AVStream videoOutStream2;
+    protected boolean secondaryStream;
     protected AVStream audioOutStream;
     protected AVCodecContext videoInCodecCtx;
     protected AVCodecContext audioInCodecCtx;
@@ -84,13 +88,11 @@ public class FFmpegContext {
     protected int inputFileMode;
     protected String inputFilename;
     protected String outputFilename;
+    protected String outputFilename2;
     protected int desiredProgram;
 
     OutputStreamMap streamMap[];
-    /*protected int streamMap[];
-    protected AVCodec encoderCodecs[];
-    protected AVDictionary encoderDicts[];
-    protected boolean encodeMap[];*/
+    OutputStreamMap streamMap2[];
 
     static {
         FFmpegUtil.initAll();
@@ -127,6 +129,7 @@ public class FFmpegContext {
         STREAM_PROCESSOR = streamProcessor;
         OPAQUE = setContext();
         writerOpaque = null;
+        writerOpaque2 = null;
 
         DUMP_BUFFER = new StringBuilder(2000);
 
@@ -144,21 +147,21 @@ public class FFmpegContext {
         inputFileMode = SEEK_BUFFER != null ? FILE_MODE_MPEGTS : FILE_MODE_NATIVE;
         inputFilename = null;
         outputFilename = null;
+        outputFilename2 = null;
         desiredProgram = 0;
 
         preferredVideo = -1;
         preferredAudio = -1;
         videoOutStream = null;
+        videoOutStream2 = null;
+        secondaryStream = false;
         audioOutStream = null;
         videoInCodecCtx = null;
         audioInCodecCtx = null;
         videoFramerate = new AVRational();
 
-        /*streamMap = new int[0];
-        encodeMap = new boolean[0];
-        encoderCodecs = new AVCodec[0];
-        encoderDicts = new AVDictionary[0];*/
         streamMap = new OutputStreamMap[0];
+        streamMap2 = new OutputStreamMap[0];
         encodeProfile = null;
         videoEncodeSettings = new HashMap<>();
     }
@@ -519,7 +522,7 @@ public class FFmpegContext {
     protected void allocInputIoTsFormatContext() throws FFmpegException {
         //deallocInputContext();
 
-        avioCtxInput = allocIoContext(OPAQUE, readCallback, null, seekCallback);
+        avioCtxInput = allocIoContext(OPAQUE, readCallback, null, seekCallback, 0);
 
         if (avioCtxInput == null) {
             deallocInputContext();
@@ -594,6 +597,15 @@ public class FFmpegContext {
     }
 
     /**
+     * Dump the secondary output format information for this context into the log.
+     */
+    public void dumpOutputFormat2() {
+        DUMP_BUFFER.setLength(0);
+        FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxOutput2, 0, outputFilename2, true, desiredProgram);
+        logger.info("DO {}", DUMP_BUFFER.toString());
+    }
+
+    /**
      * Create a new output AVFormatContext and initialize it for a specific container based on the
      * provided filename. This method only allows for MPEG-TS (default) and MPEG-PS (*.mpg).
      * <p/>
@@ -626,6 +638,38 @@ public class FFmpegContext {
     }
 
     /**
+     * Create a new secondar output AVFormatContext and initialize it for a specific container based
+     * on the provided filename. This method only allows for MPEG-TS (default) and MPEG-PS (*.mpg).
+     * <p/>
+     * If AVFormatContext is already allocated, it must be de-allocated before using this method.
+     *
+     * @param filename2 The filename to use to determine the output format. This value can be
+     *                 <i>null</i> if the default of MPEG-TS is desired.
+     * @throws IllegalStateException Thrown if any of the contexts cannot be allocated. AVIOContext
+     *                               context is de-allocated on exception.
+     */
+    public void allocAvfContainerOutputContext2(String filename2) throws FFmpegException {
+        avfCtxOutput2 = new AVFormatContext(null);
+
+        outputFilename2 = filename2 != null ? filename2 : "output.ts";
+
+        logger.debug("Calling avformat_alloc_output_context2");
+
+        int ret;
+        if (outputFilename2.endsWith(".mpg")) {
+            ret = avformat_alloc_output_context2(avfCtxOutput2, null, "vob", null);
+        } else {
+            ret = avformat_alloc_output_context2(avfCtxOutput2, null, null, "output.ts");
+        }
+
+        if (ret < 0) {
+            deallocOutputContext2();
+            outputFilename2 = null;
+            throw new FFmpegException("avformat_alloc_output_context2 returned error code ", ret);
+        }
+    }
+
+    /**
      * Allocates output AVIOContext and assigns it a write callback.
      * <p/>
      * The output AVFormatContext context must already be allocated before calling the method. If
@@ -647,7 +691,7 @@ public class FFmpegContext {
         }
 
         Pointer opaque = setWriterContext(writer);
-        avioCtxOutput = allocIoContext(opaque, null, writeCallback, null);
+        avioCtxOutput = allocIoContext(opaque, null, writeCallback, null, 1);
 
         if (avioCtxOutput == null) {
             removeWriterContext(opaque);
@@ -658,6 +702,41 @@ public class FFmpegContext {
 
         avfCtxOutput.pb(avioCtxOutput);
         avfCtxOutput.interrupt_callback(interruptCB);
+    }
+
+    /**
+     * Allocates secondary output AVIOContext and assigns it a write callback.
+     * <p/>
+     * The output AVFormatContext context must already be allocated before calling the method. If
+     * the output AVIOContext is already allocated, it must be de-allocated before calling this method.
+     *
+     * @param writer2 The writer implementation to be used.
+     * @throws IllegalStateException Thrown if any of the contexts cannot be allocated or output
+     *                               AVFContext context is not already allocated. AVIOContext
+     *                               context is de-allocated on exception.
+     */
+    public void allocIoOutputContext2(FFmpegWriter writer2) throws FFmpegException {
+
+        if (writerOpaque2 != null) {
+            removeWriterContext(writerOpaque2);
+        }
+
+        if (avfCtxOutput2 == null) {
+            throw new FFmpegException("FFmpeg output AVFContext must already be allocated.", -1);
+        }
+
+        Pointer opaque = setWriterContext(writer2);
+        avioCtxOutput2 = allocIoContext(opaque, null, writeCallback, null, 2);
+
+        if (avioCtxOutput2 == null) {
+            removeWriterContext(opaque);
+            throw new FFmpegException("FFmpeg output AVIOContext could not be allocated.", -1);
+        }
+
+        writerOpaque2 = opaque;
+
+        avfCtxOutput2.pb(avioCtxOutput2);
+        avfCtxOutput2.interrupt_callback(interruptCB);
     }
 
     /**
@@ -701,7 +780,7 @@ public class FFmpegContext {
         return opaque;
     }
 
-    private AVIOContext allocIoContext(Pointer opaque, avformat.Read_packet_Pointer_BytePointer_int readCallback, avformat.Write_packet_Pointer_BytePointer_int writeCallback, avformat.Seek_Pointer_long_int seekCallback) {
+    private AVIOContext allocIoContext(Pointer opaque, avformat.Read_packet_Pointer_BytePointer_int readCallback, avformat.Write_packet_Pointer_BytePointer_int writeCallback, avformat.Seek_Pointer_long_int seekCallback, int contextNumber) {
         Pointer ptr = av_mallocz(RW_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
 
         if (ptr.isNull()) {
@@ -722,7 +801,11 @@ public class FFmpegContext {
             if (writeCallback == null) {
                 deallocInputContext();
             } else {
-                deallocOutputContext();
+                if (contextNumber == 1) {
+                    deallocOutputContext();
+                } else {
+                    deallocOutputContext2();
+                }
             }
 
             return null;
@@ -781,12 +864,49 @@ public class FFmpegContext {
         }
     }
 
+    public void deallocOutputContext2() {
+        if (avfCtxOutput2 != null && !avfCtxOutput2.isNull()) {
+
+            logger.debug("avcodec_close");
+            int numStreams = avfCtxOutput2.nb_streams();
+            for (int idx = 0; idx < numStreams; ++idx) {
+                if (avfCtxOutput2.streams(idx) != null &&
+                        avfCtxOutput2.streams(idx).codec() != null) {
+
+                    avcodec_close(avfCtxOutput2.streams(idx).codec());
+                }
+            }
+
+            logger.debug("avio_closep");
+            if ((avfCtxOutput2.oformat().flags() & AVFMT_NOFILE) != 0) {
+                avio_closep(avfCtxOutput2.pb());
+                avioCtxOutput2 = null;
+            }
+
+            for (OutputStreamMap aStreamMap : streamMap2) {
+                aStreamMap.encoderCodec = null;
+
+                if (aStreamMap.encoderDict != null && !aStreamMap.encoderDict.isNull()) {
+                    logger.debug("Calling av_dict_free");
+                    av_dict_free(aStreamMap.encoderDict);
+                }
+                aStreamMap.encoderDict = null;
+            }
+
+            logger.debug("avformat_free_context");
+            avformat_free_context(avfCtxOutput2);
+
+            avfCtxOutput2 = null;
+        }
+    }
+
     /**
      * De-allocates any objects that may be allocated.
      */
     public synchronized void deallocAll() {
         deallocInputContext();
         deallocOutputContext();
+        deallocOutputContext2();
     }
 
     public int getProgram() {
@@ -812,12 +932,13 @@ public class FFmpegContext {
             } finally {
                 contextLock.writeLock().unlock();
             }
-        }
 
-        if (writerOpaque != null) {
-            removeWriterContext(writerOpaque);
-        }
 
-        deallocAll();
+            if (writerOpaque != null) {
+                removeWriterContext(writerOpaque);
+            }
+
+            deallocAll();
+        }
     }
 }

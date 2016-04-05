@@ -21,15 +21,8 @@ import opendct.config.Config;
 import java.io.File;
 
 public class CCExtractorCommon {
-    public static final byte[] MAGIC_NUMBER = new byte[] {(byte)0xcc, (byte)0xcc, (byte)0xed };
-    public static final byte CCEXTRACTOR_ID = (byte)0xcc;
-    public static final byte[] FILE_FORMAT = new byte[] {(byte)0x00, (byte)0x01 };
-    public static final byte[] RESERVED = new byte[] {(byte)0x00, (byte)0x00, (byte)0x00 };
-    public static final String SRT_RANGE = " --> ";
-
     public static final Runtime RUNTIME = Runtime.getRuntime();
     public static final String CC_BINARY;
-    public static final String STD_BIN_PARAMETERS;
     public static final String STD_SRT_PARAMETERS;
     public static final String SUGGESTED_PARAMETERS;
 
@@ -68,7 +61,6 @@ public class CCExtractorCommon {
 
         CC_BINARY = newExec;
 
-        STD_BIN_PARAMETERS = " -out=bin --gui_mode_reports --no_progress_bar --stream";
         STD_SRT_PARAMETERS = " -out=srt --stream --no_progress_bar";
         SUGGESTED_PARAMETERS = "-nobi -latin1";
     }

@@ -202,7 +202,7 @@ public class CCExtractorSrtInstance {
                 }
             }
 
-            logger.info("CCExtractor {} thread stopped.", streamType);
+            logger.debug("CCExtractor {} thread stopped.", streamType);
         }
     }
 }

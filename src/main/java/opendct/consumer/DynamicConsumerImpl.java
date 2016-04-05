@@ -27,6 +27,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -78,21 +79,21 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                 dynamicMaps.put(channel, FFmpegSageTVConsumerImpl.class.getCanonicalName());
             }
 
-            logger.info("Dynamic consumer set to use FFmpegSageTVConsumerImpl for {}", channels);
+            logger.info("Dynamic consumer set to use FFmpegSageTVConsumerImpl for {}", Arrays.toString(channels));
 
             channels = ChannelRangesDeviceOption.parseRanges(ffmpegTransConsumer.getValue());
             for (String channel : channels) {
                 dynamicMaps.put(channel, FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
             }
 
-            logger.info("Dynamic consumer set to use FFmpegTransSageTVConsumerImpl for {}", channels);
+            logger.info("Dynamic consumer set to use FFmpegTransSageTVConsumerImpl for {}", Arrays.toString(channels));
 
             channels = ChannelRangesDeviceOption.parseRanges(rawConsumer.getValue());
             for (String channel : channels) {
                 dynamicMaps.put(channel, RawSageTVConsumerImpl.class.getCanonicalName());
             }
 
-            logger.info("Dynamic consumer set to use RawSageTVConsumerImpl for {}", channels);
+            logger.info("Dynamic consumer set to use RawSageTVConsumerImpl for {}", Arrays.toString(channels));
         } catch (Exception e) {
             logger.warn("There was an unexpected exception while updating the dynamic consumer" +
                     " channel map => ", e);

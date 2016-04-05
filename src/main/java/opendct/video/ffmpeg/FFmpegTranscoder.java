@@ -914,45 +914,28 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             continue;
                         }
 
-                        // If the decode time stamp is less than (assumed) 1 second behind, check if
-                        // at least the presentation time stamps are in the right place going
-                        // forward. If they are, adjust the decode time stamp so the frame can be
-                        // used and the muxer will not complain.
-                        if (diff > -TS_TIME_BASE && pts > lastDtsByStreamIndex[inputStreamIndex]) {
+                        // If the pts is still greater than the last pts, fix the dts so it can be
+                        // muxed. This helps retain H.264 B frames when the decode timestamps are
+                        // out of order.
+                        if (pts > lastPtsByStreamIndex[inputStreamIndex] &&
+                                pts > lastDtsByStreamIndex[inputStreamIndex]) {
 
                             long oldDts = dts;
 
                             dts = lastDtsByStreamIndex[inputStreamIndex] + 1;
-                            if (pts < dts) {
-                                pts = dts;
-                            }
 
-                            // This will be seen a lot on 1080i H.264 content, so it will only log
-                            // if the gap is larger than expected, but still sane enough to make an
-                            // adjustment that doesn't need to be logged.
-                            if (diff < -6006) {
-                                logger.debug("re-ordering stream {}, diff = {}, offset = {}" +
-                                                " preoff dts = {}, dts = {}, new dts = {}," +
-                                                " last dts = {}," +
-                                                " preoff pts = {}, pts = {}, last pts = {}",
-                                        diff, inputStreamIndex, tsOffsets[inputStreamIndex],
-                                        preOffsetDts, oldDts, dts,
-                                        lastDtsByStreamIndex[inputStreamIndex],
-                                        preOffsetPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
-                            } else if (logger.isTraceEnabled()) {
-                                logger.trace("re-ordering stream {}, diff = {}, offset = {}" +
-                                                " preoff dts = {}, dts = {}, new dts = {}," +
-                                                " last dts = {}," +
-                                                " preoff pts = {}, pts = {}, last pts = {}",
-                                        diff, inputStreamIndex, tsOffsets[inputStreamIndex],
-                                        preOffsetDts, oldDts, dts,
-                                        lastDtsByStreamIndex[inputStreamIndex],
-                                        preOffsetPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
-                            }
+                            logger.debug("re-ordering stream {}, diff = {}, offset = {}" +
+                                            " preoff dts = {}, dts = {}, new dts = {}," +
+                                            " last dts = {}," +
+                                            " preoff pts = {}, pts = {} > last pts = {}",
+                                    diff, inputStreamIndex, tsOffsets[inputStreamIndex],
+                                    preOffsetDts, oldDts, dts,
+                                    lastDtsByStreamIndex[inputStreamIndex],
+                                    preOffsetPts, pts, lastPtsByStreamIndex[inputStreamIndex]);
                         } else {
                             logger.debug("discarding packet stream {}," +
                                             " dts {} < last dts {}," +
-                                            " pts {}, last pts {}",
+                                            " pts {} <= last pts {}",
                                     inputStreamIndex,
                                     dts, lastDtsByStreamIndex[inputStreamIndex],
                                     pts, lastPtsByStreamIndex[inputStreamIndex]);

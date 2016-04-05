@@ -406,7 +406,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         ctx.allocIoOutputContext(writer);
 
         if (ctx.secondaryStream) {
-            ctx.dumpOutputFormat2();
+            ctx.dumpOutputFormat2("(CCExtractor)");
             ctx.allocIoOutputContext2(writer2);
             ret = avformat_write_header(ctx.avfCtxOutput2, (PointerPointer<avutil.AVDictionary>) null);
 

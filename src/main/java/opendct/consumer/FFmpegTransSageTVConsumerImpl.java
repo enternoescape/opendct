@@ -171,10 +171,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             ctx.dispose();
 
-            if (currentCcWriter != null) {
-                currentCcWriter.closeFile();
-            }
-
             stateMessage = "Stopped.";
             running.set(false);
             logger.info("FFmpeg Transcoder consumer thread stopped.");
@@ -314,10 +310,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             currentEncoderFilename = filename;
             currentWriter = switchWriter;
 
-            if (ccExtractorAvailable) {
-                currentCcWriter.closeFile();
-                currentCcWriter = switchCcWriter;
-            }
         } catch (IOException e) {
             logger.error("Unable to open '{}' for writing => ", filename, e);
             return false;
@@ -764,6 +756,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             } catch (IOException e) {
                                 logger.error("Unable to close the file '{}' => ",
                                         directFilename, e);
+                            }
+
+                            if (ccExtractorAvailable && currentCcWriter != null) {
+                                currentCcWriter.closeFile();
+                                currentCcWriter = switchCcWriter;
                             }
                         }
 

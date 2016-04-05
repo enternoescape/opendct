@@ -17,6 +17,7 @@
 package opendct.video.ffmpeg;
 
 import opendct.consumer.buffers.FFmpegCircularBuffer;
+import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.BytePointer;
@@ -46,7 +47,7 @@ public class FFmpegContext {
     protected Pointer writerOpaque2;
 
     public final StringBuilder DUMP_BUFFER;
-    public final FFmpegCircularBuffer SEEK_BUFFER;
+    public final FFmpegCircularBufferNIO SEEK_BUFFER;
     public final FFmpegStreamProcessor STREAM_PROCESSOR;
     public final int RW_BUFFER_SIZE;
 
@@ -108,7 +109,7 @@ public class FFmpegContext {
      */
     public FFmpegContext(int bufferSize, int rwBufferSize, FFmpegStreamProcessor streamProcessor) {
        this(
-               new FFmpegCircularBuffer(bufferSize < 2246948 ? 2246948 : bufferSize),
+               new FFmpegCircularBufferNIO(bufferSize < 2246948 ? 2246948 : bufferSize),
                rwBufferSize < 10340 ? 10340 : rwBufferSize,
                streamProcessor
        );
@@ -122,7 +123,7 @@ public class FFmpegContext {
      * @param rwBufferSize The native buffer size to be used for reading and writing. This value
      *                     will be overridden to 10340 if it is less than 10340.
      */
-    public FFmpegContext(FFmpegCircularBuffer seekBuffer, int rwBufferSize, FFmpegStreamProcessor streamProcessor) {
+    public FFmpegContext(FFmpegCircularBufferNIO seekBuffer, int rwBufferSize, FFmpegStreamProcessor streamProcessor) {
         disposed = false;
 
         SEEK_BUFFER = seekBuffer;
@@ -584,7 +585,7 @@ public class FFmpegContext {
     public void dumpInputFormat() {
         DUMP_BUFFER.setLength(0);
         FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxInput, 0, inputFilename, false, desiredProgram);
-        logger.info("DI {}", DUMP_BUFFER.toString());
+        logger.info("Primary: {}", DUMP_BUFFER.toString());
     }
 
     /**
@@ -593,16 +594,20 @@ public class FFmpegContext {
     public void dumpOutputFormat() {
         DUMP_BUFFER.setLength(0);
         FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxOutput, 0, outputFilename, true, desiredProgram);
-        logger.info("DO {}", DUMP_BUFFER.toString());
+        logger.info("Primary: {}", DUMP_BUFFER.toString());
     }
 
     /**
      * Dump the secondary output format information for this context into the log.
+     *
+     * @param comment Replaced the filename with a comment. Leave blank to just display the
+     *                filename.
      */
-    public void dumpOutputFormat2() {
+    public void dumpOutputFormat2(String comment) {
         DUMP_BUFFER.setLength(0);
-        FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxOutput2, 0, outputFilename2, true, desiredProgram);
-        logger.info("DO {}", DUMP_BUFFER.toString());
+        FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxOutput2, 0, comment, true, desiredProgram);
+
+        logger.info("Secondary: {}", DUMP_BUFFER.toString());
     }
 
     /**

@@ -164,6 +164,7 @@ public class CCExtractorSrtInstance {
         public void run() {
             logger.debug("CCExtractor {} thread started.", streamType);
 
+            boolean debug = streamType.equals("errout");
             char buffer[] = new char[2048];
             StringBuilder builder = new StringBuilder(2048);
             int readLen;
@@ -184,8 +185,13 @@ public class CCExtractorSrtInstance {
 
                 for (int i = 0; i < readLen; i++) {
                     if (buffer[i] == '\n') {
-                        logger.info("{}: {}", streamType, builder.toString());
+                        if (debug) {
+                            logger.debug("{}: {}", streamType, builder.toString());
+                        } else {
+                            logger.info("{}: {}", streamType, builder.toString());
+                        }
                         builder.setLength(0);
+                        continue;
                     }
 
                     if (buffer[i] == '\r') {
@@ -194,8 +200,6 @@ public class CCExtractorSrtInstance {
 
                     builder.append(buffer[i]);
                 }
-
-                //logger.info(new String(buffer, 0, readLen));
             }
 
             logger.info("CCExtractor {} thread stopped.", streamType);

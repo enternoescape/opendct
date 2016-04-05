@@ -68,8 +68,8 @@ public class CCExtractorCommon {
 
         CC_BINARY = newExec;
 
-        STD_BIN_PARAMETERS = " -stdin -stdout -out=bin --gui_mode_reports --no_progress_bar --stream";
-        STD_SRT_PARAMETERS = " -out=srt --stream --gui_mode_reports";
+        STD_BIN_PARAMETERS = " -out=bin --gui_mode_reports --no_progress_bar --stream";
+        STD_SRT_PARAMETERS = " -out=srt --stream --no_progress_bar";
         SUGGESTED_PARAMETERS = "-nobi -latin1";
     }
 }

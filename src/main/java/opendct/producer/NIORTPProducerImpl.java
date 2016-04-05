@@ -264,7 +264,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
                 // A standard RTP transmitted datagram payload should not be larger than 1328 bytes,
                 // but the largest possible UDP packet size is 65535, so we'll double that to 131016.
-                ByteBuffer datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                ByteBuffer datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
 
                 while (!Thread.currentThread().isInterrupted()) {
                     datagramBuffer.clear();
@@ -288,14 +288,14 @@ public class NIORTPProducerImpl implements RTPProducer {
                                 if (udpInternalReceiveBufferSize < 32767) {
                                     // This will cover 99% of the required adjustments.
                                     udpInternalReceiveBufferSize = 32767;
-                                    datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                                    datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
                                 } else {
                                     if (udpInternalReceiveBufferSize * 2 >= udpInternalReceiveBufferLimit) {
                                         udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit;
-                                        datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                                        datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
                                     } else {
                                         udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit * 2;
-                                        datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                                        datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
                                     }
                                 }
 
@@ -303,7 +303,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Increased buffer capacity to {} bytes.", datagramBuffer.limit());
                             } else {
                                 if (!(udpInternalReceiveBufferSize == udpInternalReceiveBufferLimit)) {
-                                    datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferLimit);
+                                    datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferLimit);
                                     Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", udpInternalReceiveBufferSize);
                                 }
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Buffer increase capacity limit reached at {} bytes.", datagramBuffer.limit());
@@ -320,11 +320,11 @@ public class NIORTPProducerImpl implements RTPProducer {
                     }
                 }
             } catch (ClosedByInterruptException e) {
-                logger.debug("Producer was closed by an interrupt exception => ", e.toString());
+                logger.debug("Producer was closed by an interrupt exception => {}", e.toString());
             } catch (AsynchronousCloseException e) {
-                logger.debug("Producer was closed by an asynchronous close exception => ", e.toString());
+                logger.debug("Producer was closed by an asynchronous close exception => {}", e.toString());
             } catch (ClosedChannelException e) {
-                logger.debug("Producer was closed by a close channel exception => ", e.toString());
+                logger.debug("Producer was closed by a close channel exception => {}", e.toString());
             } catch (Exception e) {
                 logger.error("Producer created an unexpected exception => ", e);
             } finally {
@@ -336,7 +336,7 @@ public class NIORTPProducerImpl implements RTPProducer {
             try {
                 rtcpClient.stopReceiving();
             } catch (Exception e) {
-                logger.debug("Producer created an exception while closing the RTCP channel => ", e);
+                logger.debug("Producer created an exception while closing the RTCP channel => {}", e.toString());
             }
 
             try {
@@ -344,7 +344,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                 // The datagram channel doesn't seem to close the socket every time.
                 datagramChannel.socket().close();
             } catch (IOException e) {
-                logger.debug("Producer created an exception while closing the datagram channel => ", e);
+                logger.debug("Producer created an exception while closing the datagram channel => {}", e.toString());
             }
         }
 
@@ -363,7 +363,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                     }
                 }
             } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for packet monitoring thread to stop => ", e);
+                logger.debug("Producer was interrupted while waiting for packet monitoring thread to stop => {}", e.toString());
             }
         }
 
@@ -371,7 +371,7 @@ public class NIORTPProducerImpl implements RTPProducer {
             try {
                 rtcpClient.waitForStop();
             } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => ", e);
+                logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => {}", e.toString());
             }
         }
 

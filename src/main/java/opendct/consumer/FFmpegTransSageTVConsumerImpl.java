@@ -20,6 +20,7 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBuffer;
+import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.ccextractor.CCExtractorSrtInstance;
 import opendct.video.ffmpeg.*;
@@ -94,7 +95,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     int desiredProgram = 0;
     private String stateMessage;
-    private FFmpegCircularBuffer circularBuffer;
+    private FFmpegCircularBufferNIO circularBuffer;
     private FFmpegContext ctx;
 
     static {
@@ -102,7 +103,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public FFmpegTransSageTVConsumerImpl() {
-        circularBuffer = new FFmpegCircularBuffer(FFmpegConfig.getCircularBufferSize());
+        circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
     }
 
     @Override
@@ -181,6 +182,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     @Override
     public void write(byte[] bytes, int offset, int length) throws IOException {
         circularBuffer.write(bytes, offset, length);
+    }
+
+    @Override
+    public void write(ByteBuffer buffer) throws IOException {
+        circularBuffer.write(buffer);
     }
 
     @Override

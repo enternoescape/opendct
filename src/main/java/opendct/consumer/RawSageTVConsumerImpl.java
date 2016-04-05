@@ -22,6 +22,7 @@ import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
 import opendct.consumer.buffers.SeekableCircularBuffer;
+import opendct.consumer.buffers.SeekableCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
@@ -76,7 +77,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private final Object switchMonitor = new Object();
 
     private ByteBuffer streamBuffer = ByteBuffer.allocate(maxTransferSize);
-    private SeekableCircularBuffer seekableBuffer = new SeekableCircularBuffer(bufferSize);
+    private SeekableCircularBufferNIO seekableBuffer = new SeekableCircularBufferNIO(bufferSize);
 
     private NIOSageTVUploadID nioSageTVUploadID = null;
 
@@ -395,6 +396,10 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
     public void write(byte[] bytes, int offset, int length) throws IOException {
         seekableBuffer.write(bytes, offset, length);
+    }
+
+    public void write(ByteBuffer buffer) throws IOException {
+        seekableBuffer.write(buffer);
     }
 
     public void setRecordBufferSize(long bufferSize) {

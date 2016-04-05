@@ -281,7 +281,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                         // position to 12.
                         packetProcessor.findMissingRTPPackets(datagramBuffer);
 
-                        sageTVConsumer.write(datagramBuffer.array(), datagramBuffer.position(), datagramBuffer.remaining());
+                        sageTVConsumer.write(datagramBuffer);
 
                         if (datagramSize >= udpInternalReceiveBufferSize) {
                             if (udpInternalReceiveBufferSize < udpInternalReceiveBufferLimit) {

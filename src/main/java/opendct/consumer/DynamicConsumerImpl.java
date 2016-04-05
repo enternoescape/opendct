@@ -26,6 +26,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -161,6 +162,22 @@ public class DynamicConsumerImpl implements SageTVConsumer {
 
         if (consumer != null) {
             consumer.write(bytes, offset, length);
+        } else {
+            logger.error("Unable to load a consumer for writing!");
+        }
+    }
+
+    @Override
+    public void write(ByteBuffer buffer) throws IOException {
+        SageTVConsumer consumer = sageTVConsumer;
+
+        if (consumer == null) {
+            sageTVConsumer = getConsumer(channel);
+            consumer = sageTVConsumer;
+        }
+
+        if (consumer != null) {
+            consumer.write(buffer);
         } else {
             logger.error("Unable to load a consumer for writing!");
         }

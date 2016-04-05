@@ -344,6 +344,11 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         seekableBuffer.write(bytes, offset, length);
     }
 
+    @Override
+    public void write(ByteBuffer buffer) throws IOException {
+        seekableBuffer.write(buffer);
+    }
+
     public void setRecordBufferSize(long bufferSize) {
         this.stvRecordBufferSize = bufferSize;
     }

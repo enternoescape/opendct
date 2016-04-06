@@ -124,7 +124,7 @@ public class UpnpManager implements PowerEventListener {
             // This property will give us the ability to add new schema descriptors as they are
             // changed/discovered. Note that this will not actually limit the responses from UPnP
             // devices on the network, so it is not a filter.
-            final String secureContainers[] = Config.getStringArray("upnp.new.device.search_strings_csv", "schemas-cetoncorp-com", "schemas-dkeystone-com");
+            final String secureContainers[] = Config.getStringArray("upnp.new.device.search_strings_csv", "schemas-cetoncorp-com");
             final int searchInterval = Config.getInteger("upnp.new.device.search_interval_s", 4) * 1000;
             searchSecureContainers(secureContainers);
 

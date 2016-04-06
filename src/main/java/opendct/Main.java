@@ -205,13 +205,13 @@ public class Main {
 
         int sageTVdefaultDiscoveryPort = Config.getInteger("sagetv.encoder_discovery_port", 8271);
 
-        // Currently the program doesn't do much without this part, but in the future we might have
-        // a capture device that doesn't use UPnP so we would want it disabled if we don't need it.
-        boolean useUPnP = Config.getBoolean("upnp.enabled", true);
-        boolean legacyUPnP = Config.getBoolean("upnp.exp_legacy_capture_device", true);
+        // Setting both of these properties to true will enable the legacy DCT capture device to be
+        // loaded. This is no longer supported, but remains available for regression testing.
+        boolean useUPnP = Config.getBoolean("upnp.legacy_enabled", false);
+        boolean legacyUPnP = Config.getBoolean("upnp.legacy_capture_device", false);
 
-        // If this is enabled the program will
-        boolean useDiscoveryManager = Config.getBoolean("discovery.exp_enabled", true);
+        // If this is enabled the program will use the new discovery manager.
+        boolean useDiscoveryManager = Config.getBoolean("discovery.enabled", true);
 
         Config.saveConfig();
 

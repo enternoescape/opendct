@@ -22,10 +22,12 @@ import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
 import opendct.sagetv.SageTVManager;
+import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.upnp.config.DCTDefaultUpnpServiceConfiguration;
 import opendct.tuning.upnp.listener.DCTRegistryListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 import org.fourthline.cling.DefaultUpnpServiceConfiguration;
 import org.fourthline.cling.UpnpService;
 import org.fourthline.cling.UpnpServiceImpl;
@@ -42,6 +44,7 @@ public class UpnpManager implements PowerEventListener {
     private static final Logger logger = LogManager.getLogger(UpnpManager.class);
     public static PowerEventListener POWER_EVENT_LISTENER = new UpnpManager();
 
+    private static final boolean legacyUPnP = Config.getBoolean("upnp.legacy_capture_device", false);
     private static final ReentrantReadWriteLock upnpServiceLock = new ReentrantReadWriteLock();
     private static volatile boolean running;
     private static UpnpService upnpService = null;
@@ -97,7 +100,7 @@ public class UpnpManager implements PowerEventListener {
     }
 
     // Returns true as long as the service is actually running.
-    public static boolean startUpnpServices(DefaultUpnpServiceConfiguration defaultUpnpServiceConfiguration, RegistryListener registryListener) {
+    public static boolean startUpnpServices(final DefaultUpnpServiceConfiguration defaultUpnpServiceConfiguration, final RegistryListener registryListener) {
         logger.entry(defaultUpnpServiceConfiguration, registryListener);
 
         boolean returnValue = false;
@@ -129,36 +132,79 @@ public class UpnpManager implements PowerEventListener {
                 @Override
                 public void run() {
                     logger.info("UPnP discovery thread has started.");
-                    long endTime = System.currentTimeMillis() + 30000;
+                    while (!Thread.currentThread().isInterrupted()) {
+                        long endTime = System.currentTimeMillis() + 30000;
 
-                    while (!SageTVManager.captureDevicesLoaded() || System.currentTimeMillis() < endTime) {
-                        if (Thread.currentThread().isInterrupted()) {
-                            break;
-                        }
-
-                        try {
-                            Thread.sleep(searchInterval);
-                        } catch (InterruptedException e) {
-                            logger.info("UPnP discovery thread was interrupted => ", e);
-                            return;
-                        }
-
-                        upnpServiceLock.readLock().lock();
-
-                        try {
-                            if (!running) {
+                        while (!SageTVManager.captureDevicesLoaded() ||
+                                System.currentTimeMillis() < endTime) {
+                            if (Thread.currentThread().isInterrupted()) {
                                 break;
                             }
 
-                            searchSecureContainers(secureContainers);
-                        } finally {
-                            upnpServiceLock.readLock().unlock();
+                            try {
+                                Thread.sleep(searchInterval);
+                            } catch (InterruptedException e) {
+                                logger.info("UPnP discovery thread was interrupted => {}", e.toString());
+                                return;
+                            }
+
+                            upnpServiceLock.readLock().lock();
+
+                            try {
+                                if (!running) {
+                                    break;
+                                }
+
+                                searchSecureContainers(secureContainers);
+                            } finally {
+                                upnpServiceLock.readLock().unlock();
+                            }
+
+
+                        }
+
+                        if (legacyUPnP || !UpnpDiscoverer.getSmartBroadcast()) {
+                            break;
+                        } else {
+                            upnpServiceLock.writeLock().lock();
+
+                            try {
+                                logger.debug("Stopping broadcast.");
+                                upnpService.shutdown();
+                            } finally {
+                                upnpServiceLock.writeLock().unlock();
+                            }
+
+                            while (!Thread.currentThread().isInterrupted()) {
+                                try {
+                                    Thread.sleep(5000);
+                                } catch (InterruptedException e) {
+                                    logger.info("UPnP discovery thread was interrupted => {}", e.toString());
+                                    return;
+                                }
+
+                                if (UpnpDiscoverer.needBroadcast()) {
+                                    logger.debug("Broadcast requested.");
+
+                                    upnpServiceLock.writeLock().lock();
+
+                                    try {
+                                        upnpService = new UpnpServiceImpl(
+                                                defaultUpnpServiceConfiguration, registryListener);
+                                    } finally {
+                                        upnpServiceLock.writeLock().unlock();
+                                    }
+
+                                    break;
+                                }
+                            }
                         }
                     }
 
                     logger.info("UPnP discovery thread has stopped.");
                 }
             });
+
             discoveryThread.setName("UPnPDiscovery-" + discoveryThread.getId());
             discoveryThread.start();
 

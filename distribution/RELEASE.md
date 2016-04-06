@@ -777,6 +777,17 @@
 #### 0.4.45-RC9
 > *Fixed incorrect variable order for repeat FFmpeg logging.
 
+> *Added additional length check in FFmpeg enhanced logging to prevent
+  wasting cycles parsing an entry that isn't likely to be parsed
+  successfully.
+
 > *Fixed pts being adjusted incorrectly under some circumstances.
+
+> *Socket server now doesn't try to register the loopback address for
+  standby support.
+
+> *Changed over to using G1GC for garbage collection.
+
+> *Defined native crash logging location on Linux.
 
 > *Internal: Removed some logging stack traces that don't need to exist.

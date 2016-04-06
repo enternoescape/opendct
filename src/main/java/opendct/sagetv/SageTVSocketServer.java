@@ -189,7 +189,8 @@ public class SageTVSocketServer implements Runnable {
                 // This will keep this task from being performed constantly on connection. It only
                 // needs to be done once.
                 if (!registeredRemoteIps.contains(remoteAddress)) {
-                    if (remoteAddress instanceof Inet4Address) {
+                    if (remoteAddress instanceof Inet4Address &&
+                            !remoteAddress.isLoopbackAddress()) {
                         try {
                             NetworkPowerEventManger.POWER_EVENT_LISTENER.addDependentInterface(
                                     remoteAddress);

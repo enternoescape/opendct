@@ -779,7 +779,4 @@
 
 > *Fixed pts being adjusted incorrectly under some circumstances.
 
-> *Changed some byte buffers so they are direct allocations which should
-  help a little performance-wise.
-
 > *Internal: Removed some logging stack traces that don't need to exist.

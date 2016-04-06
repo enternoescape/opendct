@@ -29,11 +29,11 @@ public class CCExtractorSrtInstance {
     private static final Logger logger = LogManager.getLogger(CCExtractorSrtInstance.class);
 
     private Process ccExtractor;
-    private InputStreamReader inputStdStream;
-    private InputStreamReader inputErrStream;
-    private BufferedOutputStream outputStream;
     private ReadOutput outputStdStream;
     private ReadOutput outputErrStream;
+    private InputStream inputStdStream;
+    private InputStream inputErrStream;
+    private BufferedOutputStream outputStream;
     private byte streamOutBuffer[];
 
     public CCExtractorSrtInstance(String parameters, String baseFilename) throws IOException {
@@ -45,10 +45,10 @@ public class CCExtractorSrtInstance {
             parameters = SUGGESTED_PARAMETERS;
         }
 
-        ccExtractor = RUNTIME.exec(CC_BINARY + STD_SRT_PARAMETERS + parameters + "-o \"" + baseFilename + ".srt\"");
+        ccExtractor = RUNTIME.exec(CC_BINARY + STD_SRT_PARAMETERS + parameters + " -o \"" + baseFilename + ".srt\"");
 
-        inputStdStream = new InputStreamReader(ccExtractor.getInputStream());
-        inputErrStream = new InputStreamReader(ccExtractor.getErrorStream());
+        inputStdStream = ccExtractor.getInputStream();
+        inputErrStream = ccExtractor.getErrorStream();
         outputStream = new BufferedOutputStream(ccExtractor.getOutputStream());
 
         // Create these files ahead of time so SageTV will report that the subtitles exist when the
@@ -132,11 +132,13 @@ public class CCExtractorSrtInstance {
         outputErrStream = new ReadOutput(inputErrStream, "errout");
 
         streamOut = new Thread(outputStdStream);
-        streamOut.setName("CCExtractor-" + streamOut.getId());;
+        streamOut.setName("CCExtractor-" + streamOut.getId());
+        streamOut.setPriority(Thread.MIN_PRIORITY);
         streamOut.start();
 
         streamOut = new Thread(outputErrStream);
-        streamOut.setName("CCExtractor-" + streamOut.getId());;
+        streamOut.setName("CCExtractor-" + streamOut.getId());
+        streamOut.setPriority(Thread.MIN_PRIORITY);
         streamOut.start();
     }
 
@@ -145,8 +147,8 @@ public class CCExtractorSrtInstance {
         private final InputStreamReader reader;
         private final String streamType;
 
-        public ReadOutput(InputStreamReader reader, String streamType) {
-            this.reader = reader;
+        public ReadOutput(InputStream reader, String streamType) {
+            this.reader = new InputStreamReader(reader);
             this.streamType = streamType;
         }
 
@@ -185,11 +187,21 @@ public class CCExtractorSrtInstance {
 
                 for (int i = 0; i < readLen; i++) {
                     if (buffer[i] == '\n') {
-                        if (debug) {
+                        if (builder.length() == 0) {
+                            continue;
+                        }
+
+                        String logOut = builder.toString();
+
+                        if (logOut.equals("  XDS: ")) {
+                            builder.setLength(0);
+                            continue;
+                        } else if (debug) {
                             logger.debug("{}: {}", streamType, builder.toString());
                         } else {
                             logger.info("{}: {}", streamType, builder.toString());
                         }
+
                         builder.setLength(0);
                         continue;
                     }
@@ -203,6 +215,12 @@ public class CCExtractorSrtInstance {
             }
 
             logger.debug("CCExtractor {} thread stopped.", streamType);
+
+            // Ensure the process gets terminated even if somehow it doesn't happen until the
+            // program is stopped.
+            if (ccExtractor != null) {
+                ccExtractor.destroy();
+            }
         }
     }
 }

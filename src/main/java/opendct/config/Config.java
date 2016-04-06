@@ -930,22 +930,20 @@ public class Config {
      * @return A string array of all available consumers.
      */
     public static String[] getSageTVConsumers() {
-        String returnValues[] = new String[4];
+        String returnValues[] = new String[3];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = FFmpegSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[3] = DynamicConsumerImpl.class.getCanonicalName();
+        returnValues[1] = RawSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[2] = DynamicConsumerImpl.class.getCanonicalName();
 
         return returnValues;
     }
 
     public static String[] getSageTVConsumersLessDynamic() {
-        String returnValues[] = new String[3];
+        String returnValues[] = new String[2];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = FFmpegSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[1] = RawSageTVConsumerImpl.class.getCanonicalName();
 
         return returnValues;
     }

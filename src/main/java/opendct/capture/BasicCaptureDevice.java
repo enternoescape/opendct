@@ -19,6 +19,7 @@ package opendct.capture;
 import opendct.channel.ChannelManager;
 import opendct.channel.TVChannel;
 import opendct.config.Config;
+import opendct.consumer.DynamicConsumerImpl;
 import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
 import opendct.sagetv.SageTVManager;
@@ -694,7 +695,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return Config.getSageTVConsumer(
                 propertiesDeviceRoot + "consumer",
                 Config.getString("sagetv.new.default_consumer_impl",
-                        FFmpegTransSageTVConsumerImpl.class.getName()),
+                        DynamicConsumerImpl.class.getName()),
                 channel);
     }
 

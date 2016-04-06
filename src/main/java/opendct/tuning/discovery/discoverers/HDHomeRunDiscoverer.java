@@ -87,7 +87,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         if (Config.getString("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com")
                 .contains("schemas-dkeystone-com")) {
 
-            Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");
+            Config.setStringArray("hdhr.ignore_models", "HDHR3-CC");
         }
 
         errorMessage = null;
@@ -166,11 +166,11 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 );
 
                 ignoreModels = new StringDeviceOption(
-                        Config.getStringArray("hdhr.exp_ignore_models"),
+                        Config.getStringArray("hdhr.ignore_models"),
                         true,
                         false,
                         "Ignore Models",
-                        "hdhr.exp_ignore_models",
+                        "hdhr.ignore_models",
                         "Prevent specific HDHomeRun models from being detected and loaded."
                 );
 
@@ -275,7 +275,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.setInteger("hdhr.retry_count", 2);
                 Config.setInteger("hdhr.broadcast_s", 58);
                 Config.setInteger("hdhr.broadcast_port", 64998);
-                Config.setStringArray("hdhr.exp_ignore_models");
+                Config.setStringArray("hdhr.ignore_models");
                 Config.setStringArray("hdhr.ignore_device_ids");
                 Config.setBoolean("hdhr.always_tune_legacy", false);
                 Config.setBoolean("hdhr.allow_http_tuning", true);

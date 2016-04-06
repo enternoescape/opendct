@@ -239,7 +239,7 @@ public class Config {
                         getStringArray("hdhr.exp_ignore_models",
                                 "HDHR3-CC"));
 
-                setStringArray("hdhr.exp_ignore_models", newArray);
+                setStringArray("hdhr.ignore_models", newArray);
 
 
                 logger.info("Setting 'discovery.exp_enabled' to 'true'");

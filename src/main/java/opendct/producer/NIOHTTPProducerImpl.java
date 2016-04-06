@@ -28,6 +28,7 @@ import java.net.HttpURLConnection;
 import java.net.SocketException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NIOHTTPProducerImpl implements HTTPProducer {
@@ -179,89 +180,93 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
             throw new IllegalThreadStateException("The HTTP producer is already running.");
         }
 
-        stalled = false;
-        interrupted = false;
+        try {
+            stalled = false;
+            interrupted = false;
 
-        logger.info("Producer thread is running.");
+            logger.info("Producer thread is running.");
 
-        // We could be doing channel scanning that doesn't need this kind of prioritization.
-        if (Thread.currentThread().getPriority() != Thread.MIN_PRIORITY) {
-            Thread.currentThread().setPriority(httpThreadPriority);
-        }
+            // We could be doing channel scanning that doesn't need this kind of prioritization.
+            if (Thread.currentThread().getPriority() != Thread.MIN_PRIORITY) {
+                Thread.currentThread().setPriority(httpThreadPriority);
+            }
 
-        logger.debug("Thread priority is {}.", Thread.currentThread().getPriority());
+            logger.debug("Thread priority is {}.", Thread.currentThread().getPriority());
 
-        int readBytes = 0;
+            int readBytes = 0;
 
-        // Keep re-connecting if the connection is interrupted until the producer is told to stop.
-        while (!isInterrupted()) {
-            while (!isInterrupted() && stalled) {
-                try {
-                    downloader.connect(currentURL);
-                    stalled = false;
-                } catch (IOException e) {
-                    logger.error("There was a problem getting a stream => ", e);
-                    stalled = true;
-
+            // Keep re-connecting if the connection is interrupted until the producer is told to stop.
+            while (!isInterrupted()) {
+                while (!isInterrupted() && stalled) {
                     try {
-                        selectURL(availableURL, true);
+                        downloader.connect(currentURL);
                         stalled = false;
-                    } catch (IOException e0) {
+                    } catch (IOException e) {
+                        logger.error("There was a problem getting a stream => ", e);
                         stalled = true;
 
-                        logger.warn("Unable to re-connect to any of the available addresses. Waiting 250ms before the next attempt.");
-
                         try {
-                            Thread.sleep(250);
-                        } catch (InterruptedException e1) {
-                            logger.debug("Producer was interrupted waiting to retry HTTP connection => ", e.toString());
+                            selectURL(availableURL, true);
+                            stalled = false;
+                        } catch (IOException e0) {
                             stalled = true;
-                            Thread.currentThread().interrupt();
-                            break;
+
+                            logger.warn("Unable to re-connect to any of the available addresses. Waiting 250ms before the next attempt.");
+
+                            try {
+                                Thread.sleep(250);
+                            } catch (InterruptedException e1) {
+                                logger.debug("Producer was interrupted waiting to retry HTTP connection => ", e.toString());
+                                stalled = true;
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            if (stalled) {
-                break;
-            }
-
-            while (!isInterrupted()) {
-                try {
-                    if (!stalled) {
-                        localBuffer.clear();
-                        readBytes = downloader.read(localBuffer);
-                        localBuffer.flip();
-
-                        synchronized (receivedLock) {
-                            bytesReceived += readBytes;
-                        }
-
-                        if (readBytes > 0) {
-                            sageTVConsumer.write(localBuffer);
-                        } else {
-                            logger.info("We have reached the end of the stream. Stopping thread.");
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-                } catch (IOException e) {
-                    if (!(e instanceof SocketException || e.getMessage().equals("Stream closed"))) {
-                        logger.warn("An exception occurred while receiving data => ", e);
-                    } else {
-                        logger.debug("The socket has been closed.");
-                    }
-
-                    stalled = true;
+                if (stalled) {
                     break;
                 }
+
+                while (!isInterrupted()) {
+                    try {
+                        if (!stalled) {
+                            localBuffer.clear();
+                            readBytes = downloader.read(localBuffer);
+                            localBuffer.flip();
+
+                            synchronized (receivedLock) {
+                                bytesReceived += readBytes;
+                            }
+
+                            if (readBytes > 0) {
+                                sageTVConsumer.write(localBuffer);
+                            } else {
+                                logger.info("We have reached the end of the stream. Stopping thread.");
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    } catch (IOException e) {
+                        if (!(e instanceof SocketException || e.getMessage().equals("Stream closed"))) {
+                            logger.warn("An exception occurred while receiving data => ", e);
+                        } else {
+                            logger.debug("The socket has been closed.");
+                        }
+
+                        stalled = true;
+                        break;
+                    }
+                }
             }
+
+        } catch (Exception e) {
+            logger.error("Producer thread created an unexpected exception  => ", e);
+        } finally {
+            downloader.close();
+            logger.info("Producer thread has stopped.");
+            running.set(false);
         }
-
-        downloader.close();
-
-        logger.info("Producer thread has stopped.");
-        running.set(false);
     }
 
     public URL getSource() {

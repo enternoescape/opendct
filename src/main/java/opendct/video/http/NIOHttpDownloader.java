@@ -129,7 +129,7 @@ public class NIOHttpDownloader {
             return -1;
         }
 
-        if (tempBuffer.hasRemaining()) {
+        /*if (tempBuffer.hasRemaining()) {
             int remaining = tempBuffer.remaining();
 
             while (tempBuffer.hasRemaining()) {
@@ -137,7 +137,7 @@ public class NIOHttpDownloader {
             }
 
             return remaining + socketChannel.read(buffer);
-        }
+        }*/
 
         return socketChannel.read(buffer);
     }
@@ -151,5 +151,9 @@ public class NIOHttpDownloader {
         } catch (IOException e) {
             logger.debug("An exception was created when the socket channel was close => ", e);
         }
+    }
+
+    public boolean isOpen() {
+        return !closed;
     }
 }

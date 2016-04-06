@@ -1036,10 +1036,10 @@ public class Config {
         HTTPProducer returnValue;
         String clientName = properties.getProperty(key, httpProducer);
 
-        if (clientName.endsWith(HTTPProducerImpl.class.getSimpleName())) {
-            returnValue = new HTTPProducerImpl();
-        } else if (clientName.endsWith(NIOHTTPProducerImpl.class.getSimpleName())) {
+        if (clientName.endsWith(NIOHTTPProducerImpl.class.getSimpleName())) {
             returnValue = new NIOHTTPProducerImpl();
+        } else if (clientName.endsWith(HTTPProducerImpl.class.getSimpleName())) {
+            returnValue = new HTTPProducerImpl();
         } else {
             try {
                 returnValue = (HTTPProducer) Class.forName(clientName).newInstance();

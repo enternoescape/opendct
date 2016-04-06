@@ -54,7 +54,7 @@ public class HTTPProducerImpl implements HTTPProducer {
     private volatile long bytesReceived = 0;
 
     private SageTVConsumer sageTVConsumer = null;
-    private byte localBuffer[] = new byte[65536];
+    private byte localBuffer[] = new byte[262144];
 
     public synchronized void setSourceUrls(URL... urls) throws IOException {
         if (urls.length == 0) {

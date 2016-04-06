@@ -38,6 +38,9 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     private static final Logger defaultLogger = LogManager.getLogger(FFMPEG);
     private static final int defaultLevel = defaultLogger.getLevel().intLevel();
 
+    private static final String PLURAL = "s";
+    private static final String BLANK = "";
+
     public static final boolean linuxLogging = Config.getBoolean("consumer.ffmpeg.linux_logging", true);
     public static final boolean limitLogging = Config.getBoolean("consumer.ffmpeg.limit_logging", true);
     public static final boolean threadRename = Config.getBoolean("consumer.ffmpeg.thread_rename_logging", false);
@@ -140,10 +143,14 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             return;
         }
 
-        int repeatCount = repeated.get();
-        if (repeatCount > 0) {
-            logger.log(callLogLevel, "Repeated {} time{}: {}.", repeatCount, repeatCount > 1 ? "s" : "", holdMessage);
-            repeated.addAndGet(-repeatCount);
+        loggerObject.repeatCount = repeated.get();
+        if (loggerObject.repeatCount > 0) {
+            logger.log(callLogLevel, "Repeated {} time{}: {}.",
+                    loggerObject.repeatCount,
+                    loggerObject.repeatCount > 1 ? PLURAL : BLANK,
+                    holdMessage);
+
+            repeated.addAndGet(-loggerObject.repeatCount);
         }
 
         lastMessage = message;
@@ -158,7 +165,10 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             loggerObject.len--;
         }
 
-        if (enhancedLogging && (char)loggerObject.messageBytes[0] == '[') {
+        if (enhancedLogging &&
+                loggerObject.len > addressSize + 5 &&
+                (char)loggerObject.messageBytes[0] == '[') {
+
             loggerObject.classStart = 1;
             loggerObject.index = 2;
 
@@ -210,6 +220,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         }
 
         for(; loggerObject.index < loggerObject.len; loggerObject.index++) {
+            // This can be done this way because the bytes are UTF-8.
             loggerObject.stringBuilder.append((char)loggerObject.messageBytes[loggerObject.index]);
         }
     }
@@ -307,6 +318,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     }
 
     private class FFmpegLoggerObject {
+        private int repeatCount = 0;
         private byte messageBytes[] = new byte[1024];
         private StringBuilder stringBuilder = new StringBuilder(1024);
         private boolean noClassName = true;
@@ -324,6 +336,7 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         int threadEnd = 0;
 
         private void reset() {
+            repeatCount = 0;
             Arrays.fill(messageBytes, (byte) 0);
             stringBuilder.setLength(0);
             noClassName = true;

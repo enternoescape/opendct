@@ -78,7 +78,7 @@ public class RTCPClient implements Runnable {
                     datagramChannel.close();
                     datagramChannel.socket().close();
                 } catch (IOException e0) {
-                    logger.debug("Producer created an exception while closing the datagram channel => {}", e0);
+                    logger.debug("Producer created an exception while closing the datagram channel => {}", e0.toString());
                 }
             }
             throw e;
@@ -104,7 +104,7 @@ public class RTCPClient implements Runnable {
                 datagramChannel.close();
                 datagramChannel.socket().close();
             } catch (IOException e) {
-                logger.debug("RTCP client created an exception while closing the datagram channel => ", e);
+                logger.debug("RTCP client created an exception while closing the datagram channel => {}", e.toString());
             }
         }
     }
@@ -127,8 +127,8 @@ public class RTCPClient implements Runnable {
         logger.info("RTCP client thread is running.");
 
         // A standard RTP transmitted datagram payload should not be larger than 1328 bytes.
-        ByteBuffer datagramBuffer = ByteBuffer.allocate(1500);
-        ByteBuffer responseBuffer = ByteBuffer.allocate(1500);
+        ByteBuffer datagramBuffer = ByteBuffer.allocateDirect(1500);
+        ByteBuffer responseBuffer = ByteBuffer.allocateDirect(1500);
         int datagramSize;
 
         while (!stop.get() && !Thread.currentThread().isInterrupted()) {
@@ -155,14 +155,14 @@ public class RTCPClient implements Runnable {
                 datagramBuffer.clear();
             } catch (IOException e) {
                 if (!stop.get()) {
-                    logger.error("RTCP port {} has closed unexpectedly. Attempting to re-open...", rtcpLocalPort);
+                    logger.error("RTCP port {} has closed unexpectedly. Attempting to re-open => ", rtcpLocalPort, e);
 
                     if (datagramChannel != null && datagramChannel.isConnected()) {
                         try {
                             datagramChannel.close();
                             datagramChannel.socket().close();
                         } catch (IOException e0) {
-                            logger.debug("RTCP client created an exception while closing the datagram channel => ", e);
+                            logger.debug("RTCP client created an exception while closing the datagram channel => {}", e0.toString());
                         }
                     }
 
@@ -171,13 +171,13 @@ public class RTCPClient implements Runnable {
                     try {
                         startReceiving(rtcpRemoteIP, rtcpLocalPort);
                     } catch (IOException e0) {
-                        logger.debug("RTCP client is unable to re-open the port {} => ", rtcpLocalPort, e);
+                        logger.debug("RTCP client is unable to re-open the port {} => ", rtcpLocalPort, e0);
                     }
 
                     // This starts a new listening thread, so we need to completely exit this thread.
                     return;
                 } else {
-                    logger.debug("The RTCP thread has been requested to stop => ", e.toString());
+                    logger.debug("The RTCP client thread has been requested to stop => {}", e.toString());
                     break;
                 }
             } catch (Exception e) {
@@ -191,7 +191,7 @@ public class RTCPClient implements Runnable {
                 datagramChannel.close();
                 datagramChannel.socket().close();
             } catch (IOException e) {
-                logger.debug("RTCP client created an exception while closing the datagram channel => ", e);
+                logger.debug("RTCP client created an exception while closing the datagram channel => {}", e.toString());
             }
         }
 
@@ -257,7 +257,7 @@ public class RTCPClient implements Runnable {
 
                         if (itemCounter-- > 0) {
                             packetLoss = datagram.getInt() & 0xffffffff;
-                            lossFraction = packetLoss & 0xff000000;
+                            lossFraction = (packetLoss & 0xff000000) >> 6;
                             numberOfPacketsLost = packetLoss & 0x00ffffff;
                         }
 

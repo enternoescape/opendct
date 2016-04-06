@@ -320,11 +320,11 @@ public class NIORTPProducerImpl implements RTPProducer {
                     }
                 }
             } catch (ClosedByInterruptException e) {
-                logger.debug("Producer was closed by an interrupt exception => ", e.toString());
+                logger.debug("Producer was closed by an interrupt exception => {}", e.toString());
             } catch (AsynchronousCloseException e) {
-                logger.debug("Producer was closed by an asynchronous close exception => ", e.toString());
+                logger.debug("Producer was closed by an asynchronous close exception => {}", e.toString());
             } catch (ClosedChannelException e) {
-                logger.debug("Producer was closed by a close channel exception => ", e.toString());
+                logger.debug("Producer was closed by a close channel exception => {}", e.toString());
             } catch (Exception e) {
                 logger.error("Producer created an unexpected exception => ", e);
             } finally {
@@ -336,7 +336,7 @@ public class NIORTPProducerImpl implements RTPProducer {
             try {
                 rtcpClient.stopReceiving();
             } catch (Exception e) {
-                logger.debug("Producer created an exception while closing the RTCP channel => ", e);
+                logger.debug("Producer created an exception while closing the RTCP channel => {}", e.toString());
             }
 
             try {
@@ -344,7 +344,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                 // The datagram channel doesn't seem to close the socket every time.
                 datagramChannel.socket().close();
             } catch (IOException e) {
-                logger.debug("Producer created an exception while closing the datagram channel => ", e);
+                logger.debug("Producer created an exception while closing the datagram channel => {}", e.toString());
             }
         }
 
@@ -363,7 +363,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                     }
                 }
             } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for packet monitoring thread to stop => ", e);
+                logger.debug("Producer was interrupted while waiting for packet monitoring thread to stop => {}", e.toString());
             }
         }
 
@@ -371,7 +371,7 @@ public class NIORTPProducerImpl implements RTPProducer {
             try {
                 rtcpClient.waitForStop();
             } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => ", e);
+                logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => {}", e.toString());
             }
         }
 

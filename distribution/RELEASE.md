@@ -773,3 +773,10 @@
 
 > *Internal: Added more commenting on what everything does in the new
 > FFmpeg remuxer.
+
+#### 0.4.45-RC9
+> *Fixed incorrect variable order for repeat FFmpeg logging.
+
+> *Fixed pts being adjusted incorrectly under some circumstances.
+
+> *Internal: Removed some logging stack traces that don't need to exist.

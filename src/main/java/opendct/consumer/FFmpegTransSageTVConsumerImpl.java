@@ -543,26 +543,27 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 bytesSent = 0;
 
                 if (datagramChannel != null) {
-                    if (length > 32768) {
+                    if (length > 65000) {
                         ByteBuffer slice;
                         int increment;
                         while (data.hasRemaining()) {
-                            increment = Math.min(32768, data.remaining());
+                            increment = Math.min(65000, data.remaining());
                             slice = data.slice();
                             slice.limit(increment);
                             data.position(data.position() + increment);
 
-                            while (slice.hasRemaining()) {
+                            while (slice.hasRemaining() && datagramChannel.isOpen()) {
                                 bytesSent += datagramChannel.write(slice);
                                 try {
-                                    Thread.sleep(1);
+                                    Thread.sleep(10);
                                 } catch (InterruptedException e) {
-                                    e.printStackTrace();
+                                    logger.debug("Interrupted while writing to CCExtractor => {}",
+                                            e.toString());
                                 }
                             }
                         }
                     } else {
-                        while (data.hasRemaining()) {
+                        while (data.hasRemaining() && datagramChannel.isOpen()) {
                             bytesSent += datagramChannel.write(data);
                         }
                     }
@@ -583,6 +584,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             ccInstance = null;
 
             if (datagramChannel != null) {
+                try {
+                    datagramChannel.close();
+                } catch (IOException e) {
+                    logger.debug("Error while closing datagram channel => ", e);
+                }
+
+                datagramChannel.socket().close();
                 Config.returnFreeRTSPPort(portNumber);
             }
         }

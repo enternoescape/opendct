@@ -65,7 +65,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     // Detection configuration and state
     private static boolean enabled;
-    private static volatile boolean requestBroadcast;
+    private static boolean requestBroadcast;
     private static String errorMessage;
     private DeviceLoader deviceLoader;
 

@@ -32,8 +32,8 @@ public class ChannelLineup {
     final static public long DEFAULT_UPDATE_INTERVAL = 28800000; // 8 hours
     final static public long DEFAULT_OFFLINE_UPDATE_INTERVAL = 604800000; // 7 days
 
-    final private ConcurrentHashMap<String, TVChannel> channelMap;
-    final private ConcurrentHashMap<String, TVChannel> remapMap;
+    final private Map<String, TVChannel> channelMap;
+    final private Map<String, TVChannel> remapMap;
     final public String LINEUP_NAME;
     final public ChannelSourceType SOURCE;
 

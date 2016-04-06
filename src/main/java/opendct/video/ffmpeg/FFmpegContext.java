@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -39,8 +40,8 @@ public class FFmpegContext {
     private static final Logger logger = LogManager.getLogger(FFmpegContext.class);
 
     private final static ReentrantReadWriteLock contextLock = new ReentrantReadWriteLock();
-    private final static HashMap<Pointer, FFmpegContext> contextMap = new HashMap<>();
-    private final static HashMap<Pointer, FFmpegWriter> writerMap = new HashMap<>();
+    private final static Map<Pointer, FFmpegContext> contextMap = new HashMap<>();
+    private final static Map<Pointer, FFmpegWriter> writerMap = new HashMap<>();
     private final static AtomicLong callbackAddress = new AtomicLong();
     public final Pointer OPAQUE;
     protected Pointer writerOpaque;
@@ -76,7 +77,7 @@ public class FFmpegContext {
     protected AVRational videoFramerate;
 
     protected FFmpegProfile encodeProfile;
-    protected HashMap<String, String> videoEncodeSettings;
+    protected Map<String, String> videoEncodeSettings;
 
     // Used for returning increasing probe sizes so we don't probe more than we need to probe.
     private final Object nativeSync = new Object();

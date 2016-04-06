@@ -18,6 +18,7 @@ package opendct.channel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 public class Frequencies {
     public final static Frequency US_BCAST[];
@@ -66,12 +67,12 @@ public class Frequencies {
      * @param lineup The lineup to be parsed.
      * @return The HashMap with frequencies mapped to the channels they contain.
      */
-    public static HashMap<Integer, ArrayList<TVChannel>> getFrequenciesToChannelsMap(ChannelLineup lineup) {
+    public static Map<Integer, ArrayList<TVChannel>> getFrequenciesToChannelsMap(ChannelLineup lineup) {
         if (lineup == null) {
             return null;
         }
 
-        HashMap<Integer, ArrayList<TVChannel>> returnValues = new HashMap<>();
+        Map<Integer, ArrayList<TVChannel>> returnValues = new HashMap<>();
 
         for (TVChannel tvChannel : lineup.getAllChannels(true, true)) {
 

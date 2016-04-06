@@ -52,12 +52,12 @@ public class SageTVManager implements PowerEventListener {
     private static final ReentrantReadWriteLock fileToUploadIDLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock fileToSocketServerLock = new ReentrantReadWriteLock();
 
-    private static final HashMap<Integer, SageTVSocketServer> portToSocketServer = new HashMap<Integer, SageTVSocketServer>();
-    private static final HashMap<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<String, CaptureDevice>();
-    private static final HashMap<Integer, CaptureDevice> captureDeviceIdToCaptureDevice = new HashMap<Integer, CaptureDevice>();
-    private static final HashMap<CaptureDevice, String> captureDeviceToFiles = new HashMap<CaptureDevice, String>();
-    private static final HashMap<String, Integer> fileToUploadID = new HashMap<String, Integer>();
-    private static final HashMap<String, SageTVSocketServer> fileToSocketServer = new HashMap<String, SageTVSocketServer>();
+    private static final Map<Integer, SageTVSocketServer> portToSocketServer = new HashMap<Integer, SageTVSocketServer>();
+    private static final Map<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<String, CaptureDevice>();
+    private static final Map<Integer, CaptureDevice> captureDeviceIdToCaptureDevice = new HashMap<Integer, CaptureDevice>();
+    private static final Map<CaptureDevice, String> captureDeviceToFiles = new HashMap<CaptureDevice, String>();
+    private static final Map<String, Integer> fileToUploadID = new HashMap<String, Integer>();
+    private static final Map<String, SageTVSocketServer> fileToSocketServer = new HashMap<String, SageTVSocketServer>();
 
     public static boolean isBroadcasting() {
         return broadcasting.get();

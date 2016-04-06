@@ -25,6 +25,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.InetAddress;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
@@ -32,7 +33,7 @@ public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDevicePare
 
     HDHomeRunDevice device;
 
-    ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    Map<String, DeviceOption> deviceOptions;
     StringDeviceOption channelMap;
 
     public HDHomeRunDiscoveredDeviceParent(String name, int parentId, InetAddress localAddress, HDHomeRunDevice hdHomeRunDevice) {

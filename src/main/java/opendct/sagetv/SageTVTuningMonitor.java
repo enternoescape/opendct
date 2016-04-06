@@ -32,7 +32,7 @@ public class SageTVTuningMonitor {
     private static final ReentrantReadWriteLock queueLock = new ReentrantReadWriteLock(true);
 
     private static Thread monitorThread;
-    private static final HashMap<String, MonitoredRecording> recordingQueue = new HashMap<>();
+    private static final Map<String, MonitoredRecording> recordingQueue = new HashMap<>();
 
 
     public synchronized static void startMonitor() {

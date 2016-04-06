@@ -47,17 +47,17 @@ public class ChannelManager implements PowerEventListener {
     // This is used to try to ensure that we don't create duplicates that are still scanning
     // channels and provides one place when we are stopping the program to make sure all channel
     // scans stop.
-    final private static ConcurrentHashMap<String, OfflineChannelScan> offlineScansMap =
+    final private static Map<String, OfflineChannelScan> offlineScansMap =
             new ConcurrentHashMap<String, OfflineChannelScan>();
 
     // This is used to map capture devices to their respective offline channel scans. This is how a
     // capture device opts in to offline scanning. If there are no capture devices associated with a
     // lineup, offline scanning will not happen on this lineup.
-    final private static ConcurrentHashMap<String, HashSet<String>> offlineScanDevicesMap =
+    final private static Map<String, HashSet<String>> offlineScanDevicesMap =
             new ConcurrentHashMap<String, HashSet<String>>();
 
     // This is used to map channel lineup names to their respective channel lineup objects.
-    final private static ConcurrentHashMap<String, ChannelLineup> channelLineupsMap =
+    final private static Map<String, ChannelLineup> channelLineupsMap =
             new ConcurrentHashMap<String, ChannelLineup>();
 
     private static AtomicBoolean updateRunning = new AtomicBoolean(false);
@@ -555,7 +555,7 @@ public class ChannelManager implements PowerEventListener {
                 channelLineupsMap.put(lineup.LINEUP_NAME, lineup);
             }
 
-            final HashMap<String, String> loadedChannels = configBag.getAllByRootKey("channel.");
+            final Map<String, String> loadedChannels = configBag.getAllByRootKey("channel.");
 
             for (Map.Entry<String, String> channelMapPair : loadedChannels.entrySet()) {
                 final String properties = channelMapPair.getValue();

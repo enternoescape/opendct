@@ -47,7 +47,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     };
 
     // Global UPnP device settings.
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
     private static LongDeviceOption streamingWait;
     private static BooleanDeviceOption hdhrLock;
     private static IntegerDeviceOption controlRetryCount;
@@ -72,9 +72,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private final HDHomeRunDiscovery discovery = new HDHomeRunDiscovery(HDHomeRunDiscovery.getBroadcast());
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final HashMap<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new HashMap<>();
-    private final HashMap<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new HashMap<>();
-    private final HashMap<Integer, HDHomeRunDevice> hdHomeRunDevices = new HashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new HashMap<>();
+    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);

@@ -26,6 +26,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SageTVDiscovery implements Runnable {
@@ -98,7 +99,7 @@ public class SageTVDiscovery implements Runnable {
 
             SageTVManager.blockUntilCaptureDevicesLoaded();
 
-            HashMap<String, Long> lastResponse = new HashMap<String, Long>();
+            Map<String, Long> lastResponse = new HashMap<String, Long>();
 
             while (!Thread.currentThread().isInterrupted()) {
 

@@ -51,7 +51,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     };
 
     // Global UPnP device settings.
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
     private static IntegerDeviceOption offlineDetectionSeconds;
     private static IntegerDeviceOption offlineDetectionMinBytes;
     private static LongDeviceOption streamingWait;
@@ -64,8 +64,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     private DeviceLoader deviceLoader;
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final HashMap<Integer, UpnpDiscoveredDevice> discoveredDevices = new HashMap<>();
-    private final HashMap<Integer, UpnpDiscoveredDeviceParent> discoveredParents = new HashMap<>();
+    private final Map<Integer, UpnpDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final Map<Integer, UpnpDiscoveredDeviceParent> discoveredParents = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("upnp.discoverer_enabled", true);

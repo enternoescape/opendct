@@ -22,6 +22,7 @@ import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.avcodec.AVCodec;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.bytedeco.javacpp.avcodec.avcodec_find_encoder_by_name;
 import static org.bytedeco.javacpp.avcodec.avcodec_get_name;
@@ -56,13 +57,13 @@ public class FFmpegProfile extends ConfigBag {
     private String videoDefaultCodec;
     private String audioDefaultCodec;
 
-    private HashMap<String, String> videoTranscodeMap;
-    private HashMap<String, String> videoEncoderMap;
-    private HashMap<String, String> videoDecoderMap;
+    private Map<String, String> videoTranscodeMap;
+    private Map<String, String> videoEncoderMap;
+    private Map<String, String> videoDecoderMap;
 
-    private HashMap<String, String> audioTranscodeMap;
-    private HashMap<String, String> audioEncoderMap;
-    private HashMap<String, String> audioDecoderMap;
+    private Map<String, String> audioTranscodeMap;
+    private Map<String, String> audioEncoderMap;
+    private Map<String, String> audioDecoderMap;
 
     public FFmpegProfile(String profileName) {
         super(profileName, "transcode", false);
@@ -112,7 +113,7 @@ public class FFmpegProfile extends ConfigBag {
         }
 
         // This should be marginally more efficient than multiple calls.
-        HashMap<String, String>[] maps = getAllByRootKey(
+        Map<String, String>[] maps = getAllByRootKey(
                 videoConf + "t.codec_map.",
                 videoConf + "d.codec_map.",
                 videoConf + "e.codec_map.",
@@ -246,7 +247,7 @@ public class FFmpegProfile extends ConfigBag {
      * @param encoder The codec to be used.
      * @return A HashMap containing all available properties for the provided configuration.
      */
-    public HashMap<String, String> getVideoEncoderMap(int w, int h, AVCodec encoder) {
+    public Map<String, String> getVideoEncoderMap(int w, int h, AVCodec encoder) {
         String width = "w" + String.valueOf(w);
         String height = "h" + String.valueOf(h);
         String encoderName = avcodec_get_name(encoder.id()).getString();

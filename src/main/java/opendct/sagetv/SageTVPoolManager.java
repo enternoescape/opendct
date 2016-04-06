@@ -42,10 +42,10 @@ public class SageTVPoolManager  {
     private static final ReentrantReadWriteLock poolNameToPoolCaptureDevicesLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock vCaptureDeviceToPoolNameLock = new ReentrantReadWriteLock();
 
-    private static final HashMap<String, String> vCaptureDeviceToPoolCaptureDevice = new HashMap<>();
-    private static final HashMap<String, String> poolCaptureDeviceToVCaptureDevice = new HashMap<>();
-    private static final HashMap<String, ArrayList<String>> poolNameToPoolCaptureDevices = new HashMap<>();
-    private static final HashMap<String, String> vCaptureDeviceToPoolName = new HashMap<>();
+    private static final Map<String, String> vCaptureDeviceToPoolCaptureDevice = new HashMap<>();
+    private static final Map<String, String> poolCaptureDeviceToVCaptureDevice = new HashMap<>();
+    private static final Map<String, ArrayList<String>> poolNameToPoolCaptureDevices = new HashMap<>();
+    private static final Map<String, String> vCaptureDeviceToPoolName = new HashMap<>();
 
     private static boolean usePools = Config.getBoolean("pool.enabled", false);
 

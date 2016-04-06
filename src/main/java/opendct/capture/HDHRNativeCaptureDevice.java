@@ -41,6 +41,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -56,7 +57,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     private final Object exclusiveLock = new Object();
     private Thread tuningThread;
 
-    private final ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final Map<String, DeviceOption> deviceOptions;
     private BooleanDeviceOption forceExternalUnlock;
     private StringDeviceOption channelMap;
 

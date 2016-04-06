@@ -29,16 +29,17 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DynamicConsumerImpl implements SageTVConsumer {
     private static final Logger logger = LogManager.getLogger(DynamicConsumerImpl.class);
 
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
 
     private static final ReentrantReadWriteLock dynamicMapsLock;
-    private static final HashMap<String, String> dynamicMaps;
+    private static final Map<String, String> dynamicMaps;
     private static StringDeviceOption defaultConsumer;
     private static ChannelRangesDeviceOption ffmpegTransConsumer;
     private static ChannelRangesDeviceOption rawConsumer;

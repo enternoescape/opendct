@@ -36,6 +36,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -578,7 +579,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         return !stalled;
     }
 
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
 
     private static BooleanDeviceOption uploadIdEnabledOpt;
     private static IntegerDeviceOption minTransferSizeOpt;

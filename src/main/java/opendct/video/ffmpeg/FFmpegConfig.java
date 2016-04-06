@@ -22,12 +22,13 @@ import opendct.config.options.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FFmpegConfig {
     private static final Logger logger = LogManager.getLogger(FFmpegConfig.class);
 
-    private static final ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private static final Map<String, DeviceOption> deviceOptions;
 
     private static BooleanDeviceOption uploadIdEnabled;
     private static IntegerDeviceOption circularBufferSize;

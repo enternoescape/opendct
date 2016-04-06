@@ -36,12 +36,13 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HDHomeRunChannels {
     private static final Logger logger = LogManager.getLogger(HDHomeRunChannels.class);
 
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
     private static StringDeviceOption ignoreNamesContaining;
     private static StringDeviceOption ignoreChannelNumbers;
     private static BooleanDeviceOption removeDuplicateChannels;

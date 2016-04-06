@@ -47,6 +47,7 @@ import org.bytedeco.javacpp.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static opendct.video.ffmpeg.FFmpegUtil.*;
@@ -73,7 +74,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private String newFilename = null;
     private final Object switchLock = new Object();
 
-    private static HashMap<Pointer, Integer> permissionMap = new HashMap<>();
+    private static Map<Pointer, Integer> permissionMap = new HashMap<>();
     private static int permissionWeight = 0;
     private static int transcodeLimit =
             Config.getInteger("consumer.ffmpeg.transcode_limit",

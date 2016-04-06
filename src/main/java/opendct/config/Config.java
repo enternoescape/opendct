@@ -52,7 +52,7 @@ public class Config {
     private static Properties properties = new Properties();
     private static volatile boolean isConfigOnly = false;
     private static volatile boolean isShutdown = false;
-    private static final HashMap<Integer, String> rtspPortMap = new HashMap<>();
+    private static final Map<Integer, String> rtspPortMap = new HashMap<>();
 
     public static final OSVersion OS_VERSION = getOsVersion();
     public static final boolean IS_WINDOWS = (OS_VERSION == OSVersion.WINDOWS);
@@ -854,8 +854,6 @@ public class Config {
         logger.entry();
         String os = System.getProperty("os.name");
 
-        logger.debug("OSVersion is parsing the name '{}'.", os);
-
         if (os.toLowerCase().contains("windows")) {
 
             logger.debug("OSVersion determined that '{}' is WINDOWS.", os);
@@ -882,7 +880,7 @@ public class Config {
         }
     }
 
-    public static void mapDeviceOptions(ConcurrentHashMap<String, DeviceOption> optionsMap, DeviceOption... options) {
+    public static void mapDeviceOptions(Map<String, DeviceOption> optionsMap, DeviceOption... options) {
         for (DeviceOption option : options) {
             optionsMap.put(option.getProperty(), option);
         }

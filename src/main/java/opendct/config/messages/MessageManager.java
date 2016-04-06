@@ -36,7 +36,7 @@ public class MessageManager {
 
     private static boolean dismissed;
     private static Level currentLevel;
-    private static final HashMap<Integer, MessageContainer> messages;
+    private static final Map<Integer, MessageContainer> messages;
 
     static {
         messageLock = new ReentrantReadWriteLock();
@@ -76,7 +76,7 @@ public class MessageManager {
             messages.clear();
             dismissed = messageConfig.getBoolean("messages.dismissed", dismissed);
 
-            HashMap<String, String> loadMessages = messageConfig.getAllByRootKey("messages.saved.");
+            Map<String, String> loadMessages = messageConfig.getAllByRootKey("messages.saved.");
 
             int i = 0;
             while(true) {

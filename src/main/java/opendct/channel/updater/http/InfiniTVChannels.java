@@ -16,6 +16,7 @@
 
 package opendct.channel.updater.http;
 
+import com.sun.javafx.collections.MappingChange;
 import opendct.channel.ChannelLineup;
 import opendct.channel.TVChannel;
 import opendct.channel.TVChannelImpl;
@@ -33,6 +34,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -41,7 +43,7 @@ public class InfiniTVChannels {
 
     private static final ReentrantReadWriteLock channelMapLock = new ReentrantReadWriteLock();
 
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
     private static StringDeviceOption ignoreNamesContaining;
     private static StringDeviceOption ignoreChannelNumbers;
     private static BooleanDeviceOption removeDuplicateChannels;

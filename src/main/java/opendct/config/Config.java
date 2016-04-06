@@ -19,10 +19,7 @@ package opendct.config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.*;
-import opendct.producer.HTTPProducer;
-import opendct.producer.HTTPProducerImpl;
-import opendct.producer.NIORTPProducerImpl;
-import opendct.producer.RTPProducer;
+import opendct.producer.*;
 import opendct.util.Util;
 import opendct.video.rtsp.DCTRTSPClientImpl;
 import opendct.video.rtsp.RTSPClient;
@@ -1041,6 +1038,8 @@ public class Config {
 
         if (clientName.endsWith(HTTPProducerImpl.class.getSimpleName())) {
             returnValue = new HTTPProducerImpl();
+        } else if (clientName.endsWith(NIOHTTPProducerImpl.class.getSimpleName())) {
+            returnValue = new NIOHTTPProducerImpl();
         } else {
             try {
                 returnValue = (HTTPProducer) Class.forName(clientName).newInstance();

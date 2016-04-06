@@ -18,10 +18,7 @@ package opendct.video.ffmpeg;
 
 import opendct.config.CommandLine;
 import opendct.config.Config;
-import opendct.config.options.BooleanDeviceOption;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
-import opendct.config.options.IntegerDeviceOption;
+import opendct.config.options.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -46,6 +43,7 @@ public class FFmpegConfig {
     private static BooleanDeviceOption fixStream;
     private static BooleanDeviceOption ccExtractor;
     private static BooleanDeviceOption ccExtractorAllStreams;
+    private static StringDeviceOption ccExtractorCustomOptions;
 
     static {
         deviceOptions = new ConcurrentHashMap<>();
@@ -67,7 +65,8 @@ public class FFmpegConfig {
                 h264PtsHack,
                 fixStream,
                 ccExtractor,
-                ccExtractorAllStreams
+                ccExtractorAllStreams,
+                ccExtractorCustomOptions
         );
     }
 
@@ -236,6 +235,17 @@ public class FFmpegConfig {
                                 " be extracted (CC1)."
                 );
 
+                ccExtractorCustomOptions = new StringDeviceOption(
+                        Config.getString("consumer.ffmpeg.ccextractor_custom_options", ""),
+                        false,
+                        "CCExtractor Custom Options",
+                        "consumer.ffmpeg.ccextractor_custom_options",
+                        "This allows you to add custom parameters to CCExtractor so you can" +
+                                " customize the output if desired. Failure to provide valid" +
+                                " options will result in CCExtractor failing to start. Be sure to" +
+                                " verify that your changes work."
+                );
+
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid option {}. Reverting to defaults => ", e.deviceOption, e);
 
@@ -253,6 +263,7 @@ public class FFmpegConfig {
                 Config.setBoolean("consumer.ffmpeg.fix_stream", true);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_enabled", false);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_all_streams", true);
+                Config.setString("consumer.ffmpeg.ccextractor_custom_options", "");
 
                 continue;
             }
@@ -291,7 +302,8 @@ public class FFmpegConfig {
                 h264PtsHack,
                 fixStream,
                 ccExtractor,
-                ccExtractorAllStreams
+                ccExtractorAllStreams,
+                ccExtractorCustomOptions
         };
     }
 
@@ -383,5 +395,9 @@ public class FFmpegConfig {
 
     public static boolean getCcExtractorAllStreams() {
         return ccExtractorAllStreams.getBoolean();
+    }
+
+    public static String getCcExtractorCustomOptions() {
+        return ccExtractorCustomOptions.getValue();
     }
 }

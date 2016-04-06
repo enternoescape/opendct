@@ -41,11 +41,13 @@ public class CCExtractorSrtInstance {
             throw new IOException("Unable to use CCExtractor because the OS is not supported.");
         }
 
-        if (Util.isNullOrEmpty(parameters)) {
-            parameters = SUGGESTED_PARAMETERS;
-        }
+        String execute = CC_BINARY +
+                STD_SRT_PARAMETERS +
+                parameters +
+                " -o \"" + baseFilename + ".srt\"";
 
-        ccExtractor = RUNTIME.exec(CC_BINARY + STD_SRT_PARAMETERS + parameters + " -o \"" + baseFilename + ".srt\"");
+        logger.debug("Executing: {}", execute);
+        ccExtractor = RUNTIME.exec(execute);
 
         inputStdStream = ccExtractor.getInputStream();
         inputErrStream = ccExtractor.getErrorStream();

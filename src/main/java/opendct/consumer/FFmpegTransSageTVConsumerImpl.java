@@ -22,10 +22,13 @@ import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBuffer;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.util.Util;
+import opendct.video.ccextractor.CCExtractorCommon;
 import opendct.video.ccextractor.CCExtractorSrtInstance;
 import opendct.video.ffmpeg.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.util.StringBuilders;
 
 import java.io.File;
 import java.io.IOException;
@@ -488,6 +491,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         protected int portNumber;
 
         public FFmpegCCExtractorWriter(String filename) throws IOException {
+            String customOptions = FFmpegConfig.getCcExtractorCustomOptions();
             StringBuilder paramBuilder = new StringBuilder(1024);
 
             if (Config.IS_LINUX) {
@@ -518,6 +522,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 paramBuilder.append("-12 ");
             } else {
                 paramBuilder.append("-1 ");
+            }
+
+            if (!Util.isNullOrEmpty(customOptions)) {
+                paramBuilder.append(customOptions).append(" ");
             }
 
             int extIndex = filename.lastIndexOf(".");

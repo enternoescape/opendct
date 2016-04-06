@@ -24,7 +24,6 @@ public class CCExtractorCommon {
     public static final Runtime RUNTIME = Runtime.getRuntime();
     public static final String CC_BINARY;
     public static final String STD_SRT_PARAMETERS;
-    public static final String SUGGESTED_PARAMETERS;
 
     static {
         String newExec;
@@ -62,6 +61,5 @@ public class CCExtractorCommon {
         CC_BINARY = newExec;
 
         STD_SRT_PARAMETERS = " -out=srt --stream --no_progress_bar";
-        SUGGESTED_PARAMETERS = "-nobi -latin1";
     }
 }

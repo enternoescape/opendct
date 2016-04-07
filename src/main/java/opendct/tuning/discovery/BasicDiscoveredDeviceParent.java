@@ -16,6 +16,8 @@
 
 package opendct.tuning.discovery;
 
+import it.unimi.dsi.fastutil.Hash;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
@@ -37,7 +39,7 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
     protected final String propertiesDeviceParentName;
 
     private final ReentrantReadWriteLock childIdLock = new ReentrantReadWriteLock();
-    private final HashSet<Integer> childIds = new HashSet<>();
+    private final IntOpenHashSet childIds = new IntOpenHashSet();
 
     public BasicDiscoveredDeviceParent(String name, int parentId) {
         this(name, name, parentId);

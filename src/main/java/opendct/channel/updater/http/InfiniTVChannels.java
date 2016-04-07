@@ -62,7 +62,8 @@ public class InfiniTVChannels {
         while (true) {
             try {
                 ignoreNamesContaining = new StringDeviceOption(
-                        Config.getStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE"),
+                        Config.getStringArray("channels.infinitv.ignore_names_containing_csv",
+                                "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE"),
                         true,
                         false,
                         "Ignore Channel Names Containing",
@@ -84,8 +85,8 @@ public class InfiniTVChannels {
                         false,
                         "Remove Duplicate Channels",
                         "channels.infinitv.remove_duplicate_channels",
-                        "Removed channels that have the exact same name. Preference is given to the" +
-                                " first channel to have the name."
+                        "Removed channels that have the exact same name. Preference is given to" +
+                                " the first channel to have the name."
                 );
 
                 Config.mapDeviceOptions(
@@ -97,7 +98,8 @@ public class InfiniTVChannels {
             } catch (DeviceOptionException e) {
                 logger.error("Unable to configure device options for InfiniTVChannels reverting to defaults => ", e);
 
-                Config.setStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
+                Config.setStringArray("channels.infinitv.ignore_names_containing_csv",
+                        "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
                 Config.setStringArray("channels.infinitv.ignore_channels_csv");
                 Config.setBoolean("channels.infinitv.remove_duplicate_channels", true);
 

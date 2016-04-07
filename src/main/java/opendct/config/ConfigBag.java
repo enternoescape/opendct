@@ -533,7 +533,7 @@ public class ConfigBag {
         boolean errors = false;
 
         if (values != null) {
-            ArrayList<Integer> intArray = new ArrayList<Integer>();
+            List<Integer> intArray = new ArrayList<>();
 
             for (String value : values) {
 

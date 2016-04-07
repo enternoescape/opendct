@@ -16,6 +16,8 @@
 
 package opendct.channel;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,7 +74,7 @@ public class Frequencies {
             return null;
         }
 
-        Map<Integer, ArrayList<TVChannel>> returnValues = new HashMap<>();
+        Map<Integer, ArrayList<TVChannel>> returnValues = new Int2ObjectOpenHashMap<>(200);
 
         for (TVChannel tvChannel : lineup.getAllChannels(true, true)) {
 

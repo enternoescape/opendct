@@ -16,6 +16,7 @@
 
 package opendct.tuning.discovery;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -44,7 +45,7 @@ public class DiscoveryManager implements PowerEventListener {
     public static final DeviceLoader DEVICE_LOADER = new DeviceLoaderImpl();
     private static final AtomicBoolean running = new AtomicBoolean(false);
     private static final ArrayList<DeviceDiscoverer> deviceDiscoveries = new ArrayList<>();
-    private static final HashSet<Integer> permittedDevices = new HashSet<>();
+    private static final IntOpenHashSet permittedDevices = new IntOpenHashSet();
 
     static {
         // Add all saved permitted devices.

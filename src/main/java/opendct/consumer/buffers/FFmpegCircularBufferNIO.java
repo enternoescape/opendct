@@ -35,6 +35,15 @@ public class FFmpegCircularBufferNIO extends SeekableCircularBufferNIO {
     }
 
     /**
+     * Create a new seekable circular buffer.
+     *
+     * @param buffer This is an already allocated buffer.
+     */
+    public FFmpegCircularBufferNIO(ByteBuffer buffer) {
+        super(buffer);
+    }
+
+    /**
      * Read data from the buffer into the provided JavaCPP BytePointer
      * <p/>
      * This method will block until data is available. It will attempt to fill the buffer up to the

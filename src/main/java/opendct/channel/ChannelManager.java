@@ -64,8 +64,11 @@ public class ChannelManager implements PowerEventListener {
     private static Thread updateThread;
     private static boolean noOfflineScan = false;
 
-    private static boolean autoMapQamReference = Config.getBoolean("channels.qam.automap_reference_lookup", true);
-    private static boolean autoMapQamTuning = Config.getBoolean("channels.qam.automap_tuning_lookup", false);
+    private static boolean autoMapQamReference =
+            Config.getBoolean("channels.qam.automap_reference_lookup", true);
+
+    private static boolean autoMapQamTuning =
+            Config.getBoolean("channels.qam.automap_tuning_lookup", true);
 
     /**
      * Returns the offline channel scan object for the provided name.

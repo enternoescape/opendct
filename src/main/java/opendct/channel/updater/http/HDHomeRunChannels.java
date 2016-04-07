@@ -122,7 +122,7 @@ public class HDHomeRunChannels {
      * @return <i>true</i> if the update was successful.
      */
     public static boolean populateChannels(ChannelLineup channelLineup) {
-        logger.entry();
+        logger.entry(channelLineup);
 
         boolean returnValue = true;
         // This only applies when ClearQAM is not in use because we can't do anything with the

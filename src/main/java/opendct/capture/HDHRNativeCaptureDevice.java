@@ -1607,7 +1607,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         HDHomeRunDiscoverer.getAlwaysTuneLegacy());
     }
 
-    private static final HashSet<String> updateLineups = new HashSet<>();
+    /*private static final HashSet<String> updateLineups = new HashSet<>();
 
     private static void updateAllChannelMappings(final HDHRNativeCaptureDevice captureDevice, final Logger logger, boolean async) {
 
@@ -1687,7 +1687,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         } else {
             updateChannels.run();
         }
-    }
+    }*/
 
     @Override
     public DeviceOption[] getOptions() {

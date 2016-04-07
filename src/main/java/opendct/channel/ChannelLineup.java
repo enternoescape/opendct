@@ -129,6 +129,10 @@ public class ChannelLineup {
         if (addressIP == null && addressURI != null) {
             try {
                 addressIP = InetAddress.getByName(addressURI.getHost());
+
+                if (addressIP.isLoopbackAddress()) {
+                    addressIP = null;
+                }
             } catch (Exception e) {
                 addressIP = null;
             }

@@ -45,7 +45,7 @@ public class SageTVDiscovery implements Runnable {
      * Starts the SageTV encoder discovery broadcast.
      */
     public static void startDiscoveryBroadcast(int encoderPort) {
-        logger.entry();
+        logger.entry(encoderPort);
 
         // We are only building the configuration file.
         if (Config.isConfigOnly()) {
@@ -60,6 +60,7 @@ public class SageTVDiscovery implements Runnable {
 
         SageTVDiscovery.encoderPort = encoderPort;
         sageTVDiscoveryThread.setName("SageTVDiscovery-" + sageTVDiscoveryThread.getId());
+        sageTVDiscoveryThread.setDaemon(true);
         sageTVDiscoveryThread.start();
 
         logger.exit();

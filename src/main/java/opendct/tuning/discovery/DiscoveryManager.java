@@ -201,6 +201,22 @@ public class DiscoveryManager implements PowerEventListener {
     }
 
     /**
+     * Returns a device discoverer by name.
+     *
+     * @param name Unique name of discover.
+     * @return The requested discover if it is available. If not, <i>null</i> will be returned.
+     */
+    public static DeviceDiscoverer getDiscoverer(String name) {
+        for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
+            if (deviceDiscoverer.getName().equals(name)) {
+                return deviceDiscoverer;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Start device discovery for all currently available discovery methods.
      */
     public static void startDeviceDiscovery() {

@@ -16,6 +16,7 @@
 
 package opendct.tuning.discovery.discoverers;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -28,6 +29,7 @@ import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.plugins.convert.TypeConverters;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -72,9 +74,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private final HDHomeRunDiscovery discovery = new HDHomeRunDiscovery(HDHomeRunDiscovery.getBroadcast());
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new HashMap<>();
-    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new HashMap<>();
-    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new HashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new Int2ObjectOpenHashMap<>();
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);
@@ -368,6 +370,16 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public boolean isWaitingForDevices() {
         return deviceLoader == null || deviceLoader.isWaitingForDevices();
+    }
+
+    /**
+     * Get an HDHomeRun device by it's unique hex ID.
+     *
+     * @param deviceHex The hex ID converted to an integer.
+     * @return An HDHomeRun device if the requested device exists. Otherwise <i>null</i>.
+     */
+    public HDHomeRunDevice getHDHomeRunDevice(int deviceHex) {
+        return hdHomeRunDevices.get(deviceHex);
     }
 
     public void addCaptureDevice(HDHomeRunDevice discoveredDevice) {

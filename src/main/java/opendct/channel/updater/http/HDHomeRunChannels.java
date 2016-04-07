@@ -24,6 +24,10 @@ import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.tuning.discovery.DeviceDiscoverer;
+import opendct.tuning.discovery.DiscoveryManager;
+import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
+import opendct.tuning.hdhomerun.HDHomeRunDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Document;
@@ -128,12 +132,32 @@ public class HDHomeRunChannels {
         boolean isAtsc = false;
 
         HttpURLConnection httpURLConnection = null;
-        HashSet<String> newChannelList = new HashSet<String>();
+        //HashSet<String> newChannelList = new HashSet<String>();
 
         try {
             InetAddress ipAddress = channelLineup.getAddressIP();
+
             if (ipAddress == null) {
-                return logger.exit(false);
+                try {
+                    int hex = Integer.parseInt(channelLineup.getAddress().toLowerCase(), 16);
+                    DeviceDiscoverer discoverer = DiscoveryManager.getDiscoverer("HDHomeRun");
+
+                    if (discoverer instanceof HDHomeRunDiscoverer) {
+                        HDHomeRunDevice device =
+                                ((HDHomeRunDiscoverer) discoverer).getHDHomeRunDevice(hex);
+
+                        if (device != null) {
+                            ipAddress = device.getIpAddress();
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warn("Unable to parse '{}' from hex into an integer.",
+                            channelLineup.getAddress());
+                }
+
+                if (ipAddress == null) {
+                    return logger.exit(false);
+                }
             }
 
             URL url = new URL("http://" + ipAddress.getHostAddress() + ":80/lineup.xml");
@@ -215,7 +239,7 @@ public class HDHomeRunChannels {
                             }
                         }
 
-                        newChannelList.add(channel);
+                        //newChannelList.add(channel);
 
                         boolean isDuplicate = false;
 

@@ -235,7 +235,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         encoderLineup,
                         encoderParentName,
                         ChannelSourceType.HDHOMERUN,
-                        device.getIpAddress().getHostAddress());
+                        device.getDeviceIdHex());
             }
 
             ChannelManager.updateChannelLineup(newChannelLineup);

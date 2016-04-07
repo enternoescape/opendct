@@ -229,7 +229,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         encoderLineup,
                         encoderParentName,
                         ChannelSourceType.STATIC,
-                        device.getIpAddress().getHostAddress());
+                        device.getDeviceIdHex());
             } else {
                 newChannelLineup = new ChannelLineup(
                         encoderLineup,
@@ -241,7 +241,6 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             ChannelManager.updateChannelLineup(newChannelLineup);
             ChannelManager.addChannelLineup(newChannelLineup, true);
             ChannelManager.saveChannelLineup(encoderLineup);
-
         }
 
         httpProducing = false;
@@ -520,8 +519,9 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         }
     }
 
-    private boolean startEncodingSync(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress, String dotChannel, TVChannel tvChannel) {
-        logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress, dotChannel, tvChannel);
+    private boolean startEncodingSync(String channel, String filename, String encodingQuality,
+                                      long bufferSize, int uploadID, InetAddress remoteAddress,
+                                      String dotChannel, TVChannel tvChannel) {
 
         boolean retune = false;
         boolean scanOnly = false;

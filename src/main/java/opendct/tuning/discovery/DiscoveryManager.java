@@ -208,10 +208,19 @@ public class DiscoveryManager implements PowerEventListener {
      * @return The requested discover if it is available. If not, <i>null</i> will be returned.
      */
     public static DeviceDiscoverer getDiscoverer(String name) {
-        for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-            if (deviceDiscoverer.getName().equals(name)) {
-                return deviceDiscoverer;
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
+                if (deviceDiscoverer.getName().equals(name)) {
+                    return deviceDiscoverer;
+                }
             }
+        } catch (Exception e) {
+            logger.error("getDiscoverer created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
         }
 
         return null;

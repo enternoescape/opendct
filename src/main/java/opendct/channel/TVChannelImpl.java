@@ -34,7 +34,6 @@ public class TVChannelImpl implements TVChannel {
     private String modulation = "";
     private int frequency = -1;
     private String program = "";
-    private String eia = "";
     private String[] changes = new String[12];
 
     private static final int iChannel = 0;
@@ -75,7 +74,6 @@ public class TVChannelImpl implements TVChannel {
         }
 
         program = properties[iProgram];
-        eia = properties[iEIA];
 
         try {
             signalStrength = Integer.parseInt(properties[iSignalStrength]);
@@ -103,18 +101,17 @@ public class TVChannelImpl implements TVChannel {
         this.ignore = ignore;
     }
 
-    public TVChannelImpl(String channel, String name, String modulation, int frequency, String program, String eia, boolean ignore) {
+    public TVChannelImpl(String channel, String name, String modulation, int frequency, String program, boolean ignore) {
         this.channel = channel;
         this.name = name;
         this.modulation = modulation;
         this.frequency = frequency;
         this.program = program;
-        this.eia = eia;
         this.url = "";
         this.ignore = ignore;
     }
 
-    public TVChannelImpl(String channel, String channelRemap, boolean tunable, String name, String url, String modulation, int frequency, String program, String eia, int signalStrength, CopyProtection cci, boolean ignore) {
+    public TVChannelImpl(String channel, String channelRemap, boolean tunable, String name, String url, String modulation, int frequency, String program, int signalStrength, CopyProtection cci, boolean ignore) {
         this.channel = channel;
         this.channelRemap = channelRemap;
         this.tunable = tunable;
@@ -123,7 +120,6 @@ public class TVChannelImpl implements TVChannel {
         this.modulation = modulation;
         this.frequency = frequency;
         this.program = program;
-        this.eia = eia;
         this.signalStrength = signalStrength;
         this.cci = cci;
         this.ignore = ignore;
@@ -139,7 +135,7 @@ public class TVChannelImpl implements TVChannel {
                 modulation,
                 String.valueOf(frequency),
                 program,
-                eia,
+                "", // Placeholder for EIA which is no longer collected.
                 String.valueOf(signalStrength),
                 cci.name(),
                 String.valueOf(ignore)
@@ -170,11 +166,6 @@ public class TVChannelImpl implements TVChannel {
         changes[iProgram] = program;
     }
 
-    public void setEia(String eia) {
-        this.eia = eia;
-        changes[iEIA] = eia;
-    }
-
     public int getFrequency() {
         return frequency;
     }
@@ -202,10 +193,6 @@ public class TVChannelImpl implements TVChannel {
 
     public String getModulation() {
         return modulation;
-    }
-
-    public String getEia() {
-        return eia;
     }
 
     public void setCci(CopyProtection cci) {
@@ -268,7 +255,7 @@ public class TVChannelImpl implements TVChannel {
                 ", modulation='" + modulation + '\'' +
                 ", frequency='" + frequency + '\'' +
                 ", program='" + program + '\'' +
-                ", eia='" + eia + '\'' +
+                ", eia='unsupported'" +
                 '}';
     }
 

@@ -226,7 +226,6 @@ public class InfiniTVChannels {
                                                 values[2],
                                                 frequency,
                                                 String.valueOf(program),
-                                                String.valueOf(eia),
                                                 ignore);
 
                                         channelLineup.addChannel(infiniTVChannel);
@@ -245,11 +244,6 @@ public class InfiniTVChannels {
 
                                         if (program > 0 && !oldChannel.getProgram().equals(String.valueOf(program))) {
                                             oldChannel.setProgram(String.valueOf(program));
-                                            updated = true;
-                                        }
-
-                                        if (eia > 0 && !oldChannel.getEia().equals(String.valueOf(eia))) {
-                                            oldChannel.setEia(String.valueOf(eia));
                                             updated = true;
                                         }
 

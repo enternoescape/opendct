@@ -72,6 +72,21 @@ public class SeekableCircularBufferNIO {
     }
 
     /**
+     * Create a new seekable circular buffer.
+     *
+     * @param buffer This is an already allocated buffer.
+     */
+    public SeekableCircularBufferNIO(ByteBuffer buffer) {
+        this.buffer = buffer;
+        readBuffer = buffer.duplicate();
+        writeBuffer = buffer.duplicate();
+        capacity = buffer.capacity();
+        maxBufferSize = buffer.limit() * 3;
+        resizeBufferIncrement = buffer.limit();
+        maxOverflowBytes = buffer.limit() * 4;
+    }
+
+    /**
      * Clears the all indexes and re-opens the buffer.
      * <p/>
      * This should be used to reset the buffer without re-initializing a new buffer.
@@ -80,10 +95,12 @@ public class SeekableCircularBufferNIO {
         //logger.entry();
         synchronized (writeLock) {
             synchronized (readLock) {
-                buffer = ByteBuffer.allocateDirect(resizeBufferIncrement);
-                readBuffer = buffer.duplicate();
-                writeBuffer = buffer.duplicate();
-                capacity = buffer.capacity();
+                if (capacity != resizeBufferIncrement) {
+                    buffer = ByteBuffer.allocateDirect(resizeBufferIncrement);
+                    readBuffer = buffer.duplicate();
+                    writeBuffer = buffer.duplicate();
+                    capacity = buffer.capacity();
+                }
                 writeIndex = 0;
                 readIndex = 0;
                 writePasses = 0;

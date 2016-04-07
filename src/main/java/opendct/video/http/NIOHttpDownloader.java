@@ -42,7 +42,7 @@ public class NIOHttpDownloader {
     private boolean closed = false;
     private final SocketChannel socketChannel;
     private URL address;
-    private ByteBuffer tempBuffer = ByteBuffer.allocate(1024);
+    private ByteBuffer tempBuffer;
 
     public NIOHttpDownloader() throws IOException {
         socketChannel = SocketChannel.open();
@@ -58,6 +58,7 @@ public class NIOHttpDownloader {
         if (closed) {
             return;
         }
+        tempBuffer = ByteBuffer.allocate(1024);
 
         socketChannel.connect(new InetSocketAddress(address.getHost(), address.getPort()));
 
@@ -74,6 +75,7 @@ public class NIOHttpDownloader {
         }
 
         StringBuilder stringBuffer = new StringBuilder(1024);
+        StringBuilder logBuilder = new StringBuilder(1024);
 
         boolean success = false;
         boolean startStreaming = false;
@@ -93,10 +95,11 @@ public class NIOHttpDownloader {
                     }
 
                     String line = stringBuffer.toString();
-                    logger.info("HTTP: {}", line);
+                    logBuilder.append("'").append(stringBuffer).append("', ");
 
                     if (!success && line.startsWith("HTTP/1.1")) {
                         if (!line.endsWith(" 200 OK")) {
+                            logger.error("HTTP Error: {}", logBuilder);
                             throw new IOException("Server responded " + line);
                         } else {
                             success = true;
@@ -112,6 +115,8 @@ public class NIOHttpDownloader {
                 stringBuffer.append(currentByte);
             }
         }
+
+        logger.debug("HTTP Response: {}", logBuilder);
     }
 
     /**
@@ -129,15 +134,18 @@ public class NIOHttpDownloader {
             return -1;
         }
 
-        /*if (tempBuffer.hasRemaining()) {
+        // I have yet to see any actual data remaining in the temporary buffer, but it should be
+        // faster to return that it's null vs. executing a method with every pass.
+        if (tempBuffer != null && tempBuffer.hasRemaining()) {
             int remaining = tempBuffer.remaining();
 
             while (tempBuffer.hasRemaining()) {
                 buffer.put(tempBuffer);
             }
+            tempBuffer = null;
 
             return remaining + socketChannel.read(buffer);
-        }*/
+        }
 
         return socketChannel.read(buffer);
     }

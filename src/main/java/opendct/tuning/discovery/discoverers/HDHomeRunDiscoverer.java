@@ -337,6 +337,19 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         }
 
         discovery.stop();
+
+        discoveredDevicesLock.writeLock().lock();
+
+        try {
+            hdHomeRunDevices.clear();
+            discoveredDevices.clear();
+            discoveredParents.clear();
+        } catch (Exception e) {
+            logger.error("stopDetection created an unexpected exception while using" +
+                    " discoveredDevicesLock => ", e);
+        } finally {
+            discoveredDevicesLock.writeLock().unlock();
+        }
     }
 
     @Override

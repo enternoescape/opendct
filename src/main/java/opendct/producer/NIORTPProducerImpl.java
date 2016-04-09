@@ -71,7 +71,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
     public synchronized void setStreamingSocket(InetAddress streamRemoteIP, int streamLocalPort) throws IOException {
         logger.entry(streamRemoteIP, streamLocalPort);
-        if (running.get()) {
+        if (running.getAndSet(true)) {
             throw new IOException("The IP address and port for RTP producer cannot be changed while the thread is running.");
         }
 

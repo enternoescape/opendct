@@ -20,6 +20,7 @@ import opendct.config.Config;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ObjectArrayMessage;
 import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.avutil;
 import org.bytedeco.javacpp.avutil.Callback_Pointer_int_String_Pointer;
@@ -46,11 +47,16 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
     public static final boolean threadRename = Config.getBoolean("consumer.ffmpeg.thread_rename_logging", false);
     public static final boolean enhancedLogging = Config.getBoolean("consumer.ffmpeg.enhanced_logging", true);
 
-    private AtomicInteger repeated = new AtomicInteger(0);
+    private final Object repeatLock = new Object();
+    private int repeated = 0;
     private volatile String lastMessage;
+
     private final int addressSize = System.getProperty("sun.arch.data.model").equals("64") ? 16 : 8;
+    private final int addressSize2 = addressSize + 2;
+    private final int addressSize4 = addressSize + 4;
+    private final int addressSize5 = addressSize + 5;
+
     private BlockingQueue<FFmpegLoggerObject> buffers = new LinkedBlockingQueue<>();
-    private final String classNames[] = new String[50];
 
     @Override
     public void call(Pointer source, int level, String formatStr, Pointer params) {
@@ -58,216 +64,6 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
             return;
         }
 
-        Level callLogLevel = convertLogLevel(level);
-
-        // This should help keep the number of fully resolved log entries to a minimum.
-        if (defaultLevel < callLogLevel.intLevel()) {
-            return;
-        }
-
-        FFmpegLoggerObject loggerObject;
-
-        try {
-            loggerObject = buffers.poll(1, TimeUnit.MILLISECONDS);
-
-            if (loggerObject == null) {
-                loggerObject = new FFmpegLoggerObject();
-            } else {
-                loggerObject.reset();
-            }
-        } catch (InterruptedException e) {
-            loggerObject = new FFmpegLoggerObject();
-        }
-
-        // This is needed because without it, lastMessage could change at the last minute and it
-        // could result in a null pointer exception.
-        String holdMessage = lastMessage;
-        String message;
-
-        av_log_format_line(source, level, formatStr, params, loggerObject.messageBytes, loggerObject.messageBytes.length, loggerObject.printPrefix);
-
-        try {
-            trim(loggerObject);
-        } catch (Exception e) {
-            defaultLogger.error("There was a problem processing a log entry => ", e);
-        }
-
-        Logger logger;
-
-        if (loggerObject.className != null) {
-            logger = LogManager.getLogger(loggerObject.className);
-
-            if (logger.getLevel().intLevel() < callLogLevel.intLevel()) {
-                buffers.offer(loggerObject);
-                return;
-            }
-        } else {
-            logger = defaultLogger;
-        }
-
-        message = loggerObject.stringBuilder.toString();
-
-        // Clean up logging. Everything ignored here is expected and does not need to be logged.
-        if (limitLogging && message != null && (
-                message.endsWith("Invalid frame dimensions 0x0.") ||
-                // This message is handled by increasing probe sizes based on the currently
-                // available data.
-                message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
-                // This message is handled by increasing probe sizes based on the currently
-                // available data.
-                message.endsWith("not enough frames to estimate rate; consider increasing probesize" ) ||
-                // This is the PAT packet and sometimes it doesn't get incremented which makes
-                // FFmpeg unhappy.
-                message.endsWith("Continuity check failed for pid 0 expected 1 got 0") ||
-                // This happens when the buffer gets really behind. The video output never appears
-                // to be affected by this notification, but it generates a lot of log entries.
-                message.endsWith(" > 10000000: forcing output") ||
-                message.endsWith("is not set in estimate_timings_from_pts") ||
-                // Seen in H.264 stream init. It means a key frame has not be processed yet. A
-                // key frame can take over 5 seconds in some situations to arrive.
-                message.endsWith("non-existing PPS 0 referenced") ||
-                // Seen in H.264 stream init. This is a resulting error from the non-existing
-                // reference above. These errors stop as soon as a key frame is received.
-                message.endsWith("decode_slice_header error") ||
-                // Seen when writing MPEG-PS. This basically means the file being created will
-                // potentially not play on a hardware DVD player which is not really a concern.
-                message.contains(" buffer underflow st="))) {
-
-            buffers.offer(loggerObject);
-            return;
-        }
-
-        if (holdMessage != null && holdMessage.equals(message)) {
-            repeated.addAndGet(1);
-            buffers.offer(loggerObject);
-            return;
-        }
-
-        loggerObject.repeatCount = repeated.get();
-        if (loggerObject.repeatCount > 0) {
-            logger.log(callLogLevel, "Repeated {} time{}: {}.",
-                    loggerObject.repeatCount,
-                    loggerObject.repeatCount > 1 ? PLURAL : BLANK,
-                    holdMessage);
-
-            repeated.addAndGet(-loggerObject.repeatCount);
-        }
-
-        lastMessage = message;
-        logger.log(callLogLevel, message);
-
-        buffers.offer(loggerObject);
-    }
-
-    private void trim(FFmpegLoggerObject loggerObject) {
-
-        while (loggerObject.len > 0 && (char)loggerObject.messageBytes[loggerObject.len - 1] <= ' ') {
-            loggerObject.len--;
-        }
-
-        if (enhancedLogging &&
-                loggerObject.len > addressSize + 5 &&
-                (char)loggerObject.messageBytes[0] == '[') {
-
-            loggerObject.classStart = 1;
-            loggerObject.index = 2;
-
-            for (; loggerObject.index < loggerObject.len; loggerObject.index++) {
-                if ((char) loggerObject.messageBytes[loggerObject.index - 1] == ' ' &&
-                        (char) loggerObject.messageBytes[loggerObject.index] == '@') {
-
-                    loggerObject.classEnd = loggerObject.index - 2;
-                    loggerObject.classNameLen = loggerObject.classEnd - loggerObject.classStart;
-                    loggerObject.noClassName = false;
-                    loggerObject.className = getClass(loggerObject);
-                    break;
-                }
-            }
-
-            if (!loggerObject.noClassName) {
-                if (threadRename && loggerObject.index + addressSize + 4 < loggerObject.len &&
-                        (char) loggerObject.messageBytes[loggerObject.index] == '@' &&
-                        (char) loggerObject.messageBytes[loggerObject.index + 1] == ' ') {
-
-                    loggerObject.threadStart = loggerObject.index + 2;
-
-                    if ((char)loggerObject.messageBytes[loggerObject.index + 2 + addressSize] == ']') {
-                        loggerObject.threadEnd = loggerObject.index + 2 + addressSize;
-                        loggerObject.threadNameLen = loggerObject.threadEnd - loggerObject.threadStart;
-                        loggerObject.noThreadName = false;
-
-                        String currentThreadName = Thread.currentThread().getName();
-                        loggerObject.threadName = new String(loggerObject.messageBytes, loggerObject.threadStart, loggerObject.threadNameLen, StandardCharsets.UTF_8);
-
-                        if (currentThreadName.startsWith("Thread-")) {
-                            Thread.currentThread().setName(loggerObject.threadName);
-                            loggerObject.index = loggerObject.index + addressSize + 4;
-                        } else if (currentThreadName.equals(loggerObject.threadName)) {
-                            loggerObject.index = loggerObject.index + addressSize + 4;
-                        } else {
-                            loggerObject.index += 1;
-                            loggerObject.messageBytes[loggerObject.index] = (byte)'[';
-                        }
-                    }
-                } else {
-                    loggerObject.index += 1;
-                    loggerObject.messageBytes[loggerObject.index] = (byte)'[';
-                }
-            } else {
-                // Return the index back to 0 or nothing will be displayed in the log.
-                loggerObject.index = 0;
-            }
-        }
-
-        for(; loggerObject.index < loggerObject.len; loggerObject.index++) {
-            // This can be done this way because the bytes are UTF-8.
-            loggerObject.stringBuilder.append((char)loggerObject.messageBytes[loggerObject.index]);
-        }
-    }
-
-    private synchronized void addClass(String className) {
-        for (int i = 0; i < classNames.length; i++) {
-            if (classNames[i] ==  null) {
-                classNames[i] = className;
-                return;
-            } else if (classNames[i].equals(className)) {
-                return;
-            }
-        }
-    }
-
-    private String getClass(FFmpegLoggerObject loggerObject) {
-        String className;
-        boolean match;
-
-        for (int i = 0; i < classNames.length; i++) {
-            className = classNames[i];
-
-            if (className == null) {
-                className = "ffmpeg." + new String(loggerObject.messageBytes, loggerObject.classStart, loggerObject.classEnd, StandardCharsets.UTF_8);
-                addClass(className);
-                return className;
-            } else if (className.length() != loggerObject.classNameLen + 8) {
-                continue;
-            }
-
-            match = true;
-            for (int j = 0; j < loggerObject.classNameLen; j++) {
-                if (loggerObject.messageBytes[j + loggerObject.classStart] != className.charAt(j + 7)) {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match) {
-                return className;
-            }
-        }
-
-        return "ffmpeg." + new String(loggerObject.messageBytes, loggerObject.classStart, loggerObject.classEnd, StandardCharsets.UTF_8);
-    }
-
-    private Level convertLogLevel(int level) {
         Level callLogLevel;
 
         switch (level) {
@@ -314,11 +110,171 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 break;
         }
 
-        return callLogLevel;
+        // This should help keep the number of fully resolved log entries to a minimum.
+        if (defaultLevel < callLogLevel.intLevel()) {
+            return;
+        }
+
+        FFmpegLoggerObject loggerObject;
+
+        try {
+            loggerObject = buffers.poll(1, TimeUnit.MILLISECONDS);
+
+            if (loggerObject == null) {
+                loggerObject = new FFmpegLoggerObject();
+            } else {
+                loggerObject.reset();
+            }
+        } catch (InterruptedException e) {
+            loggerObject = new FFmpegLoggerObject();
+        }
+
+        av_log_format_line(source, level, formatStr, params, loggerObject.messageBytes, loggerObject.messageBytes.length, loggerObject.printPrefix);
+
+        try {
+            trim(loggerObject);
+        } catch (Exception e) {
+            defaultLogger.error("There was a problem processing a log entry => ", e);
+        }
+
+        Logger logger;
+
+        if (loggerObject.className != null) {
+            logger = LogManager.getLogger(loggerObject.className);
+
+            if (logger.getLevel().intLevel() < callLogLevel.intLevel()) {
+                buffers.offer(loggerObject);
+                return;
+            }
+        } else {
+            logger = defaultLogger;
+        }
+
+        String message = loggerObject.stringBuilder.toString();
+
+        // Clean up logging. Everything ignored here is expected and does not need to be logged.
+        if (limitLogging && message != null && (
+                message.endsWith("Invalid frame dimensions 0x0.") ||
+                // This message is handled by increasing probe sizes based on the currently
+                // available data.
+                message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
+                // This message is handled by increasing probe sizes based on the currently
+                // available data.
+                message.endsWith("not enough frames to estimate rate; consider increasing probesize" ) ||
+                // This is the PAT packet and sometimes it doesn't get incremented which makes
+                // FFmpeg unhappy.
+                message.endsWith("Continuity check failed for pid 0 expected 1 got 0") ||
+                // This happens when the buffer gets really behind. The video output never appears
+                // to be affected by this notification, but it generates a lot of log entries.
+                message.endsWith(" > 10000000: forcing output") ||
+                message.endsWith("is not set in estimate_timings_from_pts") ||
+                // Seen in H.264 stream init. It means a key frame has not be processed yet. A
+                // key frame can take over 5 seconds in some situations to arrive.
+                message.endsWith("non-existing PPS 0 referenced") ||
+                // Seen in H.264 stream init. This is a resulting error from the non-existing
+                // reference above. These errors stop as soon as a key frame is received.
+                message.endsWith("decode_slice_header error") ||
+                // Seen when writing MPEG-PS. This basically means the file being created will
+                // potentially not play on a hardware DVD player which is not really a concern.
+                message.contains(" buffer underflow st="))) {
+
+            buffers.offer(loggerObject);
+            return;
+        }
+
+        synchronized (repeatLock) {
+            if (message.equals(lastMessage)) {
+                repeated += 1;
+                buffers.offer(loggerObject);
+                return;
+            }
+
+            if (repeated > 0) {
+                logger.log(callLogLevel, "Repeated {} time{}: {}.",
+                        repeated,
+                        repeated > 1 ? PLURAL : BLANK,
+                        lastMessage);
+
+                repeated = 0;
+            }
+
+            lastMessage = message;
+        }
+
+        logger.log(callLogLevel, message);
+        buffers.offer(loggerObject);
+    }
+
+    private void trim(FFmpegLoggerObject loggerObject) {
+
+        // This reduces the number of int primitives being created.
+        loggerObject.len--; // Convert length to index.
+        while (loggerObject.len > 0 && (char)loggerObject.messageBytes[loggerObject.len] <= ' ') {
+            loggerObject.len--;
+        }
+        loggerObject.len++; // Convert back to length.
+
+        if (enhancedLogging &&
+                loggerObject.len > addressSize5 &&
+                (char)loggerObject.messageBytes[0] == '[') {
+
+            loggerObject.classStart = 1;
+            loggerObject.index = 2;
+
+            for (; loggerObject.index < loggerObject.len; loggerObject.index++) {
+                if ((char) loggerObject.messageBytes[loggerObject.index - 1] == ' ' &&
+                        (char) loggerObject.messageBytes[loggerObject.index] == '@') {
+
+                    loggerObject.classEnd = loggerObject.index - 2;
+                    loggerObject.classNameLen = loggerObject.classEnd - loggerObject.classStart;
+                    loggerObject.noClassName = false;
+                    loggerObject.className = "ffmpeg." + new String(loggerObject.messageBytes, loggerObject.classStart, loggerObject.classEnd, StandardCharsets.UTF_8);
+                    break;
+                }
+            }
+
+            if (!loggerObject.noClassName) {
+                if (threadRename && loggerObject.index + addressSize4 < loggerObject.len &&
+                        (char) loggerObject.messageBytes[loggerObject.index] == '@' &&
+                        (char) loggerObject.messageBytes[loggerObject.index + 1] == ' ') {
+
+                    loggerObject.threadStart = loggerObject.index + 2;
+
+                    if ((char)loggerObject.messageBytes[loggerObject.index + addressSize2] == ']') {
+                        loggerObject.threadEnd = loggerObject.index + addressSize2;
+                        loggerObject.threadNameLen = loggerObject.threadEnd - loggerObject.threadStart;
+                        loggerObject.noThreadName = false;
+
+                        String currentThreadName = Thread.currentThread().getName();
+                        loggerObject.threadName = new String(loggerObject.messageBytes, loggerObject.threadStart, loggerObject.threadNameLen, StandardCharsets.UTF_8);
+
+                        if (currentThreadName.startsWith("Thread-")) {
+                            Thread.currentThread().setName(loggerObject.threadName);
+                            loggerObject.index = loggerObject.index + addressSize4;
+                        } else if (currentThreadName.equals(loggerObject.threadName)) {
+                            loggerObject.index = loggerObject.index + addressSize4;
+                        } else {
+                            loggerObject.index += 1;
+                            loggerObject.messageBytes[loggerObject.index] = (byte)'[';
+                        }
+                    }
+                } else {
+                    loggerObject.index += 1;
+                    loggerObject.messageBytes[loggerObject.index] = (byte)'[';
+                }
+            } else {
+                // Return the index back to 0 or nothing will be displayed in the log.
+                loggerObject.index = 0;
+            }
+        }
+
+        for(; loggerObject.index < loggerObject.len; loggerObject.index++) {
+            // This can be done this way because the bytes are UTF-8.
+            loggerObject.stringBuilder.append((char)loggerObject.messageBytes[loggerObject.index]);
+        }
     }
 
     private class FFmpegLoggerObject {
-        private int repeatCount = 0;
         private byte messageBytes[] = new byte[1024];
         private StringBuilder stringBuilder = new StringBuilder(1024);
         private boolean noClassName = true;
@@ -336,7 +292,6 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
         int threadEnd = 0;
 
         private void reset() {
-            repeatCount = 0;
             Arrays.fill(messageBytes, (byte) 0);
             stringBuilder.setLength(0);
             noClassName = true;

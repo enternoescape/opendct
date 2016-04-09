@@ -29,6 +29,7 @@ import opendct.video.ffmpeg.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.util.StringBuilders;
+import org.bytedeco.javacpp.BytePointer;
 
 import java.io.File;
 import java.io.IOException;
@@ -434,19 +435,36 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             firstWrite = true;
         }
 
+        protected long lastWriteAddress = 0;
+        protected int lastWriteCapacity = 0;
+        protected long writeAddress = 0;
+        protected ByteBuffer writeBuffer = null;
+
         @Override
-        public synchronized int write(ByteBuffer data) throws IOException {
+        public synchronized int write(BytePointer data, int length) throws IOException {
             if (firstWrite) {
                 bytesStreamed.set(0);
                 firstWrite = false;
             }
 
-            int bufferLength = data.remaining();
+            if (length == 0) {
+                return length;
+            }
 
-            streamBuffer.put(data);
+            writeAddress = data.address();
+
+            if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
+                writeBuffer = data.position(0).limit(length).asBuffer();;
+                lastWriteAddress = writeAddress;
+                lastWriteCapacity = length;
+            } else {
+                writeBuffer.limit(length).position(0);
+            }
+
+            streamBuffer.put(writeBuffer);
 
             if (streamBuffer.position() < minUploadIDTransfer) {
-                return logger.exit(bufferLength);
+                return logger.exit(length);
             }
 
             streamBuffer.flip();
@@ -542,9 +560,28 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             ccInstance = new CCExtractorSrtInstance(paramBuilder.toString(), baseFilename);
         }
 
+        protected long lastWriteAddress = 0;
+        protected int lastWriteCapacity = 0;
+        protected long writeAddress = 0;
+        protected ByteBuffer writeBuffer = null;
+
         @Override
-        public synchronized int write(ByteBuffer data) throws IOException {
-            int length = data.remaining();
+        public synchronized int write(BytePointer data, int length) throws IOException {
+
+            if (length == 0) {
+                return length;
+            }
+
+            writeAddress = data.address();
+
+            if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
+                writeBuffer = data.position(0).limit(length).asBuffer();;
+                lastWriteAddress = writeAddress;
+                lastWriteCapacity = length;
+            } else {
+                writeBuffer.limit(length).position(0);
+            }
+
             int bytesSent = length;
 
             if (ccInstance != null) {
@@ -554,9 +591,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     if (length > 65000) {
                         ByteBuffer slice;
                         int increment;
-                        while (data.hasRemaining()) {
-                            increment = Math.min(65000, data.remaining());
-                            slice = data.slice();
+                        while (writeBuffer.hasRemaining()) {
+                            increment = Math.min(65000, writeBuffer.remaining());
+                            slice = writeBuffer.slice();
                             slice.limit(increment);
                             data.position(data.position() + increment);
 
@@ -571,12 +608,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             }
                         }
                     } else {
-                        while (data.hasRemaining() && datagramChannel.isOpen()) {
-                            bytesSent += datagramChannel.write(data);
+                        while (writeBuffer.hasRemaining() && datagramChannel.isOpen()) {
+                            bytesSent += datagramChannel.write(writeBuffer);
                         }
                     }
                 } else {
-                    ccInstance.streamIn(data);
+                    ccInstance.streamIn(writeBuffer);
                 }
             }
 
@@ -652,18 +689,36 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
 
         private ByteBuffer currentWrite;
+        protected long lastWriteAddress = 0;
+        protected int lastWriteCapacity = 0;
+        protected long writeAddress = 0;
+        protected ByteBuffer writeBuffer = null;
 
         @Override
-        public int write(ByteBuffer data) throws IOException {
+        public int write(BytePointer data, int length) throws IOException {
             if (closed) {
                 return -1;
             }
 
             currentWrite = null;
 
+            if (length == 0) {
+                return length;
+            }
+
             if (firstWrite) {
                 bytesStreamed.set(0);
                 firstWrite = false;
+            }
+
+            writeAddress = data.address();
+
+            if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
+                writeBuffer = data.position(0).limit(length).asBuffer();;
+                lastWriteAddress = writeAddress;
+                lastWriteCapacity = length;
+            } else {
+                writeBuffer.limit(length).position(0);
             }
 
             try {
@@ -685,10 +740,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 }
             }
 
-            int bytesToStream = data.remaining();
-
-            if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + bytesToStream) {
-                ByteBuffer slice = data.slice();
+            if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + length) {
+                ByteBuffer slice = writeBuffer.slice();
                 slice.limit((int) (stvRecordBufferSize - autoOffset));
 
                 currentWrite.clear();
@@ -710,7 +763,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             try {
                 currentWrite.clear();
-                currentWrite.put(data);
+                currentWrite.put(writeBuffer);
                 currentWrite.flip();
 
                 writeBuffers.put(currentWrite);
@@ -720,7 +773,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 return -1;
             }
 
-            return bytesToStream;
+            return length;
         }
 
         @Override
@@ -909,15 +962,15 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         boolean firstWrite = true;
 
         @Override
-        public int write(ByteBuffer data) throws IOException {
+        public int write(BytePointer data, int length) throws IOException {
             if (firstWrite) {
                 bytesStreamed.set(0);
                 firstWrite = false;
             }
 
-            bytesStreamed.addAndGet(data.remaining());
+            bytesStreamed.addAndGet(length);
 
-            return data.remaining();
+            return length;
         }
 
         @Override

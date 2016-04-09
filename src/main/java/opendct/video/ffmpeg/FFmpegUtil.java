@@ -310,10 +310,10 @@ public abstract class FFmpegUtil {
         }
 
         AVCodec encoder;
-        AVDictionary dict = ctx.streamMap[stream_id].encoderDict = new AVDictionary(null);
+        AVDictionary dict = ctx.streamMap[stream_id].iDict = new AVDictionary(null);
 
         if (decoderCodecType == AVMEDIA_TYPE_VIDEO) {
-            encoder = ctx.streamMap[stream_id].encoderCodec = profile.getVideoEncoderCodec(dec_ctx.codec());
+            encoder = ctx.streamMap[stream_id].iCodec = profile.getVideoEncoderCodec(dec_ctx.codec());
 
             if (encoder == null) {
                 logger.fatal("Necessary video encoder not found");
@@ -351,7 +351,7 @@ public abstract class FFmpegUtil {
             ctx.videoEncodeSettings = profile.getVideoEncoderMap(w, h, encoder);*/
             FFmpegProfileManager.confVideoEncoder(ctx.videoEncodeSettings, enc_ctx, dict);
         } else {
-            encoder = ctx.streamMap[stream_id].encoderCodec = avcodec_find_encoder(dec_ctx.codec_id());
+            encoder = ctx.streamMap[stream_id].iCodec = avcodec_find_encoder(dec_ctx.codec_id());
 
             if (encoder == null) {
                 logger.fatal("Necessary audio encoder not found");

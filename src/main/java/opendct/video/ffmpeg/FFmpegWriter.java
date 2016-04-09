@@ -17,6 +17,7 @@
 package opendct.video.ffmpeg;
 
 import org.apache.logging.log4j.Logger;
+import org.bytedeco.javacpp.BytePointer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,7 +33,7 @@ public interface FFmpegWriter {
      * @return The number of bytes written. This should match the limit on the data to be written.
      * @throws IOException
      */
-    public int write(ByteBuffer data) throws IOException;
+    public int write(BytePointer data, int length) throws IOException;
 
     /**
      * Closes the file/connection.

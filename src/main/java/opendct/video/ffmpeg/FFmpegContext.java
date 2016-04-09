@@ -16,7 +16,6 @@
 
 package opendct.video.ffmpeg;
 
-import opendct.consumer.buffers.FFmpegCircularBuffer;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -303,6 +302,11 @@ public class FFmpegContext {
 
     protected static Read_packet_Pointer_BytePointer_int readCallback = new ReadCallback();
 
+    protected long lastReadAddress = 0;
+    protected int lastReadCapacity = 0;
+    protected long readAddress = 0;
+    protected ByteBuffer readBuffer = null;
+
     protected static class ReadCallback extends Read_packet_Pointer_BytePointer_int {
         @Override
         public int call(Pointer opaque, BytePointer buf, int bufSize) {
@@ -312,7 +316,28 @@ public class FFmpegContext {
 
             if (!context.isInterrupted()) {
                 try {
-                    nBytes = context.SEEK_BUFFER.read(buf.position(0).limit(bufSize).asBuffer());
+                    context.readAddress = buf.address();
+
+                    if (context.readBuffer == null || context.readAddress != context.lastReadAddress || context.lastReadCapacity < bufSize) {
+                        context.readBuffer = buf.position(0).limit(bufSize).asBuffer();;
+                        context.lastReadAddress = context.readAddress;
+                        context.lastReadCapacity = bufSize;
+                    } else {
+                        context.readBuffer.limit(bufSize).position(0);
+                    }
+
+                    nBytes = context.SEEK_BUFFER.read(context.readBuffer);
+
+                    // This forces the buffer to be more efficient.
+                    if (context.readBuffer.remaining() > 0 && !context.isInterrupted()) {
+                        Thread.sleep(150);
+                        nBytes += context.SEEK_BUFFER.read(context.readBuffer);
+
+                        if (context.readBuffer.remaining() > 32768 && !context.isInterrupted()) {
+                            Thread.sleep(250);
+                            nBytes += context.SEEK_BUFFER.read(context.readBuffer);
+                        }
+                    }
 
                 } catch (Exception e) {
                     if (e instanceof InterruptedException) {
@@ -345,7 +370,7 @@ public class FFmpegContext {
             int numBytesWritten = 0;
 
             try {
-                numBytesWritten = context.write(buf.position(0).limit(bufSize).asByteBuffer());
+                numBytesWritten = context.write(buf, bufSize);
             } catch (IOException e) {
                 Logger logger = context.getLogger();
                 if (logger != null) {
@@ -831,6 +856,7 @@ public class FFmpegContext {
             videoOutStream = null;
             audioInCodecCtx = null;
             audioOutStream = null;
+            readBuffer = null;
         }
     }
 
@@ -854,13 +880,13 @@ public class FFmpegContext {
             }
 
             for (OutputStreamMap aStreamMap : streamMap) {
-                aStreamMap.encoderCodec = null;
+                aStreamMap.iCodec = null;
 
-                if (aStreamMap.encoderDict != null && !aStreamMap.encoderDict.isNull()) {
+                if (aStreamMap.iDict != null && !aStreamMap.iDict.isNull()) {
                     logger.debug("Calling av_dict_free");
-                    av_dict_free(aStreamMap.encoderDict);
+                    av_dict_free(aStreamMap.iDict);
                 }
-                aStreamMap.encoderDict = null;
+                aStreamMap.iDict = null;
             }
 
             logger.debug("avformat_free_context");
@@ -890,13 +916,13 @@ public class FFmpegContext {
             }
 
             for (OutputStreamMap aStreamMap : streamMap2) {
-                aStreamMap.encoderCodec = null;
+                aStreamMap.iCodec = null;
 
-                if (aStreamMap.encoderDict != null && !aStreamMap.encoderDict.isNull()) {
+                if (aStreamMap.iDict != null && !aStreamMap.iDict.isNull()) {
                     logger.debug("Calling av_dict_free");
-                    av_dict_free(aStreamMap.encoderDict);
+                    av_dict_free(aStreamMap.iDict);
                 }
-                aStreamMap.encoderDict = null;
+                aStreamMap.iDict = null;
             }
 
             logger.debug("avformat_free_context");

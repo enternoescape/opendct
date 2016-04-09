@@ -129,6 +129,9 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 returnValues[i++] = NetworkInterface.getByName(networkInterface);
             } catch (SocketException e) {
                 logger.error("Unable to find the interface '{}' => ", networkInterface, e);
+            } catch (Throwable e) {
+                logger.error("Unable to access the interface '{}'" +
+                        " because of an unexpected exception => ", networkInterface, e);
             }
         }
 
@@ -162,11 +165,12 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         try {
             networkInterface = Util.getNetworkInterfaceForRemoteIPAddress(remoteAddress);
         } catch (SocketException e) {
-            throw new IllegalArgumentException(e);
+            throw new IOException(e);
         }
 
         if (networkInterface == null) {
-            throw new IOException("An interface on the same subnet as '" + remoteAddress.getHostAddress() + "' does not exist on this computer.");
+            throw new IOException("An interface on the same subnet as '" +
+                    remoteAddress.getHostAddress() + "' does not exist on this computer.");
         }
 
         addDependentInterface(networkInterface.getName());
@@ -204,19 +208,18 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 if (!networkInterface.isLoopback() && networkInterface.isUp()) {
                     List<InterfaceAddress> addresses = networkInterface.getInterfaceAddresses();
 
-                    for (Iterator<InterfaceAddress> iter = addresses.iterator(); iter.hasNext(); ) {
-                        InterfaceAddress interfaceAddr = iter.next();
+                    for (InterfaceAddress interfaceAddr : addresses) {
                         InetAddress addr = interfaceAddr.getAddress();
 
                         if (addr instanceof Inet4Address) {
                             currentInterfaceNames.add(networkInterface.getName().toLowerCase());
-                            msg.append(Config.NEW_LINE + networkInterface + " " + addr.getHostAddress());
+                            msg.append(Config.NEW_LINE).append(networkInterface).append(" ").append(addr.getHostAddress());
                             break;
                         }
                     }
                 }
             }
-        } catch (SocketException e) {
+        } catch (Throwable e) {
             msg.append(e);
         }
 
@@ -245,8 +248,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                     if (remainingNames.contains(networkInterface.getName().toLowerCase()) && !networkInterface.isLoopback() && networkInterface.isUp()) {
                         List<InterfaceAddress> addresses = networkInterface.getInterfaceAddresses();
 
-                        for (Iterator<InterfaceAddress> iter = addresses.iterator(); iter.hasNext(); ) {
-                            InterfaceAddress interfaceAddr = iter.next();
+                        for (InterfaceAddress interfaceAddr : addresses) {
                             InetAddress addr = interfaceAddr.getAddress();
 
                             if (addr instanceof Inet4Address) {
@@ -257,7 +259,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                         }
                     }
                 }
-            } catch (SocketException e) {
+            } catch (Throwable e) {
             }
 
             if (System.currentTimeMillis() > timeout && timeout != 0) {

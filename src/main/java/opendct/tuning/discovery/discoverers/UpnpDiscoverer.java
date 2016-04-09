@@ -191,6 +191,18 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         }
 
         UpnpManager.stopUpnpServices();
+
+        discoveredDevicesLock.writeLock().lock();
+
+        try {
+            discoveredDevices.clear();
+            discoveredParents.clear();
+        } catch (Exception e) {
+            logger.error("stopDetection created an unexpected exception while using" +
+                    " discoveredDevicesLock => ", e);
+        } finally {
+            discoveredDevicesLock.writeLock().unlock();
+        }
     }
 
     @Override
@@ -209,6 +221,18 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
             }
         } catch (Exception e) {
             logger.error("UPnP shutdown created an exception => ", e);
+        }
+
+        discoveredDevicesLock.writeLock().lock();
+
+        try {
+            discoveredDevices.clear();
+            discoveredParents.clear();
+        } catch (Exception e) {
+            logger.error("waitForStopDetection created an unexpected exception while using" +
+                    " discoveredDevicesLock => ", e);
+        } finally {
+            discoveredDevicesLock.writeLock().unlock();
         }
     }
 

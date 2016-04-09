@@ -64,7 +64,7 @@ public class HDHomeRunDiscovery implements Runnable {
     }
 
     public void start(HDHomeRunDiscoverer discoverer) throws IOException {
-        if (sendThread != null && !sendThread.isAlive()) {
+        if (sendThread != null && sendThread.isAlive()) {
             logger.warn("Already listening for HDHomeRun devices on port {}", BROADCAST_PORT);
             return;
         }
@@ -132,7 +132,7 @@ public class HDHomeRunDiscovery implements Runnable {
         }
 
         for (Thread receiveThread : receiveThreads) {
-            if (receiveThread != null) {
+            if (receiveThread != null && receiveThread.isAlive()) {
                 return receiveThread.isAlive();
             }
         }

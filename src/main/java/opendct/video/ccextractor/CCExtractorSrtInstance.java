@@ -60,7 +60,7 @@ public class CCExtractorSrtInstance {
             new File(baseFilename + ".CC2.srt").createNewFile();
         }
 
-        startReadOutput();
+        startReadOutput(baseFilename);
     }
 
     /**
@@ -128,18 +128,20 @@ public class CCExtractorSrtInstance {
         outputErrStream.setClosed();
     }
 
-    private void startReadOutput() {
+    private void startReadOutput(String baseFilename) {
+        baseFilename = new File(baseFilename).getName();
+
         Thread streamOut;
         outputStdStream = new ReadOutput(inputStdStream, "stdout");
         outputErrStream = new ReadOutput(inputErrStream, "errout");
 
         streamOut = new Thread(outputStdStream);
-        streamOut.setName("CCExtractor-" + streamOut.getId());
+        streamOut.setName("CCExtractor-" + streamOut.getId() + ":" + baseFilename);
         streamOut.setPriority(Thread.MIN_PRIORITY);
         streamOut.start();
 
         streamOut = new Thread(outputErrStream);
-        streamOut.setName("CCExtractor-" + streamOut.getId());
+        streamOut.setName("CCExtractor-" + streamOut.getId() + ":" + baseFilename);
         streamOut.setPriority(Thread.MIN_PRIORITY);
         streamOut.start();
     }

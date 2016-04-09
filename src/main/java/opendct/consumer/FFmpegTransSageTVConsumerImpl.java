@@ -596,12 +596,12 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             increment = Math.min(65000, writeBuffer.remaining());
                             slice = writeBuffer.slice();
                             slice.limit(increment);
-                            data.position(data.position() + increment);
+                            writeBuffer.position(writeBuffer.position() + increment);
 
                             while (slice.hasRemaining() && datagramChannel.isOpen()) {
                                 bytesSent += datagramChannel.write(slice);
                                 try {
-                                    Thread.sleep(10);
+                                    Thread.sleep(25);
                                 } catch (InterruptedException e) {
                                     logger.debug("Interrupted while writing to CCExtractor => {}",
                                             e.toString());
@@ -687,7 +687,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             closed = false;
 
             asyncWriter = new Thread(new AsyncWriter());
-            asyncWriter.setName("AsyncWriter-" + asyncWriter.getId());
+            asyncWriter.setName("AsyncWriter-" + asyncWriter.getId() + ":" + new File(directFilename).getName());
             asyncWriter.start();
         }
 

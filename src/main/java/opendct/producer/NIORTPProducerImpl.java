@@ -64,7 +64,6 @@ public class NIORTPProducerImpl implements RTPProducer {
     private final int udpInternalReceiveBufferLimit = 5242880;
     private InetAddress remoteIPAddress = null;
     private DatagramChannel datagramChannel = null;
-    private Thread timeoutThread = null;
     private final AtomicBoolean stop = new AtomicBoolean(false);
     private final Object receiveMonitor = new Object();
 
@@ -128,10 +127,6 @@ public class NIORTPProducerImpl implements RTPProducer {
             return;
         }
 
-        if (timeoutThread != null) {
-            timeoutThread.interrupt();
-        }
-
         datagramChannel.socket().close();
     }
 
@@ -149,88 +144,8 @@ public class NIORTPProducerImpl implements RTPProducer {
         return remoteIPAddress;
     }
 
-    public void run() throws IllegalThreadStateException {
-        if (running.getAndSet(true)) {
-            logger.warn("The producer is already running.");
-            throw new IllegalThreadStateException("The producer is already running.");
-        }
-
-        if (stop.getAndSet(false)) {
-            logger.warn("Producer was requesting to stop before it started.");
-            throw new IllegalThreadStateException("The producer is still stopping.");
-        }
-
+    public void run() {
         logger.info("Producer thread is running.");
-
-        timeoutThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                if (stalledTimeout == 0) {
-                    logger.debug("Stall timeout detection is disabled.");
-                    return;
-                }
-
-                logger.info("Producer packet monitoring thread is running.");
-                boolean firstPacketsReceived = true;
-                int timeout;
-
-                while(!stop.get() && !Thread.currentThread().isInterrupted()) {
-                    synchronized (receiveMonitor) {
-                        packetsLastReceived = packetsReceived;
-                    }
-
-                    long recentPackets;
-
-                    try {
-                        timeout = stalledTimeout;
-
-                        while (!Thread.currentThread().isInterrupted() && timeout-- > 0) {
-                            Thread.sleep(1000);
-
-                            synchronized (receiveMonitor) {
-                                recentPackets = packetsReceived;
-
-                                if (!(recentPackets == packetsLastReceived)) {
-                                    stalled = false;
-                                }
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                        logger.debug("The packet monitoring thread has been interrupted.");
-                        break;
-                    }
-
-                    synchronized (receiveMonitor) {
-                        recentPackets = packetsReceived;
-                    }
-
-                    if (recentPackets == packetsLastReceived) {
-                        logger.info("No packets received in over {} seconds.", stalledTimeout);
-
-                        synchronized (receiveMonitor) {
-                            stalled = true;
-                        }
-                    } else {
-                        synchronized (receiveMonitor) {
-                            stalled = false;
-                        }
-                    }
-
-                    if (recentPackets > 0) {
-                        if (firstPacketsReceived) {
-                            firstPacketsReceived = false;
-                            logger.info("Received first {} datagram packets. Missed RTP packets {}. Bad RTP packets {}.", recentPackets, packetProcessor.getMissedRTPPackets(), packetsBadReceived);
-                        }
-                    }
-                }
-
-                logger.info("Producer packet monitoring thread has stopped.");
-            }
-        });
-
-        timeoutThread.setName("PacketsMonitor-" + timeoutThread.getId() + ":" + Thread.currentThread().getName());
-        timeoutThread.start();
 
         // We could be doing channel scanning that doesn't need this kind of prioritization.
         if (Thread.currentThread().getPriority() != Thread.MIN_PRIORITY) {
@@ -349,23 +264,6 @@ public class NIORTPProducerImpl implements RTPProducer {
         }
 
         logger.info("Producer thread has stopped.");
-
-        if (timeoutThread != null) {
-            try {
-                int timeout = 0;
-
-                while (timeoutThread != null && timeoutThread.isAlive()) {
-                    timeoutThread.interrupt();
-                    timeoutThread.join(1000);
-
-                    if (timeout++ > 5) {
-                        logger.warn("Producer has been waiting for packet monitoring thread to stop for over {} seconds.", timeout);
-                    }
-                }
-            } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for packet monitoring thread to stop => {}", e.toString());
-            }
-        }
 
         if (rtcpClient != null) {
             try {

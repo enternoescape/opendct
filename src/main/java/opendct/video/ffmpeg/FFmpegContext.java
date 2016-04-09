@@ -16,6 +16,7 @@
 
 package opendct.video.ffmpeg;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,8 +40,8 @@ public class FFmpegContext {
     private static final Logger logger = LogManager.getLogger(FFmpegContext.class);
 
     private final static ReentrantReadWriteLock contextLock = new ReentrantReadWriteLock();
-    private final static Map<Pointer, FFmpegContext> contextMap = new HashMap<>();
-    private final static Map<Pointer, FFmpegWriter> writerMap = new HashMap<>();
+    private final static Map<Long, FFmpegContext> contextMap = new Long2ObjectOpenHashMap<>();
+    private final static Map<Long, FFmpegWriter> writerMap = new Long2ObjectOpenHashMap<>();
     private final static AtomicLong callbackAddress = new AtomicLong();
     public final Pointer OPAQUE;
     protected Pointer writerOpaque;
@@ -173,7 +174,7 @@ public class FFmpegContext {
         contextLock.readLock().lock();
 
         try {
-            returnValue = contextMap.get(opaque);
+            returnValue = contextMap.get(opaque.address());
         } finally {
             contextLock.readLock().unlock();
         }
@@ -188,7 +189,7 @@ public class FFmpegContext {
 
         try {
             opaque = new Pointer(new TmpPointer());
-            contextMap.put(opaque, this);
+            contextMap.put(opaque.address(), this);
         } finally {
             contextLock.writeLock().unlock();
         }
@@ -202,7 +203,7 @@ public class FFmpegContext {
         contextLock.readLock().lock();
 
         try {
-            returnValue = writerMap.get(opaque);
+            returnValue = writerMap.get(opaque.address());
         } finally {
             contextLock.readLock().unlock();
         }
@@ -221,7 +222,7 @@ public class FFmpegContext {
 
         try {
             opaque = new Pointer(new TmpPointer());
-            writerMap.put(opaque, writer);
+            writerMap.put(opaque.address(), writer);
         } finally {
             contextLock.writeLock().unlock();
         }
@@ -233,7 +234,7 @@ public class FFmpegContext {
         contextLock.writeLock().lock();
 
         try {
-            writerMap.remove(opaque);
+            writerMap.remove(opaque.address());
         } finally {
             contextLock.writeLock().unlock();
         }
@@ -310,6 +311,8 @@ public class FFmpegContext {
     protected static class ReadCallback extends Read_packet_Pointer_BytePointer_int {
         @Override
         public int call(Pointer opaque, BytePointer buf, int bufSize) {
+
+            opaque.address();
             FFmpegContext context = getContext(opaque);
 
             int nBytes = -1;
@@ -330,12 +333,17 @@ public class FFmpegContext {
 
                     // This forces the buffer to be more efficient.
                     if (context.readBuffer.remaining() > 0 && !context.isInterrupted()) {
-                        Thread.sleep(150);
+                        Thread.sleep(100);
                         nBytes += context.SEEK_BUFFER.read(context.readBuffer);
 
                         if (context.readBuffer.remaining() > 32768 && !context.isInterrupted()) {
-                            Thread.sleep(250);
+                            Thread.sleep(200);
                             nBytes += context.SEEK_BUFFER.read(context.readBuffer);
+
+                            if (context.readBuffer.remaining() > 65536 && !context.isInterrupted()) {
+                                Thread.sleep(300);
+                                nBytes += context.SEEK_BUFFER.read(context.readBuffer);
+                            }
                         }
                     }
 
@@ -960,7 +968,7 @@ public class FFmpegContext {
             contextLock.writeLock().lock();
 
             try {
-                contextMap.remove(OPAQUE);
+                contextMap.remove(OPAQUE.address());
             } finally {
                 contextLock.writeLock().unlock();
             }

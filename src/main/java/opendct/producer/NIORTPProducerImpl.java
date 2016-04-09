@@ -38,7 +38,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
-    private RTCPClient rtcpClient = new RTCPClient();
+    //private RTCPClient rtcpClient = new RTCPClient();
 
     private int packetsBadReceived = 0;
     private long packetsReceived = 0;
@@ -87,7 +87,7 @@ public class NIORTPProducerImpl implements RTPProducer {
             // In case 0 was used and a port was automatically chosen.
             this.localPort = datagramChannel.socket().getLocalPort();
 
-            rtcpClient.startReceiving(streamRemoteIP, this.localPort + 1);
+            //rtcpClient.startReceiving(streamRemoteIP, this.localPort + 1);
         } catch (IOException e) {
             if (datagramChannel != null) {
                 try {
@@ -98,7 +98,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                 }
             }
 
-            rtcpClient.stopReceiving();
+            //rtcpClient.stopReceiving();
 
             throw e;
         }
@@ -248,11 +248,11 @@ public class NIORTPProducerImpl implements RTPProducer {
         }
 
         if (datagramChannel != null) {
-            try {
+            /*try {
                 rtcpClient.stopReceiving();
             } catch (Exception e) {
                 logger.debug("Producer created an exception while closing the RTCP channel => {}", e.toString());
-            }
+            }*/
 
             try {
                 datagramChannel.close();
@@ -265,13 +265,13 @@ public class NIORTPProducerImpl implements RTPProducer {
 
         logger.info("Producer thread has stopped.");
 
-        if (rtcpClient != null) {
+        /*if (rtcpClient != null) {
             try {
                 rtcpClient.waitForStop();
             } catch (InterruptedException e) {
                 logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => {}", e.toString());
             }
-        }
+        }*/
 
         running.set(false);
         stop.set(false);

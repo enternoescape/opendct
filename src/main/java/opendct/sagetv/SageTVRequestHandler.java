@@ -685,7 +685,7 @@ public class SageTVRequestHandler implements Runnable {
                     }
 
                 } catch (IOException e) {
-                    logger.error("The SageTV server has disconnected ungracefully => {}", e);
+                    logger.error("The SageTV server has disconnected ungracefully => ", e);
                     break;
                 }
 

@@ -331,11 +331,16 @@ public class FFmpegContext {
 
                     nBytes = context.SEEK_BUFFER.read(context.readBuffer);
 
-                    // This forces the buffer to be more efficient, but also keeps things
-                    // responsive.
+                    // This forces the buffer to be more efficient, but also allows things to
+                    // remain responsive.
                     if (context.readBuffer.remaining() > 0 && !context.isInterrupted()) {
-                        Thread.sleep(500);
+                        Thread.sleep(200);
                         nBytes += context.SEEK_BUFFER.read(context.readBuffer);
+
+                        if (context.readBuffer.remaining() > 0 && !context.isInterrupted()) {
+                            Thread.sleep(100);
+                            nBytes += context.SEEK_BUFFER.read(context.readBuffer);
+                        }
                     }
 
                 } catch (Exception e) {

@@ -45,7 +45,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
-    private final Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
+    private final static Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
+    private final static BlockingQueue<FFmpegCircularBufferNIO> buffers = new LinkedBlockingQueue<>();
 
     private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
 
@@ -75,7 +76,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final boolean ccExtractorAllStreams = FFmpegConfig.getCcExtractorAllStreams();
     private boolean ccExtractorAvailable = false;
 
-    private final long initBufferedData = 1048576;
+    private final long initBufferedData = 786432;
 
     private String currentRecordingQuality;
     private boolean consumeToNull;
@@ -108,7 +109,19 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public FFmpegTransSageTVConsumerImpl() {
-        circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+        circularBuffer = null;
+
+        try {
+            circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            logger.debug("Interrupted while recycling buffer => {}", e.toString());
+        }
+
+        if (circularBuffer == null) {
+            circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+        } else {
+            circularBuffer.clear();
+        }
     }
 
     @Override
@@ -116,6 +129,20 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             logger.error("FFmpeg Transcoder consumer is already running.");
             return;
+        }
+
+        if (circularBuffer == null) {
+            try {
+                circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while recycling buffer => {}", e.toString());
+            }
+        }
+
+        if (circularBuffer == null) {
+            circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+        } else {
+            circularBuffer.clear();
         }
 
         logger.info("FFmpeg Transcoder consumer thread is now running.");
@@ -177,11 +204,14 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             ctx.dispose();
 
+            // This probably needs to be done differently if the class is to be reused.
+            buffers.offer(circularBuffer);
+            circularBuffer = null;
+
             stateMessage = "Stopped.";
             running.set(false);
             logger.info("FFmpeg Transcoder consumer thread stopped.");
         }
-
     }
 
     @Override
@@ -601,7 +631,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             while (slice.hasRemaining() && datagramChannel.isOpen()) {
                                 bytesSent += datagramChannel.write(slice);
                                 try {
-                                    Thread.sleep(25);
+                                    Thread.sleep(15);
                                 } catch (InterruptedException e) {
                                     logger.debug("Interrupted while writing to CCExtractor => {}",
                                             e.toString());

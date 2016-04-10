@@ -46,9 +46,6 @@ public class SageTVRequestHandler implements Runnable {
 
     private final boolean LOG_TRACE = Config.getBoolean("sagetv.log_noop_and_size", false);
 
-    private long minTuningTime = Config.getLong("sagetv.min_tuning_time_ms", 500);
-    private long lastTuningStartTime = 0;
-
     private Socket socket;
     private CaptureDevice captureDevice = null;
     private String currentRecordFile = null;
@@ -193,7 +190,6 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         int uploadID = 0;
 
-                        preRecording();
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
@@ -242,7 +238,6 @@ public class SageTVRequestHandler implements Runnable {
                                             SageTVManager.setUploadIDByFilename(currentRecordFile, uploadID);
                                         }
 
-                                        postRecording();
                                         sendResponse("OK");
 
                                         if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
@@ -277,7 +272,6 @@ public class SageTVRequestHandler implements Runnable {
                         StringTokenizer tokens = new StringTokenizer(lastRequest.substring(6), "|");
                         Integer uploadID = 0;
 
-                        preRecording();
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
@@ -325,7 +319,6 @@ public class SageTVRequestHandler implements Runnable {
                                             SageTVManager.setUploadIDByFilename(currentRecordFile, uploadID);
                                         }
 
-                                        postRecording();
                                         sendResponse("OK");
 
                                         if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
@@ -698,9 +691,6 @@ public class SageTVRequestHandler implements Runnable {
         } catch (Exception e) {
             // This kind of exception appears to mostly happen when stopping the SageTV server.
             logger.debug("An unhandled exception was created => ", e);
-
-            // Setting the interrupt or the JVM might crash when using native code.
-            //Thread.currentThread().interrupt();
         } catch (Throwable e) {
             logger.error("An unhandled throwable was created => ", e);
         } finally {
@@ -742,7 +732,9 @@ public class SageTVRequestHandler implements Runnable {
         if (SageTVPoolManager.isUsePools()) {
             if (Util.isNullOrEmpty(virtualDevice)) {
                 virtualDevice = SageTVPoolManager.getPoolCaptureDeviceToVCaptureDevice(poolDevice);
-            } else if (Util.isNullOrEmpty(poolDevice)) {
+            }
+
+            if (Util.isNullOrEmpty(poolDevice)) {
                 poolDevice = SageTVPoolManager.getVCaptureDeviceToPoolCaptureDevice(virtualDevice);
             }
         }
@@ -751,35 +743,25 @@ public class SageTVRequestHandler implements Runnable {
             virtualDevice = virtualDevice.substring(0, virtualDevice.length() - " Digital TV Tuner".length());
         }
 
+        if (virtualDevice == null) {
+            virtualDevice = "Unknown";
+        }
+
         if (poolDevice != null && poolDevice.endsWith(" Digital TV Tuner")) {
             poolDevice = poolDevice.substring(0, poolDevice.length() - " Digital TV Tuner".length());
         }
 
         String newThreadName;
 
-        if (!SageTVPoolManager.isUsePools() || (virtualDevice != null && virtualDevice.equals(poolDevice)) || poolDevice == null) {
+        if (!SageTVPoolManager.isUsePools() || virtualDevice.equals(poolDevice) || poolDevice == null) {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice;
-        } else if (virtualDevice == null) {
+        } else if (virtualDevice.equals("Unknown")) {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ": NoVirtualDevice > " + poolDevice;
         } else {
             newThreadName = "SageTVRequestHandler-" + Thread.currentThread().getId() + ":" + virtualDevice + " > " + poolDevice;
         }
 
-        if (logger.isDebugEnabled()) {
-            // This probably takes more time than it saves. This will only be checked in debug mode
-            // so we don't keep seeing that the thread name changed when it didn't actually change.
-            if (newThreadName.equals(Thread.currentThread().getName())) {
-                return;
-            }
-
-            if (lastRequest != null && !lastRequest.startsWith("GET_FILE_SIZE ") || LOG_TRACE) {
-                logger.debug("Renaming the thread '{}' to '{}'...", Thread.currentThread().getName(), newThreadName);
-            }
-
-            Thread.currentThread().setName(newThreadName);
-        } else {
-            Thread.currentThread().setName(newThreadName);
-        }
+        Thread.currentThread().setName(newThreadName);
     }
 
     /**
@@ -803,33 +785,6 @@ public class SageTVRequestHandler implements Runnable {
      */
     private void unlockEncoder(CaptureDevice captureDevice) {
         captureDevice.setLocked(false);
-    }
-
-    /**
-     * Anything you want to happen before START or BUFFER goes here.
-     * <p/>
-     * This will only execute after the capture device has been determined to exist.
-     */
-    private void preRecording() {
-        lastTuningStartTime = System.currentTimeMillis();
-    }
-
-    /**
-     * Anything you want to happen before START or BUFFER returns OK goes here.
-     * <p/>
-     * This will only execute if the capture device successful started the recording.
-     */
-    private void postRecording() {
-        long tuningSleep = minTuningTime - (System.currentTimeMillis() - lastTuningStartTime);
-        if (tuningSleep > 0) {
-            try {
-                logger.debug("Recording returned sooner than {}ms. Sleeping {}ms...", minTuningTime, tuningSleep);
-                Thread.sleep(tuningSleep);
-            } catch (InterruptedException e) {
-                logger.debug("postRecording was interrupted => ", e);
-                Thread.currentThread().interrupt();
-            }
-        }
     }
 
     /**

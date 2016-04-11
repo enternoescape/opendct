@@ -96,7 +96,7 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
                             localAddress = Util.getLocalIPForRemoteIP(getRemoteAddress());
                         } catch (SocketException e) {
                             logger.error("Unable to automatically set the local IP address => ", e);
-                            throw new UnknownHostException(e.toString());
+                            throw new UnknownHostException(e.getMessage());
                         }
                     }
 

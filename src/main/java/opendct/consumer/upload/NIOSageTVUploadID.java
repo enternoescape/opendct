@@ -54,9 +54,24 @@ public class NIOSageTVUploadID {
      */
     public boolean startUpload(
             SocketAddress newServerSocket, String uploadFilename, int uploadID) throws IOException {
+        return startUpload(newServerSocket, uploadFilename, uploadID, 0);
+    }
 
-        logger.entry(newServerSocket, uploadFilename, uploadID);
-        String response = null;
+    /**
+     * Performs all of the steps needed to start uploading to the SageTV server.
+     *
+     * @param uploadID        This is the ID that SageTV has already provided you.
+     * @param newServerSocket This is the socket to be used for communication with the SageTV server.
+     * @param offset          This is the offset to start on. This is usually 0 unless a stream is
+     *                        resuming from a disconnection.
+     * @return Returns <i>true</i> if the SageTV server accepted the connection.
+     * @throws IOException If there was a problem establishing a connection to the SageTV server.
+     */
+    public boolean startUpload(
+            SocketAddress newServerSocket, String uploadFilename, int uploadID, long offset) throws IOException {
+
+        logger.entry(newServerSocket, uploadFilename, uploadID, offset);
+        String response;
 
         synchronized (uploadLock) {
             this.uploadFilename = null;
@@ -74,7 +89,7 @@ public class NIOSageTVUploadID {
 
             this.uploadFilename = uploadFilename;
             this.uploadID = uploadID;
-            autoOffset = 0;
+            this.autoOffset = offset;
 
             sendMessage("WRITEOPEN " + uploadFilename + " " + uploadID);
 
@@ -119,7 +134,7 @@ public class NIOSageTVUploadID {
 
         synchronized (uploadLock) {
             if (!Thread.currentThread().isInterrupted() && uploadFilename != null && uploadID > 0 && currentServerSocket != null) {
-                startUpload(currentServerSocket, uploadFilename, uploadID);
+                startUpload(currentServerSocket, uploadFilename, uploadID, autoOffset);
             } else {
                 throw new IOException("The upload cannot be resumed" +
                         " because the upload was never started.");
@@ -145,7 +160,7 @@ public class NIOSageTVUploadID {
         synchronized (uploadLock) {
             try {
                 endUpload(false);
-                returnValue = startUpload(null, uploadFilename, uploadID);
+                returnValue = startUpload(null, uploadFilename, uploadID, 0);
             } catch (IOException e) {
                 logger.warn("The connection to the SageTV server appears to have dropped => {}", e);
                 this.uploadFilename = uploadFilename;

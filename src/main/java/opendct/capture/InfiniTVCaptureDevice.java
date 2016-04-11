@@ -167,7 +167,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                         " RTP Port: {}",
                 encoderNumber,
                 encoderAddress,
-                parent.getLocalAddress(),
+                parent.getLocalAddress().getHostAddress(),
                 cableCardPresent,
                 encoderLineup,
                 offlineChannelScan,

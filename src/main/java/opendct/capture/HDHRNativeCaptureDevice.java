@@ -134,10 +134,13 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         // Determine device tuning mode.
         // =========================================================================================
         encoderDeviceType = CaptureDeviceType.HDHOMERUN;
+        boolean cableCardPresent = false;
 
         try {
             if (device.isCableCardTuner()) {
-                if (device.getCardStatus().toLowerCase().contains("card=ready")) {
+                cableCardPresent = device.getCardStatus().toLowerCase().contains("card=ready");
+
+                if (cableCardPresent) {
                     encoderDeviceType = CaptureDeviceType.DCT_HDHOMERUN;
                     setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
                 } else {
@@ -259,8 +262,8 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 "Silicondust",
                 tuner.TUNER_NUMBER,
                 device.getIpAddress(),
-                discoveredDeviceParent.getLocalAddress(),
-                (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN),
+                discoveredDeviceParent.getLocalAddress().getHostAddress(),
+                cableCardPresent,
                 encoderLineup,
                 offlineChannelScan,
                 rtpServices.getRtpLocalPort());
@@ -1606,88 +1609,6 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 (encoderDeviceType != CaptureDeviceType.DCT_HDHOMERUN &&
                         HDHomeRunDiscoverer.getAlwaysTuneLegacy());
     }
-
-    /*private static final HashSet<String> updateLineups = new HashSet<>();
-
-    private static void updateAllChannelMappings(final HDHRNativeCaptureDevice captureDevice, final Logger logger, boolean async) {
-
-        synchronized (updateLineups) {
-            int currentLock = 0;
-            try {
-                currentLock = captureDevice.tuner.isLockedByThisComputer();
-            } catch (IOException e) {
-                logger.error("Unable to get if this computer has a lock on HDHomeRun capture" +
-                        " device because it cannot be reached => ", e);
-            } catch (GetSetException e) {
-                logger.error("Unable to get if this computer has a lock on HDHomeRun capture" +
-                        " device because the command did not work => ", e);
-            }
-
-            if (currentLock == -1 || currentLock == 1) {
-                if (updateLineups.contains(captureDevice.encoderLineup)) {
-                    return;
-                }
-            } else {
-                return;
-            }
-
-            updateLineups.add(captureDevice.encoderLineup);
-        }
-
-        Runnable updateChannels = new Runnable() {
-            @Override
-            public void run() {
-                TVChannel tvChannels[] = ChannelManager.getChannelList(captureDevice.encoderLineup, true, true);
-
-                long startTime = System.currentTimeMillis();
-
-                for (TVChannel tvChannel : tvChannels) {
-                    try {
-                        captureDevice.tuner.setVirtualChannel(tvChannel.getChannel());
-                    } catch (IOException e) {
-                        logger.error("Unable to set virtual channel on HDHomeRun capture device" +
-                                " because it cannot be reached => ", e);
-                    } catch (GetSetException e) {
-                        logger.error("Unable to set virtual channel on HDHomeRun capture device" +
-                                " because the command did not work => ", e);
-                    }
-
-                    captureDevice.updateChannelMapping(tvChannel);
-                }
-
-                try {
-                    captureDevice.tuner.clearVirtualChannel();
-                } catch (IOException e) {
-                    logger.error("Unable to clear virtual channel on HDHomeRun capture device" +
-                            " because it cannot be reached => ", e);
-                } catch (GetSetException e) {
-                    logger.error("Unable to clear virtual channel on HDHomeRun capture device" +
-                            " because the command did not work => ", e);
-                }
-
-                long endTime = System.currentTimeMillis();
-                logger.info("Channel map update completed in {}ms.", endTime - startTime);
-
-                synchronized (updateLineups) {
-                    updateLineups.remove(captureDevice.encoderLineup);
-                }
-            }
-        };
-
-
-        if (async) {
-            Thread updateChannelsThread = new Thread(updateChannels);
-            updateChannelsThread.setName(
-                    "HDHomeRunUpdateChannels-" +
-                            updateChannelsThread.getId() +
-                            ":" +
-                            captureDevice.encoderName);
-
-            updateChannelsThread.start();
-        } else {
-            updateChannels.run();
-        }
-    }*/
 
     @Override
     public DeviceOption[] getOptions() {

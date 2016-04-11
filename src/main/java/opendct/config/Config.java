@@ -383,11 +383,11 @@ public class Config {
 
             if (daysOld > retainDays) {
                 if (file.delete()) {
-                    logger.info("Removed log file '{}' because it is over {} {} old.",
-                            file.getName(), days, days == 1 ? "day" : "days");
+                    logger.info("Removed log file '{}' because it is over {} day{} old.",
+                            file.getName(), days, days == 1 ? "" : "s");
                 } else {
-                    logger.info("Unable to remove log file '{}' that is over {} {} old.",
-                            file.getName(), days, days == 1 ? "day" : "days");
+                    logger.info("Unable to remove log file '{}' that is over {} day{} old.",
+                            file.getName(), days, days == 1 ? "" : "s");
                 }
             }
         }
@@ -803,10 +803,17 @@ public class Config {
             try {
                 returnValue = InetAddress.getByName(stringValue);
             } catch (Exception e) {
-                logger.error("The property '{}' should be an IP address, but '{}' was returned." +
-                        " Using the default value of '{}'",
-                        key, stringValue,
-                        defaultValue.getHostAddress());
+                if (defaultValue == null) {
+                    logger.error("The property '{}' should be an IP address, but '{}' was" +
+                            " returned. Using the default value of 'null'",
+                            key, stringValue);
+                } else {
+                    logger.error("The property '{}' should be an IP address, but '{}' was" +
+                                    " returned. Using the default value of '{}'",
+                            key, stringValue,
+                            defaultValue.getHostAddress());
+                }
+
                 returnValue = defaultValue;
             }
         }

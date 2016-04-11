@@ -74,19 +74,26 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                 defaultConsumer.setValue(FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
             }
 
+            logger.info("Dynamic consumer default set to use {}", defaultConsumer.getValue());
+
             channels = ChannelRangesDeviceOption.parseRanges(ffmpegTransConsumer.getValue());
             for (String channel : channels) {
                 dynamicMaps.put(channel, FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
             }
 
-            logger.info("Dynamic consumer set to use FFmpegTransSageTVConsumerImpl for {}", Arrays.toString(channels));
+            logger.info("Dynamic consumer set to use" +
+                    " opendct.consumer.FFmpegTransSageTVConsumerImpl for {}",
+                    Arrays.toString(channels));
 
             channels = ChannelRangesDeviceOption.parseRanges(rawConsumer.getValue());
             for (String channel : channels) {
                 dynamicMaps.put(channel, RawSageTVConsumerImpl.class.getCanonicalName());
             }
 
-            logger.info("Dynamic consumer set to use RawSageTVConsumerImpl for {}", Arrays.toString(channels));
+            logger.info("Dynamic consumer set to use" +
+                    " opendct.consumer.RawSageTVConsumerImpl for {}",
+                    Arrays.toString(channels));
+
         } catch (Exception e) {
             logger.warn("There was an unexpected exception while updating the dynamic consumer" +
                     " channel map => ", e);
@@ -127,10 +134,13 @@ public class DynamicConsumerImpl implements SageTVConsumer {
         }
 
         if (consumerName == null) {
-            logger.debug("Using default consumer '{}' for channel '{}'", defaultConsumer, channel);
+            logger.debug("Using default consumer '{}' for channel '{}'",
+                    defaultConsumer.getValue(), channel);
+
             consumerName = defaultConsumer.getValue();
         } else {
-            logger.debug("Using defined consumer '{}' for channel '{}'", defaultConsumer, channel);
+            logger.debug("Using defined consumer '{}' for channel '{}'",
+                    consumerName, channel);
         }
 
         return Config.getSageTVConsumer(null, consumerName, channel);

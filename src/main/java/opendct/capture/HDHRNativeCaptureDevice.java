@@ -40,7 +40,6 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -657,10 +656,6 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     logger.error("HDHomeRun is unable to tune into channel" +
                             " because it cannot be reached '{}' => ", channel, e);
                     return logger.exit(false);
-                /*} catch (GetSetException e) {
-                    logger.error("HDHomeRun is unable to tune into channel" +
-                            " because the command did not work '{}' => ", channel, e);
-                    return logger.exit(false);*/
                 }
                 break;
             case QAM_HDHOMERUN:
@@ -737,6 +732,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                                 if (tvChannel == null) {
                                     logger.error("Unable to tune channel because no references" +
                                             " were found for this channel number.");
+
                                     return logger.exit(false);
                                 }
 
@@ -755,6 +751,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                                                     " on the lineup '{}'.",
                                             channel,
                                             encoderLineup);
+
                                     return logger.exit(false);
                                 }
 
@@ -764,6 +761,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                                                     " on the lineup '{}'.",
                                             channel,
                                             encoderLineup);
+
                                     return logger.exit(false);
                                 }
                             } else {
@@ -804,7 +802,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                                         anyUrl = qamChannel;
 
-                                        // If we don't rest here, the HDHomeRun sometimes gives a
+                                        // If we don't sleep here, the HDHomeRun sometimes gives a
                                         // 503 error when the URL is accessed less than 1ms later.
                                         Thread.sleep(25);
                                         break;

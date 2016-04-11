@@ -33,7 +33,6 @@ import java.net.InetAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
@@ -65,7 +64,8 @@ public class Config {
      */
     public static final boolean IS_64BIT = System.getProperty("sun.arch.data.model").contains("64");
     public static final String PROJECT_DIR = System.getProperty("user.dir");
-    public static final String BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+    public static final String BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + ".." + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+    public static final String DEBUG_BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
 
     private static int exitCode = 0;
 

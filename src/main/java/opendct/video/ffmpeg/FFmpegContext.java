@@ -16,7 +16,6 @@
 
 package opendct.video.ffmpeg;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,7 +28,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.bytedeco.javacpp.avcodec.*;
@@ -40,9 +38,14 @@ public class FFmpegContext {
     private static final Logger logger = LogManager.getLogger(FFmpegContext.class);
 
     private final static ReentrantReadWriteLock contextLock = new ReentrantReadWriteLock();
-    private final static Map<Long, FFmpegContext> contextMap = new Long2ObjectOpenHashMap<>();
-    private final static Map<Long, FFmpegWriter> writerMap = new Long2ObjectOpenHashMap<>();
-    private final static AtomicLong callbackAddress = new AtomicLong();
+    private final static ReentrantReadWriteLock writeLock = new ReentrantReadWriteLock();
+
+    private static FFmpegContext contextMap[] = new FFmpegContext[1025];
+    private static int nextReadCallbackAddress = 1;
+
+    private static FFmpegWriter writerMap[] = new FFmpegWriter[2049];
+    private static int nextWriteCallbackAddress = 1;
+
     public final Pointer OPAQUE;
     protected Pointer writerOpaque;
     protected Pointer writerOpaque2;
@@ -106,12 +109,12 @@ public class FFmpegContext {
      * @param bufferSize The buffer size to used. This value will be overridden to 2246948 if it is
      *                   less than 2246948.
      * @param rwBufferSize The native buffer size to be used for reading and writing. This value
-     *                     will be overridden to 10340 if it is less than 10340.
+     *                     will be overridden to 32000 if it is less than 32000.
      */
     public FFmpegContext(int bufferSize, int rwBufferSize, FFmpegStreamProcessor streamProcessor) {
        this(
                new FFmpegCircularBufferNIO(bufferSize < 2246948 ? 2246948 : bufferSize),
-               rwBufferSize < 10340 ? 10340 : rwBufferSize,
+               rwBufferSize,
                streamProcessor
        );
     }
@@ -122,9 +125,10 @@ public class FFmpegContext {
      * @param seekBuffer An already initialized buffer or <i>null</i> if the native reading method
      *                   will be used.
      * @param rwBufferSize The native buffer size to be used for reading and writing. This value
-     *                     will be overridden to 10340 if it is less than 10340.
+     *                     will be overridden to 32000 if it is less than 32000.
      */
     public FFmpegContext(FFmpegCircularBufferNIO seekBuffer, int rwBufferSize, FFmpegStreamProcessor streamProcessor) {
+        rwBufferSize = rwBufferSize < 32000 ? 32000 : rwBufferSize;
         disposed = false;
 
         SEEK_BUFFER = seekBuffer;
@@ -174,7 +178,7 @@ public class FFmpegContext {
         contextLock.readLock().lock();
 
         try {
-            returnValue = contextMap.get(opaque.address());
+            returnValue = contextMap[(int)opaque.address()];
         } finally {
             contextLock.readLock().unlock();
         }
@@ -188,8 +192,7 @@ public class FFmpegContext {
         contextLock.writeLock().lock();
 
         try {
-            opaque = new Pointer(new TmpPointer());
-            contextMap.put(opaque.address(), this);
+            opaque = new Pointer(new FFmpegContextPointer(this));
         } finally {
             contextLock.writeLock().unlock();
         }
@@ -200,12 +203,12 @@ public class FFmpegContext {
     public static FFmpegWriter getWriterContext(Pointer opaque) {
         FFmpegWriter returnValue;
 
-        contextLock.readLock().lock();
+        writeLock.readLock().lock();
 
         try {
-            returnValue = writerMap.get(opaque.address());
+            returnValue = writerMap[(int)opaque.address()];
         } finally {
-            contextLock.readLock().unlock();
+            writeLock.readLock().unlock();
         }
 
         return returnValue;
@@ -218,31 +221,82 @@ public class FFmpegContext {
     private Pointer setWriterContext(FFmpegWriter writer) {
         Pointer opaque;
 
-        contextLock.writeLock().lock();
+        writeLock.writeLock().lock();
 
         try {
-            opaque = new Pointer(new TmpPointer());
-            writerMap.put(opaque.address(), writer);
+            opaque = new Pointer(new FFmpegWriterPointer(writer));
         } finally {
-            contextLock.writeLock().unlock();
+            writeLock.writeLock().unlock();
         }
 
         return opaque;
     }
 
     public void removeWriterContext(Pointer opaque) {
-        contextLock.writeLock().lock();
+        writeLock.writeLock().lock();
 
         try {
-            writerMap.remove(opaque.address());
+            writerMap[(int)opaque.address()] = null;
         } finally {
-            contextLock.writeLock().unlock();
+            writeLock.writeLock().unlock();
         }
     }
 
-    private class TmpPointer extends Pointer {
-        TmpPointer() {
-            address = callbackAddress.incrementAndGet();
+    private static long getFFmpegCallbackAddress(FFmpegContext context) {
+
+        int startingIndex = nextReadCallbackAddress;
+
+        while (contextMap[nextReadCallbackAddress] != null) {
+            nextReadCallbackAddress++;
+
+            if (nextReadCallbackAddress >= contextMap.length) {
+                nextReadCallbackAddress = 1;
+            }
+
+            if (nextReadCallbackAddress == startingIndex) {
+                FFmpegContext newContextMap[] = new FFmpegContext[contextMap.length * 2];
+                System.arraycopy(contextMap, 0, newContextMap, 0, contextMap.length);
+                contextMap = newContextMap;
+            }
+        }
+
+        contextMap[nextReadCallbackAddress] = context;
+
+        return nextReadCallbackAddress;
+    }
+
+    private class FFmpegContextPointer extends Pointer {
+        public FFmpegContextPointer(FFmpegContext context) {
+            address = getFFmpegCallbackAddress(context);
+        }
+    }
+
+    private static long getFFmpegWriterCallbackAddress(FFmpegWriter context) {
+
+        int startingIndex = nextWriteCallbackAddress;
+
+        while (writerMap[nextWriteCallbackAddress] != null) {
+            nextWriteCallbackAddress++;
+
+            if (nextWriteCallbackAddress >= writerMap.length) {
+                nextWriteCallbackAddress = 1;
+            }
+
+            if (nextWriteCallbackAddress == startingIndex) {
+                FFmpegWriter newWriterMap[] = new FFmpegWriter[writerMap.length * 2];
+                System.arraycopy(writerMap, 0, newWriterMap, 0, writerMap.length);
+                writerMap = newWriterMap;
+            }
+        }
+
+        writerMap[nextWriteCallbackAddress] = context;
+
+        return nextWriteCallbackAddress;
+    }
+
+    private class FFmpegWriterPointer extends Pointer {
+        public FFmpegWriterPointer(FFmpegWriter context) {
+            address = getFFmpegWriterCallbackAddress(context);
         }
     }
 
@@ -964,14 +1018,17 @@ public class FFmpegContext {
             contextLock.writeLock().lock();
 
             try {
-                contextMap.remove(OPAQUE.address());
+                contextMap[(int)OPAQUE.address()] = null;
             } finally {
                 contextLock.writeLock().unlock();
             }
 
-
             if (writerOpaque != null) {
                 removeWriterContext(writerOpaque);
+            }
+
+            if (writerOpaque2 != null) {
+                removeWriterContext(writerOpaque2);
             }
 
             deallocAll();

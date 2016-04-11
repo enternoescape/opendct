@@ -678,13 +678,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public class FFmpegDirectWriter implements FFmpegWriter {
-        private volatile long bytesFlushCounter;
-        private volatile long autoOffset;
+        private long autoOffset;
         private boolean firstWrite;
         private boolean closed;
 
-        /*private final BlockingQueue<ByteBuffer> returnedBuffers;
-        private final BlockingQueue<ByteBuffer> writeBuffers;*/
         private final ByteBuffer asyncBuffer = ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2);
         private volatile boolean canWrite = false;
 
@@ -694,14 +691,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         private final File recordingFile;
 
         public FFmpegDirectWriter(final String filename) throws IOException {
-            //returnedBuffers = new LinkedBlockingQueue<>(1);
-            //writeBuffers = new LinkedBlockingQueue<>(2);
-
-            /*try {
-                returnedBuffers.put(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
-            } catch (InterruptedException e) {
-                throw new IOException("Unable to queue the first buffer!");
-            }*/
 
             fileChannel = FileChannel.open(
                     Paths.get(filename),
@@ -712,7 +701,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             recordingFile = new File(directFilename);
 
             autoOffset = 0;
-            bytesFlushCounter = 0;
             firstWrite = false;
             closed = false;
 
@@ -732,8 +720,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 return -1;
             }
 
-            //currentWrite = null;
-
             if (length == 0) {
                 return length;
             }
@@ -752,26 +738,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             } else {
                 writeBuffer.limit(length).position(0);
             }
-
-            /*try {
-                currentWrite = returnedBuffers.take();
-            } catch (InterruptedException e) {
-                logger.error("Interrupted while waiting for buffer to return.");
-                return -1;
-            }*/
-            /*synchronized (asyncBuffer) {
-                if (fileChannel == null) {
-                    try {
-                        fileChannel = FileChannel.open(
-                                Paths.get(directFilename),
-                                StandardOpenOption.WRITE,
-                                StandardOpenOption.CREATE);
-                    } catch (IOException e1) {
-                        logger.error("Unable to open file '{}' => ", directFilename, e1);
-                        return -1;
-                    }
-                }
-            }*/
 
             if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + length) {
                 ByteBuffer slice = writeBuffer.slice();
@@ -793,22 +759,22 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     asyncBuffer.flip();
                     canWrite = true;
                     asyncBuffer.notifyAll();
+
+                    while(canWrite) {
+                        try {
+                            asyncBuffer.wait(500);
+                        } catch (InterruptedException e) {
+                            logger.error("Interrupted while waiting for the buffer => ",
+                                    directFilename, e);
+                            break;
+                        }
+                    }
+
+                    data.position((int) (data.position() + (stvRecordBufferSize - autoOffset)));
+                    autoOffset = 0;
                 }
-
-                /*try {
-                    writeBuffers.put(currentWrite);
-                    currentWrite = returnedBuffers.take();
-                } catch (InterruptedException e) {
-                    logger.error("Interrupted while queuing the next write for the file '{}' => ",
-                            directFilename, e);
-                }*/
-
-                data.position((int) (data.position() + (stvRecordBufferSize - autoOffset)));
-                autoOffset = 0;
             }
 
-
-            //try {
             synchronized (asyncBuffer) {
                 while(canWrite) {
                     try {
@@ -826,13 +792,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 canWrite = true;
                 asyncBuffer.notifyAll();
             }
-
-                //writeBuffers.put(currentWrite);
-            /*} catch (InterruptedException e) {
-                logger.error("Interrupted while queuing the next write for the file '{}' => ",
-                        directFilename, e);
-                return -1;
-            }*/
 
             return length;
         }
@@ -854,16 +813,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 canWrite = true;
                 asyncBuffer.notifyAll();
             }
-
-            /*if (!writeBuffers.offer(zeroBuffer)) {
-                try {
-                    while (!writeBuffers.offer(zeroBuffer, 500, TimeUnit.MILLISECONDS)) {
-                        logger.error("Unable to queue close file buffer.");
-                    }
-                } catch (InterruptedException e) {
-                    logger.error("Interrupted while waiting to re-try queuing file close => ", e);
-                }
-            }*/
         }
 
         @Override
@@ -872,33 +821,14 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
 
         public class AsyncWriter implements Runnable {
+            private long bytesFlushCounter = 0;
 
             @Override
             public void run() {
-                int limit;
                 int writeBytes;
                 long currentBytes;
-                //ByteBuffer byteBuffer;
 
                 while (true) {
-                    /*try {
-                        byteBuffer = writeBuffers.take();
-                    } catch (InterruptedException e) {
-                        // This thread should never be getting interrupted.
-                        logger.error("The async writing thread was interrupted => ", e);
-                        return;
-                    }*/
-
-                    /*if (byteBuffer == null) {
-                        continue;
-                    }*/
-
-
-
-                    // For some reason if this isn't assigned to a variable sometimes it doesn't
-                    // evaluate as 0.
-                    //limit = byteBuffer.limit();
-
                     synchronized (asyncBuffer) {
                         while (!canWrite) {
                             try {
@@ -1029,12 +959,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     currentBytes = bytesStreamed.addAndGet(writeBytes);
                     autoOffset += writeBytes;
                     bytesFlushCounter += writeBytes;
-
-                    /*try {
-                        returnedBuffers.put(byteBuffer);
-                    } catch (InterruptedException e) {
-                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
-                    }*/
 
                     if (currentBytes > initBufferedData) {
                         synchronized (streamingMonitor) {

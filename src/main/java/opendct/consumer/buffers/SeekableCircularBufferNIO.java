@@ -66,7 +66,7 @@ public class SeekableCircularBufferNIO {
         readBuffer = buffer.duplicate();
         writeBuffer = buffer.duplicate();
         capacity = buffer.capacity();
-        maxBufferSize = bufferSize * 3;
+        maxBufferSize = bufferSize * 2;
         resizeBufferIncrement = bufferSize;
         maxOverflowBytes = bufferSize * 4;
     }
@@ -81,7 +81,7 @@ public class SeekableCircularBufferNIO {
         readBuffer = buffer.duplicate();
         writeBuffer = buffer.duplicate();
         capacity = buffer.capacity();
-        maxBufferSize = buffer.limit() * 3;
+        maxBufferSize = buffer.limit() * 2;
         resizeBufferIncrement = buffer.limit();
         maxOverflowBytes = buffer.limit() * 4;
     }

@@ -63,9 +63,8 @@ public class Config {
      *  This is if the JVM is 64-bit, not the OS.
      */
     public static final boolean IS_64BIT = System.getProperty("sun.arch.data.model").contains("64");
-    public static final String PROJECT_DIR = System.getProperty("user.dir");
-    public static final String BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + ".." + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
-    public static final String DEBUG_BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+    public static final String PROJECT_DIR;
+    public static final String BIN_DIR;
 
     private static int exitCode = 0;
 
@@ -75,6 +74,17 @@ public class Config {
     public static final Charset STD_BYTE = StandardCharsets.UTF_8;
 
     private static String directory;
+
+    static {
+        String projectDir = System.getProperty("user.dir");
+
+        if (projectDir.endsWith("jsw")) {
+            projectDir = projectDir.substring(0, projectDir.length() - 4);
+        }
+
+        PROJECT_DIR = projectDir;
+        BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+    }
 
     public static String getConfigDirectory() {
         return Config.directory;

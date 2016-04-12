@@ -42,16 +42,16 @@ public class CCExtractorCommon {
             // The program is probably running in an IDE.
             if (Config.IS_WINDOWS) {
                 if (Config.IS_64BIT) {
-                    newExec = Config.DEBUG_BIN_DIR + "windows-x86_64\\ccextractor\\ccextractor.exe";
+                    newExec = Config.BIN_DIR + "windows-x86_64\\ccextractor\\ccextractor.exe";
                 } else {
-                    newExec = Config.DEBUG_BIN_DIR + "windows-x86\\ccextractor\\ccextractor.exe";
+                    newExec = Config.BIN_DIR + "windows-x86\\ccextractor\\ccextractor.exe";
                 }
 
             } else if (Config.IS_LINUX) {
                 if (Config.IS_64BIT) {
-                    newExec = Config.DEBUG_BIN_DIR + "linux-x86_64/ccextractor/ccextractor";
+                    newExec = Config.BIN_DIR + "linux-x86_64/ccextractor/ccextractor";
                 } else {
-                    newExec = Config.DEBUG_BIN_DIR + "linux-x86/ccextractor/ccextractor";
+                    newExec = Config.BIN_DIR + "linux-x86/ccextractor/ccextractor";
                 }
             } else {
                 newExec = "";

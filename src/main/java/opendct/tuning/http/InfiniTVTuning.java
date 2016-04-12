@@ -378,7 +378,7 @@ public class InfiniTVTuning {
             inputStream.close();
         } catch (IOException e) {
             logger.error("Unable to read reply. Capture device is not available => {}",
-                    e.toString());
+                    e.getMessage());
         }
 
         return logger.exit(true);

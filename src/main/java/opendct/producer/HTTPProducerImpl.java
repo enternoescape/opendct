@@ -220,7 +220,7 @@ public class HTTPProducerImpl implements HTTPProducer {
                         try {
                             Thread.sleep(250);
                         } catch (InterruptedException e1) {
-                            logger.debug("Producer was interrupted waiting to retry HTTP connection => ", e.toString());
+                            logger.debug("Producer was interrupted waiting to retry HTTP connection => ", e.getMessage());
                             stalled = true;
                             Thread.currentThread().interrupt();
                             break;

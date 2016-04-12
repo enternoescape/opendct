@@ -16,7 +16,6 @@
 
 package opendct.video.ccextractor;
 
-import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -41,10 +40,22 @@ public class CCExtractorSrtInstance {
             throw new IOException("Unable to use CCExtractor because the OS is not supported.");
         }
 
-        String execute = CC_BINARY +
-                STD_SRT_PARAMETERS +
-                parameters +
-                " -o \"" + baseFilename + ".srt\"";
+        String execute = CC_BINARY + STD_SRT_PARAMETERS;
+
+        // Attempt to prevent additional commands from being executed intentionally or
+        // unintentionally.
+        if (parameters.contains(" & ") || parameters.contains("&&") ||
+                parameters.contains(";") || parameters.contains("|")) {
+
+            parameters = parameters.replace(" & ", "").replace("&&", "")
+                    .replace(";", "").replace("|", "");
+        }
+
+        if (baseFilename.contains("\"")) {
+            baseFilename = baseFilename.replace("\"", "");
+        }
+
+        execute = execute + parameters + " -o \"" + baseFilename + ".srt\"";
 
         logger.debug("Executing: {}", execute);
         ccExtractor = RUNTIME.exec(execute);

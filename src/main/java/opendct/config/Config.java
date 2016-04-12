@@ -40,8 +40,8 @@ public class Config {
     public static final int VERSION_CONFIG = 3;
 
     public static final int VERSION_MAJOR = 0;
-    public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 46;
+    public static final int VERSION_MINOR = 5;
+    public static final int VERSION_BUILD = 0;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 

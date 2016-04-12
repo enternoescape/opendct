@@ -586,7 +586,7 @@ bintray {
     dryRun = false //Whether to run this as dry-run, without deploying
     publish = true //If version should be auto published after an upload
     pkg {
-        repo = 'Release'
+        repo = 'Releases'
         name = 'OpenDCT'
         userOrg = 'opendct'
         desc = "OpenDCT Release"

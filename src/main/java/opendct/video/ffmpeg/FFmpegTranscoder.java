@@ -650,7 +650,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         // This is the number of ticks off +/- from the expected timestamp allowed before corrective
         // action is taken. This number will increase automatically if it is determined to be too
         // low.
-        int discontinuityTolerance = 450000;
+        int discontinuityTolerance = 1000000;
         long expectedDts;
 
         final boolean fixingEnabled = FFmpegConfig.getFixStream();

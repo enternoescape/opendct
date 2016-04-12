@@ -778,13 +778,13 @@
 > *Fixed incorrect variable order for repeat FFmpeg logging.
 
 > *Added additional length check in FFmpeg enhanced logging to prevent
-  wasting cycles parsing an entry that isn't likely to be parsed
-  successfully.
+> wasting cycles parsing an entry that isn't likely to be parsed
+> successfully.
 
 > *Fixed pts being adjusted incorrectly under some circumstances.
 
 > *Socket server now doesn't try to register the loopback address for
-  standby support.
+> standby support.
 
 > *Changed over to using G1GC for garbage collection.
 
@@ -803,7 +803,7 @@
 > performed by the transcoding FFmpeg consumer.
 
 > *Added handling for a native error when getting all currently
-  available network interfaces. 
+> available network interfaces. 
   
 > *Removed some tuning code that never executes anymore due to the
   delays already in place to support MPEG-PS.
@@ -813,3 +813,7 @@
 
 > *Fixed issue with upload id that would cause the file be overwritten
 > from the beginning if there was a disconnection.
+
+#### 0.4.47-Stable
+> *Changed starting dts tolerance from 450000 cycles to 1000000 to
+> support the large gaps in Music Choice.

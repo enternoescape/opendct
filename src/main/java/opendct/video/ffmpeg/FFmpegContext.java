@@ -154,10 +154,6 @@ public class FFmpegContext {
         audioInCodecCtx = null;
         videoFramerate = new AVRational();
 
-        /*streamMap = new int[0];
-        encodeMap = new boolean[0];
-        encoderCodecs = new AVCodec[0];
-        encoderDicts = new AVDictionary[0];*/
         streamMap = new OutputStreamMap[0];
         encodeProfile = null;
         videoEncodeSettings = new HashMap<>();

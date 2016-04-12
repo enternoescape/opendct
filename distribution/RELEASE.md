@@ -791,3 +791,25 @@
 > *Defined native crash logging location on Linux.
 
 > *Internal: Removed some logging stack traces that don't need to exist.
+
+#### 0.4.46-Stable
+> *Features indicated as experimental in 0.4 may still have issues that
+> might only be addressed in 0.5+. 0.4 changes after this release will
+> only address major issues that do not require significant changes.
+
+> *Fixed HDHomeRun devices not being re-detected after standby.
+
+> *Added a small performance optimization to reduce the number reads
+> performed by the transcoding FFmpeg consumer.
+
+> *Added handling for a native error when getting all currently
+  available network interfaces. 
+  
+> *Removed some tuning code that never executes anymore due to the
+  delays already in place to support MPEG-PS.
+  
+> *Handled initial file creation failure so it returns ERROR instead of
+> pointlessly pushing through.
+
+> *Fixed issue with upload id that would cause the file be overwritten
+> from the beginning if there was a disconnection.

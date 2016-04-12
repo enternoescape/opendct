@@ -87,7 +87,7 @@ public class RegisterDevice {
                             logger.debug("There was a problem initializing the capture device => ", e);
                             failedAdds += 1;
                         } catch (CaptureDeviceIgnoredException e) {
-                            logger.debug("The capture device was was not permitted to initialize => {}", e.toString());
+                            logger.debug("The capture device was was not permitted to initialize => {}", e.getMessage());
                             ignoredAdds += 1;
                         } catch (Exception e) {
                             logger.error("There was a problem creating network encoders from the embedded devices on '{}' with the schema '{}' => {}", deviceName, deviceSchema, e);

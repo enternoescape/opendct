@@ -104,7 +104,7 @@ public class RTCPClient implements Runnable {
                 datagramChannel.close();
                 datagramChannel.socket().close();
             } catch (IOException e) {
-                logger.debug("RTCP client created an exception while closing the datagram channel => {}", e.toString());
+                logger.debug("RTCP client created an exception while closing the datagram channel => {}", e.getMessage());
             }
         }
     }
@@ -177,7 +177,7 @@ public class RTCPClient implements Runnable {
                     // This starts a new listening thread, so we need to completely exit this thread.
                     return;
                 } else {
-                    logger.debug("The RTCP client thread has been requested to stop => {}", e.toString());
+                    logger.debug("The RTCP client thread has been requested to stop => {}", e.getMessage());
                     break;
                 }
             } catch (Exception e) {
@@ -191,7 +191,7 @@ public class RTCPClient implements Runnable {
                 datagramChannel.close();
                 datagramChannel.socket().close();
             } catch (IOException e) {
-                logger.debug("RTCP client created an exception while closing the datagram channel => {}", e.toString());
+                logger.debug("RTCP client created an exception while closing the datagram channel => {}", e.getMessage());
             }
         }
 

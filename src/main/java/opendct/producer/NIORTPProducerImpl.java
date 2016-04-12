@@ -38,7 +38,6 @@ public class NIORTPProducerImpl implements RTPProducer {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
-    //private RTCPClient rtcpClient = new RTCPClient();
 
     private int packetsBadReceived = 0;
     private long packetsReceived = 0;
@@ -97,8 +96,6 @@ public class NIORTPProducerImpl implements RTPProducer {
                     logger.debug("Producer created an exception while closing the datagram channel => ", e0);
                 }
             }
-
-            //rtcpClient.stopReceiving();
 
             throw e;
         }
@@ -235,11 +232,11 @@ public class NIORTPProducerImpl implements RTPProducer {
                     }
                 }
             } catch (ClosedByInterruptException e) {
-                logger.debug("Producer was closed by an interrupt exception => {}", e.toString());
+                logger.debug("Producer was closed by an interrupt exception => {}", e.getMessage());
             } catch (AsynchronousCloseException e) {
-                logger.debug("Producer was closed by an asynchronous close exception => {}", e.toString());
+                logger.debug("Producer was closed by an asynchronous close exception => {}", e.getMessage());
             } catch (ClosedChannelException e) {
-                logger.debug("Producer was closed by a close channel exception => {}", e.toString());
+                logger.debug("Producer was closed by a close channel exception => {}", e.getMessage());
             } catch (Exception e) {
                 logger.error("Producer created an unexpected exception => ", e);
             } finally {
@@ -248,30 +245,16 @@ public class NIORTPProducerImpl implements RTPProducer {
         }
 
         if (datagramChannel != null) {
-            /*try {
-                rtcpClient.stopReceiving();
-            } catch (Exception e) {
-                logger.debug("Producer created an exception while closing the RTCP channel => {}", e.toString());
-            }*/
-
             try {
                 datagramChannel.close();
                 // The datagram channel doesn't seem to close the socket every time.
                 datagramChannel.socket().close();
             } catch (IOException e) {
-                logger.debug("Producer created an exception while closing the datagram channel => {}", e.toString());
+                logger.debug("Producer created an exception while closing the datagram channel => {}", e.getMessage());
             }
         }
 
         logger.info("Producer thread has stopped.");
-
-        /*if (rtcpClient != null) {
-            try {
-                rtcpClient.waitForStop();
-            } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => {}", e.toString());
-            }
-        }*/
 
         running.set(false);
         stop.set(false);

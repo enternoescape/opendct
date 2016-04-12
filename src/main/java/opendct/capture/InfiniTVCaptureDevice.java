@@ -523,9 +523,13 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             logger.info("Configuring and starting the new SageTV consumer...");
 
             if (uploadID > 0 && remoteAddress != null) {
-                newConsumer.consumeToUploadID(filename, uploadID, remoteAddress);
+                if (!newConsumer.consumeToUploadID(filename, uploadID, remoteAddress)) {
+                    return logger.exit(false);
+                }
             } else if (!scanOnly) {
-                newConsumer.consumeToFilename(filename);
+                if (!newConsumer.consumeToFilename(filename)) {
+                    return logger.exit(false);
+                }
             }
 
             startConsuming(channel, newConsumer, encodingQuality, bufferSize);

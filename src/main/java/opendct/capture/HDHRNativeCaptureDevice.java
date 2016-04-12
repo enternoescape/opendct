@@ -1127,12 +1127,20 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
         ChannelLineup lineup = ChannelManager.getChannelLineup(encoderLineup);
 
-        String tunerUrl;
+        String tunerUrl = channel.getUrl();
+
+        try {
+            URL tempUrl = new URL(tunerUrl);
+            tunerUrl = "http://" + device.getIpAddress().getHostAddress() + "/" + tempUrl.getFile();
+        } catch (MalformedURLException e) {
+            logger.error("'{}' does not appear to be a valid URL => ", tunerUrl, e);
+            return false;
+        }
 
         //  Change the IP address to match the tuner we are actually trying to use.
-        tunerUrl = channel.getUrl().replace(
+        /*tunerUrl = channel.getUrl().replace(
                 "http://" + lineup.getAddress(),
-                "http://" + device.getIpAddress().getHostAddress());
+                "http://" + device.getIpAddress().getHostAddress());*/
 
         // Change the tuner to a specific tuner instead of just picking whatever is available.
         tunerUrl = tunerUrl.replace("/auto/", "/tuner" + tuner.TUNER_NUMBER + "/");

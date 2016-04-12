@@ -396,10 +396,10 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                         Config.getSageTVConsumersLessDynamic());
 
                 ffmpegTransConsumer = new ChannelRangesDeviceOption(
-                        Config.getString("consumer.dynamic.channels.ffmpeg_trans", ""),
+                        Config.getString("consumer.dynamic.channels.ffmpeg", ""),
                         false,
                         "FFmpeg Transcoder Consumer Channels",
-                        "consumer.dynamic.channels.ffmpeg_trans",
+                        "consumer.dynamic.channels.ffmpeg",
                         "These are the channel ranges that will always use" +
                                 " FFmpegTransSageTVConsumerImpl."
                 );

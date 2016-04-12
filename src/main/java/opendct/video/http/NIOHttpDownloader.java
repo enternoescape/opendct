@@ -49,10 +49,11 @@ public class NIOHttpDownloader {
     }
 
     /**
-     * Connect to
+     * Connect to the provided address and start content download.
      *
-     * @param address
-     * @throws IOException
+     * @param address The URL to download.
+     * @throws IOException Thrown if the connection cannot be established or the requested file does
+     *                     not exist.
      */
     public void connect(URL address) throws IOException {
         if (closed) {

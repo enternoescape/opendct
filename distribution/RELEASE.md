@@ -813,3 +813,7 @@
 
 > *Fixed issue with upload id that would cause the file be overwritten
 > from the beginning if there was a disconnection.
+
+#### 0.4.47-Stable
+> *Changed starting dts tolerance from 450000 cycles to 1000000 to
+> support Music Choice.

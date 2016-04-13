@@ -16,7 +16,6 @@
 
 package opendct.channel.updater.http;
 
-import com.sun.javafx.collections.MappingChange;
 import opendct.channel.ChannelLineup;
 import opendct.channel.TVChannel;
 import opendct.channel.TVChannelImpl;

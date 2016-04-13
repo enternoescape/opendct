@@ -19,7 +19,6 @@ package opendct.capture;
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
-import opendct.producer.HTTPProducerImpl;
 import opendct.producer.NIOHTTPProducerImpl;
 import opendct.producer.SageTVProducer;
 import org.apache.logging.log4j.LogManager;

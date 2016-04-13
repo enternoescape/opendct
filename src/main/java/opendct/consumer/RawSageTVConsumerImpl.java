@@ -21,7 +21,6 @@ import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
-import opendct.consumer.buffers.SeekableCircularBuffer;
 import opendct.consumer.buffers.SeekableCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.java.VideoUtil;

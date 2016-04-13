@@ -16,7 +16,6 @@
 
 package opendct.tuning.discovery;
 
-import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.Config;
 import opendct.config.options.DeviceOption;
@@ -25,7 +24,6 @@ import opendct.config.options.StringDeviceOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public abstract class BasicDiscoveredDeviceParent implements DiscoveredDeviceParent {

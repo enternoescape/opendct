@@ -22,13 +22,10 @@ import opendct.video.http.NIOHttpDownloader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.SocketException;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NIOHTTPProducerImpl implements HTTPProducer {

@@ -20,7 +20,6 @@ import opendct.config.Config;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.message.ObjectArrayMessage;
 import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.avutil;
 import org.bytedeco.javacpp.avutil.Callback_Pointer_int_String_Pointer;
@@ -30,7 +29,6 @@ import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.bytedeco.javacpp.avutil.av_log_format_line;
 

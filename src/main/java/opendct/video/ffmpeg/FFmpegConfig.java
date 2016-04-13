@@ -16,7 +16,6 @@
 
 package opendct.video.ffmpeg;
 
-import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.options.*;
 import org.apache.logging.log4j.LogManager;

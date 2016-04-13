@@ -27,7 +27,6 @@ import opendct.tuning.upnp.config.DCTDefaultUpnpServiceConfiguration;
 import opendct.tuning.upnp.listener.DCTRegistryListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.ThreadContext;
 import org.fourthline.cling.DefaultUpnpServiceConfiguration;
 import org.fourthline.cling.UpnpService;
 import org.fourthline.cling.UpnpServiceImpl;

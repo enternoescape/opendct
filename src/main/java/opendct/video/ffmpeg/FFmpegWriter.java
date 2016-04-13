@@ -20,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.BytePointer;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public interface FFmpegWriter {
 

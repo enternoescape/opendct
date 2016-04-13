@@ -18,7 +18,6 @@ package opendct.producer;
 
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
-import opendct.video.rtsp.rtcp.RTCPClient;
 import opendct.video.rtsp.rtp.RTPPacketProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

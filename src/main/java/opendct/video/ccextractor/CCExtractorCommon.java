@@ -18,8 +18,6 @@ package opendct.video.ccextractor;
 
 import opendct.config.Config;
 
-import java.io.File;
-
 public class CCExtractorCommon {
     public static final Runtime RUNTIME = Runtime.getRuntime();
     public static final String CC_BINARY;
@@ -36,30 +34,6 @@ public class CCExtractorCommon {
 
         } else {
             newExec = "";
-        }
-
-        if (!(new File(newExec).exists())) {
-            // The program is probably running in an IDE.
-            if (Config.IS_WINDOWS) {
-                if (Config.IS_64BIT) {
-                    newExec = Config.BIN_DIR + "windows-x86_64\\ccextractor\\ccextractor.exe";
-                } else {
-                    newExec = Config.BIN_DIR + "windows-x86\\ccextractor\\ccextractor.exe";
-                }
-
-            } else if (Config.IS_LINUX) {
-                if (Config.IS_64BIT) {
-                    newExec = Config.BIN_DIR + "linux-x86_64/ccextractor/ccextractor";
-                } else {
-                    newExec = Config.BIN_DIR + "linux-x86/ccextractor/ccextractor";
-                }
-            } else {
-                newExec = "";
-            }
-
-            if (!(new File(newExec).exists())) {
-                newExec = "";
-            }
         }
 
         // Linux does not like this path being put in quotes, but Windows needs it.

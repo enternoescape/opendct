@@ -77,13 +77,37 @@ public class Config {
 
     static {
         String projectDir = System.getProperty("user.dir");
+        boolean dev = true;
 
         if (projectDir.endsWith("jsw")) {
             projectDir = projectDir.substring(0, projectDir.length() - 4);
+            dev = false;
         }
 
         PROJECT_DIR = projectDir;
-        BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+
+        if (dev) {
+            String binDir = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+
+            if (Config.IS_WINDOWS) {
+                if (Config.IS_64BIT) {
+                    binDir += "windows-x86_64\\";
+                } else {
+                    binDir += "windows-x86\\";
+                }
+
+            } else if (Config.IS_LINUX) {
+                if (Config.IS_64BIT) {
+                    binDir += "linux-x86_64/";
+                } else {
+                    binDir += "linux-x86/";
+                }
+            }
+
+            BIN_DIR = binDir;
+        } else {
+            BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+        }
     }
 
     public static String getConfigDirectory() {

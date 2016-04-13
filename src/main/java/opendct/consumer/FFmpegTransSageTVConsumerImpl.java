@@ -486,7 +486,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             writeAddress = data.address();
 
             if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
-                writeBuffer = data.position(0).limit(length).asBuffer();;
+                writeBuffer = data.position(0).limit(length).asByteBuffer();;
                 lastWriteAddress = writeAddress;
                 lastWriteCapacity = length;
             } else {
@@ -607,7 +607,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             writeAddress = data.address();
 
             if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
-                writeBuffer = data.position(0).limit(length).asBuffer();;
+                writeBuffer = data.position(0).limit(length).asByteBuffer();;
                 lastWriteAddress = writeAddress;
                 lastWriteCapacity = length;
             } else {
@@ -733,7 +733,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             writeAddress = data.address();
 
             if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
-                writeBuffer = data.position(0).limit(length).asBuffer();;
+                writeBuffer = data.position(0).limit(length).asByteBuffer();;
                 lastWriteAddress = writeAddress;
                 lastWriteCapacity = length;
             } else {

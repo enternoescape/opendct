@@ -16,7 +16,6 @@
 
 package opendct.consumer;
 
-import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBuffer;
@@ -534,7 +533,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             int nBytes = -1;
 
             try {
-                ByteBuffer readBuffer = buf.position(0).limit(bufSize).asBuffer();
+                ByteBuffer readBuffer = buf.position(0).limit(bufSize).asByteBuffer();
 
                 nBytes = consumer.seekableBuffer.read(readBuffer);
 

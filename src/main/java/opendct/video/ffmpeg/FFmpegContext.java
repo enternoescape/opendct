@@ -359,6 +359,7 @@ public class FFmpegContext {
 
     protected long lastReadAddress = 0;
     protected int lastReadCapacity = 0;
+    protected int minRead = 0;
     protected long readAddress = 0;
     protected ByteBuffer readBuffer = null;
 
@@ -379,6 +380,7 @@ public class FFmpegContext {
                         context.readBuffer = buf.position(0).limit(bufSize).asByteBuffer();
                         context.lastReadAddress = context.readAddress;
                         context.lastReadCapacity = bufSize;
+                        context.minRead = bufSize / 4;
                     } else {
                         context.readBuffer.limit(bufSize).position(0);
                     }
@@ -387,14 +389,9 @@ public class FFmpegContext {
 
                     // This forces the buffer to be more efficient, but also allows things to
                     // remain responsive.
-                    if (context.readBuffer.remaining() > 0 && !context.isInterrupted()) {
-                        Thread.sleep(200);
+                    while (nBytes < context.minRead && !context.isInterrupted()) {
+                        Thread.sleep(10);
                         nBytes += context.SEEK_BUFFER.read(context.readBuffer);
-
-                        if (context.readBuffer.remaining() > 0 && !context.isInterrupted()) {
-                            Thread.sleep(100);
-                            nBytes += context.SEEK_BUFFER.read(context.readBuffer);
-                        }
                     }
 
                 } catch (Exception e) {

@@ -17,19 +17,17 @@
 package opendct.video.ffmpeg;
 
 import opendct.config.Config;
-import opendct.config.options.BooleanDeviceOption;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
-import opendct.config.options.IntegerDeviceOption;
+import opendct.config.options.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FFmpegConfig {
     private static final Logger logger = LogManager.getLogger(FFmpegConfig.class);
 
-    private static final ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private static final Map<String, DeviceOption> deviceOptions;
 
     private static BooleanDeviceOption uploadIdEnabled;
     private static IntegerDeviceOption circularBufferSize;
@@ -43,6 +41,9 @@ public class FFmpegConfig {
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption h264PtsHack;
     private static BooleanDeviceOption fixStream;
+    private static BooleanDeviceOption ccExtractor;
+    private static BooleanDeviceOption ccExtractorAllStreams;
+    private static StringDeviceOption ccExtractorCustomOptions;
 
     static {
         deviceOptions = new ConcurrentHashMap<>();
@@ -62,7 +63,10 @@ public class FFmpegConfig {
                 threadPriority,
                 uploadIdPort,
                 h264PtsHack,
-                fixStream
+                fixStream,
+                ccExtractor,
+                ccExtractorAllStreams,
+                ccExtractorCustomOptions
         );
     }
 
@@ -212,8 +216,38 @@ public class FFmpegConfig {
                                 " recordings at times."
                 );
 
+                ccExtractor = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.ccextractor_enabled", false),
+                        false,
+                        "Enable CCExtractor",
+                        "consumer.ffmpeg.ccextractor_enabled",
+                        "This enables the creation of .srt files live while recording. This" +
+                                " option will not do anything when Upload ID is enabled."
+                );
+
+                ccExtractorAllStreams = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.ccextractor_all_streams", true),
+                        false,
+                        "Extract All CCExtractor Streams",
+                        "consumer.ffmpeg.ccextractor_all_streams",
+                        "This enables the creation of all possible .srt files if CCExtractor is" +
+                                " enabled. If this option is disabled, only the first stream will" +
+                                " be extracted (CC1)."
+                );
+
+                ccExtractorCustomOptions = new StringDeviceOption(
+                        Config.getString("consumer.ffmpeg.ccextractor_custom_options", ""),
+                        false,
+                        "CCExtractor Custom Options",
+                        "consumer.ffmpeg.ccextractor_custom_options",
+                        "This allows you to add custom parameters to CCExtractor so you can" +
+                                " customize the output if desired. Failure to provide valid" +
+                                " options will result in CCExtractor failing to start. Be sure to" +
+                                " verify that your changes work."
+                );
+
             } catch (DeviceOptionException e) {
-                logger.warn("Invalid options. Reverting to defaults => ", e);
+                logger.warn("Invalid option {}. Reverting to defaults => ", e.deviceOption, e);
 
                 Config.setBoolean("consumer.ffmpeg.upload_id_enabled", false);
                 Config.setInteger("consumer.ffmpeg.circular_buffer_size", 7864320);
@@ -227,6 +261,10 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
                 Config.setBoolean("consumer.ffmpeg.h264_pts_hack", false);
                 Config.setBoolean("consumer.ffmpeg.fix_stream", true);
+                Config.setBoolean("consumer.ffmpeg.ccextractor_enabled", false);
+                Config.setBoolean("consumer.ffmpeg.ccextractor_all_streams", true);
+                Config.setString("consumer.ffmpeg.ccextractor_custom_options", "");
+
                 continue;
             }
 
@@ -262,7 +300,10 @@ public class FFmpegConfig {
                 threadPriority,
                 uploadIdPort,
                 h264PtsHack,
-                fixStream
+                fixStream,
+                ccExtractor,
+                ccExtractorAllStreams,
+                ccExtractorCustomOptions
         };
     }
 
@@ -346,5 +387,17 @@ public class FFmpegConfig {
 
     public static boolean getFixStream() {
         return fixStream.getBoolean();
+    }
+
+    public static boolean getCcExtractor() {
+        return ccExtractor.getBoolean();
+    }
+
+    public static boolean getCcExtractorAllStreams() {
+        return ccExtractorAllStreams.getBoolean();
+    }
+
+    public static String getCcExtractorCustomOptions() {
+        return ccExtractorCustomOptions.getValue();
     }
 }

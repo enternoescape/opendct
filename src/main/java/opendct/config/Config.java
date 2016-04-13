@@ -16,13 +16,12 @@
 
 package opendct.config;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.*;
-import opendct.producer.HTTPProducer;
-import opendct.producer.HTTPProducerImpl;
-import opendct.producer.NIORTPProducerImpl;
-import opendct.producer.RTPProducer;
+import opendct.producer.*;
 import opendct.util.Util;
 import opendct.video.rtsp.DCTRTSPClientImpl;
 import opendct.video.rtsp.RTSPClient;
@@ -34,7 +33,6 @@ import java.net.InetAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
@@ -42,8 +40,8 @@ public class Config {
     public static final int VERSION_CONFIG = 3;
 
     public static final int VERSION_MAJOR = 0;
-    public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 47;
+    public static final int VERSION_MINOR = 5;
+    public static final int VERSION_BUILD = 0;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -52,7 +50,7 @@ public class Config {
     private static Properties properties = new Properties();
     private static volatile boolean isConfigOnly = false;
     private static volatile boolean isShutdown = false;
-    private static final HashMap<Integer, String> rtspPortMap = new HashMap<>();
+    private static final Map<Integer, String> rtspPortMap = new Int2ObjectOpenHashMap<>();
 
     public static final OSVersion OS_VERSION = getOsVersion();
     public static final boolean IS_WINDOWS = (OS_VERSION == OSVersion.WINDOWS);
@@ -60,6 +58,13 @@ public class Config {
     public static final boolean IS_MAC = (OS_VERSION == OSVersion.MAC);
     public static final String NEW_LINE = System.lineSeparator();
     public static final String DIR_SEPARATOR = File.separator;
+
+    /**
+     *  This is if the JVM is 64-bit, not the OS.
+     */
+    public static final boolean IS_64BIT = System.getProperty("sun.arch.data.model").contains("64");
+    public static final String PROJECT_DIR;
+    public static final String BIN_DIR;
 
     private static int exitCode = 0;
 
@@ -69,6 +74,41 @@ public class Config {
     public static final Charset STD_BYTE = StandardCharsets.UTF_8;
 
     private static String directory;
+
+    static {
+        String projectDir = System.getProperty("user.dir");
+        boolean dev = true;
+
+        if (projectDir.endsWith("jsw")) {
+            projectDir = projectDir.substring(0, projectDir.length() - 4);
+            dev = false;
+        }
+
+        PROJECT_DIR = projectDir;
+
+        if (dev) {
+            String binDir = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+
+            if (Config.IS_WINDOWS) {
+                if (Config.IS_64BIT) {
+                    binDir += "windows-x86_64\\";
+                } else {
+                    binDir += "windows-x86\\";
+                }
+
+            } else if (Config.IS_LINUX) {
+                if (Config.IS_64BIT) {
+                    binDir += "linux-x86_64/";
+                } else {
+                    binDir += "linux-x86/";
+                }
+            }
+
+            BIN_DIR = binDir;
+        } else {
+            BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
+        }
+    }
 
     public static String getConfigDirectory() {
         return Config.directory;
@@ -232,7 +272,7 @@ public class Config {
                         getStringArray("hdhr.exp_ignore_models",
                                 "HDHR3-CC"));
 
-                setStringArray("hdhr.exp_ignore_models", newArray);
+                setStringArray("hdhr.ignore_models", newArray);
 
 
                 logger.info("Setting 'discovery.exp_enabled' to 'true'");
@@ -377,11 +417,11 @@ public class Config {
 
             if (daysOld > retainDays) {
                 if (file.delete()) {
-                    logger.info("Removed log file '{}' because it is over {} {} old.",
-                            file.getName(), days, days == 1 ? "day" : "days");
+                    logger.info("Removed log file '{}' because it is over {} day{} old.",
+                            file.getName(), days, days == 1 ? "" : "s");
                 } else {
-                    logger.info("Unable to remove log file '{}' that is over {} {} old.",
-                            file.getName(), days, days == 1 ? "day" : "days");
+                    logger.info("Unable to remove log file '{}' that is over {} day{} old.",
+                            file.getName(), days, days == 1 ? "" : "s");
                 }
             }
         }
@@ -797,10 +837,17 @@ public class Config {
             try {
                 returnValue = InetAddress.getByName(stringValue);
             } catch (Exception e) {
-                logger.error("The property '{}' should be an IP address, but '{}' was returned." +
-                        " Using the default value of '{}'",
-                        key, stringValue,
-                        defaultValue.getHostAddress());
+                if (defaultValue == null) {
+                    logger.error("The property '{}' should be an IP address, but '{}' was" +
+                            " returned. Using the default value of 'null'",
+                            key, stringValue);
+                } else {
+                    logger.error("The property '{}' should be an IP address, but '{}' was" +
+                                    " returned. Using the default value of '{}'",
+                            key, stringValue,
+                            defaultValue.getHostAddress());
+                }
+
                 returnValue = defaultValue;
             }
         }
@@ -847,8 +894,6 @@ public class Config {
         logger.entry();
         String os = System.getProperty("os.name");
 
-        logger.debug("OSVersion is parsing the name '{}'.", os);
-
         if (os.toLowerCase().contains("windows")) {
 
             logger.debug("OSVersion determined that '{}' is WINDOWS.", os);
@@ -875,7 +920,7 @@ public class Config {
         }
     }
 
-    public static void mapDeviceOptions(ConcurrentHashMap<String, DeviceOption> optionsMap, DeviceOption... options) {
+    public static void mapDeviceOptions(Map<String, DeviceOption> optionsMap, DeviceOption... options) {
         for (DeviceOption option : options) {
             optionsMap.put(option.getProperty(), option);
         }
@@ -923,22 +968,20 @@ public class Config {
      * @return A string array of all available consumers.
      */
     public static String[] getSageTVConsumers() {
-        String returnValues[] = new String[4];
+        String returnValues[] = new String[3];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = FFmpegSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[3] = DynamicConsumerImpl.class.getCanonicalName();
+        returnValues[1] = RawSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[2] = DynamicConsumerImpl.class.getCanonicalName();
 
         return returnValues;
     }
 
     public static String[] getSageTVConsumersLessDynamic() {
-        String returnValues[] = new String[3];
+        String returnValues[] = new String[2];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = FFmpegSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[1] = RawSageTVConsumerImpl.class.getCanonicalName();
 
         return returnValues;
     }
@@ -1036,7 +1079,9 @@ public class Config {
         HTTPProducer returnValue;
         String clientName = properties.getProperty(key, httpProducer);
 
-        if (clientName.endsWith(HTTPProducerImpl.class.getSimpleName())) {
+        if (clientName.endsWith(NIOHTTPProducerImpl.class.getSimpleName())) {
+            returnValue = new NIOHTTPProducerImpl();
+        } else if (clientName.endsWith(HTTPProducerImpl.class.getSimpleName())) {
             returnValue = new HTTPProducerImpl();
         } else {
             try {
@@ -1119,7 +1164,7 @@ public class Config {
      * @return An array of all socket server ports.
      */
     public static int[] getAllSocketServerPorts() {
-        HashSet<Integer> ports = new HashSet<>();
+        IntOpenHashSet ports = new IntOpenHashSet();
 
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
             String key = (String)entry.getKey();

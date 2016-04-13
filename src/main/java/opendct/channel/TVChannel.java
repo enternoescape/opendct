@@ -57,10 +57,6 @@ public interface TVChannel {
 
     public String getModulation();
 
-    public void setEia(String eia);
-
-    public String getEia();
-
     public String getUrl();
 
     public void setUrl(String url);

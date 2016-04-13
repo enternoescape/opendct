@@ -20,7 +20,7 @@ WRAPPER_CONF="../conf/wrapper.conf"
 
 # Priority at which to run the wrapper.  See "man nice" for valid priorities.
 #  nice is only used if a priority is specified.
-PRIORITY=-19
+PRIORITY=-5
 
 # Location of the pid file.
 PIDDIR="/var/run/opendct"

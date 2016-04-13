@@ -26,6 +26,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SageTVDiscovery implements Runnable {
@@ -44,7 +45,7 @@ public class SageTVDiscovery implements Runnable {
      * Starts the SageTV encoder discovery broadcast.
      */
     public static void startDiscoveryBroadcast(int encoderPort) {
-        logger.entry();
+        logger.entry(encoderPort);
 
         // We are only building the configuration file.
         if (Config.isConfigOnly()) {
@@ -59,6 +60,7 @@ public class SageTVDiscovery implements Runnable {
 
         SageTVDiscovery.encoderPort = encoderPort;
         sageTVDiscoveryThread.setName("SageTVDiscovery-" + sageTVDiscoveryThread.getId());
+        sageTVDiscoveryThread.setDaemon(true);
         sageTVDiscoveryThread.start();
 
         logger.exit();
@@ -98,7 +100,7 @@ public class SageTVDiscovery implements Runnable {
 
             SageTVManager.blockUntilCaptureDevicesLoaded();
 
-            HashMap<String, Long> lastResponse = new HashMap<String, Long>();
+            Map<String, Long> lastResponse = new HashMap<String, Long>();
 
             while (!Thread.currentThread().isInterrupted()) {
 

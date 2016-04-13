@@ -21,7 +21,7 @@ import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
-import opendct.consumer.buffers.SeekableCircularBuffer;
+import opendct.consumer.buffers.SeekableCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
@@ -35,6 +35,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -76,7 +77,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private final Object switchMonitor = new Object();
 
     private ByteBuffer streamBuffer = ByteBuffer.allocate(maxTransferSize);
-    private SeekableCircularBuffer seekableBuffer = new SeekableCircularBuffer(bufferSize);
+    private SeekableCircularBufferNIO seekableBuffer = new SeekableCircularBufferNIO(bufferSize);
 
     private NIOSageTVUploadID nioSageTVUploadID = null;
 
@@ -397,6 +398,10 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         seekableBuffer.write(bytes, offset, length);
     }
 
+    public void write(ByteBuffer buffer) throws IOException {
+        seekableBuffer.write(buffer);
+    }
+
     public void setRecordBufferSize(long bufferSize) {
         this.stvRecordBufferSize = bufferSize;
     }
@@ -573,7 +578,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         return !stalled;
     }
 
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
 
     private static BooleanDeviceOption uploadIdEnabledOpt;
     private static IntegerDeviceOption minTransferSizeOpt;

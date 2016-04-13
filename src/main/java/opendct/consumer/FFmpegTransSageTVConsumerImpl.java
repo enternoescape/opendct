@@ -16,31 +16,38 @@
 
 package opendct.consumer;
 
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
-import opendct.consumer.buffers.FFmpegCircularBuffer;
+import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.util.Util;
+import opendct.video.ccextractor.CCExtractorSrtInstance;
 import opendct.video.ffmpeg.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.message.ObjectArrayMessage;
+import org.bytedeco.javacpp.BytePointer;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousFileChannel;
-import java.nio.channels.CompletionHandler;
+import java.nio.channels.DatagramChannel;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
-    private final Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
+    private final static Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
+    private final static BlockingQueue<FFmpegCircularBufferNIO> buffers = new LinkedBlockingQueue<>();
 
     private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
 
@@ -65,6 +72,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final int ffmpegThreadPriority = FFmpegConfig.getThreadPriority();
 
     private int uploadIDPort = FFmpegConfig.getUploadIdPort();
+
+    private final boolean ccExtractorEnabled = FFmpegConfig.getCcExtractor();
+    private final boolean ccExtractorAllStreams = FFmpegConfig.getCcExtractorAllStreams();
+    private boolean ccExtractorAvailable = false;
+
     private final long initBufferedData = 786432;
 
     private String currentRecordingQuality;
@@ -81,6 +93,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private String currentEncoderFilename = "";
     private FFmpegWriter currentWriter = null;
     private FFmpegWriter switchWriter = null;
+    private FFmpegWriter currentCcWriter = null;
+    private FFmpegWriter switchCcWriter = null;
     private int currentUploadID = 0;
     private long stvRecordBufferSize = 0;
     private final Object streamingMonitor = new Object();
@@ -88,7 +102,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     int desiredProgram = 0;
     private String stateMessage;
-    private FFmpegCircularBuffer circularBuffer;
+    private FFmpegCircularBufferNIO circularBuffer;
     private FFmpegContext ctx;
 
     static {
@@ -96,7 +110,19 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public FFmpegTransSageTVConsumerImpl() {
-        circularBuffer = new FFmpegCircularBuffer(FFmpegConfig.getCircularBufferSize());
+        circularBuffer = null;
+
+        try {
+            circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            logger.debug("Interrupted while recycling buffer => {}", e.toString());
+        }
+
+        if (circularBuffer == null) {
+            circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+        } else {
+            circularBuffer.clear();
+        }
     }
 
     @Override
@@ -104,6 +130,20 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             logger.error("FFmpeg Transcoder consumer is already running.");
             return;
+        }
+
+        if (circularBuffer == null) {
+            try {
+                circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while recycling buffer => {}", e.toString());
+            }
+        }
+
+        if (circularBuffer == null) {
+            circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+        } else {
+            circularBuffer.clear();
         }
 
         logger.info("FFmpeg Transcoder consumer thread is now running.");
@@ -114,6 +154,19 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         logger.debug("Thread priority is {}.", ffmpegThreadPriority);
         Thread.currentThread().setPriority(ffmpegThreadPriority);
+
+        if (ccExtractorEnabled &&
+                stvRecordBufferSize == 0 &&
+                currentWriter instanceof FFmpegDirectWriter) {
+
+            ccExtractorAvailable = true;
+
+            try {
+                currentCcWriter = new FFmpegCCExtractorWriter(currentEncoderFilename);
+            } catch (IOException e) {
+                logger.error("Unable to create CCExtractor writer => ", e);
+            }
+        }
 
         try {
             ctx = new FFmpegContext(circularBuffer, RW_BUFFER_SIZE, new FFmpegTranscoder());
@@ -129,7 +182,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 return;
             }
 
-            ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter);
+            ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter, currentCcWriter);
 
             ctx.STREAM_PROCESSOR.streamOutput();
 
@@ -152,16 +205,24 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             ctx.dispose();
 
+            // This probably needs to be done differently if the class is to be reused.
+            buffers.offer(circularBuffer);
+            circularBuffer = null;
+
             stateMessage = "Stopped.";
             running.set(false);
             logger.info("FFmpeg Transcoder consumer thread stopped.");
         }
-
     }
 
     @Override
     public void write(byte[] bytes, int offset, int length) throws IOException {
         circularBuffer.write(bytes, offset, length);
+    }
+
+    @Override
+    public void write(ByteBuffer buffer) throws IOException {
+        circularBuffer.write(buffer);
     }
 
     @Override
@@ -254,7 +315,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         try {
             switchWriter = new FFmpegUploadIDWriter(uploadSocketAddress, filename, uploadId);
 
-            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter);
+            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter, null);
 
             currentWriter.closeFile();
             currentUploadID = uploadId;
@@ -281,12 +342,16 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         try {
             switchWriter = new FFmpegDirectWriter(filename);
+            if (ccExtractorAvailable) {
+                switchCcWriter = new FFmpegCCExtractorWriter(filename);
+            }
 
-            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter);
+            ctx.STREAM_PROCESSOR.switchOutput(filename, switchWriter, switchCcWriter);
 
             currentWriter.closeFile();
             currentEncoderFilename = filename;
             currentWriter = switchWriter;
+
         } catch (IOException e) {
             logger.error("Unable to open '{}' for writing => ", filename, e);
             return false;
@@ -402,19 +467,36 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             firstWrite = true;
         }
 
+        protected long lastWriteAddress = 0;
+        protected int lastWriteCapacity = 0;
+        protected long writeAddress = 0;
+        protected ByteBuffer writeBuffer = null;
+
         @Override
-        public synchronized int write(ByteBuffer data) throws IOException {
+        public synchronized int write(BytePointer data, int length) throws IOException {
             if (firstWrite) {
                 bytesStreamed.set(0);
                 firstWrite = false;
             }
 
-            int bufferLength = data.remaining();
+            if (length == 0) {
+                return length;
+            }
 
-            streamBuffer.put(data);
+            writeAddress = data.address();
+
+            if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
+                writeBuffer = data.position(0).limit(length).asByteBuffer();;
+                lastWriteAddress = writeAddress;
+                lastWriteCapacity = length;
+            } else {
+                writeBuffer.limit(length).position(0);
+            }
+
+            streamBuffer.put(writeBuffer);
 
             if (streamBuffer.position() < minUploadIDTransfer) {
-                return logger.exit(bufferLength);
+                return logger.exit(length);
             }
 
             streamBuffer.flip();
@@ -452,29 +534,164 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
     }
 
-    public class FFmpegDirectWriter implements FFmpegWriter {
-        private volatile long bytesFlushCounter;
-        private volatile long autoOffset;
+    public class FFmpegCCExtractorWriter implements FFmpegWriter {
+        private CCExtractorSrtInstance ccInstance;
+        protected DatagramChannel datagramChannel;
+        protected SocketAddress targetAddress;
+        protected int portNumber;
 
-        private final BlockingQueue<ByteBuffer> returnedBuffers;
-        private final BlockingQueue<ByteBuffer> writeBuffers;
+        public FFmpegCCExtractorWriter(String filename) throws IOException {
+            String customOptions = FFmpegConfig.getCcExtractorCustomOptions();
+            StringBuilder paramBuilder = new StringBuilder(1024);
+
+            if (Config.IS_LINUX) {
+                paramBuilder.append(" -nobi -stdin");
+            } else {
+                // UDP is a work around until -stdin option on Windows is fixed.
+
+                portNumber = Config.getFreeRTSPPort(Thread.currentThread().getName());
+
+                // Unfortunately -stdin is not functional, so this is the only option.
+                paramBuilder.append(" -nobi -udp ")
+                        .append(Inet4Address.getLoopbackAddress().getHostAddress())
+                        .append(":")
+                        .append(portNumber);
+
+                targetAddress = new InetSocketAddress(Inet4Address.getLoopbackAddress(), portNumber);
+                datagramChannel = DatagramChannel.open();
+                datagramChannel.connect(targetAddress);
+            }
+
+            if (filename.endsWith(".mpg")) {
+                paramBuilder.append(" -in=ps ");
+            } else {
+                paramBuilder.append(" -in=ts ");
+            }
+
+            if(ccExtractorAllStreams) {
+                paramBuilder.append("-12 ");
+            } else {
+                paramBuilder.append("-1 ");
+            }
+
+            if (!Util.isNullOrEmpty(customOptions)) {
+                paramBuilder.append(customOptions).append(" ");
+            }
+
+            int extIndex = filename.lastIndexOf(".");
+            String baseFilename;
+
+            if (extIndex > 0) {
+                baseFilename = filename.substring(0, extIndex);
+            } else {
+                baseFilename = filename;
+            }
+
+            // Create the CCExtractor instance before the recording file so that the .srt files will
+            // already exist providing the subtitle option during playback.
+            ccInstance = new CCExtractorSrtInstance(paramBuilder.toString(), baseFilename);
+        }
+
+        protected long lastWriteAddress = 0;
+        protected int lastWriteCapacity = 0;
+        protected long writeAddress = 0;
+        protected ByteBuffer writeBuffer = null;
+
+        @Override
+        public synchronized int write(BytePointer data, int length) throws IOException {
+
+            if (length == 0) {
+                return length;
+            }
+
+            writeAddress = data.address();
+
+            if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
+                writeBuffer = data.position(0).limit(length).asByteBuffer();;
+                lastWriteAddress = writeAddress;
+                lastWriteCapacity = length;
+            } else {
+                writeBuffer.limit(length).position(0);
+            }
+
+            int bytesSent = length;
+
+            if (ccInstance != null) {
+                bytesSent = 0;
+
+                if (datagramChannel != null) {
+                    if (length > 31960) {
+                        ByteBuffer slice;
+                        int increment;
+                        while (writeBuffer.hasRemaining()) {
+                            increment = Math.min(31960, writeBuffer.remaining());
+                            slice = writeBuffer.slice();
+                            slice.limit(increment);
+                            writeBuffer.position(writeBuffer.position() + increment);
+
+                            while (slice.hasRemaining() && datagramChannel.isOpen()) {
+                                bytesSent += datagramChannel.write(slice);
+                                try {
+                                    Thread.sleep(1);
+                                } catch (InterruptedException e) {
+                                    logger.debug("Interrupted while writing to CCExtractor => {}",
+                                            e.toString());
+                                }
+                            }
+                        }
+                    } else {
+                        while (writeBuffer.hasRemaining() && datagramChannel.isOpen()) {
+                            bytesSent += datagramChannel.write(writeBuffer);
+                        }
+                    }
+                } else {
+                    ccInstance.streamIn(writeBuffer);
+                }
+            }
+
+            return bytesSent;
+        }
+
+        @Override
+        public synchronized void closeFile() {
+            if (ccInstance != null) {
+                ccInstance.setClosed();
+            }
+
+            ccInstance = null;
+
+            if (datagramChannel != null) {
+                try {
+                    datagramChannel.close();
+                } catch (IOException e) {
+                    logger.debug("Error while closing datagram channel => ", e);
+                }
+
+                datagramChannel.socket().close();
+                Config.returnFreeRTSPPort(portNumber);
+            }
+        }
+
+        @Override
+        public Logger getLogger() {
+            return logger;
+        }
+    }
+
+    public class FFmpegDirectWriter implements FFmpegWriter {
+        private long autoOffset;
+        private boolean firstWrite;
+        private boolean closed;
+
+        private final ByteBuffer asyncBuffer = ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2);
+        private volatile boolean canWrite = false;
 
         private Thread asyncWriter;
         private FileChannel fileChannel;
         private final String directFilename;
         private final File recordingFile;
-        private boolean firstWrite;
-        private boolean closed;
 
         public FFmpegDirectWriter(final String filename) throws IOException {
-            returnedBuffers = new LinkedBlockingQueue<>(1);
-            writeBuffers = new LinkedBlockingQueue<>(2);
-
-            try {
-                returnedBuffers.put(ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2));
-            } catch (InterruptedException e) {
-                throw new IOException("Unable to queue the first buffer!");
-            }
 
             fileChannel = FileChannel.open(
                     Paths.get(filename),
@@ -485,100 +702,117 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             recordingFile = new File(directFilename);
 
             autoOffset = 0;
-            bytesFlushCounter = 0;
             firstWrite = false;
             closed = false;
 
             asyncWriter = new Thread(new AsyncWriter());
-            asyncWriter.setName("AsyncWriter-" + asyncWriter.getId());
+            asyncWriter.setName("AsyncWriter-" + asyncWriter.getId() + ":" + new File(directFilename).getName());
             asyncWriter.start();
         }
 
-        private ByteBuffer currentWrite;
+        protected long lastWriteAddress = 0;
+        protected int lastWriteCapacity = 0;
+        protected long writeAddress = 0;
+        protected ByteBuffer writeBuffer = null;
 
         @Override
-        public int write(ByteBuffer data) throws IOException {
+        public int write(BytePointer data, int length) throws IOException {
             if (closed) {
                 return -1;
             }
 
-            currentWrite = null;
+            if (length == 0) {
+                return length;
+            }
 
             if (firstWrite) {
                 bytesStreamed.set(0);
                 firstWrite = false;
             }
 
-            try {
-                currentWrite = returnedBuffers.take();
-            } catch (InterruptedException e) {
-                logger.error("Interrupted while waiting for buffer to return.");
-                return -1;
+            writeAddress = data.address();
+
+            if (writeBuffer == null || writeAddress != lastWriteAddress || lastWriteCapacity < length) {
+                writeBuffer = data.position(0).limit(length).asByteBuffer();;
+                lastWriteAddress = writeAddress;
+                lastWriteCapacity = length;
+            } else {
+                writeBuffer.limit(length).position(0);
             }
 
-            if (fileChannel == null) {
-                try {
-                    fileChannel = FileChannel.open(
-                            Paths.get(directFilename),
-                            StandardOpenOption.WRITE,
-                            StandardOpenOption.CREATE);
-                } catch (IOException e1) {
-                    logger.error("Unable to open file '{}' => ", directFilename, e1);
-                    return -1;
-                }
-            }
-
-            int bytesToStream = data.remaining();
-
-            if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + bytesToStream) {
-                ByteBuffer slice = data.slice();
+            if (stvRecordBufferSize > 0 && stvRecordBufferSize < autoOffset + length) {
+                ByteBuffer slice = writeBuffer.slice();
                 slice.limit((int) (stvRecordBufferSize - autoOffset));
 
-                currentWrite.clear();
-                currentWrite.put(slice);
-                currentWrite.flip();
+                synchronized (asyncBuffer) {
+                    while(canWrite) {
+                        try {
+                            asyncBuffer.wait(500);
+                        } catch (InterruptedException e) {
+                            logger.error("Interrupted while waiting for the buffer => ",
+                                    directFilename, e);
+                            break;
+                        }
+                    }
 
-                try {
-                    writeBuffers.put(currentWrite);
-                    currentWrite = returnedBuffers.take();
-                } catch (InterruptedException e) {
-                    logger.error("Interrupted while queuing the next write for the file '{}' => ",
-                            directFilename, e);
+                    asyncBuffer.clear();
+                    asyncBuffer.put(slice);
+                    asyncBuffer.flip();
+                    canWrite = true;
+                    asyncBuffer.notifyAll();
+
+                    while(canWrite) {
+                        try {
+                            asyncBuffer.wait(500);
+                        } catch (InterruptedException e) {
+                            logger.error("Interrupted while waiting for the buffer => ",
+                                    directFilename, e);
+                            break;
+                        }
+                    }
+
+                    data.position((int) (data.position() + (stvRecordBufferSize - autoOffset)));
+                    autoOffset = 0;
+                }
+            }
+
+            synchronized (asyncBuffer) {
+                while(canWrite) {
+                    try {
+                        asyncBuffer.wait(500);
+                    } catch (InterruptedException e) {
+                        logger.error("Interrupted while waiting for the buffer => ",
+                                directFilename, e);
+                        break;
+                    }
                 }
 
-                data.position((int) (data.position() + (stvRecordBufferSize - autoOffset)));
-                autoOffset = 0;
+                asyncBuffer.clear();
+                asyncBuffer.put(writeBuffer);
+                asyncBuffer.flip();
+                canWrite = true;
+                asyncBuffer.notifyAll();
             }
 
-
-            try {
-                currentWrite.clear();
-                currentWrite.put(data);
-                currentWrite.flip();
-
-                writeBuffers.put(currentWrite);
-            } catch (InterruptedException e) {
-                logger.error("Interrupted while queuing the next write for the file '{}' => ",
-                        directFilename, e);
-                return -1;
-            }
-
-            return bytesToStream;
+            return length;
         }
 
         @Override
         public void closeFile() {
-            closed = true;
-            ByteBuffer zeroBuffer = ByteBuffer.allocate(0);
-
-            if (!writeBuffers.offer(zeroBuffer)) {
-                try {
-                    while (!writeBuffers.offer(zeroBuffer, 500, TimeUnit.MILLISECONDS)) {
-                        logger.error("Unable to queue close file buffer.");
+            synchronized (asyncBuffer) {
+                while(canWrite) {
+                    try {
+                        asyncBuffer.wait(500);
+                    } catch (InterruptedException e) {
+                        logger.error("Interrupted while waiting for the buffer => ",
+                                directFilename, e);
+                        break;
                     }
-                } catch (InterruptedException e) {
-                    logger.error("Interrupted while waiting to re-try queuing file close => ", e);
                 }
+
+                closed = true;
+                canWrite = true;
+                asyncBuffer.notifyAll();
             }
         }
 
@@ -588,80 +822,81 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
 
         public class AsyncWriter implements Runnable {
+            private long bytesFlushCounter = 0;
 
             @Override
             public void run() {
-                int limit;
                 int writeBytes;
                 long currentBytes;
-                ByteBuffer byteBuffer;
 
                 while (true) {
-                    try {
-                        byteBuffer = writeBuffers.take();
-                    } catch (InterruptedException e) {
-                        // This thread should never be getting interrupted.
-                        logger.error("The async writing thread was interrupted => ", e);
-                        return;
-                    }
-
-                    if (byteBuffer == null) {
-                        continue;
-                    }
-
-                    // For some reason if this isn't assigned to a variable sometimes it doesn't
-                    // evaluate as 0.
-                    limit = byteBuffer.limit();
-                    if (limit == 0) {
-                        if (fileChannel != null && fileChannel.isOpen()) {
-                            logger.info("Closing the file '{}'", directFilename);
-
+                    synchronized (asyncBuffer) {
+                        while (!canWrite) {
                             try {
-                                fileChannel.close();
-                            } catch (IOException e) {
-                                logger.error("Unable to close the file '{}' => ",
+                                asyncBuffer.wait(500);
+                            } catch (InterruptedException e) {
+                                logger.error("Interrupted while waiting for the buffer => ",
                                         directFilename, e);
+                                break;
                             }
                         }
-                        return;
-                    }
 
-                    writeBytes = byteBuffer.remaining();
+                        if (closed) {
+                            if (fileChannel != null && fileChannel.isOpen()) {
+                                logger.info("Closing the file '{}'", directFilename);
 
-                    try {
-                        fileChannel.write(byteBuffer, autoOffset);
-                    } catch (Exception e) {
-                        logger.error("File '{}' write failed => ", directFilename, e);
+                                try {
+                                    fileChannel.close();
+                                } catch (IOException e) {
+                                    logger.error("Unable to close the file '{}' => ",
+                                            directFilename, e);
+                                }
 
-                        if (fileChannel != null && fileChannel.isOpen()) {
+                                if (ccExtractorAvailable && currentCcWriter != null) {
+                                    currentCcWriter.closeFile();
+                                    currentCcWriter = switchCcWriter;
+                                }
+                            }
+
+                            canWrite = false;
+                            return;
+                        }
+
+                        writeBytes = asyncBuffer.remaining();
+
+                        try {
+                            fileChannel.write(asyncBuffer, autoOffset);
+                        } catch (Exception e) {
+                            logger.error("File '{}' write failed => ", directFilename, e);
+
+                            if (fileChannel != null && fileChannel.isOpen()) {
+                                try {
+                                    fileChannel.close();
+                                } catch (IOException e0) {
+                                    logger.debug("Consumer created an exception while" +
+                                            " closing the current file => {}", e0);
+                                }
+                            }
+
                             try {
-                                fileChannel.close();
+                                fileChannel = FileChannel.open(
+                                        Paths.get(directFilename),
+                                        StandardOpenOption.WRITE,
+                                        StandardOpenOption.CREATE);
                             } catch (IOException e0) {
-                                logger.debug("Consumer created an exception while" +
-                                        " closing the current file => {}", e0);
+                                logger.error("Unable to re-open file '{}' => ", directFilename, e0);
                             }
+
+                            canWrite = false;
+                            asyncBuffer.notifyAll();
+                            continue;
                         }
 
-                        try {
-                            fileChannel = FileChannel.open(
-                                    Paths.get(directFilename),
-                                    StandardOpenOption.WRITE,
-                                    StandardOpenOption.CREATE);
-                        } catch (IOException e0) {
-                            logger.error("Unable to re-open file '{}' => ", directFilename, e0);
-                        }
-
-                        try {
-                            returnedBuffers.put(byteBuffer);
-                        } catch (InterruptedException e0) {
-                            logger.debug("Interrupted while returning byte buffer to queue => ", e0);
-                        }
-
-                        continue;
+                        canWrite = false;
+                        asyncBuffer.notifyAll();
                     }
 
                     if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush)) {
-
                         bytesFlushCounter = 0;
 
                         // If the file should have some data, but it doesn't, flush the data to disk
@@ -726,12 +961,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     autoOffset += writeBytes;
                     bytesFlushCounter += writeBytes;
 
-                    try {
-                        returnedBuffers.put(byteBuffer);
-                    } catch (InterruptedException e) {
-                        logger.debug("Interrupted while returning byte buffer to queue => ", e);
-                    }
-
                     if (currentBytes > initBufferedData) {
                         synchronized (streamingMonitor) {
                             streamingMonitor.notifyAll();
@@ -746,15 +975,15 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         boolean firstWrite = true;
 
         @Override
-        public int write(ByteBuffer data) throws IOException {
+        public int write(BytePointer data, int length) throws IOException {
             if (firstWrite) {
                 bytesStreamed.set(0);
                 firstWrite = false;
             }
 
-            bytesStreamed.addAndGet(data.remaining());
+            bytesStreamed.addAndGet(length);
 
-            return data.remaining();
+            return length;
         }
 
         @Override

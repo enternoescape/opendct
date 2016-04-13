@@ -19,6 +19,7 @@ package opendct.capture;
 import opendct.channel.ChannelManager;
 import opendct.channel.TVChannel;
 import opendct.config.Config;
+import opendct.consumer.DynamicConsumerImpl;
 import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
 import opendct.sagetv.SageTVManager;
@@ -391,24 +392,16 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         long returnValue = 0;
 
-        try {
-            // Gets a pointer to the current consumer so if it gets replaced while we are trying to
-            // check the bytes streamed, it won't create an error.
-            SageTVConsumer sageTVConsumer = sageTVConsumerRunnable;
+        sageTVConsumerLock.readLock().lock();
 
-            if (sageTVConsumer != null && sageTVConsumer.getIsRunning()) {
-                returnValue = sageTVConsumer.getBytesStreamed();
+        try {
+            if (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning()) {
+                returnValue = sageTVConsumerRunnable.getBytesStreamed();
             }
         } catch (Exception e) {
             logger.error("getRecordedBytes created an unexpected exception => ", e);
-        }
-
-        // If the last reported bytes streamed is greater than the currently returned value, send 0
-        // to SageTV this time. The next pass will return the actual value. This should help when
-        // using SWITCH and will be harmless if it's triggered any other time since this value has
-        // nothing to do with the data being written out.
-        if (lastRecordedBytes.getAndSet(returnValue) > returnValue) {
-            returnValue = 0;
+        } finally {
+            sageTVConsumerLock.readLock().unlock();
         }
 
         return logger.exit(returnValue);
@@ -694,7 +687,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return Config.getSageTVConsumer(
                 propertiesDeviceRoot + "consumer",
                 Config.getString("sagetv.new.default_consumer_impl",
-                        FFmpegTransSageTVConsumerImpl.class.getName()),
+                        DynamicConsumerImpl.class.getName()),
                 channel);
     }
 

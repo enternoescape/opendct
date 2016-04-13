@@ -47,6 +47,7 @@ import org.bytedeco.javacpp.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static opendct.video.ffmpeg.FFmpegUtil.*;
@@ -69,10 +70,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private boolean switching = false;
     private long switchTimeout = 0;
     private FFmpegWriter newWriter = null;
+    private FFmpegWriter newWriter2 = null;
     private String newFilename = null;
     private final Object switchLock = new Object();
 
-    private static HashMap<Pointer, Integer> permissionMap = new HashMap<>();
+    private static Map<Pointer, Integer> permissionMap = new HashMap<>();
     private static int permissionWeight = 0;
     private static int transcodeLimit =
             Config.getInteger("consumer.ffmpeg.transcode_limit",
@@ -141,12 +143,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
     }
 
-    public boolean switchOutput(String newFilename, FFmpegWriter writer) {
+    @Override
+    public boolean switchOutput(String newFilename, FFmpegWriter writer, FFmpegWriter writer2) {
         synchronized (switchLock) {
             logger.info("SWITCH started.");
 
             this.newFilename = newFilename;
             newWriter = writer;
+            newWriter2 = writer2;
             switchTimeout = System.currentTimeMillis() + 10000;
             switching = true;
 
@@ -171,10 +175,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     }
 
     @Override
-    public void initStreamOutput(FFmpegContext ctx, String outputFilename, FFmpegWriter writer)
+    public void initStreamOutput(FFmpegContext ctx, String outputFilename,
+                                 FFmpegWriter writer, FFmpegWriter writer2)
             throws FFmpegException, InterruptedException {
 
-        initStreamOutput(ctx, outputFilename, writer, true);
+        initStreamOutput(ctx, outputFilename, writer, writer2, true);
     }
 
     /**
@@ -190,7 +195,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
      * @throws InterruptedException This is thrown if initialization is is interrupted.
      */
     public void initStreamOutput(FFmpegContext ctx, String outputFilename,
-                                 FFmpegWriter writer, boolean firstRun)
+                                 FFmpegWriter writer, FFmpegWriter writer2, boolean firstRun)
             throws FFmpegException, InterruptedException {
 
         int ret;
@@ -206,10 +211,26 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             ctx.dumpInputFormat();
         }
 
-        // Creates the output container and AVFormatContext.
-        ctx.allocAvfContainerOutputContext(outputFilename);
+        ctx.secondaryStream = writer2 != null;
 
         int numInputStreams = ctx.avfCtxInput.nb_streams();
+
+        // Creates the output container and AVFormatContext.
+        ctx.allocAvfContainerOutputContext(outputFilename);
+        if (ctx.secondaryStream) {
+            ctx.allocAvfContainerOutputContext2(outputFilename);
+
+            ctx.streamMap2 = new OutputStreamMap[numInputStreams];
+
+            for (int i = 0; i < ctx.streamMap2.length; i++) {
+                ctx.streamMap2[i] = new OutputStreamMap();
+                ctx.streamMap2[i].iStream = ctx.avfCtxInput.streams(i);
+                ctx.streamMap2[i].iCodecContext = ctx.streamMap2[i].iStream.codec();
+                ctx.streamMap2[i].iCodecType = ctx.streamMap2[i].iCodecContext.codec_type();
+                ctx.streamMap2[i].iCodecRational = ctx.streamMap2[i].iCodecContext.time_base();
+                ctx.streamMap2[i].iStreamRational = ctx.streamMap2[i].iStream.time_base();
+            }
+        }
 
         lastDtsByStreamIndex = new long[numInputStreams];
         Arrays.fill(lastDtsByStreamIndex, Integer.MIN_VALUE);
@@ -227,6 +248,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         for (int i = 0; i < ctx.streamMap.length; i++) {
             ctx.streamMap[i] = new OutputStreamMap();
+            ctx.streamMap[i].iStream = ctx.avfCtxInput.streams(i);
+            ctx.streamMap[i].iCodecContext = ctx.streamMap[i].iStream.codec();
+            ctx.streamMap[i].iCodecType = ctx.streamMap[i].iCodecContext.codec_type();
+            ctx.streamMap[i].iCodecRational = ctx.streamMap[i].iCodecContext.time_base();
+            ctx.streamMap[i].iStreamRational = ctx.streamMap[i].iStream.time_base();
         }
 
         if (firstRun) {
@@ -346,12 +372,33 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             }
         }
 
+        if (ctx.secondaryStream) {
+            if ((ctx.videoOutStream2 = addCopyStreamToContext(ctx.avfCtxOutput2, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
+                throw new FFmpegException("Could not find a video stream for output 2", -1);
+            }
+
+            ctx.streamMap2[ctx.preferredVideo].outStreamIndex = ctx.videoOutStream2.id();
+            ctx.streamMap2[ctx.preferredVideo].oCodecRational = ctx.videoOutStream2.codec().time_base();
+            ctx.streamMap2[ctx.preferredVideo].oStreamRational = ctx.videoOutStream2.time_base();
+            ctx.streamMap2[ctx.preferredVideo].oCodecContext = ctx.videoOutStream2.codec();
+            ctx.streamMap2[ctx.preferredVideo].oStream = ctx.videoOutStream2;
+        }
+
         if ((ctx.audioOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredAudio))) == null) {
             throw new FFmpegException("Could not find a audio stream", -1);
         }
 
         ctx.streamMap[ctx.preferredVideo].outStreamIndex = ctx.videoOutStream.id();
+        ctx.streamMap[ctx.preferredVideo].oCodecRational = ctx.videoOutStream.codec().time_base();
+        ctx.streamMap[ctx.preferredVideo].oStreamRational = ctx.videoOutStream.time_base();
+        ctx.streamMap[ctx.preferredVideo].oCodecContext = ctx.videoOutStream.codec();
+        ctx.streamMap[ctx.preferredVideo].oStream = ctx.videoOutStream;
+
         ctx.streamMap[ctx.preferredAudio].outStreamIndex = ctx.audioOutStream.id();
+        ctx.streamMap[ctx.preferredAudio].oCodecRational = ctx.videoOutStream.codec().time_base();
+        ctx.streamMap[ctx.preferredAudio].oStreamRational = ctx.videoOutStream.time_base();
+        ctx.streamMap[ctx.preferredAudio].oCodecContext = ctx.videoOutStream.codec();
+        ctx.streamMap[ctx.preferredAudio].oStream = ctx.videoOutStream;
 
         for (int i = 0; i < numInputStreams; ++i) {
             if (ctx.streamMap[i].outStreamIndex != NO_STREAM_IDX) {
@@ -365,6 +412,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 if (avsOutput != null) {
                     ctx.streamMap[i].outStreamIndex = avsOutput.id();
+                    ctx.streamMap[i].oCodecRational = ctx.videoOutStream.codec().time_base();
+                    ctx.streamMap[i].oStreamRational = ctx.videoOutStream.time_base();
+                    ctx.streamMap[i].oCodecContext = ctx.videoOutStream.codec();
+                    ctx.streamMap[i].oStream = ctx.videoOutStream;
                 }
             }
         }
@@ -380,8 +431,18 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         }
 
         ctx.dumpOutputFormat();
-
         ctx.allocIoOutputContext(writer);
+
+        if (ctx.secondaryStream) {
+            ctx.dumpOutputFormat2("(CCExtractor)");
+            ctx.allocIoOutputContext2(writer2);
+            ret = avformat_write_header(ctx.avfCtxOutput2, (PointerPointer<avutil.AVDictionary>) null);
+
+            if (ret < 0) {
+                deallocFilterGraphs();
+                throw new FFmpegException("Error while writing header to file 2 '" + outputFilename + "'", ret);
+            }
+        }
 
         if (ctx.isInterrupted()) {
             deallocFilterGraphs();
@@ -565,9 +626,10 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         // This is set when the offset for any stream has changed, so we know it needs to be synced.
         boolean tsOffsetChanged = false;
         // This value is used to determine when to force the offsets to sync up. Currently the loop
-        // will try to sync up for up to 20 frames that are not out of sync before everything if
+        // will try to sync up for up to 120 frames that are not out of sync before everything if
         // forced to sync to the largest offset.
         int tsOffsetAttempts = 0;
+        int tsOffsetAttemptLimit = 120;
 
         // This is incremented by frame duration. It does not distinguish between streams, so if
         // multiple streams are being corrected, this value will increase faster that the assumed
@@ -610,8 +672,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         packet.data(null);
         packet.size(0);
 
-        AVStream iavStream;
-        AVCodecContext iavCodecContext;
+        AVPacket copyPacket = new AVPacket();
+        copyPacket.data(null);
+        packet.size(0);
+
+        //AVStream iavStream;
+        //AVCodecContext iavCodecContext;
         int inputStreamIndex;
         int outputStreamIndex;
         int codecType;
@@ -728,16 +794,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 dts = preOffsetDts + tsOffsets[inputStreamIndex];
                 pts = preOffsetPts + tsOffsets[inputStreamIndex];
 
-                // This limits the timestamps to a 33-bit number. Doing this will help prevent a
-                // discontinuity correction if all things are perfect.
-                //dts &= 0x1ffffffffL;
-                //pts &= 0x1ffffffffL;
-
                 // These are referenced several times. This keeps these variables from constantly
                 // being copied into the JVM.
-                iavStream = ctx.avfCtxInput.streams(inputStreamIndex);
-                iavCodecContext = iavStream.codec();
-                codecType = iavStream.codec().codec_type();
+                //iavStream = ctx.streamMap[inputStreamIndex].iStream;
+                //iavCodecContext = ctx.streamMap[inputStreamIndex].iCodecContext;
+                codecType = ctx.streamMap[inputStreamIndex].iCodecType;
 
                 if ((codecType == AVMEDIA_TYPE_VIDEO ||
                         codecType ==AVMEDIA_TYPE_AUDIO) &&
@@ -769,16 +830,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         tsOffsets[inputStreamIndex] -= diff;
                         tsOffsetChanged = true;
                         lastToAdjust = inputStreamIndex;
-
-                        // This will keep the per stream offset in line with 33-bits.
-                        /*if (tsOffsets[inputStreamIndex] > WRAP_0) {
-                            tsOffsets[inputStreamIndex] -= WRAP_0;
-                        }*/
-
-                        // This is done in case 33-bits have been exceeded so the last dts values
-                        // will be accurate and not set off further discontinuity corrections.
-                        //dts &= 0x1ffffffffL;
-                        //pts &= 0x1ffffffffL;
 
                         logger.debug("fixing stream {} timestamp discontinuity diff = {}," +
                                         " offset = {}, new offset = {}," +
@@ -813,18 +864,15 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                         if ((offsetDiff > -discontinuityTolerance &&
                                 offsetDiff < discontinuityTolerance) ||
-                                tsOffsetAttempts > 20) {
+                                tsOffsetAttempts > tsOffsetAttemptLimit) {
 
                             // This is a good spot to correct the offset before it reaches the long
                             // wrap around limit. If this is going backwards so much that it wraps
                             // around backwards you likely would have noticed just based on the poor
                             // playback of the stream. Subtracting this value will effectively
                             // result in the exact same offset.
-                            /*if (maxOffset > WRAP_0) {
-                                maxOffset -= WRAP_0;
-                            }*/
 
-                            if (tsOffsetAttempts > 20) {
+                            if (tsOffsetAttempts > tsOffsetAttemptLimit) {
                                 logger.debug("force sync offsets {} to {}, diff = {}, attempts = {}",
                                         tsOffsets, tsOffsets[lastToAdjust], offsetDiff, tsOffsetAttempts);
                             } else {
@@ -841,10 +889,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                             lastToAdjust = ctx.preferredVideo;
                         } else {
-                            /*logger.debug("syncing offsets is not yet possible." +
-                                    " diff = {}, offsets = {}",
-                                    offsetDiff, tsOffsets);*/
-
                             tsOffsetAttempts += 1;
                         }
                     } else if (!fixingEnabled && diff > 162000000) {
@@ -926,6 +970,28 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     }
                 }
 
+                if (ctx.secondaryStream && inputStreamIndex == ctx.preferredVideo) {
+                    av_copy_packet(copyPacket, packet);
+                    av_packet_copy_props(copyPacket, packet);
+
+                    //logPacket(ctx.avfCtxInput, copyPacket, "copy2-in");
+
+                    // remux this frame without re-encoding
+                    av_packet_rescale_ts(copyPacket,
+                            ctx.streamMap2[inputStreamIndex].iStreamRational,
+                            ctx.streamMap2[inputStreamIndex].oStreamRational);
+
+                    //logPacket(ctx.avfCtxInput, copyPacket, "copy2-out");
+
+                    copyPacket.stream_index(ctx.streamMap2[inputStreamIndex].outStreamIndex);
+
+                    ret = av_interleaved_write_frame(ctx.avfCtxOutput2, copyPacket);
+
+                    if (ret < 0) {
+                        logger.error("Error from av_interleaved_write_frame output 2: {}", ret);
+                    }
+                }
+
                 //logger.trace("Demuxer gave frame of streamIndex {}", inputStreamIndex);
 
                 if (filter_ctx[inputStreamIndex].filter_graph != null) {
@@ -941,18 +1007,18 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     //logPacket(ctx.avfCtxInput, packet, "trans-dec-in");
 
                     av_packet_rescale_ts(packet,
-                            iavStream.time_base(),
-                            iavCodecContext.time_base());
+                            ctx.streamMap[inputStreamIndex].iStreamRational,
+                            ctx.streamMap[inputStreamIndex].iCodecRational);
 
                     //logPacket(ctx.avfCtxInput, packet, "trans-dec-out");
 
                     if (codecType == AVMEDIA_TYPE_VIDEO) {
                         ret = avcodec_decode_video2(
-                                ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
+                                ctx.streamMap[inputStreamIndex].iCodecContext, frame,
                                 got_frame, packet);
                     } else {
                         ret = avcodec_decode_audio4(
-                                ctx.avfCtxInput.streams(inputStreamIndex).codec(), frame,
+                                ctx.streamMap[inputStreamIndex].iCodecContext, frame,
                                 got_frame, packet);
                     }
 
@@ -980,8 +1046,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                     // remux this frame without re-encoding
                     av_packet_rescale_ts(packet,
-                            ctx.avfCtxInput.streams(inputStreamIndex).time_base(),
-                            ctx.avfCtxOutput.streams(outputStreamIndex).time_base());
+                            ctx.streamMap[inputStreamIndex].iStreamRational,
+                            ctx.streamMap[inputStreamIndex].oStreamRational);
 
                     //logPacket(ctx.avfCtxInput, packet, "copy-out");
 
@@ -1059,14 +1125,19 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         av_write_trailer(ctx.avfCtxOutput);
 
+        deallocFilterGraphs();
+        ctx.deallocOutputContext();
+
+        if (ctx.secondaryStream) {
+            av_write_trailer(ctx.avfCtxOutput2);
+            ctx.deallocOutputContext2();
+        }
+
         if (ctx.isInterrupted()) {
             return;
         }
 
-        deallocFilterGraphs();
-        ctx.deallocOutputContext();
-
-        initStreamOutput(ctx, newFilename, newWriter, false);
+        initStreamOutput(ctx, newFilename, newWriter, newWriter2, false);
     }
 
     private void endStreamOutput(AVPacket packet, AVFrame frame) {
@@ -1361,7 +1432,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             ret = initFilter(filter_ctx[i], ctx.avfCtxInput.streams(i).codec(),
                     ctx.avfCtxOutput.streams(ctx.streamMap[i].outStreamIndex).codec(),
                     ctx.avfCtxOutput.streams(ctx.streamMap[i].outStreamIndex), filter_spec,
-                    ctx.streamMap[i].encoderCodec, ctx.streamMap[i].encoderDict);
+                    ctx.streamMap[i].iCodec, ctx.streamMap[i].iDict);
 
             if (ret != 0) {
                 return ret;
@@ -1386,15 +1457,11 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         enc_pkt.size(0);
         av_init_packet(enc_pkt);
 
-        int codecType = ctx.avfCtxInput.streams(stream_index).codec().codec_type();
-        AVStream oavStream = ctx.avfCtxOutput.streams(ctx.streamMap[stream_index].outStreamIndex);
-        AVCodecContext oavCodec = oavStream.codec();
-
-        if (codecType == AVMEDIA_TYPE_VIDEO) {
-            ret = avcodec_encode_video2(oavCodec, enc_pkt,
+        if (ctx.streamMap[stream_index].iCodecType == AVMEDIA_TYPE_VIDEO) {
+            ret = avcodec_encode_video2(ctx.streamMap[stream_index].oCodecContext, enc_pkt,
                     filt_frame, got_frame);
-        } else if (codecType == AVMEDIA_TYPE_AUDIO) {
-            ret = avcodec_encode_audio2(oavCodec, enc_pkt,
+        } else if (ctx.streamMap[stream_index].iCodecType == AVMEDIA_TYPE_AUDIO) {
+            ret = avcodec_encode_audio2(ctx.streamMap[stream_index].oCodecContext, enc_pkt,
                     filt_frame, got_frame);
         }
 
@@ -1413,8 +1480,8 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         // prepare packet for muxing
         enc_pkt.stream_index(ctx.streamMap[stream_index].outStreamIndex);
         av_packet_rescale_ts(enc_pkt,
-                oavCodec.time_base(),
-                oavStream.time_base());
+                ctx.streamMap[stream_index].oCodecRational,
+                ctx.streamMap[stream_index].oStreamRational);
 
         //logPacket(ctx.avfCtxOutput, enc_pkt, "trans-enc-out");
 

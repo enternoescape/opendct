@@ -817,3 +817,53 @@
 #### 0.4.47-Stable
 > *Changed starting dts tolerance from 450000 cycles to 3500000 to
 > support the large gaps in Music Choice.
+
+#### 0.5.0-Beta
+> *CCExtractor support for FFmpeg transcoder has been added. This
+> feature only works when OpenDCT is configured to write directly (not
+> upload id). To enable, change consumer.ffmpeg.ccextractor_enabled to
+> true. Some channels in H.264 do not work well with CCExtractor. This
+> feature was added primarily so that if you transcode the video, you
+> don't loose the captions.
+  
+> *Added opendct.consumer.DynamicConsumerImpl as the new default
+> consumer. To change over to the new consumer from a previous
+> installation, change the values of sagetv.device.\<unique_id\>.consumer
+> to opendct.consumer.DynamicConsumerImpl.
+
+> *InfiniTV devices now have their own capture device and tuning via
+> UPnP is considered deprecated. Discovery is still via UPnP.
+
+> *UPnP detection is now on demand by default similar to how the
+> HDHomeRun detection currently works. This cuts down on traffic.
+
+> *New HDHomeRun lineups are now assigned the device id instead of IP
+> address so if the IP address changes, the lineup knows where to now
+> look.
+
+> *All devices will now update their IP address if it changes.
+  
+> *The internal circular buffer is now based completely off heap. The
+> raw stream data now never enters the JVM. The circular buffers are
+> also recycled so they don't need to be re-allocated on start and stop.
+ 
+> *Devices that use HTTP for streaming now use a direct byte buffer for
+> communications by default. To move to the new communications method,
+> change sagetv.device.parent.\<parent_id\>.http.producer to
+> opendct.producer.NIOHTTPProducerImpl.
+
+> *Removed EIA information from channels since it is never used.
+
+> *Changed Linux priority from -19 to -5 since -19 puts the process
+> higher than some network processes which might be a bad idea.
+
+> *Too many to list optimizations for the remuxer to greatly reduce
+> object creation resulting in a measurable increase in overall
+> throughput.
+
+> *Trying out fastutils for some of the bigger hash maps where possible.
+
+> *Added Music Choice transcoding profile (ultrafast_mc). This matches
+> Music Choice channels based on their relatively unique
+> characteristics. It is possible to have an SD channel come in as a
+> false positive, but it should be rare.

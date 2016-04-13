@@ -19,6 +19,7 @@ package opendct.tuning.http;
 import opendct.channel.ChannelManager;
 import opendct.channel.TVChannel;
 import opendct.config.Config;
+import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -117,6 +118,7 @@ public class InfiniTVTuning {
             logger.debug("tuneChannel was interrupted while waiting setting the program.");*/
         } catch (IOException e) {
             logger.debug("tuneChannel was unable to get the current program value.");
+            UpnpDiscoverer.requestBroadcast();
         }
 
 
@@ -283,8 +285,9 @@ public class InfiniTVTuning {
             if (postContent(deviceAddress, postPath, parameters)) {
                 return logger.exit(true);
             }
-
+            
             logger.error("Unable to access device '{}', attempt number {}", deviceAddress, i);
+            UpnpDiscoverer.requestBroadcast();
             Thread.sleep(200);
         }
 
@@ -320,6 +323,7 @@ public class InfiniTVTuning {
             httpURLConnection = (HttpURLConnection) url.openConnection();
         } catch (IOException e) {
             logger.error("Unable to open an HTTP connection => {}", e);
+            UpnpDiscoverer.requestBroadcast();
             return logger.exit(false);
         }
 
@@ -344,6 +348,7 @@ public class InfiniTVTuning {
             dataOutputStream.flush();
         } catch (IOException e) {
             logger.error("Unable to write POST bytes => {}", e);
+            UpnpDiscoverer.requestBroadcast();
             return logger.exit(false);
         }
 
@@ -362,6 +367,7 @@ public class InfiniTVTuning {
                         return;
                     }
 
+                    UpnpDiscoverer.requestBroadcast();
                     finalHttpURLConnection.disconnect();
                 }
             });
@@ -377,7 +383,7 @@ public class InfiniTVTuning {
 
             inputStream.close();
         } catch (IOException e) {
-            logger.error("Unable to read reply. Capture device is not available => {}",
+            logger.error("Unable to read reply. Capture device may not be available => {}",
                     e.getMessage());
         }
 

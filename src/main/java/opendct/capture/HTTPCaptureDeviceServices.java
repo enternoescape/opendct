@@ -19,7 +19,7 @@ package opendct.capture;
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
-import opendct.producer.HTTPProducerImpl;
+import opendct.producer.NIOHTTPProducerImpl;
 import opendct.producer.SageTVProducer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -101,8 +101,8 @@ public class HTTPCaptureDeviceServices {
     public HTTPProducer getNewHTTPProducer(String propertiesDeviceParent) {
         return Config.getHTTProducer(
                 propertiesDeviceParent + "http.producer",
-                Config.getString("http.new.default_producer_impl",
-                        HTTPProducerImpl.class.getName()));
+                Config.getString("http.new.default_producer",
+                        NIOHTTPProducerImpl.class.getName()));
     }
 
     /**

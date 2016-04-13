@@ -16,12 +16,12 @@
 
 package opendct.tuning.discovery.discoverers;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.OSVersion;
 import opendct.config.options.*;
-import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.*;
 import opendct.tuning.hdhomerun.*;
 import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
@@ -30,7 +30,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -47,7 +46,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     };
 
     // Global UPnP device settings.
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
     private static LongDeviceOption streamingWait;
     private static BooleanDeviceOption hdhrLock;
     private static IntegerDeviceOption controlRetryCount;
@@ -65,16 +64,16 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     // Detection configuration and state
     private static boolean enabled;
-    private static volatile boolean requestBroadcast;
+    private static boolean requestBroadcast;
     private static String errorMessage;
     private DeviceLoader deviceLoader;
 
     private final HDHomeRunDiscovery discovery = new HDHomeRunDiscovery(HDHomeRunDiscovery.getBroadcast());
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final HashMap<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new HashMap<>();
-    private final HashMap<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new HashMap<>();
-    private final HashMap<Integer, HDHomeRunDevice> hdHomeRunDevices = new HashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new Int2ObjectOpenHashMap<>();
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);
@@ -87,7 +86,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         if (Config.getString("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com")
                 .contains("schemas-dkeystone-com")) {
 
-            Config.setStringArray("hdhr.exp_ignore_models", "HDHR3-CC");
+            Config.setStringArray("hdhr.ignore_models", "HDHR3-CC");
         }
 
         errorMessage = null;
@@ -166,11 +165,11 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 );
 
                 ignoreModels = new StringDeviceOption(
-                        Config.getStringArray("hdhr.exp_ignore_models"),
+                        Config.getStringArray("hdhr.ignore_models"),
                         true,
                         false,
                         "Ignore Models",
-                        "hdhr.exp_ignore_models",
+                        "hdhr.ignore_models",
                         "Prevent specific HDHomeRun models from being detected and loaded."
                 );
 
@@ -275,7 +274,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.setInteger("hdhr.retry_count", 2);
                 Config.setInteger("hdhr.broadcast_s", 58);
                 Config.setInteger("hdhr.broadcast_port", 64998);
-                Config.setStringArray("hdhr.exp_ignore_models");
+                Config.setStringArray("hdhr.ignore_models");
                 Config.setStringArray("hdhr.ignore_device_ids");
                 Config.setBoolean("hdhr.always_tune_legacy", false);
                 Config.setBoolean("hdhr.allow_http_tuning", true);
@@ -381,6 +380,16 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public boolean isWaitingForDevices() {
         return deviceLoader == null || deviceLoader.isWaitingForDevices();
+    }
+
+    /**
+     * Get an HDHomeRun device by it's unique hex ID.
+     *
+     * @param deviceHex The hex ID converted to an integer.
+     * @return An HDHomeRun device if the requested device exists. Otherwise <i>null</i>.
+     */
+    public HDHomeRunDevice getHDHomeRunDevice(int deviceHex) {
+        return hdHomeRunDevices.get(deviceHex);
     }
 
     public void addCaptureDevice(HDHomeRunDevice discoveredDevice) {

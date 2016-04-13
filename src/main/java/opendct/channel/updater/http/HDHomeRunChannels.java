@@ -24,6 +24,10 @@ import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.tuning.discovery.DeviceDiscoverer;
+import opendct.tuning.discovery.DiscoveryManager;
+import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
+import opendct.tuning.hdhomerun.HDHomeRunDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.w3c.dom.Document;
@@ -35,13 +39,13 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HDHomeRunChannels {
     private static final Logger logger = LogManager.getLogger(HDHomeRunChannels.class);
 
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
     private static StringDeviceOption ignoreNamesContaining;
     private static StringDeviceOption ignoreChannelNumbers;
     private static BooleanDeviceOption removeDuplicateChannels;
@@ -117,7 +121,7 @@ public class HDHomeRunChannels {
      * @return <i>true</i> if the update was successful.
      */
     public static boolean populateChannels(ChannelLineup channelLineup) {
-        logger.entry();
+        logger.entry(channelLineup);
 
         boolean returnValue = true;
         // This only applies when ClearQAM is not in use because we can't do anything with the
@@ -127,12 +131,32 @@ public class HDHomeRunChannels {
         boolean isAtsc = false;
 
         HttpURLConnection httpURLConnection = null;
-        HashSet<String> newChannelList = new HashSet<String>();
+        //HashSet<String> newChannelList = new HashSet<String>();
 
         try {
             InetAddress ipAddress = channelLineup.getAddressIP();
+
             if (ipAddress == null) {
-                return logger.exit(false);
+                try {
+                    int hex = Integer.parseInt(channelLineup.getAddress().toLowerCase(), 16);
+                    DeviceDiscoverer discoverer = DiscoveryManager.getDiscoverer("HDHomeRun");
+
+                    if (discoverer instanceof HDHomeRunDiscoverer) {
+                        HDHomeRunDevice device =
+                                ((HDHomeRunDiscoverer) discoverer).getHDHomeRunDevice(hex);
+
+                        if (device != null) {
+                            ipAddress = device.getIpAddress();
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warn("Unable to parse '{}' from hex into an integer.",
+                            channelLineup.getAddress());
+                }
+
+                if (ipAddress == null) {
+                    return logger.exit(false);
+                }
             }
 
             URL url = new URL("http://" + ipAddress.getHostAddress() + ":80/lineup.xml");
@@ -214,7 +238,7 @@ public class HDHomeRunChannels {
                             }
                         }
 
-                        newChannelList.add(channel);
+                        //newChannelList.add(channel);
 
                         boolean isDuplicate = false;
 

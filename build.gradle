@@ -56,7 +56,7 @@ ext {
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
     minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
     buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
-    buildType = "Stable"
+    buildType = "Beta"
 
     javaVersion = '1.7'
     buildVersion = "${majorVersion}.${minorVersion}.${buildVersion}"
@@ -85,7 +85,8 @@ dependencies {
 	compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
     compile "org.apache.logging.log4j:log4j-core:${log4jVersion}"
 	compile 'commons-cli:commons-cli:1.3'
-	compile "net.java.dev.jna:jna:${jnaVersion}"
+    compile 'it.unimi.dsi:fastutil:7.0.12'
+    compile "net.java.dev.jna:jna:${jnaVersion}"
 	compile "net.java.dev.jna:jna-platform:${jnaVersion}"
 	compile "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}"
 
@@ -219,6 +220,12 @@ ospackage {
         fileMode 0755
     }
 
+    from('build/bin') {
+        include 'ccextractor/ccextractor'
+        into 'bin'
+        fileMode 0755
+    }
+
     from('scripts/any') {
         include '*'
         into ''
@@ -254,7 +261,14 @@ task buildLinux64(dependsOn: build) << {
 
 }
 
-def changeJsw(String arch, String dependency) {
+def changeBin(String arch, String dependency) {
+    delete 'build/bin'
+
+    copy {
+        from "bin/${arch}"
+        into 'build/bin'
+    }
+
     delete 'build/jsw'
 
     copy {
@@ -368,7 +382,7 @@ def packageWin(String arch) {
 task packageWin32(dependsOn: buildWin32) << {
     println 'Creating install package for Windows 32-bit...'
 
-    changeJsw('windows-x86', 'windows_x86')
+    changeBin('windows-x86', 'windows_x86')
 
     sourceWin()
 
@@ -383,7 +397,7 @@ task packageWin32(dependsOn: buildWin32) << {
 task packageWin64(dependsOn: buildWin64) << {
     println 'Creating install package for Windows 64-bit...'
 
-    changeJsw('windows-x86_64', 'windows_x86_64')
+    changeBin('windows-x86_64', 'windows_x86_64')
 
     sourceWin()
 
@@ -396,7 +410,7 @@ task packageWin64(dependsOn: buildWin64) << {
 }
 
 task jswLinux32() << {
-    changeJsw('linux-x86', 'linux_x86')
+    changeBin('linux-x86', 'linux_x86')
 }
 
 task packageRpm32(type: Rpm) {
@@ -477,7 +491,7 @@ task packageLinux32() {
 }
 
 task jswLinux64() << {
-    changeJsw('linux-x86_64', 'linux_x86_64')
+    changeBin('linux-x86_64', 'linux_x86_64')
 }
 
 task packageRpm64(type: Rpm) {
@@ -586,7 +600,7 @@ bintray {
     dryRun = false //Whether to run this as dry-run, without deploying
     publish = true //If version should be auto published after an upload
     pkg {
-        repo = 'Releases'
+        repo = 'Beta'
         name = 'OpenDCT'
         userOrg = 'opendct'
         desc = "OpenDCT Release"

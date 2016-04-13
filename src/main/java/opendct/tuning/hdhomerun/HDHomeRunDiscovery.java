@@ -132,7 +132,7 @@ public class HDHomeRunDiscovery implements Runnable {
         }
 
         for (Thread receiveThread : receiveThreads) {
-            if (receiveThread != null) {
+            if (receiveThread != null && receiveThread.isAlive()) {
                 return receiveThread.isAlive();
             }
         }

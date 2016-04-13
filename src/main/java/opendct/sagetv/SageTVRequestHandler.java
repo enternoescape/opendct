@@ -26,8 +26,6 @@ package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
 import opendct.capture.DCTCaptureDeviceImpl;
-import opendct.capture.HDHRNativeCaptureDevice;
-import opendct.capture.InfiniTVCaptureDevice;
 import opendct.config.Config;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;

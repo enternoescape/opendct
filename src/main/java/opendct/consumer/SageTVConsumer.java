@@ -20,6 +20,7 @@ import opendct.config.options.DeviceOptions;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 
 public interface SageTVConsumer extends Runnable, DeviceOptions {
 /**
@@ -47,6 +48,18 @@ public interface SageTVConsumer extends Runnable, DeviceOptions {
      * @throws IOException
      */
     public void write(byte[] bytes, int offset, int length) throws IOException;
+
+    /**
+     * Copy as many bytes as possible from the producer into a provided byte array.
+     * <p/>
+     * This method is needed for the producer to write it's data into the consumers buffer. This
+     * allows the consumer to manage it's own buffer and reduces the number of copies. Ensure this
+     * method is designed to return quickly.
+     *
+     * @param buffer  This is the byte array of data to be written.
+     * @throws IOException
+     */
+    public void write(ByteBuffer buffer) throws IOException;
 
     /**
      * Set the recording buffer size.

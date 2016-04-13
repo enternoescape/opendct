@@ -21,7 +21,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bytedeco.javacpp.avcodec.AVCodec;
 
-import java.util.HashMap;
+import java.util.Map;
 
 import static org.bytedeco.javacpp.avcodec.avcodec_find_encoder_by_name;
 import static org.bytedeco.javacpp.avcodec.avcodec_get_name;
@@ -47,22 +47,25 @@ public class FFmpegProfile extends ConfigBag {
     private boolean profileDisabled;
 
     private boolean interlacedOnly;
+    private boolean progressiveOnly;
     private boolean interlaceDetect;
     private boolean videoAlwaysTranscode;
     private boolean audioAlwaysTranscode;
     private int gtHeight;
     private int gtWidth;
+    private int eqHeight;
+    private int eqWidth;
 
     private String videoDefaultCodec;
     private String audioDefaultCodec;
 
-    private HashMap<String, String> videoTranscodeMap;
-    private HashMap<String, String> videoEncoderMap;
-    private HashMap<String, String> videoDecoderMap;
+    private Map<String, String> videoTranscodeMap;
+    private Map<String, String> videoEncoderMap;
+    private Map<String, String> videoDecoderMap;
 
-    private HashMap<String, String> audioTranscodeMap;
-    private HashMap<String, String> audioEncoderMap;
-    private HashMap<String, String> audioDecoderMap;
+    private Map<String, String> audioTranscodeMap;
+    private Map<String, String> audioEncoderMap;
+    private Map<String, String> audioDecoderMap;
 
     public FFmpegProfile(String profileName) {
         super(profileName, "transcode", false);
@@ -92,7 +95,10 @@ public class FFmpegProfile extends ConfigBag {
 
         gtHeight = getInteger(videoConf + "t.allow_gt_h", 0);
         gtWidth = getInteger(videoConf + "t.allow_gt_w", 0);
-        interlacedOnly = getBoolean(videoConf + "t.deinterlace_only", true);
+        eqHeight = getInteger(videoConf + "t.allow_eq_h", 0);
+        eqWidth = getInteger(videoConf + "t.allow_eq_w", 0);
+        interlacedOnly = getBoolean(videoConf + "t.deinterlace_only", false);
+        progressiveOnly = getBoolean(videoConf + "t.progressive_only", false);
         interlaceDetect = getBoolean(videoConf + "t.deinterlace_detect", true);
         videoAlwaysTranscode = getBoolean(videoConf + "t.always", false);
         audioAlwaysTranscode = getBoolean(audioConf + "t.always", false);
@@ -112,7 +118,7 @@ public class FFmpegProfile extends ConfigBag {
         }
 
         // This should be marginally more efficient than multiple calls.
-        HashMap<String, String>[] maps = getAllByRootKey(
+        Map<String, String>[] maps = getAllByRootKey(
                 videoConf + "t.codec_map.",
                 videoConf + "d.codec_map.",
                 videoConf + "e.codec_map.",
@@ -137,7 +143,8 @@ public class FFmpegProfile extends ConfigBag {
      * @return <i>true</i> if it makes sense to run deinterlace detection.
      */
     public boolean canInterlaceDetect(int height, int width) {
-        return !profileDisabled && interlaceDetect && gtHeight < height && gtWidth < width;
+        return !profileDisabled && interlaceDetect && gtHeight < height && gtWidth < width &&
+                (eqHeight > 0 && eqHeight == height) && (eqWidth > 0 && eqWidth == width);
     }
 
     public boolean canTranscodeVideo(boolean interlaced, String decoderCodec, int height, int width) {
@@ -169,6 +176,20 @@ public class FFmpegProfile extends ConfigBag {
             return false;
         }
 
+        if (eqHeight > 0 && eqHeight != height) {
+            logger.debug("canTranscodeVideo: Height is not equal." +
+                            " interlaced: {}, decoderCodec: {}, height: {} != {}, width: {}",
+                    interlaced, decoderCodec, height, eqHeight, width);
+            return false;
+        }
+
+        if (eqWidth > 0 && eqWidth != width) {
+            logger.debug("canTranscodeVideo: Width is not equal." +
+                            " interlaced: {}, decoderCodec: {}, height: {}, width: {} != {}",
+                    interlaced, decoderCodec, height, width, eqWidth);
+            return false;
+        }
+
         String desiredCodec = videoTranscodeMap.get(decoderCodec);
         if (desiredCodec != null) {
             logger.debug("canTranscodeVideo: Codec is to be transcoded to {}." +
@@ -180,6 +201,13 @@ public class FFmpegProfile extends ConfigBag {
         if (interlacedOnly && interlaced) {
             logger.debug("canTranscodeVideo: Video is interlaced." +
                             " interlaced: true, decoderCodec: {}, height: {}, width: {}",
+                    decoderCodec, height, width);
+            return true;
+        }
+
+        if (progressiveOnly && !interlaced) {
+            logger.debug("canTranscodeVideo: Video is progressive." +
+                            " progressive: true, decoderCodec: {}, height: {}, width: {}",
                     decoderCodec, height, width);
             return true;
         }
@@ -246,7 +274,7 @@ public class FFmpegProfile extends ConfigBag {
      * @param encoder The codec to be used.
      * @return A HashMap containing all available properties for the provided configuration.
      */
-    public HashMap<String, String> getVideoEncoderMap(int w, int h, AVCodec encoder) {
+    public Map<String, String> getVideoEncoderMap(int w, int h, AVCodec encoder) {
         String width = "w" + String.valueOf(w);
         String height = "h" + String.valueOf(h);
         String encoderName = avcodec_get_name(encoder.id()).getString();

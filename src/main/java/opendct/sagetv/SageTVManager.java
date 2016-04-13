@@ -16,6 +16,7 @@
 
 package opendct.sagetv;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceInitException;
 import opendct.capture.CaptureDeviceType;
@@ -52,12 +53,12 @@ public class SageTVManager implements PowerEventListener {
     private static final ReentrantReadWriteLock fileToUploadIDLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock fileToSocketServerLock = new ReentrantReadWriteLock();
 
-    private static final HashMap<Integer, SageTVSocketServer> portToSocketServer = new HashMap<Integer, SageTVSocketServer>();
-    private static final HashMap<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<String, CaptureDevice>();
-    private static final HashMap<Integer, CaptureDevice> captureDeviceIdToCaptureDevice = new HashMap<Integer, CaptureDevice>();
-    private static final HashMap<CaptureDevice, String> captureDeviceToFiles = new HashMap<CaptureDevice, String>();
-    private static final HashMap<String, Integer> fileToUploadID = new HashMap<String, Integer>();
-    private static final HashMap<String, SageTVSocketServer> fileToSocketServer = new HashMap<String, SageTVSocketServer>();
+    private static final Map<Integer, SageTVSocketServer> portToSocketServer = new Int2ObjectOpenHashMap<>();
+    private static final Map<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<>();
+    private static final Map<Integer, CaptureDevice> captureDeviceIdToCaptureDevice = new Int2ObjectOpenHashMap<>();
+    private static final Map<CaptureDevice, String> captureDeviceToFiles = new HashMap<>();
+    private static final Map<String, Integer> fileToUploadID = new HashMap<>();
+    private static final Map<String, SageTVSocketServer> fileToSocketServer = new HashMap<>();
 
     public static boolean isBroadcasting() {
         return broadcasting.get();

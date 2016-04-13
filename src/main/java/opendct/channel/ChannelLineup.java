@@ -32,8 +32,8 @@ public class ChannelLineup {
     final static public long DEFAULT_UPDATE_INTERVAL = 28800000; // 8 hours
     final static public long DEFAULT_OFFLINE_UPDATE_INTERVAL = 604800000; // 7 days
 
-    final private ConcurrentHashMap<String, TVChannel> channelMap;
-    final private ConcurrentHashMap<String, TVChannel> remapMap;
+    final private Map<String, TVChannel> channelMap;
+    final private Map<String, TVChannel> remapMap;
     final public String LINEUP_NAME;
     final public ChannelSourceType SOURCE;
 
@@ -129,6 +129,10 @@ public class ChannelLineup {
         if (addressIP == null && addressURI != null) {
             try {
                 addressIP = InetAddress.getByName(addressURI.getHost());
+
+                if (addressIP.isLoopbackAddress()) {
+                    addressIP = null;
+                }
             } catch (Exception e) {
                 addressIP = null;
             }
@@ -228,9 +232,9 @@ public class ChannelLineup {
         boolean updated = false;
         String oldProperties[] = oldChannel.getProperties();
 
-        // Start at two so we can't overwrite the channel and name.
-        for (int i = 2; i < oldProperties.length; i++) {
-            if (newProperties[i] != null) {
+        // Start at one so we can't overwrite the channel. The name is at index 3.
+        for (int i = 1; i < oldProperties.length; i++) {
+            if (newProperties[i] != null && i != 3) {
                 oldProperties[i] = newProperties[i];
                 updated = true;
             }

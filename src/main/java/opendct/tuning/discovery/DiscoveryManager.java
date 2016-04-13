@@ -16,6 +16,7 @@
 
 package opendct.tuning.discovery;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -28,7 +29,6 @@ import org.apache.logging.log4j.Logger;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -44,7 +44,7 @@ public class DiscoveryManager implements PowerEventListener {
     public static final DeviceLoader DEVICE_LOADER = new DeviceLoaderImpl();
     private static final AtomicBoolean running = new AtomicBoolean(false);
     private static final ArrayList<DeviceDiscoverer> deviceDiscoveries = new ArrayList<>();
-    private static final HashSet<Integer> permittedDevices = new HashSet<>();
+    private static final IntOpenHashSet permittedDevices = new IntOpenHashSet();
 
     static {
         // Add all saved permitted devices.
@@ -198,6 +198,31 @@ public class DiscoveryManager implements PowerEventListener {
         } finally {
             discoverLock.writeLock().unlock();
         }
+    }
+
+    /**
+     * Returns a device discoverer by name.
+     *
+     * @param name Unique name of discover.
+     * @return The requested discover if it is available. If not, <i>null</i> will be returned.
+     */
+    public static DeviceDiscoverer getDiscoverer(String name) {
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
+                if (deviceDiscoverer.getName().equals(name)) {
+                    return deviceDiscoverer;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("getDiscoverer created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
+        }
+
+        return null;
     }
 
     /**

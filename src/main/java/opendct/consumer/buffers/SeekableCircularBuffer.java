@@ -126,6 +126,18 @@ public class SeekableCircularBuffer {
         }
     }
 
+    public void writeBlocked(ByteBuffer bytes) throws ArrayIndexOutOfBoundsException, InterruptedException {
+        int length = bytes.remaining();
+
+        synchronized (readMonitor) {
+            while (!closed && writeAvailable() - length <= 0) {
+                readMonitor.wait(100);
+            }
+        }
+
+        write(bytes);
+    }
+
     public void writeBlocked(byte bytes[], int offset, int length) throws ArrayIndexOutOfBoundsException, InterruptedException {
         synchronized (readMonitor) {
             while (!closed && writeAvailable() - length <= 0) {
@@ -134,6 +146,91 @@ public class SeekableCircularBuffer {
         }
 
         write(bytes, offset, length);
+    }
+
+    public void write(ByteBuffer bytes) throws ArrayIndexOutOfBoundsException {
+        int length = bytes.remaining();
+
+        // This technically shouldn't be happening.
+        if (length == 0) {
+            return;
+        }
+
+        // Once the buffer is closed, we turn off writing.
+        if (closed) {
+            return;
+        }
+
+        if (length > buffer.length) {
+            throw logger.throwing(new ArrayIndexOutOfBoundsException("You cannot write more data than the buffer is able to allocate."));
+        }
+
+        synchronized (writeLock) {
+            int writeAvailable = writeAvailable();
+
+            if (writeAvailable - length <= 0) {
+                if (noWrap && buffer.length < maxBufferSize) {
+                    synchronized (readLock) {
+                        byte newBuffer[] = new byte[buffer.length + resizeBufferIncrement];
+
+                        logger.warn("The buffer is being expanded from {} bytes to {} bytes.", buffer.length, newBuffer.length);
+
+                        System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
+                        buffer = newBuffer;
+
+                        logger.info("The buffer has been expanded.");
+                    }
+
+                    internalWrite(bytes);
+                    return;
+                }
+
+                if (!overflowToQueue) {
+                    logger.warn("The buffer has {} bytes left to be read, has only {} bytes left for writing and {} bytes cannot be added. Deferring bytes to queue buffer.", readAvailable(), writeAvailable, length);
+                    overflowToQueue = true;
+                }
+
+                // Enable the queue to back up to 4 times the buffer size. On a system with 20
+                // capture devices and a 7MB buffer, this potentially adds up to 560MB in RAM just
+                // for the buffer if things get really backed up. The JVM should be able to handle
+                // this kind of growth without crashing. Also this is not a typical situation.
+                if (bytesOverflow.get() < maxOverflowBytes && overflowQueue.size() < Integer.MAX_VALUE) {
+                    // Store overflowing bytes in double-ended queue.
+                    byte[] queueBytes = new byte[length];
+                    bytes.get(queueBytes, 0, length);
+                    overflowQueue.addLast(queueBytes);
+
+                    bytesOverflow.getAndAdd(length);
+                } else if (!overflow) {
+                    logger.warn("The buffer has {} bytes left to be read, has only {} bytes left for writing and {} bytes cannot be added. The queue buffer is full at {} bytes.", readAvailable(), writeAvailable, length, bytesOverflow.get());
+                    overflow = true;
+                    bytesLost.addAndGet(length);
+                } else {
+                    bytesLost.addAndGet(length);
+                }
+
+                synchronized (readMonitor) {
+                    readMonitor.notifyAll();
+                }
+
+                return;
+            } else if (overflowToQueue) {
+
+                if (overflowQueue.size() < Integer.MAX_VALUE) {
+                    // Store recently added data in double-ended queue.
+                    byte[] queueBytes = new byte[length];
+                    bytes.get(queueBytes, 0, length);
+                    overflowQueue.addLast(queueBytes);
+                    bytesOverflow.addAndGet(length);
+                }
+
+                processQueue();
+
+                return;
+            }
+
+            internalWrite(bytes);
+        }
     }
 
     /**
@@ -274,6 +371,35 @@ public class SeekableCircularBuffer {
         }
 
         return returnValue;
+    }
+
+    private void internalWrite(ByteBuffer bytes) {
+        int length = bytes.remaining();
+
+        if (writeIndex + length > buffer.length) {
+            int end = buffer.length - writeIndex;
+            //logger.trace("bytes.length = {}, offset = {}, buffer.length = {}, writeIndex = {}, end = {}", bytes.length, offset, buffer.length, writeIndex, end);
+            bytes.get(buffer, writeIndex, end);
+
+            int writeRemaining = length - end;
+            if (writeRemaining > 0) {
+                //logger.trace("bytes.length = {}, end = {}, buffer.length = {}, writeRemaining = {}", bytes.length, end, buffer.length, writeRemaining);
+                bytes.get(buffer, 0, writeRemaining);
+            }
+
+            synchronized (rwPassLock) {
+                writeIndex = writeRemaining;
+                writePasses += 1;
+            }
+        } else {
+            bytes.get(buffer, writeIndex, length);
+            writeIndex += length;
+
+        }
+
+        synchronized (readMonitor) {
+            readMonitor.notifyAll();
+        }
     }
 
     private void internalWrite(byte bytes[], int offset, int length) {

@@ -38,6 +38,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -47,7 +48,7 @@ import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
 
 public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
-    private final Logger logger = LogManager.getLogger(FFmpegSageTVConsumerImpl.class);
+    private static final Logger logger = LogManager.getLogger(FFmpegSageTVConsumerImpl.class);
 
     private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
 
@@ -121,7 +122,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final Object streamingMonitor = new Object();
     private long initBufferedData = 1048576;
 
-    private static ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl> instanceMap = new ConcurrentHashMap<Pointer, FFmpegSageTVConsumerImpl>();
+    private static Map<Pointer, FFmpegSageTVConsumerImpl> instanceMap = new ConcurrentHashMap<>();
     private static final AtomicLong callbackAddress = new AtomicLong(0);
 
     public static final String FFMPEG_INIT_INTERRUPTED = "FFmpeg initialization was interrupted.";
@@ -138,6 +139,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private int[] streamMap;
 
     static {
+        logger.warn("FFmpegSageTVConsumerImpl is currently deprecated and may not be available in future versions. Use FFmpegTransSageTVConsumer.");
         FFmpegUtil.initAll();
     }
 
@@ -344,6 +346,11 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
         seekableBuffer.write(bytes, offset, length);
     }
 
+    @Override
+    public void write(ByteBuffer buffer) throws IOException {
+        seekableBuffer.write(buffer);
+    }
+
     public void setRecordBufferSize(long bufferSize) {
         this.stvRecordBufferSize = bufferSize;
     }
@@ -490,7 +497,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             FFmpegSageTVConsumerImpl consumer = instanceMap.get(opaque);
 
             if (consumer.ffmpegInterrupted) {
-                consumer.logger.info("Interrupt callback is returning 1");
+                logger.info("Interrupt callback is returning 1");
             }
 
             return consumer.ffmpegInterrupted ? 1 : 0;
@@ -509,7 +516,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             try {
                 returnValue = consumer.seekableBuffer.seek(whence, offset);
             } catch (Exception e) {
-                consumer.logger.error("There was an unhandled exception while seeking => ", e);
+                logger.error("There was an unhandled exception while seeking => ", e);
             }
 
             return returnValue;
@@ -526,20 +533,20 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
             int nBytes = -1;
 
             try {
-                ByteBuffer readBuffer = buf.position(0).limit(bufSize).asBuffer();
+                ByteBuffer readBuffer = buf.position(0).limit(bufSize).asByteBuffer();
 
                 nBytes = consumer.seekableBuffer.read(readBuffer);
 
             } catch (InterruptedException e) {
                 consumer.ffmpegInterrupted = true;
                 consumer.seekableBuffer.close();
-                consumer.logger.debug("FFmpeg consumer was interrupted while reading by an exception => ", e);
+                logger.debug("FFmpeg consumer was interrupted while reading by an exception => ", e);
             } catch (Exception e) {
-                consumer.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
+                logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
             }
 
             if (nBytes == -1) {
-                consumer.logger.info("Returning AVERROR_EOF in readCallback.call()");
+                logger.info("Returning AVERROR_EOF in readCallback.call()");
                 return AVERROR_EOF;
             }
 
@@ -558,12 +565,12 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
 
             numBytesWritten = consumer.writeBuffer(bytePtr, 0, numBytesRequested);
 
-            if (consumer.logger.isTraceEnabled()) {
-                consumer.logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
+            if (logger.isTraceEnabled()) {
+                logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", numBytesRequested, numBytesWritten);
             }
 
             if (numBytesWritten < 0) {
-                consumer.logger.info("Returning AVERROR_EOF in writeCallback.call()");
+                logger.info("Returning AVERROR_EOF in writeCallback.call()");
                 return AVERROR_EOF;
             }
 

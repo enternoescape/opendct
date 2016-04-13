@@ -40,7 +40,7 @@ public class HDHomeRunControl {
     private HDHomeRunPacket txPacket;
     private HDHomeRunPacket rxPacket;
     private SocketChannel socket;
-    private volatile int returnedBytes = 0;
+    private volatile int totalBytes = 0;
 
     /**
      * Create a new HDHomeRun controller.
@@ -271,7 +271,7 @@ public class HDHomeRunControl {
         logger.entry(packetSend, timeout);
 
         rxPacket.BUFFER.clear();
-        returnedBytes = 0;
+        totalBytes = 0;
         Thread receiveThread = new Thread(new ReceiveThread());
         receiveThread.setName("HDHomeRunControlReceive-" + receiveThread.getId());
 
@@ -326,13 +326,19 @@ public class HDHomeRunControl {
                     boolean firstBytes = true;
 
                     int bytesNeeded = rxPacket.BUFFER.limit();
-                    int returnBytes = 0;
+                    int readBytes = 0;
 
                     while (!Thread.currentThread().isInterrupted()) {
-                        returnBytes = socket.read(rxPacket.BUFFER);
-                        returnedBytes += returnBytes;
+                        readBytes = socket.read(rxPacket.BUFFER);
 
-                        if (firstBytes && returnBytes > 4) {
+                        if (readBytes == -1) {
+                            logger.debug("socket returned -1");
+                            break;
+                        }
+
+                        totalBytes += readBytes;
+
+                        if (firstBytes && totalBytes > 4) {
                             firstBytes = false;
                             ByteBuffer slice = rxPacket.BUFFER.duplicate();
                             slice.flip();
@@ -342,8 +348,8 @@ public class HDHomeRunControl {
                             bytesNeeded = (slice.getShort() & 0xffff) + 8; // +8 to include header and CRC
                         }
 
-                        if (bytesNeeded > returnBytes) {
-                            logger.debug("bytesNeeded: {} > returnBytes: {}", bytesNeeded, returnBytes);
+                        if (bytesNeeded > totalBytes) {
+                            logger.debug("bytesNeeded: {} > returnBytes: {}", bytesNeeded, totalBytes);
                         } else {
                             break;
                         }

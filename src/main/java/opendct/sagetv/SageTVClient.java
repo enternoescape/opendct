@@ -19,8 +19,88 @@ package opendct.sagetv;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.Socket;
+
 public class SageTVClient {
-    private final Logger logger = LogManager.getLogger(SageTVClient.class);
+    private final static Logger logger = LogManager.getLogger(SageTVClient.class);
 
     //TODO:[js] Implement a simple client for testing SageTV communication without SageTV being present.
+
+    private InputStreamReader in;
+    private OutputStreamWriter out;
+    private String address;
+    private int port;
+    private Socket socket;
+
+    public void connect(String address, int port) throws IOException {
+        disconnect();
+        socket = new Socket(address, port);
+        this.address = address;
+        this.port = port;
+
+        in = new InputStreamReader(socket.getInputStream());
+        out = new OutputStreamWriter(socket.getOutputStream());
+    }
+
+    public void disconnect() {
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                logger.debug("Exception while closing socket => {}", e.getMessage());
+            }
+        }
+
+        socket = null;
+        port = -1;
+        address = null;
+    }
+
+
+    public String startRecording(String captureDevice, String channel, String filename) throws IOException, InterruptedException {
+        if (socket == null) {
+            return "ERROR socket not connected.";
+        } else if (!socket.isConnected()) {
+            connect(address, port);
+        }
+
+        out.write("START " + captureDevice + "|0|" + channel + "|0|" + filename + "|Great\r\n");
+        out.flush();
+
+        while (!in.ready()) {
+            Thread.sleep(100);
+        }
+
+        StringBuilder stringBuilder = new StringBuilder(4);
+        while (in.ready()) {
+            stringBuilder.append((char)in.read());
+        }
+
+        return stringBuilder.toString();
+    }
+
+    public String stopRecording(String captureDevice) throws IOException, InterruptedException {
+        if (socket == null) {
+            return "ERROR socket not connected.";
+        } else if (!socket.isConnected()) {
+            connect(address, port);
+        }
+
+        out.write("STOP " + captureDevice + "\r\n");
+        out.flush();
+
+        while (!in.ready()) {
+            Thread.sleep(100);
+        }
+
+        StringBuilder stringBuilder = new StringBuilder(4);
+        while (in.ready()) {
+            stringBuilder.append((char)in.read());
+        }
+
+        return stringBuilder.toString();
+    }
 }

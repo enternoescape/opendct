@@ -28,7 +28,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.List;
 
 public class NetworkPowerEventManger implements PowerEventListener, DeviceOptions {
     private static final Logger logger = LogManager.getLogger(NetworkPowerEventManger.class);

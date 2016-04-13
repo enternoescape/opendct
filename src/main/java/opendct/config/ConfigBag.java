@@ -533,7 +533,7 @@ public class ConfigBag {
         boolean errors = false;
 
         if (values != null) {
-            ArrayList<Integer> intArray = new ArrayList<Integer>();
+            List<Integer> intArray = new ArrayList<>();
 
             for (String value : values) {
 
@@ -790,9 +790,9 @@ public class ConfigBag {
      * @return Returns a HashMap containing all of the values found. If no values were found, the
      * HashMap will be empty.
      */
-    public HashMap<String, String> getAllByRootKey(String rootKey) {
+    public Map<String, String> getAllByRootKey(String rootKey) {
 
-        HashMap<String, String> returnValue = new HashMap<String, String>();
+        Map<String, String> returnValue = new HashMap<String, String>();
         Enumeration names = properties.propertyNames();
 
         while (names.hasMoreElements()) {
@@ -819,10 +819,10 @@ public class ConfigBag {
      * @return Returns an array of HashMaps containing all of the respective values found. If no
      *         values were found, the respective HashMaps will be empty.
      */
-    public HashMap<String, String>[] getAllByRootKey(String... rootKeys) {
+    public Map<String, String>[] getAllByRootKey(String... rootKeys) {
 
         @SuppressWarnings("unchecked")
-        HashMap<String, String>[] returnValues = new HashMap[rootKeys.length];
+        Map<String, String>[] returnValues = new HashMap[rootKeys.length];
 
         for (int i = 0; i < returnValues.length; i++) {
             returnValues[i] = new HashMap<>();
@@ -857,9 +857,9 @@ public class ConfigBag {
      * @return Returns a HashMap containing all of the values found. If no values were found, the
      *         HashMap will be empty.
      */
-    public HashMap<String, String> mergeAllByRootKeys(String... rootKeys) {
+    public Map<String, String> mergeAllByRootKeys(String... rootKeys) {
 
-        HashMap<String, String> returnValue = new HashMap<>();
+        Map<String, String> returnValue = new HashMap<>();
 
         for (String rootKey : rootKeys) {
             for (Map.Entry<Object, Object> name : properties.entrySet()) {

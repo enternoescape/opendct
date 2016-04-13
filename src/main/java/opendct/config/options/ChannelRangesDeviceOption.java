@@ -21,6 +21,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ChannelRangesDeviceOption extends BaseDeviceOption {
     private static final Logger logger = LogManager.getLogger(ChannelRangesDeviceOption.class);
@@ -41,7 +42,7 @@ public class ChannelRangesDeviceOption extends BaseDeviceOption {
 
         String invalid[] = validateRanges(newValues[0]);
         if (invalid.length > 0) {
-            logger.warn("These ranges are invalid and will not be used: {}", invalid);
+            logger.warn("These ranges are invalid and will not be used: {}", Arrays.toString(invalid));
         }
     }
 

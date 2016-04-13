@@ -33,6 +33,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -41,7 +42,7 @@ public class InfiniTVChannels {
 
     private static final ReentrantReadWriteLock channelMapLock = new ReentrantReadWriteLock();
 
-    private final static ConcurrentHashMap<String, DeviceOption> deviceOptions;
+    private final static Map<String, DeviceOption> deviceOptions;
     private static StringDeviceOption ignoreNamesContaining;
     private static StringDeviceOption ignoreChannelNumbers;
     private static BooleanDeviceOption removeDuplicateChannels;
@@ -60,7 +61,8 @@ public class InfiniTVChannels {
         while (true) {
             try {
                 ignoreNamesContaining = new StringDeviceOption(
-                        Config.getStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE"),
+                        Config.getStringArray("channels.infinitv.ignore_names_containing_csv",
+                                "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE"),
                         true,
                         false,
                         "Ignore Channel Names Containing",
@@ -82,8 +84,8 @@ public class InfiniTVChannels {
                         false,
                         "Remove Duplicate Channels",
                         "channels.infinitv.remove_duplicate_channels",
-                        "Removed channels that have the exact same name. Preference is given to the" +
-                                " first channel to have the name."
+                        "Removed channels that have the exact same name. Preference is given to" +
+                                " the first channel to have the name."
                 );
 
                 Config.mapDeviceOptions(
@@ -95,7 +97,8 @@ public class InfiniTVChannels {
             } catch (DeviceOptionException e) {
                 logger.error("Unable to configure device options for InfiniTVChannels reverting to defaults => ", e);
 
-                Config.setStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
+                Config.setStringArray("channels.infinitv.ignore_names_containing_csv",
+                        "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
                 Config.setStringArray("channels.infinitv.ignore_channels_csv");
                 Config.setBoolean("channels.infinitv.remove_duplicate_channels", true);
 
@@ -108,7 +111,7 @@ public class InfiniTVChannels {
 
     // This will also kick off an update interval thread unless it is disabled in properties.
     public static boolean populateChannels(ChannelLineup channelLineup) {
-        logger.entry();
+        logger.entry(channelLineup);
 
         // Lock immediately.
         channelMapLock.writeLock().lock();
@@ -173,7 +176,7 @@ public class InfiniTVChannels {
                                 //modulation
                                 int frequency = -1;
                                 int program = -1;
-                                float eia = -1;
+                                //eia
                                 try {
                                     // If these can't be parsed, we likely can't use them in any way
                                     // other than the VChannel number, but it could prevent us from
@@ -183,13 +186,12 @@ public class InfiniTVChannels {
                                     // with the HDHomeRun.
                                     frequency = Integer.parseInt(values[3]) * 1000;
                                     program = Integer.parseInt(values[4]);
-                                    eia = Float.parseFloat(values[5]);
                                 } catch (Exception e) {
                                     logger.debug("Unable to parse the " +
-                                                    "frequency '{}', program '{}' or eia '{}'. " +
+                                                    "frequency '{}' or program '{}'. " +
                                                     "This may not be an actual problem, the " +
                                                     "channel will still be added. => {}",
-                                            values[3], values[4], values[5], e);
+                                            values[3], values[4], e);
                                 }
 
                                 newChannelList.add(values[0]);
@@ -222,7 +224,6 @@ public class InfiniTVChannels {
                                                 values[2],
                                                 frequency,
                                                 String.valueOf(program),
-                                                String.valueOf(eia),
                                                 ignore);
 
                                         channelLineup.addChannel(infiniTVChannel);
@@ -244,11 +245,6 @@ public class InfiniTVChannels {
                                             updated = true;
                                         }
 
-                                        if (eia > 0 && !oldChannel.getEia().equals(String.valueOf(eia))) {
-                                            oldChannel.setEia(String.valueOf(eia));
-                                            updated = true;
-                                        }
-
                                         if (oldChannel.isIgnore() != ignore) {
                                             oldChannel.setIgnore(ignore);
                                             updated = true;
@@ -263,9 +259,9 @@ public class InfiniTVChannels {
                                     if (updated) {
                                         logger.info("Updated InfiniTV channel:" +
                                                         " channel = {}, name = {}, modulation = {}," +
-                                                        " frequency = {}, program = {}, eia = {}, ignore = {}",
+                                                        " frequency = {}, program = {}, ignore = {}",
                                                 channel, values[1], values[2],
-                                                frequency, program, eia, ignore);
+                                                frequency, program, ignore);
                                     }
                                 }
                             } catch (Exception e) {

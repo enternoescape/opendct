@@ -32,7 +32,7 @@ import static org.bytedeco.javacpp.avutil.av_dict_set;
 public class FFmpegProfileManager {
     private final static Logger logger = LogManager.getLogger(FFmpegProfileManager.class);
 
-    private final static HashMap<String, FFmpegProfile> profiles = new HashMap<>();
+    private final static Map<String, FFmpegProfile> profiles = new HashMap<>();
 
     static {
         File transcodeDir = new File(Config.getConfigDirectory() + Config.DIR_SEPARATOR + "transcode");
@@ -77,7 +77,7 @@ public class FFmpegProfileManager {
      * @param encoderContext The codec context to derive what settings should be used.
      * @param dict The dictionary to be used to apply codec specific options.
      */
-    public static void confVideoEncoder(HashMap<String,String> settings, avcodec.AVCodecContext encoderContext, avutil.AVDictionary dict) {
+    public static void confVideoEncoder(Map<String,String> settings, avcodec.AVCodecContext encoderContext, avutil.AVDictionary dict) {
 
         int iValue;
         float fValue;

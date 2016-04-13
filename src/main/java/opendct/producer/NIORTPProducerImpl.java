@@ -18,7 +18,6 @@ package opendct.producer;
 
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
-import opendct.video.rtsp.rtcp.RTCPClient;
 import opendct.video.rtsp.rtp.RTPPacketProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,7 +37,6 @@ public class NIORTPProducerImpl implements RTPProducer {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
-    private RTCPClient rtcpClient = new RTCPClient();
 
     private int packetsBadReceived = 0;
     private long packetsReceived = 0;
@@ -64,7 +62,6 @@ public class NIORTPProducerImpl implements RTPProducer {
     private final int udpInternalReceiveBufferLimit = 5242880;
     private InetAddress remoteIPAddress = null;
     private DatagramChannel datagramChannel = null;
-    private Thread timeoutThread = null;
     private final AtomicBoolean stop = new AtomicBoolean(false);
     private final Object receiveMonitor = new Object();
 
@@ -72,7 +69,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
     public synchronized void setStreamingSocket(InetAddress streamRemoteIP, int streamLocalPort) throws IOException {
         logger.entry(streamRemoteIP, streamLocalPort);
-        if (running.get()) {
+        if (running.getAndSet(true)) {
             throw new IOException("The IP address and port for RTP producer cannot be changed while the thread is running.");
         }
 
@@ -88,7 +85,7 @@ public class NIORTPProducerImpl implements RTPProducer {
             // In case 0 was used and a port was automatically chosen.
             this.localPort = datagramChannel.socket().getLocalPort();
 
-            rtcpClient.startReceiving(streamRemoteIP, this.localPort + 1);
+            //rtcpClient.startReceiving(streamRemoteIP, this.localPort + 1);
         } catch (IOException e) {
             if (datagramChannel != null) {
                 try {
@@ -98,8 +95,6 @@ public class NIORTPProducerImpl implements RTPProducer {
                     logger.debug("Producer created an exception while closing the datagram channel => ", e0);
                 }
             }
-
-            rtcpClient.stopReceiving();
 
             throw e;
         }
@@ -128,10 +123,6 @@ public class NIORTPProducerImpl implements RTPProducer {
             return;
         }
 
-        if (timeoutThread != null) {
-            timeoutThread.interrupt();
-        }
-
         datagramChannel.socket().close();
     }
 
@@ -149,88 +140,8 @@ public class NIORTPProducerImpl implements RTPProducer {
         return remoteIPAddress;
     }
 
-    public void run() throws IllegalThreadStateException {
-        if (running.getAndSet(true)) {
-            logger.warn("The producer is already running.");
-            throw new IllegalThreadStateException("The producer is already running.");
-        }
-
-        if (stop.getAndSet(false)) {
-            logger.warn("Producer was requesting to stop before it started.");
-            throw new IllegalThreadStateException("The producer is still stopping.");
-        }
-
+    public void run() {
         logger.info("Producer thread is running.");
-
-        timeoutThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                if (stalledTimeout == 0) {
-                    logger.debug("Stall timeout detection is disabled.");
-                    return;
-                }
-
-                logger.info("Producer packet monitoring thread is running.");
-                boolean firstPacketsReceived = true;
-                int timeout;
-
-                while(!stop.get() && !Thread.currentThread().isInterrupted()) {
-                    synchronized (receiveMonitor) {
-                        packetsLastReceived = packetsReceived;
-                    }
-
-                    long recentPackets;
-
-                    try {
-                        timeout = stalledTimeout;
-
-                        while (!Thread.currentThread().isInterrupted() && timeout-- > 0) {
-                            Thread.sleep(1000);
-
-                            synchronized (receiveMonitor) {
-                                recentPackets = packetsReceived;
-
-                                if (!(recentPackets == packetsLastReceived)) {
-                                    stalled = false;
-                                }
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                        logger.debug("The packet monitoring thread has been interrupted.");
-                        break;
-                    }
-
-                    synchronized (receiveMonitor) {
-                        recentPackets = packetsReceived;
-                    }
-
-                    if (recentPackets == packetsLastReceived) {
-                        logger.info("No packets received in over {} seconds.", stalledTimeout);
-
-                        synchronized (receiveMonitor) {
-                            stalled = true;
-                        }
-                    } else {
-                        synchronized (receiveMonitor) {
-                            stalled = false;
-                        }
-                    }
-
-                    if (recentPackets > 0) {
-                        if (firstPacketsReceived) {
-                            firstPacketsReceived = false;
-                            logger.info("Received first {} datagram packets. Missed RTP packets {}. Bad RTP packets {}.", recentPackets, packetProcessor.getMissedRTPPackets(), packetsBadReceived);
-                        }
-                    }
-                }
-
-                logger.info("Producer packet monitoring thread has stopped.");
-            }
-        });
-
-        timeoutThread.setName("PacketsMonitor-" + timeoutThread.getId() + ":" + Thread.currentThread().getName());
-        timeoutThread.start();
 
         // We could be doing channel scanning that doesn't need this kind of prioritization.
         if (Thread.currentThread().getPriority() != Thread.MIN_PRIORITY) {
@@ -264,7 +175,7 @@ public class NIORTPProducerImpl implements RTPProducer {
 
                 // A standard RTP transmitted datagram payload should not be larger than 1328 bytes,
                 // but the largest possible UDP packet size is 65535, so we'll double that to 131016.
-                ByteBuffer datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                ByteBuffer datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
 
                 while (!Thread.currentThread().isInterrupted()) {
                     datagramBuffer.clear();
@@ -281,21 +192,21 @@ public class NIORTPProducerImpl implements RTPProducer {
                         // position to 12.
                         packetProcessor.findMissingRTPPackets(datagramBuffer);
 
-                        sageTVConsumer.write(datagramBuffer.array(), datagramBuffer.position(), datagramBuffer.remaining());
+                        sageTVConsumer.write(datagramBuffer);
 
                         if (datagramSize >= udpInternalReceiveBufferSize) {
                             if (udpInternalReceiveBufferSize < udpInternalReceiveBufferLimit) {
                                 if (udpInternalReceiveBufferSize < 32767) {
                                     // This will cover 99% of the required adjustments.
                                     udpInternalReceiveBufferSize = 32767;
-                                    datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                                    datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
                                 } else {
                                     if (udpInternalReceiveBufferSize * 2 >= udpInternalReceiveBufferLimit) {
                                         udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit;
-                                        datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                                        datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
                                     } else {
                                         udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit * 2;
-                                        datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferSize);
+                                        datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
                                     }
                                 }
 
@@ -303,7 +214,7 @@ public class NIORTPProducerImpl implements RTPProducer {
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Increased buffer capacity to {} bytes.", datagramBuffer.limit());
                             } else {
                                 if (!(udpInternalReceiveBufferSize == udpInternalReceiveBufferLimit)) {
-                                    datagramBuffer = ByteBuffer.allocate(udpInternalReceiveBufferLimit);
+                                    datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferLimit);
                                     Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", udpInternalReceiveBufferSize);
                                 }
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Buffer increase capacity limit reached at {} bytes.", datagramBuffer.limit());
@@ -334,12 +245,6 @@ public class NIORTPProducerImpl implements RTPProducer {
 
         if (datagramChannel != null) {
             try {
-                rtcpClient.stopReceiving();
-            } catch (Exception e) {
-                logger.debug("Producer created an exception while closing the RTCP channel => {}", e.getMessage());
-            }
-
-            try {
                 datagramChannel.close();
                 // The datagram channel doesn't seem to close the socket every time.
                 datagramChannel.socket().close();
@@ -349,31 +254,6 @@ public class NIORTPProducerImpl implements RTPProducer {
         }
 
         logger.info("Producer thread has stopped.");
-
-        if (timeoutThread != null) {
-            try {
-                int timeout = 0;
-
-                while (timeoutThread != null && timeoutThread.isAlive()) {
-                    timeoutThread.interrupt();
-                    timeoutThread.join(1000);
-
-                    if (timeout++ > 5) {
-                        logger.warn("Producer has been waiting for packet monitoring thread to stop for over {} seconds.", timeout);
-                    }
-                }
-            } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for packet monitoring thread to stop => {}", e.getMessage());
-            }
-        }
-
-        if (rtcpClient != null) {
-            try {
-                rtcpClient.waitForStop();
-            } catch (InterruptedException e) {
-                logger.debug("Producer was interrupted while waiting for RTCP client thread to stop => {}", e.getMessage());
-            }
-        }
 
         running.set(false);
         stop.set(false);

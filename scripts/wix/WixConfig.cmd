@@ -43,3 +43,4 @@ SET SourcePath=%FilesPath%\wix\source
 SET ConfigPath=%FilesPath%\wix\config
 SET DistPath=%FilesPath%\distributions
 SET JswDocPath=%FilesPath%\jsw\doc
+SET BinPath=%FilesPath%\bin

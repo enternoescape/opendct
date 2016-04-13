@@ -614,7 +614,7 @@ public class HDHomeRunTuner {
 
         String spaceSplit[] = filter.split(" ");
 
-        ArrayList<Integer> pids = new ArrayList<Integer>();
+        ArrayList<Integer> pids = new ArrayList<>();
 
         try {
             for (String space : spaceSplit) {

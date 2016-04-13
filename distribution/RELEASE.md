@@ -862,3 +862,8 @@
 > throughput.
 
 > *Trying out fastutils for some of the bigger hash maps where possible.
+
+> *Added Music Choice transcoding profile (ultrafast_mc). This matches
+> Music Choice channels based on their relatively unique
+> characteristics. It is possible to have an SD channel come in as a
+> false positive, but it should be rare.

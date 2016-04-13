@@ -30,14 +30,16 @@ import java.nio.channels.SocketChannel;
 public class NIOHttpDownloader {
     private final static Logger logger = LogManager.getLogger(HTTPProducerImpl.class);
 
+    // Carriage return and line feed are required regardless of the OS.
+    private static final String NEW_LINE = "\r\n";
     private static final String GET_HEAD = "GET ";
-    private static final String GET_TAIL = " HTTP/1.1" + Config.NEW_LINE;
+    private static final String GET_TAIL = " HTTP/1.1" + NEW_LINE;
     private static final String HOST_HEAD = "Host: ";
     private static final String CONNECTION =
-            "Connection: keep-alive" + Config.NEW_LINE +
-            "Accept: video/mpeg" + Config.NEW_LINE +
-            "User-Agent: OpenDCT" + Config.NEW_LINE +
-                    Config.NEW_LINE;
+            "Connection: keep-alive" + NEW_LINE +
+            "Accept: video/mpeg" + NEW_LINE +
+            "User-Agent: OpenDCT" + NEW_LINE +
+                    NEW_LINE;
 
     private boolean closed = false;
     private final SocketChannel socketChannel;
@@ -66,7 +68,7 @@ public class NIOHttpDownloader {
         tempBuffer.clear();
         tempBuffer.put((
                 GET_HEAD + address.getFile() + GET_TAIL +
-                        HOST_HEAD + address.getAuthority() + Config.NEW_LINE +
+                        HOST_HEAD + address.getAuthority() + NEW_LINE +
                         CONNECTION
         ).getBytes(Config.STD_BYTE));
 

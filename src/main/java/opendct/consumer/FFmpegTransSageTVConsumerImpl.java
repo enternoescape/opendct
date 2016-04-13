@@ -620,11 +620,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 bytesSent = 0;
 
                 if (datagramChannel != null) {
-                    if (length > 65000) {
+                    if (length > 31960) {
                         ByteBuffer slice;
                         int increment;
                         while (writeBuffer.hasRemaining()) {
-                            increment = Math.min(65000, writeBuffer.remaining());
+                            increment = Math.min(31960, writeBuffer.remaining());
                             slice = writeBuffer.slice();
                             slice.limit(increment);
                             writeBuffer.position(writeBuffer.position() + increment);
@@ -632,7 +632,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             while (slice.hasRemaining() && datagramChannel.isOpen()) {
                                 bytesSent += datagramChannel.write(slice);
                                 try {
-                                    Thread.sleep(15);
+                                    Thread.sleep(1);
                                 } catch (InterruptedException e) {
                                     logger.debug("Interrupted while writing to CCExtractor => {}",
                                             e.toString());

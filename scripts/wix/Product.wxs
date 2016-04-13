@@ -263,6 +263,9 @@
                         <Component Id="ultraFast1080p.properties" Guid="{0acc4829-4194-4aa4-acde-4afb5da49303}" NeverOverwrite="no" Permanent="no">
                             <File Source="$(var.configSourcePath)\transcode\ultrafast1080p.properties" Id="ultraFast1080p.properties" KeyPath="yes" Vital="yes" />
                         </Component>
+                        <Component Id="ultraFastMc.properties" Guid="{0acc4829-4194-4aa4-acde-4afb5da49304}" NeverOverwrite="no" Permanent="no">
+                            <File Source="$(var.configSourcePath)\transcode\ultrafast_mc.properties" Id="ultraFastMc.properties" KeyPath="yes" Vital="yes" />
+                        </Component>
                     </Directory>
 				</Directory>
 			</Directory>
@@ -307,6 +310,7 @@
 			<ComponentRef Id="ultraFast720p.properties" />
 			<ComponentRef Id="ultraFast720p30fps.properties" />
 			<ComponentRef Id="ultraFast1080p.properties" />
+			<ComponentRef Id="ultraFastMc.properties" />
 
             <!-- Generated fragment: rootComp_DCT.wxs -->
             <ComponentGroupRef Id="rootComp_DCT" />

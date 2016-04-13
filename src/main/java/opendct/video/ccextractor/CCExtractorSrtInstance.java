@@ -16,6 +16,7 @@
 
 package opendct.video.ccextractor;
 
+import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -55,7 +56,13 @@ public class CCExtractorSrtInstance {
             baseFilename = baseFilename.replace("\"", "");
         }
 
-        execute = execute + parameters + " -o \"" + baseFilename + ".srt\"";
+        if (Config.IS_WINDOWS) {
+            execute = execute + parameters + " -o \"" + baseFilename + ".srt\"";
+        } else {
+            // Linux hangs onto the first double quote and cannot create a file because " can't be
+            // in a filename. Instead we'll just escape spaces.
+            execute = execute + parameters + " -o " + baseFilename.replace(" ", "\\ ") + ".srt";
+        }
 
         logger.debug("Executing: {}", execute);
         ccExtractor = RUNTIME.exec(execute);
@@ -132,7 +139,7 @@ public class CCExtractorSrtInstance {
         try {
             outputStream.close();
         } catch (IOException e) {
-            logger.error("Error while closing CCExtractor stdin stream => ", e);
+            logger.debug("Error while closing CCExtractor stdin stream => ", e.getMessage());
         }
 
         outputStdStream.setClosed();
@@ -173,7 +180,7 @@ public class CCExtractorSrtInstance {
             try {
                 reader.close();
             } catch (IOException e) {
-                logger.error("Error while closing CCExtractor {} stream => ", streamType, e);
+                logger.debug("Error while closing CCExtractor {} stream => ", streamType, e.getMessage());
             }
         }
 

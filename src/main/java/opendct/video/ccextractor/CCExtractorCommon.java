@@ -62,8 +62,12 @@ public class CCExtractorCommon {
             }
         }
 
-        if (!newExec.equals("")) {
+        // Linux does not like this path being put in quotes, but Windows needs it.
+        if (Config.IS_WINDOWS && !newExec.equals("")) {
             newExec = "\"" + newExec + "\"";
+        } else {
+            // This will likely never be needed, but this is only done once.
+            newExec = newExec.replace(" ", "\\ ");
         }
 
         CC_BINARY = newExec;

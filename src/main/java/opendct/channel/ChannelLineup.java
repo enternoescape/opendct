@@ -232,9 +232,9 @@ public class ChannelLineup {
         boolean updated = false;
         String oldProperties[] = oldChannel.getProperties();
 
-        // Start at two so we can't overwrite the channel and name.
-        for (int i = 2; i < oldProperties.length; i++) {
-            if (newProperties[i] != null) {
+        // Start at one so we can't overwrite the channel. The name is at index 3.
+        for (int i = 1; i < oldProperties.length; i++) {
+            if (newProperties[i] != null && i != 3) {
                 oldProperties[i] = newProperties[i];
                 updated = true;
             }

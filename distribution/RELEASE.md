@@ -872,3 +872,13 @@
 > Music Choice channels based on their relatively unique
 > characteristics. It is possible to have an SD channel come in as a
 > false positive, but it should be rare.
+
+#### 0.5.1-Beta
+> *CONFIGURATION UPGRADE: The first time you run this version, it will
+> upgrade your current configuration. Anything still referencing
+> FFmpegSageTVConsumerImpl will be changed over to DynamicConsumerImpl.
+> This will not change anything set to FFmpegTransSageTVConsumerImpl.
+
+> *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
+> force old installations to use the newer remuxer unless explicitly set
+> otherwise.

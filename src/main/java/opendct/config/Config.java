@@ -285,8 +285,10 @@ public class Config {
                     String value = (String)entry.getValue();
 
                     if (value.equals("opendct.consumer.FFmpegSageTVConsumerImpl")) {
-                        logger.info("Replacing the key value of {}={} with opendct.consumer.FFmpegTransSageTVConsumerImpl", key, value);
-                        properties.setProperty(key, "opendct.consumer.FFmpegTransSageTVConsumerImpl");
+                        if (!key.equals("consumer.dynamic.default")) {
+                            logger.info("Replacing the key value of {}={} with opendct.consumer.DynamicConsumerImpl", key, value);
+                            properties.setProperty(key, "opendct.consumer.DynamicConsumerImpl");
+                        }
                     }
                 }
         }

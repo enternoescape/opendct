@@ -43,7 +43,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
-    public static final int VERSION_BUILD = 47;
+    public static final int VERSION_BUILD = 48;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -926,7 +926,7 @@ public class Config {
         String returnValues[] = new String[4];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = FFmpegSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[1] = FFmpegOldSageTVConsumerImpl.class.getCanonicalName();
         returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
         returnValues[3] = DynamicConsumerImpl.class.getCanonicalName();
 
@@ -937,7 +937,7 @@ public class Config {
         String returnValues[] = new String[3];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = FFmpegSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[1] = FFmpegOldSageTVConsumerImpl.class.getCanonicalName();
         returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
 
         return returnValues;
@@ -969,12 +969,13 @@ public class Config {
 
         if (consumerName.endsWith(RawSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new RawSageTVConsumerImpl();
-        } else if (consumerName.endsWith(FFmpegSageTVConsumerImpl.class.getSimpleName())) {
-            returnValue = new FFmpegSageTVConsumerImpl();
+        } else if (consumerName.endsWith(FFmpegOldSageTVConsumerImpl.class.getSimpleName())) {
+            returnValue = new FFmpegOldSageTVConsumerImpl();
         } else if (consumerName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegTransSageTVConsumerImpl();
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
             returnValue = DynamicConsumerImpl.getConsumer(channel);
+            properties.setProperty(key, DynamicConsumerImpl.class.getName());
         } else {
             try {
                 returnValue = (SageTVConsumer) Class.forName(consumerName).newInstance();

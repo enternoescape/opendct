@@ -74,10 +74,10 @@ public class DynamicConsumerImpl implements SageTVConsumer {
 
             channels = ChannelRangesDeviceOption.parseRanges(ffmpegConsumer.getValue());
             for (String channel : channels) {
-                dynamicMaps.put(channel, FFmpegSageTVConsumerImpl.class.getCanonicalName());
+                dynamicMaps.put(channel, FFmpegOldSageTVConsumerImpl.class.getCanonicalName());
             }
 
-            logger.info("Dynamic consumer set to use FFmpegSageTVConsumerImpl for {}", channels);
+            logger.info("Dynamic consumer set to use FFmpegOldSageTVConsumerImpl for {}", channels);
 
             channels = ChannelRangesDeviceOption.parseRanges(ffmpegTransConsumer.getValue());
             for (String channel : channels) {
@@ -380,7 +380,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                         "FFmpeg Consumer Channels",
                         "consumer.dynamic.channels.ffmpeg",
                         "These are the channel ranges that will always use" +
-                                " FFmpegSageTVConsumerImpl."
+                                " FFmpegOldSageTVConsumerImpl."
                 );
 
                 ffmpegTransConsumer = new ChannelRangesDeviceOption(

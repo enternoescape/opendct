@@ -819,6 +819,11 @@
 > support the large gaps in Music Choice.
 
 #### 0.4.48-Stable
+> *CONFIGURATION UPGRADE: The first time you run this version, it will
+> upgrade your current configuration. Anything still referencing
+> FFmpegSageTVConsumerImpl will be changed over to
+> FFmpegTransSageTVConsumerImpl.
+
 > *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
 > force old installations to use the newer remuxer unless explicitly set
 > otherwise. 

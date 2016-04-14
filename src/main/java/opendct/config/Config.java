@@ -37,11 +37,11 @@ import java.util.*;
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
-    public static final int VERSION_CONFIG = 3;
+    public static final int VERSION_CONFIG = 4;
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 0;
+    public static final int VERSION_BUILD = 1;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -277,6 +277,20 @@ public class Config {
 
                 logger.info("Setting 'discovery.exp_enabled' to 'true'");
                 setBoolean("discovery.exp_enabled", true);
+            case 3:
+                logger.info("Upgrading to config version 4...");
+
+                for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                    String key = (String)entry.getKey();
+                    String value = (String)entry.getValue();
+
+                    if (value.equals("opendct.consumer.FFmpegSageTVConsumerImpl")) {
+                        if (!key.equals("consumer.dynamic.default")) {
+                            logger.info("Replacing the key value of {}={} with opendct.consumer.DynamicConsumerImpl", key, value);
+                            properties.setProperty(key, "opendct.consumer.DynamicConsumerImpl");
+                        }
+                    }
+                }
         }
 
         Properties propertiesMigrate = properties;
@@ -1012,12 +1026,13 @@ public class Config {
 
         if (consumerName.endsWith(RawSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new RawSageTVConsumerImpl();
-        } else if (consumerName.endsWith(FFmpegSageTVConsumerImpl.class.getSimpleName())) {
-            returnValue = new FFmpegSageTVConsumerImpl();
+        } else if (consumerName.endsWith(FFmpegOldSageTVConsumerImpl.class.getSimpleName())) {
+            returnValue = new FFmpegOldSageTVConsumerImpl();
         } else if (consumerName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegTransSageTVConsumerImpl();
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
             returnValue = DynamicConsumerImpl.getConsumer(channel);
+            properties.setProperty(key, DynamicConsumerImpl.class.getName());
         } else {
             try {
                 returnValue = (SageTVConsumer) Class.forName(consumerName).newInstance();

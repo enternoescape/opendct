@@ -47,8 +47,8 @@ import static org.bytedeco.javacpp.avcodec.*;
 import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
 
-public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
-    private static final Logger logger = LogManager.getLogger(FFmpegSageTVConsumerImpl.class);
+public class FFmpegOldSageTVConsumerImpl implements SageTVConsumer {
+    private final static Logger logger = LogManager.getLogger(FFmpegOldSageTVConsumerImpl.class);
 
     private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
 
@@ -122,7 +122,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private final Object streamingMonitor = new Object();
     private long initBufferedData = 1048576;
 
-    private static Map<Pointer, FFmpegSageTVConsumerImpl> instanceMap = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<Pointer, FFmpegOldSageTVConsumerImpl> instanceMap = new ConcurrentHashMap<Pointer, FFmpegOldSageTVConsumerImpl>();
     private static final AtomicLong callbackAddress = new AtomicLong(0);
 
     public static final String FFMPEG_INIT_INTERRUPTED = "FFmpeg initialization was interrupted.";
@@ -494,7 +494,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private static class InterruptCallable extends Callback_Pointer {
         @Override
         public int call(Pointer opaque) {
-            FFmpegSageTVConsumerImpl consumer = instanceMap.get(opaque);
+            FFmpegOldSageTVConsumerImpl consumer = instanceMap.get(opaque);
 
             if (consumer.ffmpegInterrupted) {
                 logger.info("Interrupt callback is returning 1");
@@ -509,7 +509,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private static class SeekCallback extends Seek_Pointer_long_int {
         @Override
         public long call(Pointer opaque, long offset, int whence) {
-            FFmpegSageTVConsumerImpl consumer = instanceMap.get(opaque);
+            FFmpegOldSageTVConsumerImpl consumer = instanceMap.get(opaque);
 
             long returnValue = -1;
 
@@ -528,7 +528,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private static class ReadCallback extends Read_packet_Pointer_BytePointer_int {
         @Override
         public int call(Pointer opaque, BytePointer buf, int bufSize) {
-            FFmpegSageTVConsumerImpl consumer = instanceMap.get(opaque);
+            FFmpegOldSageTVConsumerImpl consumer = instanceMap.get(opaque);
 
             int nBytes = -1;
 
@@ -559,7 +559,7 @@ public class FFmpegSageTVConsumerImpl implements SageTVConsumer {
     private static class WriteCallback extends Write_packet_Pointer_BytePointer_int {
         @Override
         public int call(Pointer opaque, BytePointer bytePtr, int numBytesRequested) {
-            FFmpegSageTVConsumerImpl consumer = instanceMap.get(opaque);
+            FFmpegOldSageTVConsumerImpl consumer = instanceMap.get(opaque);
 
             int numBytesWritten = 0;
 

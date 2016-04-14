@@ -818,6 +818,11 @@
 > *Changed starting dts tolerance from 450000 cycles to 3500000 to
 > support the large gaps in Music Choice.
 
+#### 0.4.48-Stable
+> *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
+> force old installations to use the newer remuxer unless explicitly set
+> otherwise.
+
 #### 0.5.0-Beta
 > *CCExtractor support for FFmpeg transcoder has been added. This
 > feature only works when OpenDCT is configured to write directly (not

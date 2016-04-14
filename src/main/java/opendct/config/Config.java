@@ -41,7 +41,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 0;
+    public static final int VERSION_BUILD = 1;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -1012,12 +1012,13 @@ public class Config {
 
         if (consumerName.endsWith(RawSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new RawSageTVConsumerImpl();
-        } else if (consumerName.endsWith(FFmpegSageTVConsumerImpl.class.getSimpleName())) {
-            returnValue = new FFmpegSageTVConsumerImpl();
+        } else if (consumerName.endsWith(FFmpegOldSageTVConsumerImpl.class.getSimpleName())) {
+            returnValue = new FFmpegOldSageTVConsumerImpl();
         } else if (consumerName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegTransSageTVConsumerImpl();
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
             returnValue = DynamicConsumerImpl.getConsumer(channel);
+            properties.setProperty(key, DynamicConsumerImpl.class.getName());
         } else {
             try {
                 returnValue = (SageTVConsumer) Class.forName(consumerName).newInstance();

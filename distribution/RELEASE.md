@@ -887,3 +887,7 @@
 > *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
 > force old installations to use the newer remuxer unless explicitly set
 > otherwise.
+
+> *Fixed DynamicConsumerImpl not populating the
+> sagetv.device.\<unique_id\>.consumer properties if the property did
+> not already exist.

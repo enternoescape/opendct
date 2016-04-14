@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
 
-    public static final int VERSION_CONFIG = 3;
+    public static final int VERSION_CONFIG = 4;
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 4;
@@ -237,6 +237,18 @@ public class Config {
 
                 logger.info("Setting 'discovery.exp_enabled' to 'true'");
                 setBoolean("discovery.exp_enabled", true);
+            case 3:
+                logger.info("Upgrading to config version 4...");
+
+                for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                    String key = (String)entry.getKey();
+                    String value = (String)entry.getValue();
+
+                    if (value.equals("opendct.consumer.FFmpegSageTVConsumerImpl")) {
+                        logger.info("Replacing the key value of {}={} with opendct.consumer.FFmpegTransSageTVConsumerImpl", key, value);
+                        properties.setProperty(key, "opendct.consumer.FFmpegTransSageTVConsumerImpl");
+                    }
+                }
         }
 
         Properties propertiesMigrate = properties;

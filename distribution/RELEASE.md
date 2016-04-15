@@ -887,3 +887,15 @@
 > *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
 > force old installations to use the newer remuxer unless explicitly set
 > otherwise.
+
+> *Fixed DynamicConsumerImpl not populating the
+> sagetv.device.\<unique_id\>.consumer properties if the property did
+> not already exist.
+
+> *Changed startup and resume from standby to not rely on a known number
+> of capture devices. It will now check every time a new capture device
+> is loaded to see if it's the one SageTV is requesting until the
+> required devices timeout
+> (sagetv.device.global.required_devices_loaded_timeout_ms). This should
+> also result in faster resume tuning times since the program no longer
+> needs to wait for all required devices to be loaded.

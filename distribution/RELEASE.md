@@ -898,4 +898,4 @@
 > required devices timeout
 > (sagetv.device.global.required_devices_loaded_timeout_ms). This should
 > also result in faster resume tuning times since the program no longer
-> needs to wait for all required devices to be loaded. 
+> needs to wait for all required devices to be loaded.

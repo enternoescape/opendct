@@ -831,14 +831,20 @@ public class SageTVRequestHandler implements Runnable {
             pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(vCaptureDevice);
         }
 
-        if (pCaptureDevice == null) {
+        while (pCaptureDevice == null) {
+            boolean retry = false;
+
             try {
-                SageTVManager.blockUntilCaptureDevicesLoaded();
+                retry = SageTVManager.blockUntilNextCaptureDeviceLoaded();
             } catch (InterruptedException e) {
-                logger.debug("Interrupted while waiting for devices to be detected => ", e);
+                logger.debug("Interrupted while waiting for the next device to be detected => ", e);
             }
 
             pCaptureDevice = SageTVPoolManager.getAndLockBestCaptureDevice(vCaptureDevice);
+
+            if (!retry) {
+                break;
+            }
         }
 
         if (pCaptureDevice != null) {

@@ -35,6 +35,10 @@ public class SageTVDevicesLoaded extends Thread {
     private final int requiredDevices =
             Config.getInteger("sagetv.device.global.required_devices_loaded_count", 0);
 
+    // This time is used at startup and when resuming from standby if the device count is unknown.
+    private long expireTime = System.currentTimeMillis() + timeout;
+    private final Object deviceLoaded = new Object();
+
     private final CountDownLatch blockUntilLoaded = new CountDownLatch(requiredDevices);
 
     private volatile boolean allowFailure = true;
@@ -43,7 +47,10 @@ public class SageTVDevicesLoaded extends Thread {
     public void run() {
         // If the number of devices to wait for is none, then there is no reason to wait.
         if (requiredDevices <= 0) {
+            expireTime = System.currentTimeMillis() + timeout;
             return;
+        } else {
+            expireTime = 0;
         }
 
         logger.info("Waiting for all capture devices to become available...");
@@ -109,13 +116,43 @@ public class SageTVDevicesLoaded extends Thread {
                 break;
             }
         }
+
+        synchronized (deviceLoaded) {
+            deviceLoaded.notifyAll();
+        }
     }
 
-    public void blockUntilLoaded() throws InterruptedException {
+    public void blockUntilAllDevicesLoaded() throws InterruptedException {
         blockUntilLoaded.await();
 
         if (this.isAlive()) {
             this.interrupt();
         }
+    }
+
+    /**
+     * Blocks until the next device is loaded.
+     *
+     * @return <i>true</i> if a new device was added. <i>false</i> if the timeout has expired and no
+     *         new devices are likely to have been added. Check one more time for the device even if
+     *         <i>false</i> is returned, but don't use this method again after that attempt because
+     *         no new devices are expected.
+     */
+    public boolean blockUntilNextDeviceLoaded() throws InterruptedException {
+        if (System.currentTimeMillis() > expireTime) {
+            return false;
+        }
+
+        long currentCount = blockUntilLoaded.getCount();
+
+        synchronized (deviceLoaded) {
+            while (currentCount == blockUntilLoaded.getCount() &&
+                    System.currentTimeMillis() < expireTime) {
+
+                deviceLoaded.wait(1000);
+            }
+        }
+
+        return currentCount != blockUntilLoaded.getCount();
     }
 }

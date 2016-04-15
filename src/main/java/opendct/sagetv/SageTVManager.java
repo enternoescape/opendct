@@ -456,9 +456,37 @@ public class SageTVManager implements PowerEventListener {
         }
 
         if (wait) {
+            while (captureDevice == null) {
+                boolean retry = false;
+
+                try {
+                    retry = blockUntilNextCaptureDeviceLoaded();
+                } catch (InterruptedException e) {
+                    logger.debug("getSageTVCaptureDevice was interrupted while waiting for the next capture devices to be loaded.");
+                }
+
+                captureDeviceNameToCaptureDeviceLock.readLock().lock();
+
+                try {
+                    if (deviceName.endsWith(" Digital TV Tuner")) {
+                        deviceName = deviceName.substring(0, deviceName.length() - " Digital TV Tuner".length());
+                    }
+
+                    captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
+                } catch (Exception e) {
+                    logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
+                } finally {
+                    captureDeviceNameToCaptureDeviceLock.readLock().unlock();
+                }
+
+                if (!retry) {
+                    break;
+                }
+            }
+
             // In case the capture device was not loaded yet, we can wait for an further expected
             // devices here before trying one more time.
-            if (captureDevice == null) {
+            /*if (captureDevice == null) {
                 try {
                     blockUntilCaptureDevicesLoaded();
                 } catch (InterruptedException e) {
@@ -477,7 +505,7 @@ public class SageTVManager implements PowerEventListener {
                 } finally {
                     captureDeviceNameToCaptureDeviceLock.readLock().unlock();
                 }
-            }
+            }*/
         }
 
         return logger.exit(captureDevice);
@@ -744,7 +772,22 @@ public class SageTVManager implements PowerEventListener {
      *                              be due to suspend or the program closing.
      */
     public static void blockUntilCaptureDevicesLoaded() throws InterruptedException {
-        devicesWaitingThread.blockUntilLoaded();
+        devicesWaitingThread.blockUntilAllDevicesLoaded();
+    }
+
+    /**
+     * Blocks until the next device is loaded.
+     * <p/>
+     * Be careful where you call this and test to ensure you are not calling this method in a place
+     * that will potentially cause a deadlock. Do not use this as any part of tuner initialization.
+     *
+     * @return <i>true</i> if a new device was added. <i>false</i> if the timeout has expired and no
+     *         new devices are likely to have been added. Check one more time for the device even if
+     *         <i>false</i> is returned, but don't use this method again after that attempt because
+     *         no new devices are expected.
+     */
+    public static boolean blockUntilNextCaptureDeviceLoaded() throws InterruptedException {
+        return devicesWaitingThread.blockUntilNextDeviceLoaded();
     }
 
     /**

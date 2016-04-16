@@ -263,13 +263,25 @@ public class SageTVTuningMonitor {
                             break;
                         }
 
-                        if (!recording.active || recording.nextCheck > currentTime) {
+                        if (!recording.active || recording.nextCheck > currentTime ||
+                                (recording.filename != null && recording.filename.endsWith(".mpgbuf"))) {
                             continue;
                         }
 
                         long producedPackets = recording.captureDevice.getProducedPackets();
                         long recordedBytes = recording.captureDevice.getRecordedBytes();
 
+                        if (recording.lastRecordedBytes == recordedBytes) {
+                            logger.debug("The consumer appears to be stuck at {}.",
+                                    recording.lastRecordedBytes);
+                        }
+
+                        if (recording.lastProducedPackets == producedPackets) {
+                            logger.debug("The producer appears to be stuck at {}.",
+                                    recording.lastProducedPackets);
+                        }
+
+                        // If both of these appear to be stuck, re-tune.
                         if (recording.lastProducedPackets == producedPackets &&
                                 recording.lastRecordedBytes == recordedBytes) {
 
@@ -298,6 +310,9 @@ public class SageTVTuningMonitor {
                                     boolean tuned;
                                     String localFilename = captureDevice.getRecordFilename();
 
+                                    logger.info("Current copy protection {}.",
+                                            captureDevice.getCopyProtection());
+
                                     if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
                                         logger.error(
                                                 "Unable to re-tune because there isn't a filename."
@@ -312,11 +327,13 @@ public class SageTVTuningMonitor {
                                     if (captureDevice.isLocked()) {
                                         if (uploadID > 0) {
                                             tuned = captureDevice.startEncoding(
-                                                    channel, recording.filename, encodingQuality, bufferSize,
+                                                    channel, recording.filename,
+                                                    encodingQuality, bufferSize,
                                                     uploadID, remoteAddress);
                                         } else {
                                             tuned = captureDevice.startEncoding(
-                                                    channel, recording.filename, encodingQuality, bufferSize);
+                                                    channel, recording.filename,
+                                                    encodingQuality, bufferSize);
                                         }
                                     } else {
                                         logger.info("Re-tune was cancelled because the capture" +
@@ -328,7 +345,9 @@ public class SageTVTuningMonitor {
                                     if (!tuned) {
                                         localFilename = captureDevice.getRecordFilename();
 
-                                        if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
+                                        if (Util.isNullOrEmpty(localFilename) &&
+                                                recording.filename == null) {
+
                                             logger.error(
                                                     "Unable to tune because there isn't a filename."
                                             );
@@ -343,11 +362,13 @@ public class SageTVTuningMonitor {
 
                                         if (captureDevice.isLocked()) {
                                             if (uploadID > 0) {
-                                                captureDevice.startEncoding(channel, recording.filename,
+                                                captureDevice.startEncoding(
+                                                        channel, recording.filename,
                                                         encodingQuality, bufferSize,
                                                         uploadID, remoteAddress);
                                             } else {
-                                                captureDevice.startEncoding(channel, recording.filename,
+                                                captureDevice.startEncoding(
+                                                        channel, recording.filename,
                                                         encodingQuality, bufferSize);
                                             }
                                         }

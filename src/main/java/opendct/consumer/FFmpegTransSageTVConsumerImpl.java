@@ -828,6 +828,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             public void run() {
                 int writeBytes;
                 long currentBytes;
+                long currentBytesStreamed;
 
                 while (true) {
                     synchronized (asyncBuffer) {
@@ -902,7 +903,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         // If the file should have some data, but it doesn't, flush the data to disk
                         // to verify that the file in fact taking data.
 
-                        if (bytesStreamed.get() > 0 && recordingFile.length() == 0) {
+                        currentBytesStreamed = bytesStreamed.get();
+
+                        if (currentBytesStreamed > 0 &&
+                                recordingFile.length() < currentBytesStreamed) {
+
                             try {
                                 fileChannel.force(true);
                             } catch (IOException e) {
@@ -914,8 +919,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         // not be thrown. This handles the possible scenario. This also means
                         // previously written data is now lost.
 
-                        if (!recordingFile.exists() || (bytesStreamed.get() > 0 &&
-                                recordingFile.length() == 0)) {
+                        if (!recordingFile.exists() || (currentBytesStreamed > 0 &&
+                                recordingFile.length() < currentBytesStreamed)) {
 
                             try {
                                 fileChannel.close();

@@ -249,6 +249,14 @@ public class Config {
                         properties.setProperty(key, "opendct.consumer.FFmpegTransSageTVConsumerImpl");
                     }
                 }
+
+                logger.info("Changing the value of upnp.dct.wait_for_streaming from {} to {}",
+                        properties.getProperty("upnp.dct.wait_for_streaming"), 15000);
+                setInteger("upnp.dct.wait_for_streaming", 15000);
+
+                logger.info("Changing the value of hdhr.wait_for_streaming from {} to {}",
+                        properties.getProperty("hdhr.wait_for_streaming"), 15000);
+                setInteger("hdhr.wait_for_streaming", 15000);
         }
 
         Properties propertiesMigrate = properties;

@@ -192,6 +192,7 @@ public class Config {
 
         HashSet<String> removeEntries = new HashSet<>();
         String newArray[];
+        int oldInt;
 
         switch (configVersion) {
             case 1:
@@ -250,13 +251,21 @@ public class Config {
                     }
                 }
 
-                logger.info("Changing the value of upnp.dct.wait_for_streaming from {} to {}",
-                        properties.getProperty("upnp.dct.wait_for_streaming"), 15000);
-                setInteger("upnp.dct.wait_for_streaming", 15000);
+                oldInt = getInteger("upnp.dct.wait_for_streaming", 15000);
+                if (oldInt < 15000) {
+                    logger.info("Changing the value of upnp.dct.wait_for_streaming from {} to {}",
+                            oldInt, 15000);
 
-                logger.info("Changing the value of hdhr.wait_for_streaming from {} to {}",
-                        properties.getProperty("hdhr.wait_for_streaming"), 15000);
-                setInteger("hdhr.wait_for_streaming", 15000);
+                    setInteger("upnp.dct.wait_for_streaming", 15000);
+                }
+
+                oldInt = getInteger("hdhr.wait_for_streaming", 15000);
+                if (oldInt < 15000) {
+                    logger.info("Changing the value of hdhr.wait_for_streaming from {} to {}",
+                            oldInt, 15000);
+
+                    setInteger("hdhr.wait_for_streaming", 15000);
+                }
         }
 
         Properties propertiesMigrate = properties;

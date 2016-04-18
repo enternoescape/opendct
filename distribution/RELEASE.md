@@ -829,6 +829,8 @@
 > force old installations to use the newer remuxer unless explicitly set
 > otherwise.
 
+> *Increased initial bytes written before returning to SageTV up to 1MB.
+
 #### 0.5.0-Beta
 > *CCExtractor support for FFmpeg transcoder has been added. This
 > feature only works when OpenDCT is configured to write directly (not

@@ -830,3 +830,6 @@
 > otherwise.
 
 > *Increased initial bytes written before returning to SageTV up to 1MB.
+
+> *Removed small performance optimization to reduce the number reads
+> performed by the transcoding FFmpeg consumer.

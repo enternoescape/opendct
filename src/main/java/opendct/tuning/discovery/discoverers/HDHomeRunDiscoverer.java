@@ -95,7 +95,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         while (true) {
             try {
                 streamingWait = new LongDeviceOption(
-                        Config.getInteger("hdhr.wait_for_streaming", 8500),
+                        Config.getInteger("hdhr.wait_for_streaming", 15000),
                         false,
                         "Return to SageTV",
                         "hdhr.wait_for_streaming",
@@ -268,7 +268,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 logger.error("Unable to configure device options for HDHomeRunDiscoverer." +
                         " Reverting to defaults. => ", e);
 
-                Config.setInteger("hdhr.wait_for_streaming", 8500);
+                Config.setInteger("hdhr.wait_for_streaming", 15000);
                 Config.getBoolean("hdhr.smart_broadcast", true);
                 Config.setBoolean("hdhr.locking", true);
                 Config.setInteger("hdhr.retry_count", 2);

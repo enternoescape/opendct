@@ -78,10 +78,10 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         while (true) {
             try {
                 streamingWait = new LongDeviceOption(
-                        Config.getInteger("upnp.device.wait_for_streaming", 8500),
+                        Config.getInteger("upnp.device.wait_for_streaming", 15000),
                         false,
                         "Return to SageTV",
-                        "upnp.dct.wait_for_streaming",
+                        "upnp.device.wait_for_streaming",
                         "This is the maximum number of milliseconds to wait before returning to" +
                                 " SageTV regardless of if the requested channel is actually streaming."
                 );
@@ -129,7 +129,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                 logger.error("Unable to configure device options for HDHomeRunDiscoverer." +
                         " Reverting to defaults. => ", e);
 
-                Config.setInteger("upnp.device.wait_for_streaming", 8500);
+                Config.setInteger("upnp.device.wait_for_streaming", 15000);
                 Config.setInteger("upnp.device.wait_for_offline_detection_s", 18);
                 Config.setInteger("upnp.device.offline_detection_min_bytes", 18800);
                 Config.setBoolean("upnp.smart_broadcast", true);

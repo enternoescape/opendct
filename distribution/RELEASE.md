@@ -822,7 +822,8 @@
 > *CONFIGURATION UPGRADE: The first time you run this version, it will
 > upgrade your current configuration. Anything still referencing
 > FFmpegSageTVConsumerImpl will be changed over to
-> FFmpegTransSageTVConsumerImpl.
+> FFmpegTransSageTVConsumerImpl. hdhr.wait_for_streaming and
+> upnp.dct.wait_for_streaming will be changed to 15000.
 
 > *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
 > force old installations to use the newer remuxer unless explicitly set

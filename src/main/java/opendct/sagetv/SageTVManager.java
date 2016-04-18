@@ -460,6 +460,7 @@ public class SageTVManager implements PowerEventListener {
                 boolean retry = false;
 
                 try {
+                    logger.debug("The capture device '{}' is not yet available.", deviceName);
                     retry = blockUntilNextCaptureDeviceLoaded();
                 } catch (InterruptedException e) {
                     logger.debug("getSageTVCaptureDevice was interrupted while waiting for the next capture devices to be loaded.");
@@ -468,10 +469,6 @@ public class SageTVManager implements PowerEventListener {
                 captureDeviceNameToCaptureDeviceLock.readLock().lock();
 
                 try {
-                    if (deviceName.endsWith(" Digital TV Tuner")) {
-                        deviceName = deviceName.substring(0, deviceName.length() - " Digital TV Tuner".length());
-                    }
-
                     captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
                 } catch (Exception e) {
                     logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);

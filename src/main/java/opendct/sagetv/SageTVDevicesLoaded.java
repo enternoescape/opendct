@@ -37,7 +37,10 @@ public class SageTVDevicesLoaded extends Thread {
 
     // This time is used at startup and when resuming from standby if the device count is unknown.
     private long expireTime = System.currentTimeMillis() + timeout;
+    private long minExpireTime = System.currentTimeMillis() + 15000;
     private final Object deviceLoaded = new Object();
+    private int devicesLoaded = 0;
+    private int lastDevicesLoaded = 0;
 
     private final CountDownLatch blockUntilLoaded = new CountDownLatch(requiredDevices);
 
@@ -118,6 +121,7 @@ public class SageTVDevicesLoaded extends Thread {
         }
 
         synchronized (deviceLoaded) {
+            devicesLoaded += 1;
             deviceLoaded.notifyAll();
         }
     }
@@ -139,20 +143,37 @@ public class SageTVDevicesLoaded extends Thread {
      *         no new devices are expected.
      */
     public boolean blockUntilNextDeviceLoaded() throws InterruptedException {
-        if (System.currentTimeMillis() > expireTime) {
+        long currentTime = System.currentTimeMillis();
+
+        if (currentTime > expireTime) {
             return false;
         }
 
-        long currentCount = blockUntilLoaded.getCount();
-
-        synchronized (deviceLoaded) {
-            while (currentCount == blockUntilLoaded.getCount() &&
-                    System.currentTimeMillis() < expireTime) {
-
-                deviceLoaded.wait(1000);
-            }
+        // Wait at least a little while so that more than one device hopefully will have been
+        // detected in case there are any interdependence.
+        if (currentTime < minExpireTime) {
+            logger.info("Waiting for devices to load...");
+            Thread.sleep(minExpireTime - currentTime);
+            return true;
         }
 
-        return currentCount != blockUntilLoaded.getCount();
+        int currentCount;
+
+        synchronized (deviceLoaded) {
+            currentCount = devicesLoaded;
+
+            if (currentCount == lastDevicesLoaded) {
+                while (currentCount == devicesLoaded &&
+                        System.currentTimeMillis() < expireTime) {
+
+                    logger.debug("Waiting for next device...");
+                    deviceLoaded.wait(500);
+                }
+            }
+
+            lastDevicesLoaded = currentCount;
+        }
+
+        return currentCount != devicesLoaded;
     }
 }

@@ -65,7 +65,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final int ffmpegThreadPriority = FFmpegConfig.getThreadPriority();
 
     private int uploadIDPort = FFmpegConfig.getUploadIdPort();
-    private final long initBufferedData = 786432;
+    private final long initBufferedData = 1048576;
 
     private String currentRecordingQuality;
     private boolean consumeToNull;

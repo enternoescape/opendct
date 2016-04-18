@@ -828,3 +828,5 @@
 > *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
 > force old installations to use the newer remuxer unless explicitly set
 > otherwise.
+
+> *Increased initial bytes written before returning to SageTV up to 1MB.

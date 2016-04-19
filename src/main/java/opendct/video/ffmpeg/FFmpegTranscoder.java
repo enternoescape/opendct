@@ -652,6 +652,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         // low.
         int discontinuityTolerance = 3500000;
         long expectedDts;
+        // This is the most frames to skip while waiting for a key frame to arrive before starting
+        // without one.
+        int maxFramesToStart = 768;
 
         final boolean fixingEnabled = FFmpegConfig.getFixStream();
 
@@ -709,22 +712,16 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 preOffsetPts = packet.pts();
 
                 if (firstFrame[outputStreamIndex]) {
-                    if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0) {
+                    if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0 ||
+                            (outputStreamIndex != 0 && firstFrame[0] && maxFramesToStart > 0) ||
+                            ((packet.flags() & AV_PKT_FLAG_KEY) == 0) && maxFramesToStart > 0) {
 
+                        maxFramesToStart -= 1;
                         av_packet_unref(packet);
                         continue;
                     } else {
                         logger.debug("stream {}, first dts = {}, first pts = {}",
                                 inputStreamIndex, preOffsetDts, preOffsetPts);
-
-                        /*codecType = ctx.avfCtxInput.streams(inputStreamIndex).codec().codec_type();
-                        if (codecType == AVMEDIA_TYPE_VIDEO ||
-                                codecType ==AVMEDIA_TYPE_AUDIO) {
-
-                            tsOffsets[inputStreamIndex] = -Math.min(preOffsetDts, preOffsetPts);
-                            tsOffsetChanged = true;
-                            tsActiveOffsets[inputStreamIndex] = true;
-                        }*/
                     }
                 }
 
@@ -755,9 +752,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             try {
                                 switchStreamOutput();
 
-                                // This will cause the frame timestamps to be displayed again and
-                                // also drop any bad frames since we are starting a new file.
-                                Arrays.fill(firstFrame, true);
                                 errorCounter = 0;
                             } catch (InterruptedException e) {
                                 logger.debug("Switching was interrupted.");

@@ -903,6 +903,15 @@
 > also result in faster resume tuning times since the program no longer
 > needs to wait for all required devices to be loaded.
 
+> *Increased wait for response from InfiniTV devices to 10 seconds.
+
+> *Amount of data required to be written before returning OK to SageTV
+> is now based on how much was needed for FFmpeg to detect the streams.
+
+> *Added some FFmpeg optimizations to ensure that a key video frame is
+> at the very start of the container. This appears to provide additional
+> assurance than MPEG-PS files are detected correctly.  
+
 > *File growth monitoring is now more aggressive.
 
 > *Added some logging to tuning monitor.

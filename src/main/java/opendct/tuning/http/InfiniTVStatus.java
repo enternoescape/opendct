@@ -85,7 +85,7 @@ public class InfiniTVStatus {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(10000);
                 } catch (InterruptedException e) {
                     return;
                 }

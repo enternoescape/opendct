@@ -540,7 +540,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         } else if (filename != null) {
             logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename);
         } else {
-            logger.info("{} a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
+            logger.info("Starting a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
             scanOnly = true;
         }
 

@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NIOHTTPProducerImpl implements HTTPProducer {
@@ -245,7 +246,10 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
                             }
                         }
                     } catch (IOException e) {
-                        if (!(e instanceof SocketException || e.getMessage().equals("Stream closed"))) {
+                        if (!(e instanceof SocketException ||
+                                e instanceof AsynchronousCloseException ||
+                                e.getMessage() != null && e.getMessage().equals("Stream closed"))) {
+
                             logger.warn("An exception occurred while receiving data => ", e);
                         } else {
                             logger.debug("The socket has been closed.");

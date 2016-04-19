@@ -35,7 +35,7 @@ import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
 
 public class FFmpegContext {
-    private static final Logger logger = LogManager.getLogger(FFmpegContext.class);
+    private final Logger logger = LogManager.getLogger(FFmpegContext.class);
 
     private final static ReentrantReadWriteLock contextLock = new ReentrantReadWriteLock();
     private final static ReentrantReadWriteLock writeLock = new ReentrantReadWriteLock();
@@ -328,7 +328,7 @@ public class FFmpegContext {
             FFmpegContext context = getContext(opaque);
 
             if (context.interrupted) {
-                FFmpegContext.logger.info("Interrupt callback is returning 1");
+                context.logger.info("Interrupt callback is returning 1");
                 return 1;
             }
 
@@ -348,7 +348,7 @@ public class FFmpegContext {
             try {
                 returnValue = context.SEEK_BUFFER.seek(whence, offset);
             } catch (Exception e) {
-                FFmpegContext.logger.error("There was an exception while seeking => ", e);
+                context.logger.error("There was an exception while seeking => ", e);
             }
 
             return returnValue;
@@ -375,7 +375,6 @@ public class FFmpegContext {
             if (!context.isInterrupted()) {
                 try {
                     context.readAddress = buf.address();
-
                     if (context.readBuffer == null || context.readAddress != context.lastReadAddress || context.lastReadCapacity < bufSize) {
                         context.readBuffer = buf.position(0).limit(bufSize).asByteBuffer();
                         context.lastReadAddress = context.readAddress;
@@ -385,28 +384,55 @@ public class FFmpegContext {
                         context.readBuffer.limit(bufSize).position(0);
                     }
 
-                    nBytes = context.SEEK_BUFFER.read(context.readBuffer);
+                    context.SEEK_BUFFER.waitForBytes();
 
-                    // This forces the buffer to be more efficient, but also allows things to
-                    // remain responsive.
-                    while (nBytes < context.minRead && !context.isInterrupted()) {
-                        Thread.sleep(10);
-                        nBytes += context.SEEK_BUFFER.read(context.readBuffer);
+                    /*while (context.SEEK_BUFFER.readAvailable() < bufSize && !context.isInterrupted()) {
+                        Thread.sleep(100);
+                    }
+
+                    nBytes = context.SEEK_BUFFER.read(context.readBuffer);*/
+
+                    if (!context.SEEK_BUFFER.isNoWrap()) {
+                        while (context.SEEK_BUFFER.readAvailable() < context.minRead  &&
+                                !context.isInterrupted()) {
+
+                            Thread.sleep(100);
+                        }
+
+                        nBytes = context.SEEK_BUFFER.read(context.readBuffer);
+                    } else {
+                        // Smaller chunks of data are ok for initialization.
+                        int minBytes = 0;
+                        int availableBytes;
+
+                        while ((availableBytes = context.SEEK_BUFFER.readAvailable()) < context.minRead &&
+                                !context.isInterrupted()) {
+
+                            if (availableBytes < minBytes) {
+                                // Don't wait if the data is coming in really slow.
+                                break;
+                            }
+
+                            Thread.sleep(25);
+                            minBytes = availableBytes + 1316;
+                        }
+
+                        nBytes = context.SEEK_BUFFER.read(context.readBuffer);
                     }
 
                 } catch (Exception e) {
                     if (e instanceof InterruptedException) {
                         context.interrupted = true;
                         context.SEEK_BUFFER.close();
-                        FFmpegContext.logger.debug("FFmpeg consumer was interrupted while reading.");
+                        context.logger.debug("FFmpeg consumer was interrupted while reading.");
                     } else {
-                        FFmpegContext.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
+                        context.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
                     }
                 }
             }
 
             if (nBytes == -1) {
-                FFmpegContext.logger.info("Returning AVERROR_EOF in readCallback.call()");
+                context.logger.info("Returning AVERROR_EOF in readCallback.call()");
                 return AVERROR_EOF;
             }
 
@@ -438,12 +464,11 @@ public class FFmpegContext {
                 }
             }
 
-            if (logger.isTraceEnabled()) {
-                logger.trace("writeCallback called to write {} bytes. Wrote {} bytes.", bufSize, numBytesWritten);
-            }
-
             if (numBytesWritten < 0) {
-                logger.info("Returning AVERROR_EOF in writeCallback.call()");
+                Logger logger = context.getLogger();
+                if (logger != null) {
+                    logger.info("Returning AVERROR_EOF in writeCallback.call()");
+                }
                 return AVERROR_EOF;
             }
 

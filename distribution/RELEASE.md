@@ -822,11 +822,21 @@
 > *CONFIGURATION UPGRADE: The first time you run this version, it will
 > upgrade your current configuration. Anything still referencing
 > FFmpegSageTVConsumerImpl will be changed over to
-> FFmpegTransSageTVConsumerImpl.
+> FFmpegTransSageTVConsumerImpl. hdhr.wait_for_streaming and
+> upnp.dct.wait_for_streaming will be changed to 15000.
 
 > *Renamed FFmpegSageTVConsumerImpl to FFmpegOldSageTVConsumerImpl to
 > force old installations to use the newer remuxer unless explicitly set
 > otherwise.
+
+> *Increased initial bytes written before returning to SageTV up to 1MB.
+
+> *Removed small performance optimization to reduce the number reads
+> performed by the transcoding FFmpeg consumer.
+
+> *Added some logging for producer and consumer stalling.
+
+> *Increased re-tune timeout to 16000ms.
 
 #### 0.5.0-Beta
 > *CCExtractor support for FFmpeg transcoder has been added. This
@@ -899,3 +909,16 @@
 > (sagetv.device.global.required_devices_loaded_timeout_ms). This should
 > also result in faster resume tuning times since the program no longer
 > needs to wait for all required devices to be loaded.
+
+> *Increased wait for response from InfiniTV devices to 10 seconds.
+
+> *Amount of data required to be written before returning OK to SageTV
+> is now based on how much was needed for FFmpeg to detect the streams.
+
+> *Added some FFmpeg optimizations to ensure that a key video frame is
+> at the very start of the container. This appears to provide additional
+> assurance than MPEG-PS files are detected correctly.  
+
+> *File growth monitoring is now more aggressive.
+
+> *Added some logging to tuning monitor.

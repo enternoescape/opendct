@@ -209,9 +209,12 @@ public class SageTVTuningMonitor {
         protected long lessThanRecordedBytes = 0;
         protected long lessThanProducedPackets = 0;
 
-        protected long nextCheck = System.currentTimeMillis() + 5000;
+        protected int checkDelay = 16000;
+        // Wait a little longer than usual for the first tuning.
+        protected long nextCheck = System.currentTimeMillis() + checkDelay + 4000;
         protected long lastRecordedBytes = -1;
         protected long lastProducedPackets = -1;
+        protected int noRecordedBytes = 0;
         protected final CaptureDevice captureDevice;
         protected final String channel;
         protected final String encodingQuality;
@@ -263,28 +266,54 @@ public class SageTVTuningMonitor {
                             break;
                         }
 
-                        if (!recording.active || recording.nextCheck > currentTime) {
+                        if (!recording.active) {
+                            recording.nextCheck = System.currentTimeMillis() + recording.checkDelay;
+                            continue;
+                        }
+
+                        if (recording.nextCheck > currentTime || (recording.filename != null &&
+                                recording.filename.endsWith(".mpgbuf"))) {
                             continue;
                         }
 
                         long producedPackets = recording.captureDevice.getProducedPackets();
                         long recordedBytes = recording.captureDevice.getRecordedBytes();
 
-                        if (recording.lastProducedPackets == producedPackets &&
-                                recording.lastRecordedBytes == recordedBytes) {
+                        if (recording.lastRecordedBytes == recordedBytes) {
+                            logger.debug("The consumer appears to be stuck at {}.",
+                                    recording.lastRecordedBytes);
+
+                            recording.noRecordedBytes += 1;
+                        } else {
+                            recording.noRecordedBytes = 0;
+                        }
+
+                        if (recording.lastProducedPackets == producedPackets) {
+                            logger.debug("The producer appears to be stuck at {}.",
+                                    recording.lastProducedPackets);
+                        }
+
+                        // If both of these appear to be stuck, re-tune.
+                        if ((recording.lastProducedPackets == producedPackets &&
+                                recording.lastRecordedBytes == recordedBytes) ||
+                                recording.noRecordedBytes > 2) {
 
                             // The last re-tune request is still in progress.
                             if (recording.retuneThread != null &&
                                     recording.retuneThread.isAlive()) {
+
+                                recording.nextCheck = System.currentTimeMillis() + recording.checkDelay;
                                 continue;
                             }
 
+                            final boolean consumerStuck = recording.noRecordedBytes > 2;
                             final CaptureDevice captureDevice = recording.captureDevice;
                             final String channel = recording.channel;
                             final String encodingQuality = recording.encodingQuality;
                             final long bufferSize = recording.bufferSize;
                             final int uploadID = recording.uploadID;
                             final InetAddress remoteAddress = recording.remoteAddress;
+                            recording.noRecordedBytes = 0;
 
                             // This keeps the monitoring from holding up new tuning request and
                             // potentially re-tuning when a tuner is changing channels anyway.
@@ -295,13 +324,20 @@ public class SageTVTuningMonitor {
                             recording.retuneThread = new Thread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    boolean tuned;
+                                    boolean tuned = false;
                                     String localFilename = captureDevice.getRecordFilename();
+
+                                    logger.info("Current copy protection {}.",
+                                            captureDevice.getCopyProtection());
 
                                     if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
                                         logger.error(
-                                                "Unable to re-tune because there isn't a filename."
+                                                "Unable to re-tune because there isn't a filename." +
+                                                        " Stopping device monitoring."
                                         );
+
+                                        stopMonitorRecording(captureDevice);
+
                                         return;
                                     }
 
@@ -309,29 +345,43 @@ public class SageTVTuningMonitor {
                                         recording.filename = localFilename;
                                     }
 
-                                    if (captureDevice.isLocked()) {
-                                        if (uploadID > 0) {
-                                            tuned = captureDevice.startEncoding(
-                                                    channel, recording.filename, encodingQuality, bufferSize,
-                                                    uploadID, remoteAddress);
+                                    if (!consumerStuck) {
+                                        if (captureDevice.isLocked()) {
+                                            if (uploadID > 0) {
+                                                tuned = captureDevice.startEncoding(
+                                                        channel, recording.filename,
+                                                        encodingQuality, bufferSize,
+                                                        uploadID, remoteAddress);
+                                            } else {
+                                                tuned = captureDevice.startEncoding(
+                                                        channel, recording.filename,
+                                                        encodingQuality, bufferSize);
+                                            }
                                         } else {
-                                            tuned = captureDevice.startEncoding(
-                                                    channel, recording.filename, encodingQuality, bufferSize);
+                                            logger.info("Re-tune was cancelled because the capture" +
+                                                    " device is no longer internally locked." +
+                                                    " Stopping device monitoring.");
+
+                                            stopMonitorRecording(captureDevice);
+
+                                            return;
                                         }
-                                    } else {
-                                        logger.info("Re-tune was cancelled because the capture" +
-                                                " device is no longer internally locked.");
-                                        return;
                                     }
 
                                     // If the channel still won't tune in, start over.
                                     if (!tuned) {
                                         localFilename = captureDevice.getRecordFilename();
 
-                                        if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
+                                        if (Util.isNullOrEmpty(localFilename) &&
+                                                recording.filename == null) {
+
                                             logger.error(
-                                                    "Unable to tune because there isn't a filename."
+                                                    "Unable to tune because there isn't a filename." +
+                                                            " Stopping device monitoring."
                                             );
+
+                                            stopMonitorRecording(captureDevice);
+
                                             return;
                                         }
 
@@ -343,11 +393,13 @@ public class SageTVTuningMonitor {
 
                                         if (captureDevice.isLocked()) {
                                             if (uploadID > 0) {
-                                                captureDevice.startEncoding(channel, recording.filename,
+                                                captureDevice.startEncoding(
+                                                        channel, recording.filename,
                                                         encodingQuality, bufferSize,
                                                         uploadID, remoteAddress);
                                             } else {
-                                                captureDevice.startEncoding(channel, recording.filename,
+                                                captureDevice.startEncoding(
+                                                        channel, recording.filename,
                                                         encodingQuality, bufferSize);
                                             }
                                         }
@@ -392,7 +444,7 @@ public class SageTVTuningMonitor {
                         recording.lastProducedPackets = producedPackets;
                         recording.lastRecordedBytes = recordedBytes;
 
-                        recording.nextCheck = System.currentTimeMillis() + 5000;
+                        recording.nextCheck = System.currentTimeMillis() + recording.checkDelay;
                     }
                 } catch (Throwable e) {
                     logger.error("Unexpected exception while monitoring => ", e);

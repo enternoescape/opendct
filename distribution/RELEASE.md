@@ -831,6 +831,13 @@
 
 > *Increased initial bytes written before returning to SageTV up to 1MB.
 
+> *Removed small performance optimization to reduce the number reads
+> performed by the transcoding FFmpeg consumer.
+
+> *Added some logging for producer and consumer stalling.
+
+> *Increased re-tune timeout to 16000ms.
+
 #### 0.5.0-Beta
 > *CCExtractor support for FFmpeg transcoder has been added. This
 > feature only works when OpenDCT is configured to write directly (not

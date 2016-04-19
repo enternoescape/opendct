@@ -375,7 +375,6 @@ public class FFmpegContext {
             if (!context.isInterrupted()) {
                 try {
                     context.readAddress = buf.address();
-
                     if (context.readBuffer == null || context.readAddress != context.lastReadAddress || context.lastReadCapacity < bufSize) {
                         context.readBuffer = buf.position(0).limit(bufSize).asByteBuffer();
                         context.lastReadAddress = context.readAddress;

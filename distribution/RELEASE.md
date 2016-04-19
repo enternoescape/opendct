@@ -833,3 +833,7 @@
 
 > *Removed small performance optimization to reduce the number reads
 > performed by the transcoding FFmpeg consumer.
+
+> *Added some logging for producer and consumer stalling.
+
+> *Increased re-tune timeout to 16000ms.

@@ -209,7 +209,9 @@ public class SageTVTuningMonitor {
         protected long lessThanRecordedBytes = 0;
         protected long lessThanProducedPackets = 0;
 
-        protected long nextCheck = System.currentTimeMillis() + 5000;
+        protected int checkDelay = 16000;
+        // Wait a little longer than usual for the first tuning.
+        protected long nextCheck = System.currentTimeMillis() + checkDelay + 4000;
         protected long lastRecordedBytes = -1;
         protected long lastProducedPackets = -1;
         protected final CaptureDevice captureDevice;
@@ -263,12 +265,27 @@ public class SageTVTuningMonitor {
                             break;
                         }
 
-                        if (!recording.active || recording.nextCheck > currentTime) {
+                        if (!recording.active) {
+                            recording.nextCheck = System.currentTimeMillis() + recording.checkDelay;
+                            continue;
+                        }
+
+                        if (recording.nextCheck > currentTime) {
                             continue;
                         }
 
                         long producedPackets = recording.captureDevice.getProducedPackets();
                         long recordedBytes = recording.captureDevice.getRecordedBytes();
+
+                        if (recording.lastRecordedBytes == recordedBytes) {
+                            logger.debug("The consumer appears to be stuck at {}.",
+                                    recording.lastRecordedBytes);
+                        }
+
+                        if (recording.lastProducedPackets == producedPackets) {
+                            logger.debug("The producer appears to be stuck at {}.",
+                                    recording.lastProducedPackets);
+                        }
 
                         if (recording.lastProducedPackets == producedPackets &&
                                 recording.lastRecordedBytes == recordedBytes) {
@@ -276,6 +293,8 @@ public class SageTVTuningMonitor {
                             // The last re-tune request is still in progress.
                             if (recording.retuneThread != null &&
                                     recording.retuneThread.isAlive()) {
+
+                                recording.nextCheck = System.currentTimeMillis() + recording.checkDelay;
                                 continue;
                             }
 
@@ -392,7 +411,7 @@ public class SageTVTuningMonitor {
                         recording.lastProducedPackets = producedPackets;
                         recording.lastRecordedBytes = recordedBytes;
 
-                        recording.nextCheck = System.currentTimeMillis() + 5000;
+                        recording.nextCheck = System.currentTimeMillis() + recording.checkDelay;
                     }
                 } catch (Throwable e) {
                     logger.error("Unexpected exception while monitoring => ", e);

@@ -837,3 +837,5 @@
 > *Added some logging for producer and consumer stalling.
 
 > *Increased re-tune timeout to 16000ms.
+
+> *Fixed counter not resetting on SWITCH for direct FFmpeg consumer.

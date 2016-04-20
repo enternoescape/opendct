@@ -486,7 +486,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             autoOffset = 0;
             bytesFlushCounter = 0;
-            firstWrite = false;
+            firstWrite = true;
             closed = false;
 
             asyncWriter = new Thread(new AsyncWriter());

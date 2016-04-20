@@ -262,7 +262,7 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
             }
 
         } catch (Exception e) {
-            logger.error("Producer thread created an unexpected exception  => ", e);
+            logger.error("Producer thread created an unexpected exception => ", e);
         } finally {
             downloader.close();
             logger.info("Producer thread has stopped.");

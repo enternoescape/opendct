@@ -384,40 +384,34 @@ public class FFmpegContext {
                         context.readBuffer.limit(bufSize).position(0);
                     }
 
-                    context.SEEK_BUFFER.waitForBytes();
-
-                    /*while (context.SEEK_BUFFER.readAvailable() < bufSize && !context.isInterrupted()) {
-                        Thread.sleep(100);
-                    }
-
-                    nBytes = context.SEEK_BUFFER.read(context.readBuffer);*/
-
                     if (!context.SEEK_BUFFER.isNoWrap()) {
+                        context.SEEK_BUFFER.waitForBytes();
+
                         while (context.SEEK_BUFFER.readAvailable() < context.minRead  &&
                                 !context.isInterrupted()) {
 
-                            Thread.sleep(100);
+                            Thread.sleep(25);
                         }
 
                         nBytes = context.SEEK_BUFFER.read(context.readBuffer);
                     } else {
                         // Smaller chunks of data are ok for initialization.
-                        int minBytes = 0;
-                        int availableBytes;
 
-                        while ((availableBytes = context.SEEK_BUFFER.readAvailable()) < context.minRead &&
+                        // Limit the time spent here to 250ms at most.
+                        int passes = 20;
+
+                        while (passes-- > 0 &&
+                                context.SEEK_BUFFER.readAvailable() < context.minRead &&
                                 !context.isInterrupted()) {
 
-                            if (availableBytes < minBytes) {
-                                // Don't wait if the data is coming in really slow.
-                                break;
-                            }
-
                             Thread.sleep(25);
-                            minBytes = availableBytes + 1316;
                         }
 
-                        nBytes = context.SEEK_BUFFER.read(context.readBuffer);
+                        // When the buffer is frozen, new data will never be added to the
+                        // seekable part of the buffer which could cause it to stall out.
+                        if (context.SEEK_BUFFER.readAvailable() > 0) {
+                            nBytes = context.SEEK_BUFFER.read(context.readBuffer);
+                        }
                     }
 
                 } catch (Exception e) {

@@ -675,20 +675,38 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                 try {
                     String modulation = tvChannel.getModulation();
+                    int frequency = tvChannel.getFrequency();
+                    String program = tvChannel.getProgram();
+
+                    if (!isTuneLegacy() &&
+                            !HDHomeRunDiscoverer.getQamRemap()) {
+
+                        if (HDHomeRunDiscoverer.getAllowHttpTuning()) {
+                            httpProducing = tuneUrl(
+                                    tvChannel,
+                                    HDHomeRunDiscoverer.getTranscodeProfile(),
+                                    newConsumer);
+                        }
+
+                        if (!httpProducing) {
+                            tuner.setVirtualChannel(tvChannel.getChannel());
+                        }
+
+                        break;
+                    }
+
                     if (modulation == null) {
                         logger.debug("The channel '{}' does not have a modulation" +
                                 " on the lineup '{}'. Using auto.", channel, encoderLineup);
                         modulation = "auto";
                     }
 
-                    int frequency = tvChannel.getFrequency();
                     if (frequency <= 0) {
                         logger.error("The channel '{}' does not have a frequency" +
                                 " on the lineup '{}'.", channel, encoderLineup);
                         return logger.exit(false);
                     }
 
-                    String program = tvChannel.getProgram();
                     if (program == null) {
                         logger.error("The channel '{}' does not have a program" +
                                 " on the lineup '{}'.", channel, encoderLineup);
@@ -932,7 +950,6 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
         if (!retune) {
-
             try {
                 newConsumer.setProgram(tuner.getProgram());
 

@@ -72,7 +72,6 @@ public class FFmpegStreamDetection {
         long dynamicProbeSize = minProbeSize;
         long dynamicAnalyzeDuration = minAnalyzeDuration;
         final long probeSizeLimit = Math.max(ctx.getProbeMaxSize() - 1123474, 1123474);
-        final long analyzeDurationLimit = maxAnalyzeDuration;
 
         ctx.SEEK_BUFFER.setNoWrap(true);
 
@@ -111,8 +110,7 @@ public class FFmpegStreamDetection {
             dynamicProbeSize = Math.max(dynamicProbeSize, ctx.getProbeAvailable() + 188);
             dynamicProbeSize = Math.min(dynamicProbeSize, probeSizeLimit);
 
-            //dynamicAnalyzeDuration = Math.max(dynamicAnalyzeDuration, (System.nanoTime() - startNanoTime) / 1000L);
-            dynamicAnalyzeDuration = 0;// Math.min(dynamicAnalyzeDuration, analyzeDurationLimit);
+            dynamicAnalyzeDuration = Math.max(dynamicAnalyzeDuration, (System.nanoTime() - startNanoTime) / 1000L);
 
             av_opt_set_int(ctx.avfCtxInput, "probesize", dynamicProbeSize, 0); // Must be set before avformat_open_input
             av_opt_set_int(ctx.avfCtxInput, "analyzeduration", dynamicAnalyzeDuration, 0); // Must be set before avformat_find_stream_info

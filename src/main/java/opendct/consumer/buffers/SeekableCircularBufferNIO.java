@@ -28,14 +28,14 @@ public class SeekableCircularBufferNIO {
 
     private int maxOverflowBytes;
     protected int capacity;
-    protected volatile ByteBuffer buffer;
-    protected volatile ByteBuffer readBuffer;
-    protected volatile ByteBuffer writeBuffer;
-    protected volatile byte[] writeInterBuffer = new byte[32768];
-    protected volatile int writeIndex = 0;
-    protected volatile int readIndex = 0;
-    protected volatile int writePasses = 0;
-    protected volatile int readPasses = 0;
+    protected ByteBuffer buffer;
+    protected ByteBuffer readBuffer;
+    protected ByteBuffer writeBuffer;
+    protected byte[] writeInterBuffer = new byte[32768];
+    protected int writeIndex = 0;
+    protected int readIndex = 0;
+    protected int writePasses = 0;
+    protected int readPasses = 0;
 
     // These are only used to permanently expand the buffer while we are not allowed to wrap.
     private volatile int maxBufferSize;

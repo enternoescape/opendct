@@ -21,6 +21,7 @@ import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -280,8 +281,10 @@ public class SageTVTuningMonitor {
                         long recordedBytes = recording.captureDevice.getRecordedBytes();
 
                         if (recording.lastRecordedBytes == recordedBytes) {
-                            logger.debug("The consumer appears to be stuck at {}.",
-                                    recording.lastRecordedBytes);
+                            logger.debug("The consumer appears to be stuck at {}," +
+                                    " file system length {}.",
+                                    recording.lastRecordedBytes,
+                                    new File(recording.filename).length());
 
                             recording.noRecordedBytes += 1;
                         } else {

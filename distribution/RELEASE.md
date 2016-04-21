@@ -916,9 +916,17 @@
 > is now based on how much was needed for FFmpeg to detect the streams.
 
 > *Added some FFmpeg optimizations to ensure that a key video frame is
-> at the very start of the container. This appears to provide additional
-> assurance than MPEG-PS files are detected correctly.  
+> at the very start of the when possible container. This appears to
+> provide additional assurance so that MPEG-PS files are detected 
+> correctly.  
 
 > *File growth monitoring is now more aggressive.
 
 > *Added some logging to tuning monitor.
+
+> *Fixed reading potentially getting stuck during detection.
+
+> *Added new option to disable HDHomeRun ClearQAM remapping and
+> frequency/program verification for configuration without a reference
+> tuner with a CableCARD installed. To disable the remapping feature,
+> change the value of hdhr.allow_qam_remapping to false.

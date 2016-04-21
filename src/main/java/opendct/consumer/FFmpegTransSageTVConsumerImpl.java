@@ -85,7 +85,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     // Atomic because long values take two clocks just to store in 32-bit. We could get incomplete
     // values otherwise. Don't ever forget to set this value and increment it correctly. This is
     // crucial to playback in SageTV.
-    private AtomicLong bytesStreamed = new AtomicLong(0);
+    private long bytesStreamed = 0;
+    private final Object bytesStreamedLock = new Object();
     private AtomicBoolean running = new AtomicBoolean(false);
     private boolean stalled = false;
     private boolean streaming = false;
@@ -121,7 +122,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         if (circularBuffer == null) {
             circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
         } else {
-            circularBuffer.clear();
+            if (circularBuffer.getBufferMinSize() != FFmpegConfig.getCircularBufferSize()) {
+                circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+            } else {
+                circularBuffer.clear();
+            }
         }
     }
 
@@ -261,7 +266,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public long getBytesStreamed() {
-        return bytesStreamed.get();
+        synchronized (bytesStreamedLock) {
+            return bytesStreamed;
+        }
     }
 
     @Override
@@ -477,7 +484,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         @Override
         public synchronized int write(BytePointer data, int length) throws IOException {
             if (firstWrite) {
-                bytesStreamed.set(0);
+                synchronized (bytesStreamedLock) {
+                    bytesStreamed = 0;
+                }
                 firstWrite = false;
             }
 
@@ -512,7 +521,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     upload.uploadAutoIncrement(streamBuffer);
                 }
 
-                long currentBytes = bytesStreamed.addAndGet(bytesToStream);
+                long currentBytes;
+                synchronized (bytesStreamedLock) {
+                    currentBytes = bytesStreamed += bytesToStream;
+                }
 
                 if (currentBytes > initBufferedData) {
                     synchronized (streamingMonitor) {
@@ -704,7 +716,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             recordingFile = new File(directFilename);
 
             autoOffset = 0;
-            firstWrite = false;
+            firstWrite = true;
             closed = false;
 
             asyncWriter = new Thread(new AsyncWriter());
@@ -728,7 +740,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             }
 
             if (firstWrite) {
-                bytesStreamed.set(0);
+                synchronized (bytesStreamedLock) {
+                    bytesStreamed = 0;
+                }
                 firstWrite = false;
             }
 
@@ -899,13 +913,18 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         asyncBuffer.notifyAll();
                     }
 
-                    if ((minDirectFlush != -1 && bytesFlushCounter >= minDirectFlush)) {
+                    if (minDirectFlush != -1 &&
+                            bytesFlushCounter >= minDirectFlush &&
+                            stvRecordBufferSize == 0) {
+
                         bytesFlushCounter = 0;
 
                         // If the file should have some data, but it doesn't, flush the data to disk
                         // to verify that the file in fact taking data.
 
-                        currentBytesStreamed = bytesStreamed.get();
+                        synchronized (bytesStreamedLock) {
+                            currentBytesStreamed = bytesStreamed;
+                        }
 
                         if (currentBytesStreamed > 0 &&
                                 recordingFile.length() < currentBytesStreamed) {
@@ -921,8 +940,14 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         // not be thrown. This handles the possible scenario. This also means
                         // previously written data is now lost.
 
-                        if (!recordingFile.exists() || (currentBytesStreamed > 0 &&
+                        if (!recordingFile.exists() ||
+                                (currentBytesStreamed > 0 &&
                                 recordingFile.length() < currentBytesStreamed)) {
+
+                            if (recordingFile.length() < currentBytesStreamed) {
+                                logger.warn("The file '{}' is {} bytes, expected {} bytes",
+                                        directFilename, recordingFile.length(), currentBytesStreamed);
+                            }
 
                             try {
                                 fileChannel.close();
@@ -943,19 +968,21 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                             StandardOpenOption.WRITE,
                                             StandardOpenOption.CREATE);
 
-                                    bytesStreamed.set(0);
-                                    logger.warn("The file '{}' is missing and was re-created.",
+                                    synchronized (bytesStreamedLock) {
+                                        bytesStreamed = recordingFile.length();
+                                    }
+                                    logger.warn("The file '{}' was re-opened.",
                                             directFilename);
 
                                     break;
                                 } catch (Exception e) {
-                                    logger.error("The file '{}' is missing and cannot be re-created => ",
+                                    logger.error("The file '{}' cannot be re-opened => ",
                                             directFilename, e);
 
                                     try {
                                         Thread.sleep(1000);
                                     } catch (InterruptedException e1) {
-                                        logger.debug("Interrupted while trying to re-create recording file.");
+                                        logger.debug("Interrupted while trying to re-opened recording file.");
                                         break;
                                     }
                                     // Continue to re-try until interrupted.
@@ -964,7 +991,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         }
                     }
 
-                    currentBytes = bytesStreamed.addAndGet(writeBytes);
+                    synchronized (bytesStreamedLock) {
+                        currentBytes = bytesStreamed += writeBytes;
+                    }
+
                     autoOffset += writeBytes;
                     bytesFlushCounter += writeBytes;
 
@@ -984,11 +1014,15 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         @Override
         public int write(BytePointer data, int length) throws IOException {
             if (firstWrite) {
-                bytesStreamed.set(0);
+                synchronized (bytesStreamedLock) {
+                    bytesStreamed = 0;
+                }
                 firstWrite = false;
             }
 
-            bytesStreamed.addAndGet(length);
+            synchronized (bytesStreamedLock) {
+                bytesStreamed += length;
+            }
 
             return length;
         }

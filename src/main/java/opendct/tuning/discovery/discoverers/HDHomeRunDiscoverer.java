@@ -59,6 +59,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static BooleanDeviceOption allowHttpTuning;
     private static StringDeviceOption transcodeProfile;
     private static BooleanDeviceOption qamHttpTuningHack;
+    private static BooleanDeviceOption qamRemap;
     private static IntegerDeviceOption offlineDetectionSeconds;
     private static IntegerDeviceOption offlineDetectionMinBytes;
 
@@ -214,6 +215,16 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                                 " transcoding."
                 );
 
+                qamRemap = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.allow_qam_remapping", true),
+                        false,
+                        "Enable QAM Channel Remapping",
+                        "hdhr.allow_qam_remapping",
+                        "This will assume that the channels provided by the HDHomeRun device for" +
+                                " ClearQAM are likely incorrect and will fix them based on the" +
+                                " program and frequency provided by an available CableCARD tuner."
+                );
+
                 qamHttpTuningHack = new BooleanDeviceOption(
                         Config.getBoolean("hdhr.allow_qam_http_tuning", false),
                         false,
@@ -260,6 +271,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         alwaysTuneLegacy,
                         allowHttpTuning,
                         transcodeProfile,
+                        qamRemap,
                         qamHttpTuningHack,
                         offlineDetectionSeconds,
                         offlineDetectionMinBytes
@@ -280,6 +292,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.setBoolean("hdhr.allow_http_tuning", true);
                 Config.setString("hdhr.extend_transcode_profile", "");
                 Config.setBoolean("hdhr.allow_qam_http_tuning", false);
+                Config.setBoolean("hdhr.allow_qam_remapping", true);
 
                 continue;
             }
@@ -650,6 +663,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 allowHttpTuning,
                 transcodeProfile,
                 qamHttpTuningHack,
+                qamRemap,
                 offlineDetectionSeconds,
                 offlineDetectionMinBytes
         };
@@ -753,5 +767,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         }
 
         return returnValue;
+    }
+
+    public static boolean getQamRemap() {
+        return qamRemap.getBoolean();
     }
 }

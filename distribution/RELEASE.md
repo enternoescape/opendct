@@ -916,7 +916,7 @@
 > is now based on how much was needed for FFmpeg to detect the streams.
 
 > *Added some FFmpeg optimizations to ensure that a key video frame is
-> at the very start of the when possible container. This appears to
+> at the very start of the container when possible. This appears to
 > provide additional assurance so that MPEG-PS files are detected 
 > correctly.  
 

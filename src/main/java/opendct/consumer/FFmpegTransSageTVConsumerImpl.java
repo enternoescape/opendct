@@ -698,6 +698,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         private boolean closed;
 
         private final ByteBuffer asyncBuffer = ByteBuffer.allocateDirect(RW_BUFFER_SIZE * 2);
+        private final int minWrite = RW_BUFFER_SIZE;
         private volatile boolean canWrite = false;
 
         private Thread asyncWriter;
@@ -729,11 +730,19 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         protected long writeAddress = 0;
         protected ByteBuffer writeBuffer = null;
 
+        private long lastFilelength;
+
         @Override
         public int write(BytePointer data, int length) throws IOException {
             if (closed) {
                 return -1;
             }
+
+            /*long currentFileLength = recordingFile.length();
+            if (currentFileLength < lastFilelength) {
+                logger.warn("Going backwards! {} < {}", currentFileLength, lastFilelength);
+            }
+            lastFilelength = currentFileLength;*/
 
             if (length == 0) {
                 return length;
@@ -744,6 +753,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     bytesStreamed = 0;
                 }
                 firstWrite = false;
+                asyncBuffer.clear();
             }
 
             writeAddress = data.address();
@@ -771,7 +781,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         }
                     }
 
-                    asyncBuffer.clear();
                     asyncBuffer.put(slice);
                     asyncBuffer.flip();
                     canWrite = true;
@@ -803,8 +812,17 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     }
                 }
 
-                asyncBuffer.clear();
-                asyncBuffer.put(writeBuffer);
+                if (stvRecordBufferSize == 0) {
+                    asyncBuffer.put(writeBuffer);
+
+                    int remains = asyncBuffer.remaining();
+                    if (remains > minWrite) {
+                        return length;
+                    }
+                } else {
+                    asyncBuffer.put(writeBuffer);
+                }
+
                 asyncBuffer.flip();
                 canWrite = true;
                 asyncBuffer.notifyAll();
@@ -845,6 +863,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 int writeBytes;
                 long currentBytes;
                 long currentBytesStreamed;
+                long currentFileCheck = System.currentTimeMillis();
+                long lastFileCheck = currentFileCheck;
 
                 while (true) {
                     synchronized (asyncBuffer) {
@@ -876,13 +896,16 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             }
 
                             canWrite = false;
+                            asyncBuffer.clear();
                             return;
                         }
 
                         writeBytes = asyncBuffer.remaining();
 
                         try {
-                            fileChannel.write(asyncBuffer, autoOffset);
+                            while (asyncBuffer.hasRemaining()) {
+                                fileChannel.write(asyncBuffer, autoOffset);
+                            }
                         } catch (Exception e) {
                             logger.error("File '{}' write failed => ", directFilename, e);
 
@@ -904,24 +927,26 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                                 logger.error("Unable to re-open file '{}' => ", directFilename, e0);
                             }
 
+                            asyncBuffer.clear();
                             canWrite = false;
                             asyncBuffer.notifyAll();
                             continue;
                         }
 
+                        asyncBuffer.clear();
                         canWrite = false;
                         asyncBuffer.notifyAll();
                     }
 
                     if (minDirectFlush != -1 &&
                             bytesFlushCounter >= minDirectFlush &&
-                            stvRecordBufferSize == 0) {
+                            stvRecordBufferSize == 0 &&
+                            (currentFileCheck = System.currentTimeMillis()) - lastFileCheck < 500) {
 
                         bytesFlushCounter = 0;
 
                         // If the file should have some data, but it doesn't, flush the data to disk
                         // to verify that the file in fact taking data.
-
                         synchronized (bytesStreamedLock) {
                             currentBytesStreamed = bytesStreamed;
                         }
@@ -990,6 +1015,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             }
                         }
                     }
+
+                    lastFileCheck = currentFileCheck;
 
                     synchronized (bytesStreamedLock) {
                         currentBytes = bytesStreamed += writeBytes;

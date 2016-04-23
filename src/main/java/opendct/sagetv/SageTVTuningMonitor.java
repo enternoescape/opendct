@@ -284,7 +284,8 @@ public class SageTVTuningMonitor {
                             logger.debug("The consumer appears to be stuck at {}," +
                                     " file system length {}.",
                                     recording.lastRecordedBytes,
-                                    new File(recording.filename).length());
+                                    recording.filename != null ?
+                                            new File(recording.filename).length() : -1);
 
                             recording.noRecordedBytes += 1;
                         } else {

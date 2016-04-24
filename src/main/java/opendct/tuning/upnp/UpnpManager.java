@@ -99,8 +99,8 @@ public class UpnpManager implements PowerEventListener {
     }
 
     // Returns true as long as the service is actually running.
-    public static boolean startUpnpServices(final DefaultUpnpServiceConfiguration defaultUpnpServiceConfiguration, final RegistryListener registryListener) {
-        logger.entry(defaultUpnpServiceConfiguration, registryListener);
+    public static boolean startUpnpServices(final DefaultUpnpServiceConfiguration defaultUpnpServiceConfiguration, final RegistryListener... registryListeners) {
+        logger.entry(defaultUpnpServiceConfiguration, registryListeners);
 
         boolean returnValue = false;
 
@@ -112,8 +112,13 @@ public class UpnpManager implements PowerEventListener {
             } else {
                 logger.info("Starting UPnP services...");
 
-                // This starts network services immediately.
-                upnpService = new UpnpServiceImpl(defaultUpnpServiceConfiguration, registryListener);
+                try {
+                    // This starts network services immediately.
+                    upnpService = new UpnpServiceImpl(defaultUpnpServiceConfiguration, registryListeners);
+                } catch (Exception e) {
+                    // If the expected configuration fails, try any port available.
+                    upnpService = new UpnpServiceImpl(DCTDefaultUpnpServiceConfiguration.getDCTDefault(0), registryListeners);
+                }
 
                 running = true;
             }
@@ -189,7 +194,7 @@ public class UpnpManager implements PowerEventListener {
 
                                     try {
                                         upnpService = new UpnpServiceImpl(
-                                                defaultUpnpServiceConfiguration, registryListener);
+                                                defaultUpnpServiceConfiguration, registryListeners);
                                     } finally {
                                         upnpServiceLock.writeLock().unlock();
                                     }

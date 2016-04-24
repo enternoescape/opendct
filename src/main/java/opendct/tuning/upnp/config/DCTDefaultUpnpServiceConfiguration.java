@@ -33,10 +33,18 @@ import java.net.NetworkInterface;
 public class DCTDefaultUpnpServiceConfiguration {
     private static final Logger logger = LogManager.getLogger(DCTDefaultUpnpServiceConfiguration.class);
 
+    public static DefaultUpnpServiceConfiguration getDCTDefault() {
+        return getDCTDefault(-1);
+    }
+
     // Extending this class will add a dependency for javax.enterprise.inject.Alternative
     // so this is the easier alternative.
-    public static DefaultUpnpServiceConfiguration getDCTDefault() {
-        final int listenPort = Config.getInteger("upnp.service.configuration.http_listen_port", 8501);
+    public static DefaultUpnpServiceConfiguration getDCTDefault(int suggestedListenPort) {
+        final int listenPort =
+                suggestedListenPort == -1 ?
+                        Config.getInteger("upnp.service.configuration.http_listen_port", 8501) :
+                        suggestedListenPort;
+
         final String excludeInterfaces[] = Config.getStringArray("upnp.service.configuration.ignore_interfaces_csv");
         final InetAddress excludeLocalAddresses[] = Config.getInetAddressArray("upnp.service.configuration.ignore_local_ip_csv");
 

@@ -916,7 +916,7 @@
 > is now based on how much was needed for FFmpeg to detect the streams.
 
 > *Added some FFmpeg optimizations to ensure that a key video frame is
-> at the very start of the when possible container. This appears to
+> at the very start of the container when possible. This appears to
 > provide additional assurance so that MPEG-PS files are detected 
 > correctly.  
 
@@ -930,3 +930,17 @@
 > frequency/program verification for configuration without a reference
 > tuner with a CableCARD installed. To disable the remapping feature,
 > change the value of hdhr.allow_qam_remapping to false.
+
+#### 0.5.2-Beta
+> *Fixed null pointer exception related to logging when file doesn't
+> exist on re-tune.
+
+> *Write out larger chunks of data per write on FFmpeg transcoder.
+
+> *Added a timing component to checking the file length since it's an
+> expensive operation when we are just trying to catch up.
+
+> *Fixed failure to deallocate the input context when detection fails
+> and the buffer is reset.
+
+> *Added handling for when Cling is unable to open the requested port.

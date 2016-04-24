@@ -134,7 +134,11 @@ public class FFmpegStreamDetection {
             logger.info("After avformat_find_stream_info() pos={} bytes_read={} seek_count={}. probesize: {} analyzeduration: {}.",
                     ctx.avioCtxInput.pos(), ctx.avioCtxInput.bytes_read(), ctx.avioCtxInput.seek_count(), dynamicProbeSize, dynamicAnalyzeDuration);
 
-            if (ret < 0) {
+            // -541478725 is the error returned when the buffer is underrun which should only be
+            // happening if the stream completely stops or we reach the end of the buffer. We pass
+            // this though as a success because if we don't, the only way detection will complete
+            // successfully if the desired program isn't found is to let this finish.
+            if (ret < 0 && ret != -541478725) {
                 error[0] = "avformat_find_stream_info() failed with error code " + -ret + ".";
                 if (dynamicProbeSize == probeSizeLimit) {
                     return false;

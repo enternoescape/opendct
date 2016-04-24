@@ -942,3 +942,5 @@
 
 > *Fixed failure to deallocate the input context when detection fails
 > and the buffer is reset.
+
+> *Added handling for when Cling is unable to open the requested port.

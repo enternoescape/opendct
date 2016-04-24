@@ -860,6 +860,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             @Override
             public void run() {
+                int bytesWritten;
                 int writeBytes;
                 long currentBytes;
                 long currentBytesStreamed;
@@ -900,11 +901,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             return;
                         }
 
-                        writeBytes = asyncBuffer.remaining();
+                        writeBytes = 0;
 
                         try {
                             while (asyncBuffer.hasRemaining()) {
-                                fileChannel.write(asyncBuffer, autoOffset);
+                                bytesWritten = fileChannel.write(asyncBuffer, autoOffset);
+                                autoOffset += bytesWritten;
+                                writeBytes += bytesWritten;
                             }
                         } catch (Exception e) {
                             logger.error("File '{}' write failed => ", directFilename, e);
@@ -1022,7 +1025,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         currentBytes = bytesStreamed += writeBytes;
                     }
 
-                    autoOffset += writeBytes;
                     bytesFlushCounter += writeBytes;
 
                     if (currentBytes > initBufferedData) {

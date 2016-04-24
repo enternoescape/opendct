@@ -944,3 +944,7 @@
 > and the buffer is reset.
 
 > *Added handling for when Cling is unable to open the requested port.
+
+#### 0.5.3-Beta
+> *Fixed a potential offset calculating issue in FFmpeg transcoder
+> related to the new aggregate write feature.

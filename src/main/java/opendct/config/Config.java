@@ -20,7 +20,10 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
-import opendct.consumer.*;
+import opendct.consumer.DynamicConsumerImpl;
+import opendct.consumer.FFmpegTransSageTVConsumerImpl;
+import opendct.consumer.RawSageTVConsumerImpl;
+import opendct.consumer.SageTVConsumer;
 import opendct.producer.*;
 import opendct.util.Util;
 import opendct.video.rtsp.DCTRTSPClientImpl;
@@ -1051,8 +1054,6 @@ public class Config {
 
         if (consumerName.endsWith(RawSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new RawSageTVConsumerImpl();
-        } else if (consumerName.endsWith(FFmpegOldSageTVConsumerImpl.class.getSimpleName())) {
-            returnValue = new FFmpegOldSageTVConsumerImpl();
         } else if (consumerName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegTransSageTVConsumerImpl();
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {

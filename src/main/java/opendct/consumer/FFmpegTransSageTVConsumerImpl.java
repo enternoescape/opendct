@@ -105,10 +105,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private FFmpegCircularBufferNIO circularBuffer;
     private FFmpegContext ctx;
 
-    static {
-        FFmpegUtil.initAll();
-    }
-
     public FFmpegTransSageTVConsumerImpl() {
         circularBuffer = null;
 

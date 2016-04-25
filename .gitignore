@@ -27,7 +27,7 @@ Thumbs.db
 /opendct*.log*
 /opendct.properties
 /opendct.properties.*
-/opendct.properties.backup
 /hs_err_pid*.log
 /lineup/
 /target/
+/testFile.CC1.srt

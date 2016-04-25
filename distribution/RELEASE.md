@@ -970,7 +970,7 @@
 > variable. Values shorter than this length will have zeros (0) appended
 > to the left of the channel to make up the difference. (Ex. 8 becomes
 > 008 if this is set to 3.)
-> **custom_channels** is an optional semicolon delimited list of
+> **custom_channels** is an optional **semicolon** delimited list of
 > channels you want to appear in SageTV for this device. This is a
 > shortcut around creating an actual OpenDCT lineup. If there are any
 > values in the field, they will override the lineup assigned to this

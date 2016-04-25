@@ -947,8 +947,8 @@
 
 #### 0.5.3-Beta
 > *Added new "Generic HTTP" consumer. This consumer should work with
-> any non-SSL URL that streams when opened. To create entries for these 
-> devices, create names for them under the property
+> any non-SSL URL that is actually a stream when downloaded. To create
+> entries for these devices, create names for them under the property
 > generic.http.device_names_csv in opendct.properties separated by
 > commas. (Ex. generic.http.device_names_csv=Encoder 1,Encoder 2) Start
 > the OpenDCT service, let it run for a few seconds, then stop it. You
@@ -991,7 +991,8 @@
 > be used to change the channel being streamed. Insert %c% where the
 > channel needs to be provided to the executable. If %c% isn't provided,
 > but this property is defined, the channel number will be appended as
-> a final parameter. (Ex. /full/path/tune 0 %c%)
+> a final parameter. (Ex. /full/path/tune 0 %c% or
+> C:\Full\Path\tune.exe 0 %c%)
 
 > *Fixed a potential offset calculating issue in FFmpeg transcoder
 > related to the new aggregate write feature.

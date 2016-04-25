@@ -74,7 +74,13 @@ public class SageTVTuningMonitor {
                 monitoredRecording.retuneThread.join(15000);
 
                 if (monitoredRecording.retuneThread.isAlive()) {
-                    logger.warn("Waited over 15 seconds for the re-tune thread to stop. It is still running.");
+                    logger.warn("Waited over 15 seconds for the re-tune thread to stop.");
+
+                    monitoredRecording.retuneThread.interrupt();
+                    monitoredRecording.retuneThread.join(30000);
+                    if (monitoredRecording.retuneThread.isAlive()) {
+                        logger.warn("Waited over 45 seconds for the re-tune thread to stop. It is still running.");
+                    }
                 }
             }
         } catch (Throwable e) {
@@ -267,13 +273,12 @@ public class SageTVTuningMonitor {
                             break;
                         }
 
-                        if (!recording.active) {
+                        if (recording == null) {
+                            continue;
+                        } else if (!recording.active) {
                             recording.nextCheck = System.currentTimeMillis() + recording.checkDelay;
                             continue;
-                        }
-
-                        if (recording.nextCheck > currentTime || (recording.filename != null &&
-                                recording.filename.endsWith(".mpgbuf"))) {
+                        } else if (recording.nextCheck > currentTime || recording.bufferSize > 0) {
                             continue;
                         }
 

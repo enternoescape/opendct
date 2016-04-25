@@ -15,13 +15,7 @@
 
 package opendct.tuning.http;
 
-import opendct.config.Config;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
-import opendct.config.options.StringDeviceOption;
-import opendct.tuning.discovery.BasicDiscoveredDeviceParent;
 import opendct.tuning.discovery.NetworkDiscoveredDeviceParent;
-import opendct.util.Util;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;

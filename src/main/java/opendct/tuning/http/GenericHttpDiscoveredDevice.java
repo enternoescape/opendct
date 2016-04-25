@@ -30,7 +30,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     private final static Logger logger = LogManager.getLogger(GenericHttpDiscoveredDevice.class);

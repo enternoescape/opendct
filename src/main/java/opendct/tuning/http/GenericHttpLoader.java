@@ -17,8 +17,6 @@ package opendct.tuning.http;
 
 import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
 
-import java.net.InetAddress;
-
 public class GenericHttpLoader implements Runnable {
     String devices[];
     GenericHttpDiscoverer discoverer;

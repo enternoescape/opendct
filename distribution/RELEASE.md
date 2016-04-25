@@ -946,5 +946,58 @@
 > *Added handling for when Cling is unable to open the requested port.
 
 #### 0.5.3-Beta
+> *Added new "Generic HTTP" consumer. This consumer should work with
+> any non-SSL URL that streams when opened. To create entries for these 
+> devices, create names for them under the property
+> generic.http.device_names_csv in opendct.properties separated by
+> commas. (Ex. generic.http.device_names_csv=Encoder 1,Encoder 2) Start
+> the OpenDCT service, let it run for a few seconds, then stop it. You
+> should now see entries in opendct.properties that have the property
+> sagetv.device.\<unique_id\>.device_name matching the name of the
+> devices you requested. You will also see the following properties
+> related to setting up this specific capture device (always use the
+> full path to any executable):
+>
+> sagetv.device.\<unique_id\>.channel_padding=0
+> sagetv.device.\<unique_id\>.custom_channels_csv=
+> sagetv.device.\<unique_id\>.pretuning_executable=
+> sagetv.device.\<unique_id\>.stopping_executable=
+> sagetv.device.\<unique_id\>.streaming_url=
+> sagetv.device.\<unique_id\>.tuning_delay_ms=0
+> sagetv.device.\<unique_id\>.tuning_executable=
+>
+> **channel_padding** is the minimum length to be passed for the %c%
+> variable. Values shorter than this length will have zeros (0) appended
+> to the left of the channel to make up the difference. (Ex. 8 becomes
+> 008 if this is set to 3.)
+> **custom_channels** is an optional semicolon delimited list of
+> channels you want to appear in SageTV for this device. This is a
+> shortcut around creating an actual OpenDCT lineup. If there are any
+> values in the field, they will override the lineup assigned to this
+> capture device on a channel scan. This provides an easy way to add
+> channels if you are not actually going to use guide data.
+> **pretuning_executable** is an optional executable that if defined,
+> will always be run before actually tuning the channel. You can add the
+> channel as an argument by using the variable %c%.
+> **stopping_executable** is an optional executable that if defined,
+> will always be run when the capture device is told to stop. You can
+> add the last tuned channel as an argument by using the variable %c%.
+> **streaming_url** is a URL that points directly an audio/video stream.
+> If you are unsure if the URL will stream correctly, try it in VLC
+> first. (Ex. http://192.168.0.20:5060/stream)
+> **tuning_delay_ms** is the amount of time in milliseconds to wait
+> after the program associated with **tuning_executable** has returned.
+> **tuning_executable** is an optional executable that if defined will
+> be used to change the channel being streamed. Insert %c% where the
+> channel needs to be provided to the executable. If %c% isn't provided,
+> but this property is defined, the channel number will be appended as
+> a final parameter. (Ex. /full/path/tune 0 %c%)
+
 > *Fixed a potential offset calculating issue in FFmpeg transcoder
 > related to the new aggregate write feature.
+
+> *Made a few efficiency improvements in the tuning monitor.
+
+> *Removed ability to use the old UPnP detection method and device.
+
+> *Removed ability to use the old FFmpeg implementation.

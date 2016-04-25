@@ -160,31 +160,35 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public synchronized void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
-        // Detection is instant and doesn't need to run on another thread.
-        GenericHttpDiscoverer.running = true;
+        discoveredDevicesLock.writeLock().lock();
 
-        this.deviceLoader = deviceLoader;
+        try {
+            // Detection is instant and doesn't need to run on another thread.
+            GenericHttpDiscoverer.running = true;
 
-        Thread loadDevices = new Thread(new GenericHttpLoader(deviceNames.getArrayValue(), this));
-        loadDevices.setName("GenericHttpLoader-" + loadDevices.getId());
-        loadDevices.setDaemon(true);
-        loadDevices.start();
+            this.deviceLoader = deviceLoader;
+
+            Thread loadDevices = new Thread(new GenericHttpLoader(deviceNames.getArrayValue(), this));
+            loadDevices.setName("GenericHttpLoader-" + loadDevices.getId());
+            loadDevices.setDaemon(true);
+            loadDevices.start();
+        } finally {
+            discoveredDevicesLock.writeLock().unlock();
+        }
     }
 
     @Override
     public synchronized void stopDetection() throws DiscoveryException {
         // There is nothing to stop.
-
         discoveredDevicesLock.writeLock().lock();
 
         try {
+            GenericHttpDiscoverer.running = false;
             discoveredDevices.clear();
             discoveredParents.clear();
         } finally {
           discoveredDevicesLock.writeLock().unlock();
         }
-
-        GenericHttpDiscoverer.running = false;
     }
 
     @Override
@@ -207,17 +211,25 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
         discoveredDevicesLock.writeLock().lock();
 
         try {
+            if (!GenericHttpDiscoverer.running) {
+                return;
+            }
+
             GenericHttpDiscoveredDeviceParent lastParentDevice =
                     discoveredParents.get(device.getParentId());
 
             if (lastParentDevice != null) {
                 if (!lastParentDevice.getRemoteAddress().equals(parent.getRemoteAddress())) {
-
+                    lastParentDevice.setRemoteAddress(parent.getRemoteAddress());;
                 }
 
                 return;
             }
 
+            discoveredParents.put(parent.getParentId(), parent);
+            discoveredDevices.put(device.getId(), device);
+
+            deviceLoader.advertiseDevice(device, this);
         } finally {
             discoveredDevicesLock.writeLock().unlock();
         }
@@ -394,6 +406,11 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             }
 
             Config.setDeviceOption(optionReference);
+
+            // If any new devices have been added at runtime, this will make sure they get added.
+            if (optionReference.getProperty().equals("generic.http.device_names_csv")) {
+                new GenericHttpLoader(deviceNames.getArrayValue(), this).run();
+            }
         }
 
         Config.saveConfig();

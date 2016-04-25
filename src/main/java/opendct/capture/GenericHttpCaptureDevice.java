@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GenericHttpCaptureDevice extends BasicCaptureDevice {
@@ -93,7 +94,22 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         return sourceUrl;
     }
 
-    private static String getExecutionString(String execute, String channel, boolean appendChannel) {
+    private String getExecutionString(String execute, String channel, boolean appendChannel) {
+        if (Util.isNullOrEmpty(execute)) {
+            return "";
+        }
+
+        int minLength = device.getPadChannel();
+
+        if (channel.length() < minLength) {
+            minLength = minLength - channel.length();
+
+            // With all of the appending, I'm not sure if this is any better than a for loop on
+            // small numbers. Also we can't assume the channel is a number, so we loose a little
+            // efficiency there too.
+            channel = String.format(Locale.ENGLISH, "%0" + minLength + "d", 0) + channel;
+        }
+
         if (!execute.contains("%c%") && appendChannel) {
             return execute + " " + channel;
         } else {
@@ -345,9 +361,39 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         return true;
     }
 
+    private boolean firstPass = true;
+    private boolean customChannels = false;
+    private String returnChannels = null;
+
     @Override
     public String scanChannelInfo(String channel) {
-        // TODO: Implement analog channel scanning.
+        String scanInfo = scanChannelInfo(channel, true);
+
+        if (firstPass) {
+            returnChannels = device.getCustomChannels();
+
+            if (!Util.isNullOrEmpty(returnChannels)) {
+                customChannels = true;
+            }
+
+            firstPass = false;
+            return "OK";
+        }
+
+        if (channel.equals("-1")) {
+            firstPass = true;
+            return "OK";
+        }
+
+        if (customChannels && returnChannels != null) {
+            String returnValue = returnChannels;
+            returnChannels = null;
+            return returnValue;
+        } else if (!customChannels) {
+            // TODO: Implement analog channel scanning.
+            return scanInfo;
+        }
+
         return "ERROR";
     }
 

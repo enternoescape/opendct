@@ -84,7 +84,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
                 );
 
                 streamingWait = new LongDeviceOption(
-                        Config.getInteger("generic.http.wait_for_streaming", 15000),
+                        Config.getLong("generic.http.wait_for_streaming", 15000),
                         false,
                         "Return to SageTV",
                         "generic.http.wait_for_streaming",

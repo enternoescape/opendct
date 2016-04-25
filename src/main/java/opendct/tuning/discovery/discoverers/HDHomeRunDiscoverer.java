@@ -293,6 +293,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.setString("hdhr.extend_transcode_profile", "");
                 Config.setBoolean("hdhr.allow_qam_http_tuning", false);
                 Config.setBoolean("hdhr.allow_qam_remapping", true);
+                Config.setInteger("hdhr.wait_for_offline_detection_s", 8);
+                Config.setInteger("hdhr.offline_detection_min_bytes", 10528);
 
                 continue;
             }
@@ -402,7 +404,17 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
      * @return An HDHomeRun device if the requested device exists. Otherwise <i>null</i>.
      */
     public HDHomeRunDevice getHDHomeRunDevice(int deviceHex) {
-        return hdHomeRunDevices.get(deviceHex);
+        HDHomeRunDevice returnValue;
+
+        discoveredDevicesLock.readLock().lock();
+
+        try {
+            returnValue = hdHomeRunDevices.get(deviceHex);
+        } finally {
+            discoveredDevicesLock.readLock().unlock();
+        }
+
+        return returnValue;
     }
 
     public void addCaptureDevice(HDHomeRunDevice discoveredDevice) {
@@ -508,9 +520,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         try {
             returnValue = discoveredDevices.size();
-        } catch (Exception e) {
-            logger.error("discoveredDevices created an unexpected exception while using" +
-                    " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.readLock().unlock();
         }

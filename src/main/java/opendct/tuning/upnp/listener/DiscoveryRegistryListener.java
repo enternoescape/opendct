@@ -113,7 +113,7 @@ public class DiscoveryRegistryListener implements RegistryListener {
      * device checks in.
      *
      * @param remoteDevice The remote device.
-     * @return
+     * @return The type of device.
      */
     private UpnpDeviceType getDeviceType(RemoteDevice remoteDevice) {
         if (remoteDevice.getDisplayString().toUpperCase().contains("INFINITV")) {

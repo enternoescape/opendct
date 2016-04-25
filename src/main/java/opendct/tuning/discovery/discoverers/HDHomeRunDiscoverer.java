@@ -81,15 +81,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         requestBroadcast = false;
 
-        // If the HDHomeRun Prime is allowed through the UPnP filter, we can't allow it here too
-        // because SageTVManager will rightly not allow it.
-
-        if (Config.getString("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com")
-                .contains("schemas-dkeystone-com")) {
-
-            Config.setStringArray("hdhr.ignore_models", "HDHR3-CC");
-        }
-
         errorMessage = null;
         deviceOptions = new ConcurrentHashMap<>();
 

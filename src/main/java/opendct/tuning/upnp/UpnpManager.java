@@ -20,11 +20,9 @@ import opendct.Main;
 import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
-import opendct.power.PowerEventListener;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.upnp.config.DCTDefaultUpnpServiceConfiguration;
-import opendct.tuning.upnp.listener.DCTRegistryListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fourthline.cling.DefaultUpnpServiceConfiguration;
@@ -39,11 +37,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Handler;
 
-public class UpnpManager implements PowerEventListener {
+public class UpnpManager {
     private static final Logger logger = LogManager.getLogger(UpnpManager.class);
-    public static PowerEventListener POWER_EVENT_LISTENER = new UpnpManager();
 
-    private static final boolean legacyUPnP = Config.getBoolean("upnp.legacy_capture_device", false);
     private static final ReentrantReadWriteLock upnpServiceLock = new ReentrantReadWriteLock();
     private static volatile boolean running;
     private static UpnpService upnpService = null;
@@ -77,25 +73,6 @@ public class UpnpManager implements PowerEventListener {
         }
 
         return logger.exit(returnValue);
-    }
-
-    public static boolean startUpnpServices() {
-        // If this is set to false, the default unmodified configuration is used
-        // instead. It could be useful for testing, but will positively break
-        // the ability to detect if a DCT device is streaming or not.
-        boolean useDCTServiceConfiguration = Config.getBoolean("upnp.service.configuration.use_dct", true);
-
-        if (useDCTServiceConfiguration) {
-            // This starts services immediately. The only supported configuration
-            // right now is DCT, so we can default to this one. We would need to
-            // enhance or replace DCTDefaultUpnpServiceConfiguration for any
-            // additional parsing modifications. Since consistency doesn't here,
-            // the port used for discovery is selected automatically.
-            return UpnpManager.startUpnpServices(DCTDefaultUpnpServiceConfiguration.getDCTDefault(), new DCTRegistryListener());
-        } else {
-            // This starts the services immediately with the default configuration.
-            return UpnpManager.startUpnpServices(new DefaultUpnpServiceConfiguration(), new DCTRegistryListener());
-        }
     }
 
     // Returns true as long as the service is actually running.
@@ -167,7 +144,7 @@ public class UpnpManager implements PowerEventListener {
 
                         }
 
-                        if (legacyUPnP || !UpnpDiscoverer.getSmartBroadcast()) {
+                        if (!UpnpDiscoverer.getSmartBroadcast()) {
                             break;
                         } else {
                             upnpServiceLock.writeLock().lock();
@@ -368,41 +345,5 @@ public class UpnpManager implements PowerEventListener {
 
         logger.info("Logging Cling UPnP to '{}'.", loggingUpnpFilename);
         logger.debug("Logging level for Cling UPnP is set to '{}'.", loggingUpnpLogLevel);
-    }
-
-    public void onSuspendEvent() {
-        if (suspend.getAndSet(true)) {
-            logger.error("onSuspendEvent: The computer is going into suspend mode and UpnpManager has possibly not recovered from the last suspend event.");
-        } else {
-            logger.debug("onSuspendEvent: Stopping services due to a suspend event.");
-            stopUpnpServices();
-        }
-    }
-
-    public void onResumeSuspendEvent() {
-        if (!suspend.getAndSet(false)) {
-            logger.error("onResumeSuspendEvent: The computer returned from suspend mode and UpnpManager possibly did not shutdown since the last suspend event.");
-        } else {
-            logger.debug("onResumeSuspendEvent: Starting services due to a resume event.");
-            startUpnpServices();
-        }
-    }
-
-    public void onResumeCriticalEvent() {
-        if (!suspend.getAndSet(false)) {
-            logger.error("onResumeCriticalEvent: The computer returned from suspend mode and UpnpManager possibly did not shutdown since the last suspend event.");
-        } else {
-            logger.debug("onResumeCriticalEvent: Starting services due to a resume event.");
-            startUpnpServices();
-        }
-    }
-
-    public void onResumeAutomaticEvent() {
-        if (!suspend.getAndSet(false)) {
-            logger.error("onResumeAutomaticEvent: The computer returned from suspend mode and UpnpManager possibly did not shutdown since the last suspend event.");
-        } else {
-            logger.debug("onResumeAutomaticEvent: Starting services due to a resume event.");
-            startUpnpServices();
-        }
     }
 }

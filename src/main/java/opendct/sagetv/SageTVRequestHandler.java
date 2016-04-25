@@ -25,7 +25,6 @@
 package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
-import opendct.capture.DCTCaptureDeviceImpl;
 import opendct.config.Config;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -154,9 +153,7 @@ public class SageTVRequestHandler implements Runnable {
                             if (captureDevice != null) {
                                 setThreadName(deviceName, captureDevice.getEncoderName());
 
-                                if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                    SageTVTuningMonitor.stopMonitorRecording(captureDevice);
-                                }
+                                SageTVTuningMonitor.stopMonitorRecording(captureDevice);
 
                                 captureDevice.stopEncoding();
                                 unlockEncoder(captureDevice);
@@ -212,12 +209,10 @@ public class SageTVRequestHandler implements Runnable {
                                 setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                                 lockEncoder(captureDevice);
 
-                                if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                    // This is done to prevent a potential race condition if a
-                                    // re-tune happens at the same time we are trying to tune into a
-                                    // new channel.
-                                    SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
-                                }
+                                // This is done to prevent a potential race condition if a
+                                // re-tune happens at the same time we are trying to tune into a
+                                // new channel.
+                                SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
                                 if (captureDevice.isReady()) {
                                     if (captureDevice.canEncodeUploadID() && uploadID != 0) {
@@ -238,12 +233,10 @@ public class SageTVRequestHandler implements Runnable {
 
                                         sendResponse("OK");
 
-                                        if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                            if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0, uploadID, socket.getInetAddress());
-                                            } else {
-                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0);
-                                            }
+                                        if (captureDevice.canEncodeUploadID() && uploadID != 0) {
+                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0, uploadID, socket.getInetAddress());
+                                        } else {
+                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0);
                                         }
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
@@ -293,12 +286,10 @@ public class SageTVRequestHandler implements Runnable {
                                 setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                                 lockEncoder(captureDevice);
 
-                                if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                    // This is done to prevent a potential race condition if a
-                                    // re-tune happens at the same time we are trying to tune into a
-                                    // new channel.
-                                    SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
-                                }
+                                // This is done to prevent a potential race condition if a
+                                // re-tune happens at the same time we are trying to tune into a
+                                // new channel.
+                                SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
                                 if (captureDevice.isReady()) {
                                     if (captureDevice.canEncodeUploadID() && uploadID != 0) {
@@ -319,12 +310,10 @@ public class SageTVRequestHandler implements Runnable {
 
                                         sendResponse("OK");
 
-                                        if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                            if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize, uploadID, socket.getInetAddress());
-                                            } else {
-                                                SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize);
-                                            }
+                                        if (captureDevice.canEncodeUploadID() && uploadID != 0) {
+                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize, uploadID, socket.getInetAddress());
+                                        } else {
+                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize);
                                         }
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
@@ -371,12 +360,10 @@ public class SageTVRequestHandler implements Runnable {
                                 setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                                 lockEncoder(captureDevice);
 
-                                if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                    // This is done to prevent a potential race condition if a
-                                    // re-tune happens at the same time we are trying to change the
-                                    // file.
-                                    SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
-                                }
+                                // This is done to prevent a potential race condition if a
+                                // re-tune happens at the same time we are trying to change the
+                                // file.
+                                SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
                                 if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                     logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
@@ -400,12 +387,10 @@ public class SageTVRequestHandler implements Runnable {
 
                                 sendResponse("OK");
 
-                                if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                    if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                        SageTVTuningMonitor.resumeMonitorRecording(captureDevice, uploadID, socket.getInetAddress());
-                                    } else {
-                                        SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
-                                    }
+                                if (captureDevice.canEncodeUploadID() && uploadID != 0) {
+                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice, uploadID, socket.getInetAddress());
+                                } else {
+                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
                                 }
                             } else {
                                 sendResponse("ERROR Device Switch Failed");
@@ -443,12 +428,10 @@ public class SageTVRequestHandler implements Runnable {
                                 setThreadName(vCaptureDevice, captureDevice.getEncoderName());
                                 lockEncoder(captureDevice);
 
-                                if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                    // This is done to prevent a potential race condition if a
-                                    // re-tune happens at the same time we are trying to change the
-                                    // file.
-                                    SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
-                                }
+                                // This is done to prevent a potential race condition if a
+                                // re-tune happens at the same time we are trying to change the
+                                // file.
+                                SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
                                 if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                     logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
@@ -472,12 +455,10 @@ public class SageTVRequestHandler implements Runnable {
 
                                 sendResponse("OK");
 
-                                if (!(captureDevice instanceof DCTCaptureDeviceImpl)) {
-                                    if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                        SageTVTuningMonitor.resumeMonitorRecording(captureDevice, uploadID, socket.getInetAddress());
-                                    } else {
-                                        SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
-                                    }
+                                if (captureDevice.canEncodeUploadID() && uploadID != 0) {
+                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice, uploadID, socket.getInetAddress());
+                                } else {
+                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
                                 }
                             } else {
                                 sendResponse("ERROR Device Switch Failed");

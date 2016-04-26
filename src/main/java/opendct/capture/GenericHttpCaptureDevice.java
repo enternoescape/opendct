@@ -329,6 +329,8 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
         logger.info("Configuring and starting the new SageTV producer...");
 
+        httpProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
+
         try {
             if (!httpServices.startProducing(encoderName, httpProducer, newConsumer, getURL())) {
                 return false;

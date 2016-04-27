@@ -959,33 +959,45 @@
 > full path to any executable):
 >
 > sagetv.device.\<unique_id\>.channel_padding=0
+>
 > sagetv.device.\<unique_id\>.custom_channels_csv=
+>
 > sagetv.device.\<unique_id\>.pretuning_executable=
+>
 > sagetv.device.\<unique_id\>.stopping_executable=
+>
 > sagetv.device.\<unique_id\>.streaming_url=
+>
 > sagetv.device.\<unique_id\>.tuning_delay_ms=0
+>
 > sagetv.device.\<unique_id\>.tuning_executable=
 >
 > **channel_padding** is the minimum length to be passed for the %c%
 > variable. Values shorter than this length will have zeros (0) appended
 > to the left of the channel to make up the difference. (Ex. 8 becomes
 > 008 if this is set to 3.)
+>
 > **custom_channels** is an optional **semicolon** delimited list of
 > channels you want to appear in SageTV for this device. This is a
 > shortcut around creating an actual OpenDCT lineup. If there are any
 > values in the field, they will override the lineup assigned to this
 > capture device on a channel scan. This provides an easy way to add
 > channels if you are not actually going to use guide data.
+>
 > **pretuning_executable** is an optional executable that if defined,
 > will always be run before actually tuning the channel. You can add the
 > channel as an argument by using the variable %c%.
+>
 > **stopping_executable** is an optional executable that if defined,
 > will always be run when the capture device is told to stop. You can
 > add the last tuned channel as an argument by using the variable %c%.
+>
 > **streaming_url** is a URL that points directly to an audio/video
 > stream. HLS and m3u8 playlists are not supported at this time.
+>
 > **tuning_delay_ms** is the amount of time in milliseconds to wait
 > after the program associated with **tuning_executable** has returned.
+>
 > **tuning_executable** is an optional executable that if defined will
 > be used to change the channel being streamed. Insert %c% where the
 > channel needs to be provided to the executable. If %c% isn't provided,
@@ -1020,6 +1032,8 @@
 
 > *Fixed a potential offset calculating error in FFmpeg transcoder
 > related to the new aggregate write feature.
+
+> *Removed waiting for key audio frame.
 
 > *Made a few efficiency improvements in the tuning monitor.
 

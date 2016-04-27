@@ -424,6 +424,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         }
 
         stopConsuming(true);
+        logger.info("Displaying message in place of the recording '{}'", currentFile);
 
         sageTVConsumerLock.readLock().lock();
 
@@ -432,20 +433,36 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
             while (retry-- > 0) {
                 try {
+                    long sourceLength = sourceFile.length();
+
                     Util.copyFile(sourceFile, new File(currentFile), true);
-                    errorBytesStreamed = sourceFile.length();
+                    errorBytesStreamed = sourceLength;
+                    Util.appendFile(sourceFile, new File(currentFile));
+                    errorBytesStreamed += sourceLength;
+                    Util.appendFile(sourceFile, new File(currentFile));
+                    errorBytesStreamed += sourceLength;
+                    Util.appendFile(sourceFile, new File(currentFile));
+                    errorBytesStreamed += sourceLength;
+                    Util.appendFile(sourceFile, new File(currentFile));
+                    errorBytesStreamed += sourceLength;
+                    Util.appendFile(sourceFile, new File(currentFile));
+                    errorBytesStreamed += sourceLength;
+                    Util.appendFile(sourceFile, new File(currentFile));
+                    errorBytesStreamed += sourceLength;
+                    Util.appendFile(sourceFile, new File(currentFile));
+                    errorBytesStreamed += sourceLength;
                     break;
                 } catch (IOException e) {
                     logger.error("Unable to write video message '{}' to '{}' => ", sourceFile, currentFile, e);
                 }
 
-                if (sageTVConsumerLock.getQueueLength() > 1) {
-                    break;
-                }
-
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
+                    break;
+                }
+
+                if (!isLocked()) {
                     break;
                 }
             }

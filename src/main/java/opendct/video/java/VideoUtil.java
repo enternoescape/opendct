@@ -16,9 +16,13 @@
 
 package opendct.video.java;
 
+import opendct.config.Config;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class VideoUtil {
@@ -380,5 +384,23 @@ public class VideoUtil {
         }
 
         return returnByte;
+    }
+
+    public static File COPY_ONCE_TS = new File(Config.VID_DIR + "CopyOnce.ts");
+    public static long writeCopyOnceTs(String filepath) throws IOException {
+        Util.copyFile(COPY_ONCE_TS, new File(filepath), true);
+        return COPY_ONCE_TS.length();
+    }
+
+    public static File COPY_NEVER_TS = new File(Config.VID_DIR + "CopyNever.ts");
+    public static long writeCopyNeverTs(String filepath) throws IOException {
+        Util.copyFile(COPY_NEVER_TS, new File(filepath), true);
+        return COPY_NEVER_TS.length();
+    }
+
+    public static File ERROR_TS = new File(Config.VID_DIR + "Error.ts");
+    public static long writeErrorTs(String filepath) throws IOException {
+        Util.copyFile(ERROR_TS, new File(filepath), true);
+        return ERROR_TS.length();
     }
 }

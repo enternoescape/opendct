@@ -249,9 +249,12 @@ public abstract class FFmpegUtil {
             return null;
         }
 
-        // 90000hz is standard for most MPEG-TS streams.
-        out_stream.time_base(av_make_q(1, 90000));
-        //out_stream.time_base(in_stream.time_base());
+        if (FFmpegConfig.getUseCodecTimebase()) {
+            out_stream.time_base(in_stream.codec().time_base());
+        } else {
+            // 90000hz is standard for most MPEG-TS streams.
+            out_stream.time_base(av_make_q(0x1, 0x15F90));
+        }
 
         // The language is not always available, but it's nice to have when it is.
         /*AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);

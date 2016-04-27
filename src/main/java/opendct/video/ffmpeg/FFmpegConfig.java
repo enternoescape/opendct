@@ -41,6 +41,7 @@ public class FFmpegConfig {
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption h264PtsHack;
     private static BooleanDeviceOption fixStream;
+    private static BooleanDeviceOption useCodecTimebase;
     private static BooleanDeviceOption ccExtractor;
     private static BooleanDeviceOption ccExtractorAllStreams;
     private static StringDeviceOption ccExtractorCustomOptions;
@@ -64,6 +65,7 @@ public class FFmpegConfig {
                 uploadIdPort,
                 h264PtsHack,
                 fixStream,
+                useCodecTimebase,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
@@ -216,6 +218,16 @@ public class FFmpegConfig {
                                 " recordings at times."
                 );
 
+                useCodecTimebase = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.use_codec_timebase", false),
+                        false,
+                        "Use Codec Timebase for Stream",
+                        "consumer.ffmpeg.use_codec_timebase",
+                        "This enables using the codec timebase on the stream for each codec. Only" +
+                                " enable this option if you are having issues with playback" +
+                                " outside of SageTV."
+                );
+
                 ccExtractor = new BooleanDeviceOption(
                         Config.getBoolean("consumer.ffmpeg.ccextractor_enabled", false),
                         false,
@@ -261,6 +273,7 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
                 Config.setBoolean("consumer.ffmpeg.h264_pts_hack", false);
                 Config.setBoolean("consumer.ffmpeg.fix_stream", true);
+                Config.setBoolean("consumer.ffmpeg.use_codec_timebase", false);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_enabled", false);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_all_streams", true);
                 Config.setString("consumer.ffmpeg.ccextractor_custom_options", "");
@@ -301,6 +314,7 @@ public class FFmpegConfig {
                 uploadIdPort,
                 h264PtsHack,
                 fixStream,
+                useCodecTimebase,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
@@ -399,5 +413,9 @@ public class FFmpegConfig {
 
     public static String getCcExtractorCustomOptions() {
         return ccExtractorCustomOptions.getValue();
+    }
+
+    public static boolean getUseCodecTimebase() {
+        return useCodecTimebase.getBoolean();
     }
 }

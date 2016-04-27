@@ -88,6 +88,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     boolean h264PtsHackEnabled = false;
     private AtomicInteger encodedFrames[] = new AtomicInteger[0];
     private long startTime = 0;
+    private AVDictionary muxerDict;
 
     private FFmpegContext ctx = null;
     private boolean interlaced = false;
@@ -198,6 +199,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                                  FFmpegWriter writer, FFmpegWriter writer2, boolean firstRun)
             throws FFmpegException, InterruptedException {
 
+        long muxRate = 0;
         int ret;
         this.ctx = ctx;
 
@@ -362,13 +364,34 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 logger.warn("Unable to set up transcoding. The stream will be copied.");
                 if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                     throw new FFmpegException("Could not find a video stream", -1);
+                } else {
+                    long tempMux = ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate();
+
+                    if (tempMux < 500000) {
+                        logger.debug("Video bitrate seems a little low at {}," +
+                                " using 18000000 instead", tempMux);
+                        tempMux = 18000000;
+                    }
+
+                    muxRate = tempMux;
                 }
             } else {
                 ctx.streamMap[ctx.preferredVideo].transcode = true;
+                muxRate = -1;
             }
         } else {
             if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                 throw new FFmpegException("Could not find a video stream", -1);
+            } else {
+                long tempMux = ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate();
+
+                if (tempMux < 500000) {
+                    logger.debug("Video bitrate seems a little low at {}," +
+                            " using 18000000 instead", tempMux);
+                    tempMux = 18000000;
+                }
+
+                muxRate = tempMux;
             }
         }
 
@@ -386,6 +409,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         if ((ctx.audioOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredAudio))) == null) {
             throw new FFmpegException("Could not find a audio stream", -1);
+        }
+
+        if (muxRate != -1) {
+            muxRate += Math.max(
+                    ctx.avfCtxInput.streams(ctx.preferredAudio).codec().bit_rate(),
+                    128000);
         }
 
         ctx.streamMap[ctx.preferredVideo].outStreamIndex = ctx.videoOutStream.id();
@@ -416,6 +445,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     ctx.streamMap[i].oStreamRational = ctx.videoOutStream.time_base();
                     ctx.streamMap[i].oCodecContext = ctx.videoOutStream.codec();
                     ctx.streamMap[i].oStream = ctx.videoOutStream;
+
+                    if (muxRate != -1) {
+                        muxRate += Math.max(
+                                ctx.streamMap[i].oCodecContext.bit_rate(),
+                                128000);
+                    }
                 }
             }
         }
@@ -451,7 +486,27 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         logger.debug("Writing header");
 
+        // TODO: Figure out why this results in far greater than 20M CBR MPEG-TS files.
+        if (muxRate != -1 && false) {
+            // No stream should have an overall bitrate higher than 40mb/s.
+            muxRate = Math.min(40000000, muxRate);
+            // Margin of error.
+            muxRate += 1000000;
+            // Round up to the nearest 100000 so the CBR isn't too strange looking.
+            muxRate = ((muxRate + 99999) / 100000 ) * 100000;
+
+            muxerDict = new AVDictionary(null);
+            av_dict_set_int(muxerDict, "muxrate", (muxRate & 0xFFFFFFFFL), 0);
+
+            ret = avformat_write_header(ctx.avfCtxOutput, muxerDict);
+
+            long opt[] = new long[1];
+            av_opt_get_int(ctx.avfCtxOutput, "muxrate", AV_OPT_SEARCH_CHILDREN, opt);
+            logger.info("muxrate = {}", opt);
+        }
+
         ret = avformat_write_header(ctx.avfCtxOutput, (PointerPointer<avutil.AVDictionary>) null);
+
         if (ret < 0) {
             deallocFilterGraphs();
             throw new FFmpegException("Error while writing header to file '" + outputFilename + "'", ret);
@@ -657,13 +712,14 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int maxFramesToStart = 768;
 
         final boolean fixingEnabled = FFmpegConfig.getFixStream();
+        final boolean useCodecTimebase = FFmpegConfig.getUseCodecTimebase();
 
         int switchFlag;
         long dts;
         long pts;
         long preOffsetDts;
         long preOffsetPts;
-        int increment;
+        long increment;
         long diff = 0;
 
         // Used when streaming first starts to keep the first frame from being a known bad frame.
@@ -713,8 +769,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 if (firstFrame[outputStreamIndex]) {
                     if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0 ||
-                            (outputStreamIndex != 0 && firstFrame[0] && maxFramesToStart > 0) ||
-                            ((packet.flags() & AV_PKT_FLAG_KEY) == 0) && maxFramesToStart > 0) {
+                            (outputStreamIndex != 0 && firstFrame[0] && maxFramesToStart > 0)) {
 
                         maxFramesToStart -= 1;
                         av_packet_unref(packet);
@@ -1038,10 +1093,21 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 } else {
                     //logPacket(ctx.avfCtxInput, packet, "copy-in");
 
-                    // remux this frame without re-encoding
-                    av_packet_rescale_ts(packet,
-                            ctx.streamMap[inputStreamIndex].iStreamRational,
-                            ctx.streamMap[inputStreamIndex].oStreamRational);
+                    if (useCodecTimebase) {
+                        AVRational timeBaseIn = ctx.streamMap[inputStreamIndex].iStreamRational;
+                        AVRational timeBaseOut = ctx.streamMap[inputStreamIndex].oStreamRational;
+
+                        packet.pts(av_rescale_q_rnd(packet.pts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                        packet.dts(av_rescale_q_rnd(packet.dts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                        packet.duration((int) av_rescale_q(packet.duration(), timeBaseIn, timeBaseOut));
+                        packet.pos(-1);
+                    } else {
+                        // remux this frame without re-encoding
+                        av_packet_rescale_ts(packet,
+                                ctx.streamMap[inputStreamIndex].iStreamRational,
+                                ctx.streamMap[inputStreamIndex].oStreamRational);
+                        packet.pos(-1);
+                    }
 
                     //logPacket(ctx.avfCtxInput, packet, "copy-out");
 

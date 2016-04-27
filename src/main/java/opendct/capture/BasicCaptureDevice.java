@@ -415,19 +415,19 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     @Override
     public void streamError(File sourceFile) {
 
-        sageTVConsumerLock.writeLock().lock();
+        String currentFile = getRecordFilename();
+
+        if (Util.isNullOrEmpty(currentFile)) {
+            logger.debug("Recording appears to have already stopped." +
+                    " Returning without streaming error message.");
+            return;
+        }
+
+        stopConsuming(true);
+
+        sageTVConsumerLock.readLock().lock();
 
         try {
-            String currentFile = getRecordFilename();
-
-            if (Util.isNullOrEmpty(currentFile)) {
-                logger.debug("Recording appears to have already stopped." +
-                        " Returning without streaming error message.");
-                return;
-            }
-
-            stopConsuming(true);
-
             int retry = 25;
 
             while (retry-- > 0) {
@@ -436,15 +436,21 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                     errorBytesStreamed = sourceFile.length();
                     break;
                 } catch (IOException e) {
-                    logger.error("Unable to write video message '{}' to '{}'", sourceFile, currentFile);
+                    logger.error("Unable to write video message '{}' to '{}' => ", sourceFile, currentFile, e);
                 }
 
-                if (sageTVConsumerLock.hasQueuedThreads()) {
+                if (sageTVConsumerLock.getQueueLength() > 1) {
+                    break;
+                }
+
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
                     break;
                 }
             }
         } finally {
-            sageTVConsumerLock.writeLock().unlock();
+            sageTVConsumerLock.readLock().unlock();
         }
     }
 

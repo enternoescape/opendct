@@ -20,7 +20,10 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
-import opendct.consumer.*;
+import opendct.consumer.DynamicConsumerImpl;
+import opendct.consumer.FFmpegTransSageTVConsumerImpl;
+import opendct.consumer.RawSageTVConsumerImpl;
+import opendct.consumer.SageTVConsumer;
 import opendct.producer.*;
 import opendct.util.Util;
 import opendct.video.rtsp.DCTRTSPClientImpl;
@@ -41,7 +44,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 2;
+    public static final int VERSION_BUILD = 3;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -65,6 +68,7 @@ public class Config {
     public static final boolean IS_64BIT = System.getProperty("sun.arch.data.model").contains("64");
     public static final String PROJECT_DIR;
     public static final String BIN_DIR;
+    public static final String VID_DIR;
 
     private static int exitCode = 0;
 
@@ -108,6 +112,8 @@ public class Config {
         } else {
             BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
         }
+
+        VID_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR + "video" + DIR_SEPARATOR;
     }
 
     public static String getConfigDirectory() {
@@ -1051,8 +1057,6 @@ public class Config {
 
         if (consumerName.endsWith(RawSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new RawSageTVConsumerImpl();
-        } else if (consumerName.endsWith(FFmpegOldSageTVConsumerImpl.class.getSimpleName())) {
-            returnValue = new FFmpegOldSageTVConsumerImpl();
         } else if (consumerName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegTransSageTVConsumerImpl();
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {

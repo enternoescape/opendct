@@ -1,6 +1,6 @@
 ## OpenDCT Compiled Binary
 
-#### CCExtractor
+### CCExtractor
 *Files and directories unless otherwise stated are using the root
  directory ./compile/ccextractor which is relative to this document.*
 
@@ -24,3 +24,19 @@ an eventual goal of hosting on Bintray.
 3. Compile the project.
 4. Copy resulting binary into the directories
    ..\windows-x86\ccextractor and ..\windows-x86_64\ccextractor.
+   
+### Video Messages
+*Files and directories unless otherwise stated are using the root
+ directory ./compile/video which is relative to this document.*
+ 
+##### Updating the video messages under Linux
+*A distribution of FFmpeg must be installed or a compiled version must
+ be placed this the video folder before proceeding.*
+
+1. Run ./generate
+ 
+##### Updating the video messages under Windows
+
+1. Download the latest ffmpeg.exe build for Windows and place it in the
+   video folder.
+2. Run Generate.cmd

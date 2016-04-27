@@ -226,6 +226,12 @@ ospackage {
         fileMode 0755
     }
 
+    from('build/bin') {
+        include 'video/*.ts'
+        into 'bin'
+        fileMode 0444
+    }
+
     from('scripts/any') {
         include '*'
         into ''
@@ -267,6 +273,11 @@ def changeBin(String arch, String dependency) {
     copy {
         from "bin/${arch}"
         into 'build/bin'
+    }
+
+    copy {
+        from "bin/video"
+        into 'build/bin/video'
     }
 
     delete 'build/jsw'

@@ -1,0 +1,3 @@
+ffmpeg.exe -loop 1 -r 15 -i CopyOnce.png -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 -t 00:00:59 -profile baseline -level 3.1 -preset placebo -tune stillimage -c:v libx264 -b:v 300k -c:a ac3 -b:a 32k -pix_fmt yuv420p ..\..\CopyOnce.ts
+ffmpeg.exe -loop 1 -r 15 -i CopyNever.png -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 -t 00:00:59 -profile baseline -level 3.1 -preset placebo -tune stillimage -c:v libx264 -b:v 300k -c:a ac3 -b:a 32k -pix_fmt yuv420p ..\..\CopyNever.ts
+ffmpeg.exe -loop 1 -r 15 -i Error.png -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 -t 00:00:59 -profile baseline -level 3.1 -preset placebo -tune stillimage -c:v libx264 -b:v 300k -c:a ac3 -b:a 32k -pix_fmt yuv420p ..\..\Error.ts

@@ -997,7 +997,22 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
 
-        sageTVConsumerRunnable.isStreaming(HDHomeRunDiscoverer.getStreamingWait());
+        long streamingWaitLeft = HDHomeRunDiscoverer.getStreamingWait();
+
+        while (!sageTVConsumerRunnable.isStreaming(1000)) {
+            streamingWaitLeft -= 1000;
+
+            CopyProtection copyProtection = getCopyProtection();
+
+            if (copyProtection == CopyProtection.COPY_ONCE ||
+                    copyProtection == CopyProtection.COPY_NEVER ||
+                    streamingWaitLeft <= 0 ||
+                    tuningThread != Thread.currentThread()) {
+
+                break;
+            }
+        }
+
 
         return logger.exit(true);
     }

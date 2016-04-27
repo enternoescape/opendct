@@ -21,6 +21,7 @@ import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOptions;
 
+import java.io.File;
 import java.net.InetAddress;
 
 public interface CaptureDevice extends DeviceOptions {
@@ -582,4 +583,16 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      */
     public CopyProtection getCopyProtection();
 
+    /**
+     * Stop the consumer, then copies the specified file over the current recording.
+     * <p/>
+     * This will only be called if there is an impassible condition such as content
+     * protection that will result in nothing being recorded. If for any reason no recording is in
+     * progress, just return. This method must not create a race condition between a new recording
+     * and streaming this message.
+     *
+     * @param sourceFile The full path of the file to be copied in place of the recording. The
+     *                   length of this file should replace the file length reported
+     */
+    public void streamError(File sourceFile);
 }

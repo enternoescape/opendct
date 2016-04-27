@@ -81,22 +81,13 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         requestBroadcast = false;
 
-        // If the HDHomeRun Prime is allowed through the UPnP filter, we can't allow it here too
-        // because SageTVManager will rightly not allow it.
-
-        if (Config.getString("upnp.new.device.schema_filter_strings_csv", "schemas-cetoncorp-com")
-                .contains("schemas-dkeystone-com")) {
-
-            Config.setStringArray("hdhr.ignore_models", "HDHR3-CC");
-        }
-
         errorMessage = null;
         deviceOptions = new ConcurrentHashMap<>();
 
         while (true) {
             try {
                 streamingWait = new LongDeviceOption(
-                        Config.getInteger("hdhr.wait_for_streaming", 15000),
+                        Config.getLong("hdhr.wait_for_streaming", 15000),
                         false,
                         "Return to SageTV",
                         "hdhr.wait_for_streaming",
@@ -293,6 +284,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 Config.setString("hdhr.extend_transcode_profile", "");
                 Config.setBoolean("hdhr.allow_qam_http_tuning", false);
                 Config.setBoolean("hdhr.allow_qam_remapping", true);
+                Config.setInteger("hdhr.wait_for_offline_detection_s", 8);
+                Config.setInteger("hdhr.offline_detection_min_bytes", 10528);
 
                 continue;
             }
@@ -402,7 +395,17 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
      * @return An HDHomeRun device if the requested device exists. Otherwise <i>null</i>.
      */
     public HDHomeRunDevice getHDHomeRunDevice(int deviceHex) {
-        return hdHomeRunDevices.get(deviceHex);
+        HDHomeRunDevice returnValue;
+
+        discoveredDevicesLock.readLock().lock();
+
+        try {
+            returnValue = hdHomeRunDevices.get(deviceHex);
+        } finally {
+            discoveredDevicesLock.readLock().unlock();
+        }
+
+        return returnValue;
     }
 
     public void addCaptureDevice(HDHomeRunDevice discoveredDevice) {
@@ -508,9 +511,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         try {
             returnValue = discoveredDevices.size();
-        } catch (Exception e) {
-            logger.error("discoveredDevices created an unexpected exception while using" +
-                    " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.readLock().unlock();
         }

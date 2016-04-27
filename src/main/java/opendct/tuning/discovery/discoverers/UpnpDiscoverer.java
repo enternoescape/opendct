@@ -78,7 +78,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         while (true) {
             try {
                 streamingWait = new LongDeviceOption(
-                        Config.getInteger("upnp.device.wait_for_streaming", 15000),
+                        Config.getLong("upnp.device.wait_for_streaming", 15000),
                         false,
                         "Return to SageTV",
                         "upnp.device.wait_for_streaming",

@@ -46,6 +46,8 @@ public class NIOHttpDownloader {
     private URL address;
     private ByteBuffer tempBuffer;
 
+    private String mimeType;
+
     public NIOHttpDownloader() throws IOException {
         socketChannel = SocketChannel.open();
     }
@@ -63,7 +65,13 @@ public class NIOHttpDownloader {
         }
         tempBuffer = ByteBuffer.allocate(1024);
 
-        socketChannel.connect(new InetSocketAddress(address.getHost(), address.getPort()));
+        int port = address.getPort();
+
+        if (port < 1) {
+            port = 80;
+        }
+
+        socketChannel.connect(new InetSocketAddress(address.getHost(), port));
 
         tempBuffer.clear();
         tempBuffer.put((
@@ -83,6 +91,7 @@ public class NIOHttpDownloader {
         boolean success = false;
         boolean startStreaming = false;
         char currentByte;
+        int contentLength = 0;
 
         while (!startStreaming) {
             tempBuffer.clear();
@@ -106,6 +115,16 @@ public class NIOHttpDownloader {
                             throw new IOException("Server responded " + line);
                         } else {
                             success = true;
+                        }
+                    } else if (line.startsWith("Content-Type: ")) {
+                        mimeType = line.substring("Content-Type: ".length());
+                    } else if (line.startsWith("Content-Length: ")) {
+                        try {
+                            contentLength = Integer.parseInt(
+                                    line.substring("Content-Length: ".length()));
+                        } catch (NumberFormatException e) {
+                            logger.warn("Unable to parse content length from '{}' => ",
+                                    line, e.getMessage());
                         }
                     }
 

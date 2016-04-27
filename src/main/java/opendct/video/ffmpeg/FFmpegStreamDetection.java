@@ -18,6 +18,7 @@ package opendct.video.ffmpeg;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bytedeco.javacpp.IntPointer;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.javacpp.avcodec;
 import org.bytedeco.javacpp.avutil;
@@ -138,7 +139,7 @@ public class FFmpegStreamDetection {
             // happening if the stream completely stops or we reach the end of the buffer. We pass
             // this though as a success because if we don't, the only way detection will complete
             // successfully if the desired program isn't found is to let this finish.
-            if (ret < 0 && ret != -541478725) {
+            if (ret < 0 && -ret != -541478725) {
                 error[0] = "avformat_find_stream_info() failed with error code " + -ret + ".";
                 if (dynamicProbeSize == probeSizeLimit) {
                     return false;
@@ -146,6 +147,18 @@ public class FFmpegStreamDetection {
                 logger.info(error[0] + " Trying again with more data.");
 
                 ctx.deallocInputContext();
+
+                try {
+                    // For a yet to be determined reason, sleeping here for 1/5 of a second makes
+                    // video detection more reliable.
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    if (ctx.isInterrupted()) {
+                        error[0] = FFMPEG_INIT_INTERRUPTED;
+                        return false;
+                    }
+                }
+
                 continue;
             }
 
@@ -155,8 +168,8 @@ public class FFmpegStreamDetection {
             }
 
             // While we haven't seen all streams for the desired program and we haven't exhausted our attempts, try again...
-            if (!FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram) && dynamicProbeSize != probeSizeLimit) {
-                logger.info("Stream details unavailable for one or more streams. " + TRYING_AGAIN);
+            if (ctx.desiredProgram > 0 && dynamicProbeSize != probeSizeLimit && !FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram)) {
+                logger.info("Desired program set. Stream details unavailable for one or more streams. {}", TRYING_AGAIN);
 
                 ctx.deallocInputContext();
                 continue;
@@ -178,15 +191,73 @@ public class FFmpegStreamDetection {
                 if (dynamicProbeSize == probeSizeLimit) {
                     return false;
                 }
-                logger.info(error[0] + TRYING_AGAIN);
+                logger.info("{}{}", error[0], TRYING_AGAIN);
 
                 ctx.deallocInputContext();
+
+                try {
+                    // For a yet to be determined reason, sleeping here for 1/4 of a second makes
+                    // video detection more reliable.
+                    Thread.sleep(250);
+                } catch (InterruptedException e) {
+                    if (ctx.isInterrupted()) {
+                        error[0] = FFMPEG_INIT_INTERRUPTED;
+                        return false;
+                    }
+                }
+
                 continue;
             }
 
             if (ctx.isInterrupted()) {
                 error[0] = FFMPEG_INIT_INTERRUPTED;
                 return false;
+            }
+
+            if (ctx.desiredProgram <= 0) {
+                int programs = ctx.avfCtxInput.nb_programs();
+
+                for (int i = 0; i < programs; i++) {
+                    AVProgram program = ctx.avfCtxInput.programs(i);
+
+                    IntPointer streamIndexes = program.stream_index();
+                    int numStreamIndexes = program.nb_stream_indexes();
+                    for (int j = 0; j < numStreamIndexes; j++) {
+                        int streamIndex = streamIndexes.get(j);
+
+                        if (streamIndex == ctx.preferredVideo) {
+                            ctx.desiredProgram = program.id();
+                            break;
+                        }
+                    }
+
+                    if (ctx.desiredProgram > 0) {
+                        break;
+                    }
+                }
+
+                if (ctx.isInterrupted()) {
+                    error[0] = FFMPEG_INIT_INTERRUPTED;
+                    return false;
+                }
+
+                // This really should not be happening because it would mean that we found a valid
+                // video stream that doesn't belong to any program.
+                if (ctx.desiredProgram <= 0) {
+                    logger.info("Unable to determine primary program.{}", TRYING_AGAIN);
+
+                    ctx.deallocInputContext();
+                    continue;
+                }
+
+                if (dynamicProbeSize != probeSizeLimit && !FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram)) {
+                    logger.info("Stream details unavailable for one or more streams, program is now {}.{}", ctx.desiredProgram, TRYING_AGAIN);
+
+                    ctx.deallocInputContext();
+                    continue;
+                } else {
+                    logger.info("Primary program has been detected: {}.", ctx.desiredProgram);
+                }
             }
 
             ctx.preferredAudio = findBestAudioStream(ctx.avfCtxInput);
@@ -208,6 +279,18 @@ public class FFmpegStreamDetection {
                 logger.info(error[0] + TRYING_AGAIN);
 
                 ctx.deallocInputContext();
+
+                try {
+                    // For a yet to be determined reason, sleeping here for 1/4 of a second makes
+                    // audio detection more reliable.
+                    Thread.sleep(250);
+                } catch (InterruptedException e) {
+                    if (ctx.isInterrupted()) {
+                        error[0] = FFMPEG_INIT_INTERRUPTED;
+                        return false;
+                    }
+                }
+
                 continue;
             }
 

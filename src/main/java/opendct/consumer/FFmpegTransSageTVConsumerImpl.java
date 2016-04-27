@@ -43,7 +43,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final static Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
@@ -105,10 +104,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private String stateMessage;
     private FFmpegCircularBufferNIO circularBuffer;
     private FFmpegContext ctx;
-
-    static {
-        FFmpegUtil.initAll();
-    }
 
     public FFmpegTransSageTVConsumerImpl() {
         circularBuffer = null;
@@ -860,6 +855,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             @Override
             public void run() {
+                int bytesWritten;
                 int writeBytes;
                 long currentBytes;
                 long currentBytesStreamed;
@@ -900,11 +896,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                             return;
                         }
 
-                        writeBytes = asyncBuffer.remaining();
+                        writeBytes = 0;
 
                         try {
                             while (asyncBuffer.hasRemaining()) {
-                                fileChannel.write(asyncBuffer, autoOffset);
+                                bytesWritten = fileChannel.write(asyncBuffer, autoOffset);
+                                autoOffset += bytesWritten;
+                                writeBytes += bytesWritten;
                             }
                         } catch (Exception e) {
                             logger.error("File '{}' write failed => ", directFilename, e);
@@ -1022,7 +1020,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         currentBytes = bytesStreamed += writeBytes;
                     }
 
-                    autoOffset += writeBytes;
                     bytesFlushCounter += writeBytes;
 
                     if (currentBytes > initBufferedData) {

@@ -24,6 +24,7 @@ import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.DiscoveryManager;
+import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.upnp.UpnpManager;
@@ -184,11 +185,6 @@ public class Main {
             }
         });
 
-        // This starts the timer for all of the capture devices to be loaded. The default timeout is
-        // 30 seconds. The default device count is 0. These values are saved after the first run and
-        // can be changed after stopping the program.
-        SageTVManager.startWaitingForCaptureDevices();
-
         // When this is set to true SageTV will open all ports assigned to any capture device in the
         // configuration properties.
         boolean earlyPortAssignment = Config.getBoolean("sagetv.early_port_assignment", false);
@@ -200,18 +196,19 @@ public class Main {
         // instances pool of capture devices.
         boolean incrementPortForNewDevices = Config.getBoolean("sagetv.new.device.increment_port", false);
 
-        int sageTVdefaultEncoderMerit = Config.getInteger("sagetv.new.device.default_encoder_merit", 0);
-        int sageTVdefaultTuningDelay = Config.getInteger("sagetv.new.device.default_tuning_delay", 0);
+        int sageTVDefaultEncoderMerit = Config.getInteger("sagetv.new.device.default_encoder_merit", 0);
+        int sageTVDefaultTuningDelay = Config.getInteger("sagetv.new.device.default_tuning_delay", 0);
 
-        int sageTVdefaultDiscoveryPort = Config.getInteger("sagetv.encoder_discovery_port", 8271);
+        int sageTVDefaultDiscoveryPort = Config.getInteger("sagetv.encoder_discovery_port", 8271);
 
-        // Setting both of these properties to true will enable the legacy DCT capture device to be
-        // loaded. This is no longer supported, but remains available for regression testing.
-        boolean useUPnP = Config.getBoolean("upnp.legacy_enabled", false);
-        boolean legacyUPnP = Config.getBoolean("upnp.legacy_capture_device", false);
-
-        // If this is enabled the program will use the new discovery manager.
+        // If this is enabled the program will use the discovery manager. If this is disabled, no
+        // capture devices will be loaded.
         boolean useDiscoveryManager = Config.getBoolean("discovery.enabled", true);
+
+        // This starts the timer for all of the capture devices to be loaded. The default timeout is
+        // 30 seconds. The default device count is 0. These values are saved after the first run and
+        // can be changed after stopping the program.
+        SageTVManager.startWaitingForCaptureDevices();
 
         Config.saveConfig();
 
@@ -220,26 +217,10 @@ public class Main {
             SageTVManager.addAndStartSocketServers(Config.getAllSocketServerPorts());
         }
 
-        if (useUPnP && legacyUPnP) {
-            UpnpManager.startUpnpServices();
-
-            PowerMessageManager.EVENTS.addListener(UpnpManager.POWER_EVENT_LISTENER);
-
-            Runtime.getRuntime().addShutdownHook(new Thread("UpnpManagerShutdown") {
-                @Override
-                public void run() {
-                    logger.info("Stopping UPnP services...");
-                    UpnpManager.stopUpnpServices();
-                }
-            });
-        }
-
         if (useDiscoveryManager) {
-            if (!legacyUPnP) {
-                DiscoveryManager.addDiscoverer(new UpnpDiscoverer());
-            }
-
+            DiscoveryManager.addDiscoverer(new UpnpDiscoverer());
             DiscoveryManager.addDiscoverer(new HDHomeRunDiscoverer());
+            DiscoveryManager.addDiscoverer(new GenericHttpDiscoverer());
             DiscoveryManager.startDeviceDiscovery();
 
             PowerMessageManager.EVENTS.addListener(DiscoveryManager.POWER_EVENT_LISTENER);

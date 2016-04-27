@@ -27,6 +27,8 @@ import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -56,6 +58,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected String recordEncodingQuality = "";
     protected String recordLastFilename = null;
     protected int recordLastUploadID = 0;
+    private long errorBytesStreamed = 0;
 
     // SageTV properties
     protected String lastChannel = "";
@@ -395,7 +398,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         sageTVConsumerLock.readLock().lock();
 
         try {
-            if (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning()) {
+            if (errorBytesStreamed != 0) {
+                returnValue = errorBytesStreamed;
+            } else if (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning()) {
                 returnValue = sageTVConsumerRunnable.getBytesStreamed();
             }
         } catch (Exception e) {
@@ -405,6 +410,48 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         }
 
         return logger.exit(returnValue);
+    }
+
+    @Override
+    public void streamError(File sourceFile) {
+
+        String currentFile = getRecordFilename();
+
+        if (Util.isNullOrEmpty(currentFile)) {
+            logger.debug("Recording appears to have already stopped." +
+                    " Returning without streaming error message.");
+            return;
+        }
+
+        stopConsuming(true);
+
+        sageTVConsumerLock.readLock().lock();
+
+        try {
+            int retry = 25;
+
+            while (retry-- > 0) {
+                try {
+                    Util.copyFile(sourceFile, new File(currentFile), true);
+                    errorBytesStreamed = sourceFile.length();
+                    break;
+                } catch (IOException e) {
+                    logger.error("Unable to write video message '{}' to '{}' => ", sourceFile, currentFile, e);
+                }
+
+                if (sageTVConsumerLock.getQueueLength() > 1) {
+                    break;
+                }
+
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        } finally {
+            sageTVConsumerLock.readLock().unlock();
+        }
     }
 
     /**
@@ -552,7 +599,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         boolean returnValue = true;
 
-        sageTVConsumerLock.readLock().lock();
+        sageTVConsumerLock.writeLock().lock();
 
         try {
             if (sageTVConsumerRunnable != null) {
@@ -567,7 +614,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 returnValue = false;
             }
         } finally {
-            sageTVConsumerLock.readLock().unlock();
+            sageTVConsumerLock.writeLock().unlock();
         }
 
         return logger.exit(returnValue);
@@ -598,7 +645,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         boolean returnValue = true;
 
-        sageTVConsumerLock.readLock().lock();
+        sageTVConsumerLock.writeLock().lock();
 
         try {
             if (sageTVConsumerRunnable != null) {
@@ -615,7 +662,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 returnValue = false;
             }
         } finally {
-            sageTVConsumerLock.readLock().unlock();
+            sageTVConsumerLock.writeLock().unlock();
         }
 
         return logger.exit(returnValue);
@@ -646,6 +693,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         sageTVConsumerLock.writeLock().lock();
 
         try {
+            errorBytesStreamed = 0;
             recordBufferSize = bufferSize;
             recordEncodingQuality = encodingQuality;
             recordLastFilename = sageTVConsumer.getEncoderFilename();
@@ -758,7 +806,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         boolean returnValue = true;
 
-        sageTVConsumerLock.readLock().lock();
+        sageTVConsumerLock.writeLock().lock();
 
         try {
             if (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning()) {
@@ -789,7 +837,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                     Thread.currentThread().getClass().toString(), e);
             returnValue = false;
         } finally {
-            sageTVConsumerLock.readLock().unlock();
+            sageTVConsumerLock.writeLock().unlock();
         }
 
 

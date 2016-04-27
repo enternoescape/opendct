@@ -24,6 +24,8 @@ import opendct.sagetv.SageTVManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.net.InetAddress;
 import java.net.SocketException;
 
 public class DeviceLoaderImpl implements DeviceLoader {
@@ -58,7 +60,15 @@ public class DeviceLoaderImpl implements DeviceLoader {
                                 parent.getName());
 
                     } else {
-                        NetworkPowerEventManger.POWER_EVENT_LISTENER.addDependentInterface(parent.getRemoteAddress());
+                        if (!parent.getRemoteAddress().equals(InetAddress.getLoopbackAddress())) {
+                            try {
+                                NetworkPowerEventManger.POWER_EVENT_LISTENER
+                                        .addDependentInterface(parent.getRemoteAddress());
+                            }catch(IOException e){
+                                logger.warn("Unable to register dependent interface '{}' => ",
+                                        parent.getRemoteAddress(), e);
+                            }
+                        }
                     }
                 }
             } else {

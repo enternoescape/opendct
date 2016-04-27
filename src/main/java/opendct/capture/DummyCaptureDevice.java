@@ -22,6 +22,7 @@ import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -232,6 +233,11 @@ public class DummyCaptureDevice implements CaptureDevice {
     }
 
     public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+
+    }
+
+    @Override
+    public void streamError(File sourceFile) {
 
     }
 }

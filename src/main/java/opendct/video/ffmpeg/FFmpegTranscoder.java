@@ -86,6 +86,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private long lastDtsByStreamIndex[] = new long[0];
     private long lastPtsByStreamIndex[] = new long[0];
     boolean h264PtsHackEnabled = false;
+    boolean mpegTsCbrEnabled = false;
     private AtomicInteger encodedFrames[] = new AtomicInteger[0];
     private long startTime = 0;
     private AVDictionary muxerDict;
@@ -199,6 +200,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                                  FFmpegWriter writer, FFmpegWriter writer2, boolean firstRun)
             throws FFmpegException, InterruptedException {
 
+        mpegTsCbrEnabled = FFmpegConfig.getUseMpegTsCBR();
         long muxRate = 0;
         int ret;
         this.ctx = ctx;
@@ -364,34 +366,13 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 logger.warn("Unable to set up transcoding. The stream will be copied.");
                 if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                     throw new FFmpegException("Could not find a video stream", -1);
-                } else {
-                    long tempMux = ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate();
-
-                    if (tempMux < 500000) {
-                        logger.debug("Video bitrate seems a little low at {}," +
-                                " using 18000000 instead", tempMux);
-                        tempMux = 18000000;
-                    }
-
-                    muxRate = tempMux;
                 }
             } else {
                 ctx.streamMap[ctx.preferredVideo].transcode = true;
-                muxRate = -1;
             }
         } else {
             if ((ctx.videoOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredVideo))) == null) {
                 throw new FFmpegException("Could not find a video stream", -1);
-            } else {
-                long tempMux = ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate();
-
-                if (tempMux < 500000) {
-                    logger.debug("Video bitrate seems a little low at {}," +
-                            " using 18000000 instead", tempMux);
-                    tempMux = 18000000;
-                }
-
-                muxRate = tempMux;
             }
         }
 
@@ -409,12 +390,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         if ((ctx.audioOutStream = addCopyStreamToContext(ctx.avfCtxOutput, ctx.avfCtxInput.streams(ctx.preferredAudio))) == null) {
             throw new FFmpegException("Could not find a audio stream", -1);
-        }
-
-        if (muxRate != -1) {
-            muxRate += Math.max(
-                    ctx.avfCtxInput.streams(ctx.preferredAudio).codec().bit_rate(),
-                    128000);
         }
 
         ctx.streamMap[ctx.preferredVideo].outStreamIndex = ctx.videoOutStream.id();
@@ -445,12 +420,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     ctx.streamMap[i].oStreamRational = ctx.videoOutStream.time_base();
                     ctx.streamMap[i].oCodecContext = ctx.videoOutStream.codec();
                     ctx.streamMap[i].oStream = ctx.videoOutStream;
-
-                    if (muxRate != -1) {
-                        muxRate += Math.max(
-                                ctx.streamMap[i].oCodecContext.bit_rate(),
-                                128000);
-                    }
                 }
             }
         }
@@ -486,26 +455,25 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         logger.debug("Writing header");
 
-        // TODO: Figure out why this results in far greater than 20M CBR MPEG-TS files.
-        if (muxRate != -1 && false) {
+        if (mpegTsCbrEnabled && !ctx.streamMap[ctx.preferredVideo].transcode && outputFilename.endsWith(".ts")) {
             // No stream should have an overall bitrate higher than 40mb/s.
-            muxRate = Math.min(40000000, muxRate);
+            // Enforce a minimum bitrate of 6mb/s.
+            muxRate = Math.min(40000000, Math.max(5000000, Math.min(ctx.avfCtxInput.bit_rate(), ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate())));
             // Margin of error.
             muxRate += 1000000;
-            // Round up to the nearest 100000 so the CBR isn't too strange looking.
-            muxRate = ((muxRate + 99999) / 100000 ) * 100000;
+            // Round up to the nearest 1000 so the CBR isn't too strange looking.
+            muxRate = ((muxRate + 999) / 1000 ) * 1000;
 
+            logger.debug("Using MPEG-TS CBR {} kb/s.", muxRate / 1000);
             muxerDict = new AVDictionary(null);
-            av_dict_set_int(muxerDict, "muxrate", (muxRate & 0xFFFFFFFFL), 0);
+            av_dict_set_int(muxerDict, "muxrate", muxRate, 0);
+            av_dict_set_int(muxerDict, "pat_period", 1, 0);
+            av_dict_set_int(muxerDict, "sdt_period", 10, 0);
 
             ret = avformat_write_header(ctx.avfCtxOutput, muxerDict);
-
-            long opt[] = new long[1];
-            av_opt_get_int(ctx.avfCtxOutput, "muxrate", AV_OPT_SEARCH_CHILDREN, opt);
-            logger.info("muxrate = {}", opt);
+        } else {
+            ret = avformat_write_header(ctx.avfCtxOutput, (PointerPointer<avutil.AVDictionary>) null);
         }
-
-        ret = avformat_write_header(ctx.avfCtxOutput, (PointerPointer<avutil.AVDictionary>) null);
 
         if (ret < 0) {
             deallocFilterGraphs();
@@ -775,6 +743,17 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         av_packet_unref(packet);
                         continue;
                     } else {
+                        if (mpegTsCbrEnabled &&
+                                outputStreamIndex == 0 &&
+                                ctx.outputFilename.endsWith(".ts")) {
+
+                            // Offset by 1 second from zero unless that actually ends up offsetting
+                            // ahead of zero.
+                            long newOffset = Math.min(-packet.dts() + 90000, 0);
+                            Arrays.fill(tsOffsets, newOffset);
+                            Arrays.fill(lastDtsByStreamIndex, 0);
+                        }
+
                         logger.debug("stream {}, first dts = {}, first pts = {}",
                                 inputStreamIndex, preOffsetDts, preOffsetPts);
                     }
@@ -792,7 +771,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     continue;
                 }
 
-                if (switching && inputStreamIndex == ctx.preferredVideo) {
+                if (switching && outputStreamIndex == 0) {
 
                     switchFlag = packet.flags() & AV_PKT_FLAG_KEY;
 
@@ -806,6 +785,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         synchronized (switchLock) {
                             try {
                                 switchStreamOutput();
+
+                                if (mpegTsCbrEnabled && ctx.outputFilename.endsWith(".ts")) {
+                                    long newOffset = -packet.dts() + 90000;
+                                    Arrays.fill(tsOffsets, newOffset);
+                                    Arrays.fill(lastDtsByStreamIndex, 0);
+                                }
 
                                 errorCounter = 0;
                             } catch (InterruptedException e) {

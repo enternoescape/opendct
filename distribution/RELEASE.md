@@ -982,9 +982,8 @@
 > **stopping_executable** is an optional executable that if defined,
 > will always be run when the capture device is told to stop. You can
 > add the last tuned channel as an argument by using the variable %c%.
-> **streaming_url** is a URL that points directly an audio/video stream.
-> If you are unsure if the URL will stream correctly, try it in VLC
-> first. (Ex. http://192.168.0.20:5060/stream)
+> **streaming_url** is a URL that points directly to an audio/video
+> stream. HLS and m3u8 playlists are not supported at this time.
 > **tuning_delay_ms** is the amount of time in milliseconds to wait
 > after the program associated with **tuning_executable** has returned.
 > **tuning_executable** is an optional executable that if defined will
@@ -994,7 +993,32 @@
 > a final parameter. (Ex. /full/path/tune 0 %c% or
 > C:\Full\Path\tune.exe 0 %c%)
 
-> *Fixed a potential offset calculating issue in FFmpeg transcoder
+> *Added 59 second videos that will be streamed in place of an actual
+> recording if the channel is detected to be Copy Once or Copy Never.
+
+> *Added a 1 second loop that will return to SageTV early if the copy
+> protection status is Copy Once or Copy Never.
+
+> *Added some delays into the FFmpeg stream detection process that
+> produce more consistent detection times.
+
+> *Added a property to enable the use of the codec timebase instead of
+> the standard stream timebase of 90khz. This can make recording more
+> compatible with programs that do not work well with VBR MPEG-TS
+> streams. Set the property consumer.ffmpeg.use_codec_timebase to true
+> if you want to enable this.
+
+> *Fixed audio channel selection so a greater weight is put on the
+> bitrate over the number of frames that have arrived.
+ 
+> *Fixed FFmpeg stream detection so that when a program is not provided,
+> it will try to get all of the streams associated with the first usable
+> video stream when one is found. 
+
+> *Fixed 1/90000 ratio so it uses hex instead of an integer. For some
+> reason it makes a difference.
+
+> *Fixed a potential offset calculating error in FFmpeg transcoder
 > related to the new aggregate write feature.
 
 > *Made a few efficiency improvements in the tuning monitor.

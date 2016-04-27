@@ -68,6 +68,7 @@ public class Config {
     public static final boolean IS_64BIT = System.getProperty("sun.arch.data.model").contains("64");
     public static final String PROJECT_DIR;
     public static final String BIN_DIR;
+    public static final String VID_DIR;
 
     private static int exitCode = 0;
 
@@ -111,6 +112,8 @@ public class Config {
         } else {
             BIN_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
         }
+
+        VID_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR + "video" + DIR_SEPARATOR;
     }
 
     public static String getConfigDirectory() {

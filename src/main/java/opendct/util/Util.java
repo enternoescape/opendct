@@ -27,6 +27,8 @@ import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Enumeration;
 
@@ -270,6 +272,36 @@ public class Util {
             inputChannel = new FileInputStream(source).getChannel();
             outputChannel = new FileOutputStream(destination).getChannel();
             outputChannel.transferFrom(inputChannel, 0, inputChannel.size());
+        } finally {
+            if (inputChannel != null && inputChannel.isOpen()) {
+                inputChannel.close();
+            }
+            if (outputChannel != null && outputChannel.isOpen()) {
+                outputChannel.close();
+            }
+        }
+    }
+
+    /**
+     * Appends to the end of a file.
+     *
+     * @param source The source file.
+     * @param destination The destination file.
+     * @throws IOException Thrown if there is a problem copying or if the file already exists and
+     *                     <b>overwrite</b> is <i>false</i>.
+     */
+    public static void appendFile(File source, File destination) throws IOException {
+        FileChannel inputChannel = null;
+        FileChannel outputChannel = null;
+
+        try {
+            inputChannel = new FileInputStream(source).getChannel();
+            outputChannel = FileChannel.open(
+                    Paths.get(destination.getAbsolutePath()),
+                    StandardOpenOption.APPEND);
+
+            outputChannel.position(outputChannel.size());
+            outputChannel.transferFrom(inputChannel, outputChannel.size(), inputChannel.size());
         } finally {
             if (inputChannel != null && inputChannel.isOpen()) {
                 inputChannel.close();

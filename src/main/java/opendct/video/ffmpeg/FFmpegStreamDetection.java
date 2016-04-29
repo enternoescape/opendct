@@ -70,6 +70,7 @@ public class FFmpegStreamDetection {
 
         ctx.setProbeData(nativeFilename);
 
+        boolean finalCheck = false;
         long dynamicProbeSize = minProbeSize;
         long dynamicAnalyzeDuration = minAnalyzeDuration;
         final long probeSizeLimit = Math.max(ctx.getProbeMaxSize() - 1123474, 1123474);
@@ -292,6 +293,23 @@ public class FFmpegStreamDetection {
                 }
 
                 continue;
+            }
+
+            if (!finalCheck && dynamicProbeSize != probeSizeLimit) {
+                finalCheck = true;
+
+                AVStream videoStream = ctx.avfCtxInput.streams(ctx.preferredVideo);
+
+                int num = videoStream.codec().sample_aspect_ratio().num();
+                int den = videoStream.codec().sample_aspect_ratio().den();
+
+                // This should fix most situations whereby the returned aspect ratio might be off.
+                if (num <= 1 || den <= 1) {
+                    logger.info("SAR is {}/{}. This could be incorrect." +
+                            " Trying again one more time.", num, den);
+                    ctx.deallocInputContext();
+                    continue;
+                }
             }
 
             break;

@@ -1070,7 +1070,7 @@ public class Config {
                 try {
                     returnValue = (SageTVConsumer) Class.forName(sageTVConsumer).newInstance();
                 } catch (Throwable e1) {
-                    logger.error("The default property '{}' with the value '{}' does not refer to a valid SageTVConsumer implementation. Returning built in default 'NIOSageTVRawConsumerImpl' => ", key, consumerName, sageTVConsumer, e1);
+                    logger.error("The default property '{}' with the value '{}' does not refer to a valid SageTVConsumer implementation. Returning built in default 'FFmpegTransSageTVConsumerImpl' => ", key, consumerName, sageTVConsumer, e1);
                     returnValue = new FFmpegTransSageTVConsumerImpl();
                 }
             }

@@ -424,6 +424,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         }
 
         stopConsuming(true);
+        logger.info("Displaying message in place of the recording '{}'", currentFile);
 
         sageTVConsumerLock.readLock().lock();
 
@@ -432,20 +433,28 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
             while (retry-- > 0) {
                 try {
+                    long sourceLength = sourceFile.length();
+
                     Util.copyFile(sourceFile, new File(currentFile), true);
-                    errorBytesStreamed = sourceFile.length();
+                    errorBytesStreamed = sourceLength;
+
+                    for (int i = 0; i < 7; i++) {
+                        Util.appendFile(sourceFile, new File(currentFile));
+                        errorBytesStreamed += sourceLength;
+                    }
+
                     break;
                 } catch (IOException e) {
                     logger.error("Unable to write video message '{}' to '{}' => ", sourceFile, currentFile, e);
                 }
 
-                if (sageTVConsumerLock.getQueueLength() > 1) {
-                    break;
-                }
-
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
+                    break;
+                }
+
+                if (!isLocked()) {
                     break;
                 }
             }
@@ -704,7 +713,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             sageTVConsumerRunnable.setChannel(channel);
             sageTVConsumerRunnable.setRecordBufferSize(recordBufferSize);
 
-            // TODO: Present the network encoder as an analog device so quality can be selected from within SageTV.
             if (sageTVConsumer instanceof FFmpegTransSageTVConsumerImpl) {
                 sageTVConsumerRunnable.setEncodingQuality(getTranscodeQuality());
             } else {

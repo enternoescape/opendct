@@ -397,10 +397,4 @@ public class VideoUtil {
         Util.copyFile(COPY_NEVER_TS, new File(filepath), true);
         return COPY_NEVER_TS.length();
     }
-
-    public static File ERROR_TS = new File(Config.VID_DIR + "Error.ts");
-    public static long writeErrorTs(String filepath) throws IOException {
-        Util.copyFile(ERROR_TS, new File(filepath), true);
-        return ERROR_TS.length();
-    }
 }

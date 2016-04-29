@@ -437,20 +437,12 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
                     Util.copyFile(sourceFile, new File(currentFile), true);
                     errorBytesStreamed = sourceLength;
-                    Util.appendFile(sourceFile, new File(currentFile));
-                    errorBytesStreamed += sourceLength;
-                    Util.appendFile(sourceFile, new File(currentFile));
-                    errorBytesStreamed += sourceLength;
-                    Util.appendFile(sourceFile, new File(currentFile));
-                    errorBytesStreamed += sourceLength;
-                    Util.appendFile(sourceFile, new File(currentFile));
-                    errorBytesStreamed += sourceLength;
-                    Util.appendFile(sourceFile, new File(currentFile));
-                    errorBytesStreamed += sourceLength;
-                    Util.appendFile(sourceFile, new File(currentFile));
-                    errorBytesStreamed += sourceLength;
-                    Util.appendFile(sourceFile, new File(currentFile));
-                    errorBytesStreamed += sourceLength;
+
+                    for (int i = 0; i < 7; i++) {
+                        Util.appendFile(sourceFile, new File(currentFile));
+                        errorBytesStreamed += sourceLength;
+                    }
+
                     break;
                 } catch (IOException e) {
                     logger.error("Unable to write video message '{}' to '{}' => ", sourceFile, currentFile, e);
@@ -721,7 +713,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             sageTVConsumerRunnable.setChannel(channel);
             sageTVConsumerRunnable.setRecordBufferSize(recordBufferSize);
 
-            // TODO: Present the network encoder as an analog device so quality can be selected from within SageTV.
             if (sageTVConsumer instanceof FFmpegTransSageTVConsumerImpl) {
                 sageTVConsumerRunnable.setEncodingQuality(getTranscodeQuality());
             } else {

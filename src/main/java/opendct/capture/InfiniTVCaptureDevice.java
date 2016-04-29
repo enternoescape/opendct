@@ -537,19 +537,28 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
 
-        long streamingWaitLeft = UpnpDiscoverer.getStreamingWait();
+        long streamingWaitTime = UpnpDiscoverer.getStreamingWait();
+        long streamingWaitInterval = streamingWaitTime / 10;
+        CopyProtection copyProtection = getCopyProtection();
 
-        while (!sageTVConsumerRunnable.isStreaming(1000)) {
-            streamingWaitLeft -= 1000;
+        if (streamingWaitInterval <= 100 || copyProtection == CopyProtection.COPY_FREELY) {
+            sageTVConsumerRunnable.isStreaming(streamingWaitTime);
+        } else {
+            for (int i = 0; i < 10; i++) {
+                if (sageTVConsumerRunnable.isStreaming(streamingWaitInterval)) {
+                    break;
+                }
 
-            CopyProtection copyProtection = getCopyProtection();
+                if (copyProtection != CopyProtection.COPY_FREELY) {
+                    copyProtection = getCopyProtection();
+                }
 
-            if (copyProtection == CopyProtection.COPY_ONCE ||
-                    copyProtection == CopyProtection.COPY_NEVER ||
-                    streamingWaitLeft <= 0 ||
-                    tuningThread != Thread.currentThread()) {
+                if (copyProtection == CopyProtection.COPY_ONCE ||
+                        copyProtection == CopyProtection.COPY_NEVER ||
+                        tuningThread != Thread.currentThread()) {
 
-                break;
+                    break;
+                }
             }
         }
 

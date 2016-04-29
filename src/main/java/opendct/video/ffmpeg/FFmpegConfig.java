@@ -39,9 +39,9 @@ public class FFmpegConfig {
     private static IntegerDeviceOption minDirectFlush;
     private static IntegerDeviceOption threadPriority;
     private static IntegerDeviceOption uploadIdPort;
-    private static BooleanDeviceOption h264PtsHack;
     private static BooleanDeviceOption fixStream;
     private static BooleanDeviceOption useCodecTimebase;
+    private static BooleanDeviceOption useMpegTsCBR;
     private static BooleanDeviceOption ccExtractor;
     private static BooleanDeviceOption ccExtractorAllStreams;
     private static StringDeviceOption ccExtractorCustomOptions;
@@ -63,9 +63,9 @@ public class FFmpegConfig {
                 minDirectFlush,
                 threadPriority,
                 uploadIdPort,
-                h264PtsHack,
                 fixStream,
                 useCodecTimebase,
+                useMpegTsCBR,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
@@ -194,18 +194,6 @@ public class FFmpegConfig {
                         1024,
                         65535);
 
-                h264PtsHack = new BooleanDeviceOption(
-                        Config.getBoolean("consumer.ffmpeg.h264_pts_hack", false),
-                        false,
-                        "H.264 PTS Hack",
-                        "consumer.ffmpeg.h264_pts_hack",
-                        "This enables the removal of out of order PTS frames on H.264 720p" +
-                                " content so that it will playback correctly on the Fire TV and" +
-                                " Nexus. When enabled, this will only apply to 1280x720 H.264" +
-                                " non-interlaced content. Disable this if you notice interlaced" +
-                                " video not playing back smoothly."
-                        );
-
                 fixStream = new BooleanDeviceOption(
                         Config.getBoolean("consumer.ffmpeg.fix_stream", true),
                         false,
@@ -226,6 +214,17 @@ public class FFmpegConfig {
                         "This enables using the codec timebase on the stream for each codec. Only" +
                                 " enable this option if you are having issues with playback" +
                                 " outside of SageTV."
+                );
+
+                useMpegTsCBR = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.use_mpegts_cbr", false),
+                        false,
+                        "Use CBR for MPEG-TS Container",
+                        "consumer.ffmpeg.use_mpegts_cbr",
+                        "This enables using CBR when recording to MPEG-TS containers. Only" +
+                                " enable this option if you are having issues with playback" +
+                                " outside of SageTV. This will result in files that are larger" +
+                                " than they need to be due to padding."
                 );
 
                 ccExtractor = new BooleanDeviceOption(
@@ -271,9 +270,9 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.min_direct_flush_size", 1048576);
                 Config.setInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2);
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
-                Config.setBoolean("consumer.ffmpeg.h264_pts_hack", false);
                 Config.setBoolean("consumer.ffmpeg.fix_stream", true);
                 Config.setBoolean("consumer.ffmpeg.use_codec_timebase", false);
+                Config.setBoolean("consumer.ffmpeg.use_mpegts_cbr", false);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_enabled", false);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_all_streams", true);
                 Config.setString("consumer.ffmpeg.ccextractor_custom_options", "");
@@ -283,21 +282,6 @@ public class FFmpegConfig {
 
             break;
         }
-    }
-
-    public static DeviceOption[] getFFmpegOptions() {
-        return new DeviceOption[] {
-                uploadIdEnabled,
-                circularBufferSize,
-                minProbeSize,
-                minAnalyseDuration,
-                maxAnalyseDuration,
-                rwBufferSize,
-                minUploadIdTransferSize,
-                minDirectFlush,
-                threadPriority,
-                uploadIdPort
-        };
     }
 
     public static DeviceOption[] getFFmpegTransOptions() {
@@ -312,9 +296,9 @@ public class FFmpegConfig {
                 minDirectFlush,
                 threadPriority,
                 uploadIdPort,
-                h264PtsHack,
                 fixStream,
                 useCodecTimebase,
+                useMpegTsCBR,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
@@ -395,10 +379,6 @@ public class FFmpegConfig {
         return uploadIdPort.getInteger();
     }
 
-    public static boolean getH264PtsHack() {
-        return h264PtsHack.getBoolean();
-    }
-
     public static boolean getFixStream() {
         return fixStream.getBoolean();
     }
@@ -417,5 +397,9 @@ public class FFmpegConfig {
 
     public static boolean getUseCodecTimebase() {
         return useCodecTimebase.getBoolean();
+    }
+
+    public static boolean getUseMpegTsCBR() {
+        return useMpegTsCBR.getBoolean();
     }
 }

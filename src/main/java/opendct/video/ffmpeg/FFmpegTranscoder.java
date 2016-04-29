@@ -85,7 +85,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private long firstPtsByStreamIndex[] = new long[0];
     private long lastDtsByStreamIndex[] = new long[0];
     private long lastPtsByStreamIndex[] = new long[0];
-    boolean h264PtsHackEnabled = false;
     boolean mpegTsCbrEnabled = false;
     private AtomicInteger encodedFrames[] = new AtomicInteger[0];
     private long startTime = 0;
@@ -329,17 +328,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             interlaced = ctx.encodeProfile != null &&
                     ctx.encodeProfile.canInterlaceDetect(videoHeight, videoWidth) &&
                     fastDeinterlaceDetection();
-
-            if (FFmpegConfig.getH264PtsHack() &&
-                    !interlaced &&
-                    videoHeight == 720 &&
-                    videoWidth == 1280 &&
-                    videoCodec != null &&
-                    avcodec_get_name(videoCodec.id()).getString().equals("h264")) {
-
-                logger.debug("H.264 PTS hack enabled on this video stream.");
-                h264PtsHackEnabled = true;
-            }
         }
 
         if (ctx.isInterrupted()) {
@@ -456,13 +444,18 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         logger.debug("Writing header");
 
         if (mpegTsCbrEnabled && !ctx.streamMap[ctx.preferredVideo].transcode && outputFilename.endsWith(".ts")) {
-            // No stream should have an overall bitrate higher than 40mb/s.
-            // Enforce a minimum bitrate of 6mb/s.
-            muxRate = Math.min(40000000, Math.max(5000000, Math.min(ctx.avfCtxInput.bit_rate(), ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate())));
-            // Margin of error.
-            muxRate += 1000000;
-            // Round up to the nearest 1000 so the CBR isn't too strange looking.
-            muxRate = ((muxRate + 999) / 1000 ) * 1000;
+            // This value will generally be the safest guess 99% of the time. If the value is guessed
+            // too low, there will be issues during remuxing and we can't go back and fix a live
+            // stream.
+            muxRate = ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate();
+
+            // No normal broadcast content should be over 20mb/s.
+            if (muxRate == 0 || muxRate > 20000000) {
+                muxRate = 20000000;
+            }
+
+            // Audio + margin of error.
+            muxRate += 2000000;
 
             logger.debug("Using MPEG-TS CBR {} kb/s.", muxRate / 1000);
             muxerDict = new AVDictionary(null);
@@ -472,7 +465,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
             ret = avformat_write_header(ctx.avfCtxOutput, muxerDict);
         } else {
-            ret = avformat_write_header(ctx.avfCtxOutput, (PointerPointer<avutil.AVDictionary>) null);
+            muxerDict = new AVDictionary(null);
+
+            av_dict_set_int(muxerDict, "pat_period", 1, 0);
+            av_dict_set_int(muxerDict, "sdt_period", 10, 0);
+
+            ret = avformat_write_header(ctx.avfCtxOutput, muxerDict);
         }
 
         if (ret < 0) {
@@ -637,6 +635,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     public synchronized void streamOutput() throws FFmpegException {
         int ret = 0;
 
+        long lastPreOffsetDts[] = new long[firstDtsByStreamIndex.length];
+        Arrays.fill(lastPreOffsetDts, 0);
+
         // This value will be adjusted as needed to keep the entire stream on the same time code.
         //long tsOffset = 0;
         long tsOffsets[] = new long[firstDtsByStreamIndex.length];
@@ -692,8 +693,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         // Used when streaming first starts to keep the first frame from being a known bad frame.
         // This helps with some players that otherwise would just assume it must be a bad video.
-        boolean firstFrame[] = new boolean[firstDtsByStreamIndex.length];
-        Arrays.fill(firstFrame, true);
+        boolean firstFrame = true;
 
         AVPacket packet = new AVPacket();
         packet.data(null);
@@ -734,32 +734,31 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 preOffsetDts = packet.dts();
                 preOffsetPts = packet.pts();
+                lastPreOffsetDts[inputStreamIndex] = preOffsetDts;
 
-                if (firstFrame[outputStreamIndex]) {
-                    if ((packet.flags() & AV_PKT_FLAG_CORRUPT) > 0 ||
-                            (outputStreamIndex != 0 && firstFrame[0] && maxFramesToStart > 0)) {
+                if (firstFrame) {
+                    boolean keyPacket = (packet.flags() & AV_PKT_FLAG_KEY) > 0;
+                    boolean corruptPacket = (packet.flags() & AV_PKT_FLAG_CORRUPT) > 0;
 
+                    if ((!corruptPacket && keyPacket && outputStreamIndex == 0) || maxFramesToStart <= 0) {
+                        firstFrame = false;
+                    } else {
                         maxFramesToStart -= 1;
                         av_packet_unref(packet);
                         continue;
-                    } else {
-                        if (mpegTsCbrEnabled &&
-                                outputStreamIndex == 0 &&
-                                ctx.outputFilename.endsWith(".ts")) {
-
-                            // Offset by 1 second from zero unless that actually ends up offsetting
-                            // ahead of zero.
-                            long newOffset = Math.min(-packet.dts() + 90000, 0);
-                            Arrays.fill(tsOffsets, newOffset);
-                            Arrays.fill(lastDtsByStreamIndex, 0);
-                        }
-
-                        logger.debug("stream {}, first dts = {}, first pts = {}",
-                                inputStreamIndex, preOffsetDts, preOffsetPts);
                     }
-                }
 
-                firstFrame[outputStreamIndex] = false;
+                    long minDts = packet.dts();
+                    for (int i = 0; i < lastPreOffsetDts.length; i++) {
+                        if (lastPreOffsetDts[i] > 0) {
+                            minDts = Math.min(minDts, lastPreOffsetDts[i]);
+                        }
+                    }
+
+                    Arrays.fill(lastDtsByStreamIndex, 0);
+                    Arrays.fill(lastPtsByStreamIndex, 0);
+                    Arrays.fill(tsOffsets, -minDts);
+                }
 
                 // Discard all frames that don't have any timestamps since especially without a
                 // presentation timestamp, the frame will never be displayed anyway.
@@ -786,11 +785,16 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             try {
                                 switchStreamOutput();
 
-                                if (mpegTsCbrEnabled && ctx.outputFilename.endsWith(".ts")) {
-                                    long newOffset = -packet.dts() + 90000;
-                                    Arrays.fill(tsOffsets, newOffset);
-                                    Arrays.fill(lastDtsByStreamIndex, 0);
+                                long minDts = packet.dts();
+                                for (int i = 0; i < lastPreOffsetDts.length; i++) {
+                                    if (lastPreOffsetDts[i] > 0) {
+                                        minDts = Math.min(minDts, lastPreOffsetDts[i]);
+                                    }
                                 }
+
+                                Arrays.fill(lastDtsByStreamIndex, 0);
+                                Arrays.fill(lastPtsByStreamIndex, 0);
+                                Arrays.fill(tsOffsets, -minDts);
 
                                 errorCounter = 0;
                             } catch (InterruptedException e) {
@@ -850,7 +854,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     diff = dts - expectedDts;
 
                     if (fixingEnabled &&
-                            (diff > discontinuityTolerance || diff < -discontinuityTolerance)) {
+                            (diff > discontinuityTolerance || diff < -increment * 2)) {
 
                         errorCounter += 1;
                         lastErrorTime += increment;
@@ -992,17 +996,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 lastDtsByStreamIndex[inputStreamIndex] = dts;
                 lastPtsByStreamIndex[inputStreamIndex] = pts;
-
-                // If this gets enabled on interlaced content, it may remove all of the even or odd
-                // frames since they typically have an out of order PTS.
-                if (h264PtsHackEnabled) {
-                    if (lastPtsByStreamIndex[outputStreamIndex] >= pts) {
-                        av_packet_unref(packet);
-                        continue;
-                    } else {
-                        lastPtsByStreamIndex[outputStreamIndex] = pts;
-                    }
-                }
 
                 if (ctx.secondaryStream && inputStreamIndex == ctx.preferredVideo) {
                     av_copy_packet(copyPacket, packet);

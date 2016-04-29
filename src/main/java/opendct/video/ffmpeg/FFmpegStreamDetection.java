@@ -70,7 +70,7 @@ public class FFmpegStreamDetection {
 
         ctx.setProbeData(nativeFilename);
 
-        boolean finalCheck = false;
+        //boolean finalCheck = false;
         long dynamicProbeSize = minProbeSize;
         long dynamicAnalyzeDuration = minAnalyzeDuration;
         final long probeSizeLimit = Math.max(ctx.getProbeMaxSize() - 1123474, 1123474);
@@ -295,7 +295,7 @@ public class FFmpegStreamDetection {
                 continue;
             }
 
-            if (!finalCheck && dynamicProbeSize != probeSizeLimit) {
+            /*if (!finalCheck && dynamicProbeSize != probeSizeLimit) {
                 finalCheck = true;
 
                 AVStream videoStream = ctx.avfCtxInput.streams(ctx.preferredVideo);
@@ -310,7 +310,7 @@ public class FFmpegStreamDetection {
                     ctx.deallocInputContext();
                     continue;
                 }
-            }
+            }*/
 
             break;
         }

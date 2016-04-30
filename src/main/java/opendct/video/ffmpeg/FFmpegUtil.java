@@ -249,8 +249,8 @@ public abstract class FFmpegUtil {
             return null;
         }
 
-        if (FFmpegConfig.getUseCodecTimebase()) {
-            out_stream.time_base(in_stream.codec().time_base());
+        if (FFmpegConfig.getUseCompatiblityTimebase()) {
+            out_stream.time_base(av_make_q(1, 0));
         } else {
             // 90000hz is standard for most MPEG-TS streams.
             out_stream.time_base(av_make_q(0x1, 0x15F90));
@@ -545,17 +545,24 @@ public abstract class FFmpegUtil {
 
         if (st.sample_aspect_ratio().num() != 0 && // default
                 av_cmp_q(st.sample_aspect_ratio(), st.codec().sample_aspect_ratio()) != 0) {
-            IntPointer numPtr = new IntPointer();
-            IntPointer denPtr = new IntPointer();
+            IntPointer numPtr = new IntPointer(1);
+            IntPointer denPtr = new IntPointer(1);
+
+            AVCodecContext codec = st.codec();
+            AVRational sampleAspectRatio = st.sample_aspect_ratio();
+            int width = codec.width();
+            int height = codec.height();
+            int num = sampleAspectRatio.num();
+            int den = sampleAspectRatio.den();
 
             av_reduce(numPtr, denPtr,
-                    st.codec().width() * st.sample_aspect_ratio().num(),
-                    st.codec().height() * st.sample_aspect_ratio().den(),
+                    width * num,
+                    height * den,
                     1024 * 1024);
 
             buf.append(String.format(", SAR %d:%d DAR %d:%d",
-                    st.sample_aspect_ratio().num(),
-                    st.sample_aspect_ratio().den(),
+                    num,
+                    den,
                     numPtr.get(),
                     denPtr.get()));
         }
@@ -608,7 +615,7 @@ public abstract class FFmpegUtil {
                 if (!"language".equals(tag.key())) {
                     BytePointer p = tag.value();
 
-                    buf.append(String.format("%s  %-16s: ", indent, tag.key()));
+                    buf.append(String.format("%s  %-16s: ", indent, tag.key().getString()));
 
                     for (; ; ) {
                         byte b;

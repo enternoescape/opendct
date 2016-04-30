@@ -1014,11 +1014,12 @@
 > *Added some delays into the FFmpeg stream detection process that
 > produce more consistent detection times.
 
-> *Added a property to enable the use of the codec timebase instead of
+> *Added a property to enable the use of the timebase 1/0 instead of
 > the standard stream timebase of 90khz. This can make recording more
 > compatible with programs that do not work well with VBR MPEG-TS
 > streams that FFmpeg generates. Set the property
-> consumer.ffmpeg.use_codec_timebase to true if you want to enable this.
+> consumer.ffmpeg.use_compat_timebase to true if you want to enable
+> this.
 
 > *Added a property to enable the use of a constant bitrate for MPEG-TS.
 > This can make recording more compatible with programs that do not work
@@ -1030,7 +1031,7 @@
 > *Changed FFmpeg offset calculations so that all new and switched
 > recordings are offset as close to 0 as possible.
 
-> *Changed FFmpeg behind tolerance to no more than two frames, since
+> *Changed FFmpeg behind tolerance to no more than four frames, since
 > being behind is a much bigger issue than being too far ahead. In CBR,
 > this could have the effect of dropping an entire commercial. That may
 > not sound like a bad thing, but that ~30 seconds missing could be

@@ -40,7 +40,7 @@ public class FFmpegConfig {
     private static IntegerDeviceOption threadPriority;
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption fixStream;
-    private static BooleanDeviceOption useCodecTimebase;
+    private static BooleanDeviceOption useCompatibilityTimebase;
     private static BooleanDeviceOption useMpegTsCBR;
     private static BooleanDeviceOption ccExtractor;
     private static BooleanDeviceOption ccExtractorAllStreams;
@@ -64,7 +64,7 @@ public class FFmpegConfig {
                 threadPriority,
                 uploadIdPort,
                 fixStream,
-                useCodecTimebase,
+                useCompatibilityTimebase,
                 useMpegTsCBR,
                 ccExtractor,
                 ccExtractorAllStreams,
@@ -206,12 +206,13 @@ public class FFmpegConfig {
                                 " recordings at times."
                 );
 
-                useCodecTimebase = new BooleanDeviceOption(
-                        Config.getBoolean("consumer.ffmpeg.use_codec_timebase", false),
+                useCompatibilityTimebase = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.ffmpeg.use_compat_timebase", false),
                         false,
-                        "Use Codec Timebase for Stream",
-                        "consumer.ffmpeg.use_codec_timebase",
-                        "This enables using the codec timebase on the stream for each codec. Only" +
+                        "Use 1/0 Timebase for Streams",
+                        "consumer.ffmpeg.use_compat_timebase",
+                        "This enables using the timebase 1/0 on the stream for each codec. This" +
+                                " is a compatibility option that fixes the stream interleaving Only" +
                                 " enable this option if you are having issues with playback" +
                                 " outside of SageTV."
                 );
@@ -297,7 +298,7 @@ public class FFmpegConfig {
                 threadPriority,
                 uploadIdPort,
                 fixStream,
-                useCodecTimebase,
+                useCompatibilityTimebase,
                 useMpegTsCBR,
                 ccExtractor,
                 ccExtractorAllStreams,
@@ -395,8 +396,8 @@ public class FFmpegConfig {
         return ccExtractorCustomOptions.getValue();
     }
 
-    public static boolean getUseCodecTimebase() {
-        return useCodecTimebase.getBoolean();
+    public static boolean getUseCompatiblityTimebase() {
+        return useCompatibilityTimebase.getBoolean();
     }
 
     public static boolean getUseMpegTsCBR() {

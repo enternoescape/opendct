@@ -219,12 +219,16 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public void write(byte[] bytes, int offset, int length) throws IOException {
-        circularBuffer.write(bytes, offset, length);
+        if (circularBuffer != null) {
+            circularBuffer.write(bytes, offset, length);
+        }
     }
 
     @Override
     public void write(ByteBuffer buffer) throws IOException {
-        circularBuffer.write(buffer);
+        if (circularBuffer != null) {
+            circularBuffer.write(buffer);
+        }
     }
 
     @Override

@@ -278,6 +278,7 @@ def changeBin(String arch, String dependency) {
     copy {
         from "bin/video"
         into 'build/bin/video'
+        include "*.ts"
     }
 
     delete 'build/jsw'

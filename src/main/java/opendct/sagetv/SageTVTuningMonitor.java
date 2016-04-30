@@ -283,9 +283,7 @@ public class SageTVTuningMonitor {
                             continue;
                         }
 
-                        if (recording.copyProtection == CopyProtection.UNKNOWN ||
-                                (recording.copyProtection == CopyProtection.NONE &&
-                                recording.lastRecordedBytes < 104857600)) {
+                        if (recording.copyProtection == CopyProtection.UNKNOWN) {
 
                             recording.copyProtection = recording.captureDevice.getCopyProtection();
 
@@ -293,7 +291,7 @@ public class SageTVTuningMonitor {
                                     recording.copyProtection == CopyProtection.COPY_ONCE) {
 
                                 logger.info("The capture device has reported that the tuned" +
-                                        " channel is {}, stopping monitoring immediately.",
+                                                " channel is {}, stopping monitoring immediately.",
                                         recording.copyProtection);
 
                                 recordingQueue.remove(recording.captureDevice.getEncoderName());
@@ -319,6 +317,38 @@ public class SageTVTuningMonitor {
                             continue;
                         }
 
+                        if (recording.copyProtection == CopyProtection.UNKNOWN ||
+                                (recording.copyProtection == CopyProtection.NONE &&
+                                        recording.lastRecordedBytes < 104857600)) {
+
+                            recording.copyProtection = recording.captureDevice.getCopyProtection();
+
+                            if (recording.copyProtection == CopyProtection.COPY_NEVER ||
+                                    recording.copyProtection == CopyProtection.COPY_ONCE) {
+
+                                logger.info("The capture device has reported that the tuned" +
+                                                " channel is {}, stopping monitoring immediately.",
+                                        recording.copyProtection);
+
+                                recordingQueue.remove(recording.captureDevice.getEncoderName());
+
+                                // The capture device needs to stream the message because the user
+                                // will not see anything if the bytes streamed doesn't increment.
+                                if (recording.copyProtection == CopyProtection.COPY_ONCE) {
+                                    recording.captureDevice.streamError(VideoUtil.COPY_ONCE_TS);
+                                } else {
+                                    recording.captureDevice.streamError(VideoUtil.COPY_NEVER_TS);
+                                }
+
+                                // We need to break here or the next iteration might fail. The
+                                // alternative is to collect what needs to be removed and remove it
+                                // after iterating over all of the content, but that may leave a
+                                // window open for this action to remove a new tuning request which
+                                // we really don't want to happen.
+                                break;
+                            }
+                        }
+
                         long producedPackets = recording.captureDevice.getProducedPackets();
                         long recordedBytes = recording.captureDevice.getRecordedBytes();
 
@@ -329,7 +359,9 @@ public class SageTVTuningMonitor {
                                     recording.filename != null ?
                                             new File(recording.filename).length() : -1);
 
-                            recording.noRecordedBytes += 1;
+                            if (recording.lastRecordedBytes != 0) {
+                                recording.noRecordedBytes += 1;
+                            }
                         } else {
                             recording.noRecordedBytes = 0;
                         }

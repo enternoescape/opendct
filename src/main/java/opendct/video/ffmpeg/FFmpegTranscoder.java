@@ -681,7 +681,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int maxFramesToStart = 768;
 
         final boolean fixingEnabled = FFmpegConfig.getFixStream();
-        final boolean useCodecTimebase = FFmpegConfig.getUseCodecTimebase();
+        final boolean useCodecTimebase = FFmpegConfig.getUseCompatiblityTimebase();
 
         int switchFlag;
         long dts;
@@ -734,6 +734,17 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
                 preOffsetDts = packet.dts();
                 preOffsetPts = packet.pts();
+
+                // Discard all frames that don't have any timestamps since especially without a
+                // presentation timestamp, the frame will never be displayed anyway.
+                if (preOffsetDts == AV_NOPTS_VALUE || preOffsetPts == AV_NOPTS_VALUE) {
+                    /*logger.debug("stream {}, dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE," +
+                            " discarding frame.", inputStreamIndex);*/
+
+                    av_packet_unref(packet);
+                    continue;
+                }
+
                 lastPreOffsetDts[inputStreamIndex] = preOffsetDts;
 
                 if (firstFrame) {
@@ -760,16 +771,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     Arrays.fill(tsOffsets, -minDts);
                 }
 
-                // Discard all frames that don't have any timestamps since especially without a
-                // presentation timestamp, the frame will never be displayed anyway.
-                if (preOffsetDts == AV_NOPTS_VALUE || preOffsetPts == AV_NOPTS_VALUE) {
-                    /*logger.debug("stream {}, dts == AV_NOPTS_VALUE || pts == AV_NOPTS_VALUE," +
-                            " discarding frame.", inputStreamIndex);*/
-
-                    av_packet_unref(packet);
-                    continue;
-                }
-
                 if (switching && outputStreamIndex == 0) {
 
                     switchFlag = packet.flags() & AV_PKT_FLAG_KEY;
@@ -785,16 +786,18 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             try {
                                 switchStreamOutput();
 
-                                long minDts = packet.dts();
-                                for (int i = 0; i < lastPreOffsetDts.length; i++) {
-                                    if (lastPreOffsetDts[i] > 0) {
-                                        minDts = Math.min(minDts, lastPreOffsetDts[i]);
+                                if (mpegTsCbrEnabled && ctx.outputFilename.endsWith(".ts")) {
+                                    long minDts = packet.dts();
+                                    for (int i = 0; i < lastPreOffsetDts.length; i++) {
+                                        if (lastPreOffsetDts[i] > 0) {
+                                            minDts = Math.min(minDts, lastPreOffsetDts[i]);
+                                        }
                                     }
-                                }
 
-                                Arrays.fill(lastDtsByStreamIndex, 0);
-                                Arrays.fill(lastPtsByStreamIndex, 0);
-                                Arrays.fill(tsOffsets, -minDts);
+                                    Arrays.fill(lastDtsByStreamIndex, 0);
+                                    Arrays.fill(lastPtsByStreamIndex, 0);
+                                    Arrays.fill(tsOffsets, -minDts);
+                                }
 
                                 errorCounter = 0;
                             } catch (InterruptedException e) {
@@ -854,7 +857,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                     diff = dts - expectedDts;
 
                     if (fixingEnabled &&
-                            (diff > discontinuityTolerance || diff < -increment * 2)) {
+                            (diff > discontinuityTolerance || diff < -increment * 4)) {
 
                         errorCounter += 1;
                         lastErrorTime += increment;
@@ -1071,21 +1074,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 } else {
                     //logPacket(ctx.avfCtxInput, packet, "copy-in");
 
-                    if (useCodecTimebase) {
-                        AVRational timeBaseIn = ctx.streamMap[inputStreamIndex].iStreamRational;
-                        AVRational timeBaseOut = ctx.streamMap[inputStreamIndex].oStreamRational;
+                    // remux this frame without re-encoding
+                    av_packet_rescale_ts(packet,
+                            ctx.streamMap[inputStreamIndex].iStreamRational,
+                            ctx.streamMap[inputStreamIndex].oStreamRational);
 
-                        packet.pts(av_rescale_q_rnd(packet.pts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                        packet.dts(av_rescale_q_rnd(packet.dts(), timeBaseIn, timeBaseOut, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                        packet.duration((int) av_rescale_q(packet.duration(), timeBaseIn, timeBaseOut));
-                        packet.pos(-1);
-                    } else {
-                        // remux this frame without re-encoding
-                        av_packet_rescale_ts(packet,
-                                ctx.streamMap[inputStreamIndex].iStreamRational,
-                                ctx.streamMap[inputStreamIndex].oStreamRational);
-                        packet.pos(-1);
-                    }
+                    packet.pos(-1);
 
                     //logPacket(ctx.avfCtxInput, packet, "copy-out");
 

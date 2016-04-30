@@ -57,7 +57,7 @@ public class FFmpegStreamDetection {
         final long minProbeSize = FFmpegConfig.getMinProbeSize();
 
         // This is the smallest probe duration allowed.
-        final long minAnalyzeDuration = FFmpegConfig.getMinAnalyseDuration();
+        //final long minAnalyzeDuration = FFmpegConfig.getMinAnalyseDuration();
 
         // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
         final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
@@ -70,9 +70,9 @@ public class FFmpegStreamDetection {
 
         ctx.setProbeData(nativeFilename);
 
-        boolean finalCheck = false;
+        //boolean finalCheck = false;
         long dynamicProbeSize = minProbeSize;
-        long dynamicAnalyzeDuration = minAnalyzeDuration;
+        long dynamicAnalyzeDuration = 2000000; // 2 Seconds
         final long probeSizeLimit = Math.max(ctx.getProbeMaxSize() - 1123474, 1123474);
 
         ctx.SEEK_BUFFER.setNoWrap(true);
@@ -94,9 +94,38 @@ public class FFmpegStreamDetection {
                 switch (ctx.inputFileMode) {
                     case FFmpegContext.FILE_MODE_MPEGTS:
                         ctx.allocInputIoTsFormatContext();
+
+                        // By adding 188 to the available bytes, we can be reasonably sure we
+                        // will not return here until the available data has increased.
+                        dynamicProbeSize = Math.max(dynamicProbeSize, ctx.getProbeAvailable()) + 188;
+                        dynamicProbeSize = Math.min(dynamicProbeSize, probeSizeLimit);
+
+                        //dynamicAnalyzeDuration = Math.max(dynamicAnalyzeDuration, (System.nanoTime() - startNanoTime) / 1000L);
+
+                        av_opt_set_int(ctx.avfCtxInput, "probesize", dynamicProbeSize, 0); // Must be set before avformat_open_input
+                        av_opt_set_int(ctx.avfCtxInput, "analyzeduration", dynamicAnalyzeDuration, 0); // Must be set before avformat_find_stream_info
+
+                        logger.debug("Calling avformat_open_input");
+
+                        ret = avformat_open_input(ctx.avfCtxInput, ctx.inputFilename, null, null);
+                        if (ret != 0) {
+                            error[0] = "avformat_open_input returned error code " + ret;
+                            return false;
+                        }
+
                         break;
                     case FFmpegContext.FILE_MODE_NATIVE:
-                        ctx.allocInputFormatNativeContext(nativeFilename, null);
+                        AVDictionary dict = new AVDictionary(null);
+
+                        // By adding 188 to the available bytes, we can be reasonably sure we will not return
+                        // here until the available data has increased.
+                        dynamicProbeSize = Math.max(dynamicProbeSize, ctx.getProbeAvailable()) + 188;
+                        dynamicProbeSize = Math.min(dynamicProbeSize, probeSizeLimit);
+
+                        av_dict_set_int(dict, "probesize", dynamicProbeSize, 0);
+                        av_dict_set_int(dict, "analyzeduration", 0, 0);
+
+                        ctx.allocInputFormatNativeContext(nativeFilename, dict);
                         break;
                     default:
                         error[0] = "Invalid file input mode selected: " + ctx.inputFileMode;
@@ -104,24 +133,6 @@ public class FFmpegStreamDetection {
                 }
             } catch (FFmpegException e) {
                 logger.error("Unable to start stream detection => ", e);
-                return false;
-            }
-
-            // By adding 188 to the available bytes, we can be reasonably sure we will not return
-            // here until the available data has increased.
-            dynamicProbeSize = Math.max(dynamicProbeSize, ctx.getProbeAvailable() + 188);
-            dynamicProbeSize = Math.min(dynamicProbeSize, probeSizeLimit);
-
-            dynamicAnalyzeDuration = Math.max(dynamicAnalyzeDuration, (System.nanoTime() - startNanoTime) / 1000L);
-
-            av_opt_set_int(ctx.avfCtxInput, "probesize", dynamicProbeSize, 0); // Must be set before avformat_open_input
-            av_opt_set_int(ctx.avfCtxInput, "analyzeduration", dynamicAnalyzeDuration, 0); // Must be set before avformat_find_stream_info
-
-            logger.debug("Calling avformat_open_input");
-
-            ret = avformat_open_input(ctx.avfCtxInput, ctx.inputFilename, null, null);
-            if (ret != 0) {
-                error[0] = "avformat_open_input returned error code " + ret;
                 return false;
             }
 
@@ -136,11 +147,19 @@ public class FFmpegStreamDetection {
             logger.info("After avformat_find_stream_info() pos={} bytes_read={} seek_count={}. probesize: {} analyzeduration: {}.",
                     ctx.avioCtxInput.pos(), ctx.avioCtxInput.bytes_read(), ctx.avioCtxInput.seek_count(), dynamicProbeSize, dynamicAnalyzeDuration);
 
-            // -541478725 is the error returned when the buffer is underrun which should only be
-            // happening if the stream completely stops or we reach the end of the buffer. We pass
-            // this though as a success because if we don't, the only way detection will complete
-            // successfully if the desired program isn't found is to let this finish.
-            if (ret < 0 && -ret != -541478725) {
+            long duration = ctx.avfCtxInput.duration();
+
+            if (duration == 0) {
+                dynamicAnalyzeDuration = (System.nanoTime() - startNanoTime) / 1000L;
+            } else {
+                // More than 1/10 of a second added here can cause Music Choice channels to go from
+                // 8-18 second to over 20 seconds.
+                dynamicAnalyzeDuration = duration + 1000000;
+            }
+
+            logger.info("current container duration = {} seconds", duration / 1000000.0);
+
+            if (ret < 0) {
                 error[0] = "avformat_find_stream_info() failed with error code " + -ret + ".";
                 if (dynamicProbeSize == probeSizeLimit) {
                     return false;
@@ -148,18 +167,6 @@ public class FFmpegStreamDetection {
                 logger.info(error[0] + " Trying again with more data.");
 
                 ctx.deallocInputContext();
-
-                try {
-                    // For a yet to be determined reason, sleeping here for 1/5 of a second makes
-                    // video detection more reliable.
-                    Thread.sleep(200);
-                } catch (InterruptedException e) {
-                    if (ctx.isInterrupted()) {
-                        error[0] = FFMPEG_INIT_INTERRUPTED;
-                        return false;
-                    }
-                }
-
                 continue;
             }
 
@@ -195,18 +202,6 @@ public class FFmpegStreamDetection {
                 logger.info("{}{}", error[0], TRYING_AGAIN);
 
                 ctx.deallocInputContext();
-
-                try {
-                    // For a yet to be determined reason, sleeping here for 1/4 of a second makes
-                    // video detection more reliable.
-                    Thread.sleep(250);
-                } catch (InterruptedException e) {
-                    if (ctx.isInterrupted()) {
-                        error[0] = FFMPEG_INIT_INTERRUPTED;
-                        return false;
-                    }
-                }
-
                 continue;
             }
 
@@ -247,8 +242,17 @@ public class FFmpegStreamDetection {
                 if (ctx.desiredProgram <= 0) {
                     logger.info("Unable to determine primary program.{}", TRYING_AGAIN);
 
-                    ctx.deallocInputContext();
-                    continue;
+                    if (dynamicProbeSize != probeSizeLimit) {
+                        ctx.deallocInputContext();
+                        continue;
+                    } else {
+                        if (programs == 0) {
+                            error[0] = "This container doesn't appear to use programs.";
+                        } else {
+                            error[0] = "Could not find a program.";
+                            return false;
+                        }
+                    }
                 }
 
                 if (dynamicProbeSize != probeSizeLimit && !FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram)) {
@@ -280,22 +284,10 @@ public class FFmpegStreamDetection {
                 logger.info(error[0] + TRYING_AGAIN);
 
                 ctx.deallocInputContext();
-
-                try {
-                    // For a yet to be determined reason, sleeping here for 1/4 of a second makes
-                    // audio detection more reliable.
-                    Thread.sleep(250);
-                } catch (InterruptedException e) {
-                    if (ctx.isInterrupted()) {
-                        error[0] = FFMPEG_INIT_INTERRUPTED;
-                        return false;
-                    }
-                }
-
                 continue;
             }
 
-            if (!finalCheck && dynamicProbeSize != probeSizeLimit) {
+            /*if (!finalCheck && dynamicProbeSize != probeSizeLimit) {
                 finalCheck = true;
 
                 AVStream videoStream = ctx.avfCtxInput.streams(ctx.preferredVideo);
@@ -310,7 +302,7 @@ public class FFmpegStreamDetection {
                     ctx.deallocInputContext();
                     continue;
                 }
-            }
+            }*/
 
             break;
         }

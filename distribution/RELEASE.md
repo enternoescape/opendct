@@ -1028,6 +1028,9 @@
 
 > *Added a few efficiency improvements to the tuning monitor.
 
+> *Changed initial bytes streamed for FFmpeg to be closer to what's
+> actually needed to start playback.
+
 > *Changed FFmpeg offset calculations so that all new and switched
 > recordings are offset as close to 0 as possible.
 
@@ -1051,6 +1054,9 @@
 > new aggregate write feature.
 
 > *Removed PTS hack property and code. It's not as useful as expected. 
+
+> *Removed file missing and file size checking while directly writing
+> files from FFmpeg consumer.
 
 > *Removed waiting for key audio packet(s). Now once the first video key
 > frame is written, all audio packets from that point on are written. 

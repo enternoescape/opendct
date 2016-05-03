@@ -36,7 +36,6 @@ public class FFmpegConfig {
     private static IntegerDeviceOption maxAnalyseDuration;
     private static IntegerDeviceOption rwBufferSize;
     private static IntegerDeviceOption minUploadIdTransferSize;
-    private static IntegerDeviceOption minDirectFlush;
     private static IntegerDeviceOption threadPriority;
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption fixStream;
@@ -60,7 +59,6 @@ public class FFmpegConfig {
                 maxAnalyseDuration,
                 rwBufferSize,
                 minUploadIdTransferSize,
-                minDirectFlush,
                 threadPriority,
                 uploadIdPort,
                 fixStream,
@@ -154,21 +152,6 @@ public class FFmpegConfig {
                                 " cannot be greater than 1048576.",
                         65536,
                         1048576);
-
-                minDirectFlush = new IntegerDeviceOption(
-                        Config.getInteger("consumer.ffmpeg.min_direct_flush_size", 1048576),
-                        false,
-                        "Minimum Direct Flush Size",
-                        "consumer.ffmpeg.min_direct_flush_size",
-                        "This is the minimum amount of data that must be written to disk before" +
-                                " it is verified that the data has been written to disk when" +
-                                " directly recording to disk. If the file size is 0 bytes, a" +
-                                " flush is forced and the file size is checked again. If the file" +
-                                " size doesn't change, the file it re-created. Set this value to" +
-                                " -1 to disable flushing. This value cannot be greater than" +
-                                " 2147483647.",
-                        -1,
-                        Integer.MAX_VALUE);
 
                 threadPriority = new IntegerDeviceOption(
                         Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
@@ -294,7 +277,6 @@ public class FFmpegConfig {
                 maxAnalyseDuration,
                 rwBufferSize,
                 minUploadIdTransferSize,
-                minDirectFlush,
                 threadPriority,
                 uploadIdPort,
                 fixStream,
@@ -366,10 +348,6 @@ public class FFmpegConfig {
         }
 
         return minUploadIdTransferSize.getInteger();
-    }
-
-    public static int getMinDirectFlush() {
-        return minDirectFlush.getInteger();
     }
 
     public static int getThreadPriority() {

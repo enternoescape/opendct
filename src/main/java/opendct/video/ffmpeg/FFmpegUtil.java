@@ -135,13 +135,13 @@ public abstract class FFmpegUtil {
     }
 
     public static avcodec.AVCodecContext getCodecContext(AVStream inputStream) {
-        if (inputStream == null) {
+        if (inputStream == null || inputStream.isNull()) {
             return null;
         }
 
         avcodec.AVCodecContext codecCtxInput = inputStream.codec();
 
-        if (codecCtxInput == null) {
+        if (codecCtxInput == null || codecCtxInput.isNull()) {
             return null;
         }
 
@@ -165,7 +165,7 @@ public abstract class FFmpegUtil {
     }
 
     public static int findBestAudioStream(AVFormatContext inputContext) {
-        if (inputContext == null) {
+        if (inputContext == null || inputContext.isNull()) {
             return -1;
         }
 
@@ -179,13 +179,13 @@ public abstract class FFmpegUtil {
         for (int i = 0; i < numStreams; i++) {
             AVStream stream = inputContext.streams(i);
 
-            if (stream == null) {
+            if (stream == null || stream.isNull()) {
                 continue;
             }
 
             avcodec.AVCodecContext codec = stream.codec();
 
-            if (codec == null) {
+            if (codec == null || codec.isNull()) {
                 continue;
             }
 
@@ -218,31 +218,36 @@ public abstract class FFmpegUtil {
 
     public static AVStream addCopyStreamToContext(AVFormatContext outputContext, AVStream in_stream) {
 
-        if (outputContext == null) {
+        if (outputContext == null || outputContext.isNull()) {
             logger.error("Codec output context was not allocated");
             return null;
         }
 
-        if (in_stream == null) {
+        if (in_stream == null || in_stream.isNull()) {
             logger.error("Stream input context was not allocated");
             return null;
         }
 
         AVCodecContext codecCtxInput = in_stream.codec();
 
-        if (codecCtxInput == null) {
+        if (codecCtxInput == null || codecCtxInput.isNull()) {
             logger.error("Codec input context was not allocated");
             return null;
         }
 
         AVStream out_stream = avformat_new_stream(outputContext, codecCtxInput.codec());
 
-        if (out_stream == null) {
+        if (out_stream == null || out_stream.isNull()) {
             logger.error("Could not allocate stream");
             return null;
         }
 
         AVCodecContext codecCtxOutput = out_stream.codec();
+
+        if (codecCtxOutput == null || codecCtxOutput.isNull()) {
+            logger.error("Output context was not allocated");
+            return null;
+        }
 
         if (avcodec_copy_context(codecCtxOutput, codecCtxInput) < 0) {
             logger.error("Failed to copy context from input to output stream codec context");
@@ -266,9 +271,11 @@ public abstract class FFmpegUtil {
             out_stream.metadata(in_stream.metadata());
         }*/
 
-        if (in_stream.metadata() != null) {
+        AVDictionary metadata = in_stream.metadata();
+
+        if (metadata != null && !metadata.isNull()) {
             AVDictionary dict = new AVDictionary(null);
-            av_dict_copy(dict, in_stream.metadata(), 0);
+            av_dict_copy(dict, metadata, 0);
             out_stream.metadata(dict);
         }
 

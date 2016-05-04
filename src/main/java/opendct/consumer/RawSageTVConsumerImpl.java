@@ -570,7 +570,16 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
      */
     public boolean isStreaming(long timeout) {
         try {
-            Thread.sleep(timeout / 2);
+            int segments = 5;
+            long increment = timeout / segments;
+
+            if (increment < 1000) {
+                Thread.sleep(timeout);
+            } else {
+                while (stalled && segments-- > 0 && getBytesStreamed() > 1048576) {
+                    Thread.sleep(increment);
+                }
+            }
         } catch (InterruptedException e) {
             logger.debug("Interrupted while waiting for streaming.");
         }

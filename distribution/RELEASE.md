@@ -1027,9 +1027,6 @@
 > *Added a check after tuning that will return to SageTV early if the
 > copy protection status is Copy Once or Copy Never.
 
-> *Added some delays into the FFmpeg stream detection process that
-> produce more consistent detection times.
-
 > *Added a property to enable the use of the timebase 1/0 instead of
 > the standard stream timebase of 90khz. This can make recording more
 > compatible with programs that do not work well with VBR MPEG-TS

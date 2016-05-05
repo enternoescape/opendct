@@ -1081,3 +1081,9 @@
 > *Removed ability to use the old UPnP detection method and device.
 
 > *Removed the old FFmpeg implementation.
+
+#### 0.5.4-Beta
+> *Added code to make sure if DRM is encountered mid-recording, the
+  recording doesn't get completely wiped. Instead the message will be
+  appended to the end. This situation has not happened yet, but why wait
+  until it does.

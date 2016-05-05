@@ -423,8 +423,16 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             return;
         }
 
-        stopConsuming(true);
-        logger.info("Displaying message in place of the recording '{}'", currentFile);
+        boolean inProgress = getRecordedBytes() > 10485760;
+        if (inProgress) {
+            logger.warn("Appending message since the recording appears to" +
+                    " actually be in progress. Bytes recorded: {}", getRecordedBytes());
+
+            logger.info("Appending message to end of the recording '{}'", currentFile);
+        } else {
+            logger.info("Displaying message in place of the recording '{}'", currentFile);
+            stopConsuming(true);
+        }
 
         sageTVConsumerLock.readLock().lock();
 
@@ -435,8 +443,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 try {
                     long sourceLength = sourceFile.length();
 
-                    Util.copyFile(sourceFile, new File(currentFile), true);
-                    errorBytesStreamed = sourceLength;
+                    if (!inProgress) {
+                        Util.copyFile(sourceFile, new File(currentFile), true);
+                        errorBytesStreamed = sourceLength;
+                    }
 
                     for (int i = 0; i < 7; i++) {
                         Util.appendFile(sourceFile, new File(currentFile));

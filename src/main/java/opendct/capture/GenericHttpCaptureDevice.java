@@ -36,6 +36,8 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GenericHttpCaptureDevice extends BasicCaptureDevice {
@@ -46,6 +48,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private final GenericHttpDiscoveredDeviceParent parent;
     private final GenericHttpDiscoveredDevice device;
 
+    private final Map<String, URL> channelMap = new ConcurrentHashMap<>();
     private final static Runtime runtime = Runtime.getRuntime();
     private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
     private URL sourceUrl;
@@ -60,7 +63,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         device = loadDevice;
 
         try {
-            getURL();
+            getURL(null);
         } catch (MalformedURLException e) {
             throw new CaptureDeviceLoadException(e);
         }
@@ -74,11 +77,40 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         super.setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "generic_http"));
+
+        String tuningUrl = device.getAltStreamingUrl();
+
+        if (!Util.isNullOrEmpty(tuningUrl)) {
+            try {
+                URL altStreamingUrl = new URL(tuningUrl);
+                String channels[] = device.getAltStreamingChannels();
+
+                for (String channel : channels) {
+                    channelMap.put(channel, altStreamingUrl);
+                }
+
+                logger.info("The secondary URL '{}'" +
+                        " will be used for the channels: {}", tuningUrl, channels);
+            } catch (MalformedURLException e) {
+                logger.warn("The secondary URL '{}' is not a valid URL." +
+                                " Defaulting to primary URL.",
+                        tuningUrl);
+            }
+        }
     }
 
-    private URL getURL() throws MalformedURLException {
-        String loadUrl = device.getStreamingUrl();
+    private URL getURL(String channel) throws MalformedURLException {
         URL newUrl;
+
+        if (channel != null) {
+            newUrl = channelMap.get(channel);
+
+            if (newUrl != null) {
+                return newUrl;
+            }
+        }
+
+        String loadUrl = device.getStreamingUrl();
 
         try {
             newUrl = new URL(loadUrl);
@@ -297,10 +329,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
-        if (tuningThread != Thread.currentThread()) {
-            return false;
-        }
-
         execute = getExecutionString(device.getTuningExecutable(), channel, true);
         try {
             if (!executeCommand(execute)) {
@@ -312,18 +340,10 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
-        if (tuningThread != Thread.currentThread()) {
-            return false;
-        }
-
         try {
             Thread.sleep(device.getTuningDelay());
         } catch (InterruptedException e) {
             logger.warn("Tuning delay was interrupted => ", e.getMessage());
-            return false;
-        }
-
-        if (tuningThread != Thread.currentThread()) {
             return false;
         }
 
@@ -332,7 +352,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         httpProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
 
         try {
-            if (!httpServices.startProducing(encoderName, httpProducer, newConsumer, getURL())) {
+            if (!httpServices.startProducing(encoderName, httpProducer, newConsumer, getURL(channel))) {
                 return false;
             }
         } catch (MalformedURLException e) {
@@ -442,6 +462,28 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     @Override
     public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
         device.setOptions(deviceOptions);
+
+        // Update channel map.
+        String tuningUrl = device.getAltStreamingUrl();
+        channelMap.clear();
+
+        if (!Util.isNullOrEmpty(tuningUrl)) {
+            try {
+                URL altStreamingUrl = new URL(tuningUrl);
+                String channels[] = device.getAltStreamingChannels();
+
+                for (String channel : channels) {
+                    channelMap.put(channel, altStreamingUrl);
+                }
+
+                logger.info("The secondary URL '{}'" +
+                        " will be used for the channels: {}", tuningUrl, channels);
+            } catch (MalformedURLException e) {
+                logger.warn("The secondary URL '{}' is not a valid URL." +
+                                " Defaulting to primary URL.",
+                        tuningUrl);
+            }
+        }
     }
 
     @Override

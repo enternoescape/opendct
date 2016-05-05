@@ -19,10 +19,7 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.capture.GenericHttpCaptureDevice;
 import opendct.config.Config;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
-import opendct.config.options.IntegerDeviceOption;
-import opendct.config.options.StringDeviceOption;
+import opendct.config.options.*;
 import opendct.tuning.discovery.BasicDiscoveredDevice;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import org.apache.logging.log4j.LogManager;
@@ -43,6 +40,8 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
 
     private final Map<String, DeviceOption> deviceOptions;
     private StringDeviceOption streamingUrl;
+    private StringDeviceOption altStreamingUrl;
+    private ChannelRangesDeviceOption altStreamingChannels;
     private StringDeviceOption pretuneExecutable;
     private StringDeviceOption tuningExecutable;
     private StringDeviceOption stoppingExecutable;
@@ -66,6 +65,25 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     "Streaming URL",
                     propertiesDeviceRoot + "streaming_url",
                     "This is the entire URL to be read for streaming from this device."
+            );
+
+            altStreamingUrl = new StringDeviceOption(
+                    Config.getString(propertiesDeviceRoot + "streaming_url2", ""),
+                    false,
+                    "Streaming URL 2",
+                    propertiesDeviceRoot + "streaming_url2",
+                    "This is a secondary URL that will only be used based on the" +
+                            " channel being tuned. This must be a complete URL."
+            );
+
+            altStreamingChannels = new ChannelRangesDeviceOption(
+                    Config.getString(propertiesDeviceRoot + "streaming_url2_channels", ""),
+                    false,
+                    "Streaming URL 2 Channels",
+                    propertiesDeviceRoot + "streaming_url2",
+                    "If Streaming URL 2 is defined and channel ranges are specified here, the" +
+                            " secondary URL will be used if the channel being tuned matches one" +
+                            " of the ranges here."
             );
 
             pretuneExecutable = new StringDeviceOption(
@@ -136,6 +154,8 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
             Config.mapDeviceOptions(
                     deviceOptions,
                     streamingUrl,
+                    altStreamingUrl,
+                    altStreamingChannels,
                     customChannels,
                     pretuneExecutable,
                     tuningExecutable,
@@ -170,6 +190,8 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
                 streamingUrl,
+                altStreamingUrl,
+                altStreamingChannels,
                 customChannels,
                 pretuneExecutable,
                 tuningExecutable,
@@ -222,5 +244,13 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
 
     public int getPadChannel() {
         return padChannel.getInteger();
+    }
+
+    public String getAltStreamingUrl() {
+        return altStreamingUrl.getValue();
+    }
+
+    public String[] getAltStreamingChannels() {
+        return ChannelRangesDeviceOption.parseRanges(altStreamingChannels.getValue());
     }
 }

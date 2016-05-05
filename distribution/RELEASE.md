@@ -1087,3 +1087,14 @@
   recording doesn't get completely wiped. Instead the message will be
   appended to the end. This situation has not happened yet, but why wait
   until it does.
+
+> *Added handling for when SageTV makes a second request while we are
+> still waiting for the resolution to change.
+
+> *Moved streaming to start before tuning_executable and after
+> pretuning_executable. This results in the picture starting sooner.
+
+> *Due to the change above now if your script/executable returns the
+> exit code 12000, all currently buffered data will be dumped. This is
+> mostly useful if the channel resolution changed so you don't get a
+> recording containing the event.

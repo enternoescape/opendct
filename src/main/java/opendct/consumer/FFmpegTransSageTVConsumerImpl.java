@@ -229,6 +229,14 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     @Override
+    public void clearBuffer() {
+        if (circularBuffer != null) {
+            circularBuffer.close();
+            circularBuffer.clear();
+        }
+    }
+
+    @Override
     public void setRecordBufferSize(long bufferSize) {
         stvRecordBufferSize = bufferSize;
     }

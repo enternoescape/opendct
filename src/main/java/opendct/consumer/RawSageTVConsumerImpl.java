@@ -402,6 +402,12 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         seekableBuffer.write(buffer);
     }
 
+    @Override
+    public void clearBuffer() {
+        seekableBuffer.close();
+        seekableBuffer.clear();
+    }
+
     public void setRecordBufferSize(long bufferSize) {
         this.stvRecordBufferSize = bufferSize;
     }

@@ -52,7 +52,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private final static Runtime runtime = Runtime.getRuntime();
     private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
     private URL sourceUrl;
-    private Thread tuningThread;
+    long lastTuneTime = System.currentTimeMillis();
 
     private HTTPProducer httpProducer;
 
@@ -151,9 +151,9 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
     StringBuilder stdOutBuilder = new StringBuilder();
     StringBuilder errOutBuilder = new StringBuilder();
-    private boolean executeCommand(String execute) throws InterruptedException {
+    private int executeCommand(String execute) throws InterruptedException {
         if (Util.isNullOrEmpty(execute)) {
-            return true;
+            return 0;
         }
 
         try {
@@ -170,12 +170,15 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             stdRunnable.run();
 
             tunerProcess.waitFor();
+
+            int returnValue = tunerProcess.exitValue();
+            logger.debug("Exit code: {}", returnValue);
+            return returnValue;
         } catch (IOException e) {
             logger.error("Unable to run tuning executable '{}' => ", execute, e);
-            return false;
         }
 
-        return true;
+        return -1;
     }
 
     @Override
@@ -255,8 +258,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress) {
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
-        tuningThread = Thread.currentThread();
-
         synchronized (exclusiveLock) {
             return startEncodingSync(
                     channel,
@@ -292,6 +293,14 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             scanOnly = true;
         }
 
+        long currentTime = System.currentTimeMillis();
+        if (retune) {
+            if (currentTime - lastTuneTime < 2000) {
+                logger.info("Re-tune came back too fast. Skipping.");
+                return true;
+            }
+        }
+
         httpServices.stopProducing(false);
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
@@ -320,7 +329,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
         String execute = getExecutionString(device.getPretuneExecutable(), channel, false);
         try {
-            if (!executeCommand(execute)) {
+            if (executeCommand(execute) == -1) {
                 logger.error("Failed to run pre-tune executable.");
                 return false;
             }
@@ -329,9 +338,23 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
+        logger.info("Configuring and starting the new SageTV producer...");
+
+        try {
+            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, getURL(channel))) {
+                return false;
+            }
+
+            httpProducer = newHTTPProducer;
+        } catch (MalformedURLException e) {
+            logger.error("Unable to start streaming because the URL is invalid.");
+            return false;
+        }
+
+        int returnCode;
         execute = getExecutionString(device.getTuningExecutable(), channel, true);
         try {
-            if (!executeCommand(execute)) {
+            if ((returnCode = executeCommand(execute)) == -1) {
                 logger.error("Failed to run tuning executable.");
                 return false;
             }
@@ -340,23 +363,20 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
+        if (returnCode == 12000) {
+            logger.debug("Clearing buffer.");
+            newConsumer.clearBuffer();
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while emptying buffer.");
+            }
+        }
+
         try {
             Thread.sleep(device.getTuningDelay());
         } catch (InterruptedException e) {
             logger.warn("Tuning delay was interrupted => ", e.getMessage());
-            return false;
-        }
-
-        logger.info("Configuring and starting the new SageTV producer...");
-
-        httpProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
-
-        try {
-            if (!httpServices.startProducing(encoderName, httpProducer, newConsumer, getURL(channel))) {
-                return false;
-            }
-        } catch (MalformedURLException e) {
-            logger.error("Unable to start streaming because the URL is invalid.");
             return false;
         }
 
@@ -379,6 +399,8 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         sageTVConsumerRunnable.isStreaming(GenericHttpDiscoverer.getStreamingWait());
+
+        lastTuneTime = System.currentTimeMillis();
 
         return true;
     }
@@ -499,7 +521,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
             String execute = getExecutionString(device.getPretuneExecutable(), lastChannel, false);
             try {
-                if (!executeCommand(execute)) {
+                if (executeCommand(execute) == -1) {
                     logger.error("Failed to run stop executable.");
                     return;
                 }

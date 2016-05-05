@@ -147,6 +147,7 @@ public class FFmpegStreamDetection {
             logger.info("After avformat_find_stream_info() pos={} bytes_read={} seek_count={}. probesize: {} analyzeduration: {}.",
                     ctx.avioCtxInput.pos(), ctx.avioCtxInput.bytes_read(), ctx.avioCtxInput.seek_count(), dynamicProbeSize, dynamicAnalyzeDuration);
 
+            ctx.detectionBytes = ctx.avioCtxInput.bytes_read();
             long duration = ctx.avfCtxInput.duration();
 
             if (duration == 0) {

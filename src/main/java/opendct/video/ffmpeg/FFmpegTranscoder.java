@@ -786,18 +786,16 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                             try {
                                 switchStreamOutput();
 
-                                if (mpegTsCbrEnabled && ctx.outputFilename.endsWith(".ts")) {
-                                    long minDts = packet.dts();
-                                    for (int i = 0; i < lastPreOffsetDts.length; i++) {
-                                        if (lastPreOffsetDts[i] > 0) {
-                                            minDts = Math.min(minDts, lastPreOffsetDts[i]);
-                                        }
+                                long minDts = packet.dts();
+                                for (int i = 0; i < lastPreOffsetDts.length; i++) {
+                                    if (lastPreOffsetDts[i] > 0) {
+                                        minDts = Math.min(minDts, lastPreOffsetDts[i]);
                                     }
-
-                                    Arrays.fill(lastDtsByStreamIndex, 0);
-                                    Arrays.fill(lastPtsByStreamIndex, 0);
-                                    Arrays.fill(tsOffsets, -minDts);
                                 }
+
+                                Arrays.fill(lastDtsByStreamIndex, 0);
+                                Arrays.fill(lastPtsByStreamIndex, 0);
+                                Arrays.fill(tsOffsets, -minDts);
 
                                 errorCounter = 0;
                             } catch (InterruptedException e) {
@@ -1119,7 +1117,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                 }
             }
 
-            av_write_trailer(ctx.avfCtxOutput);
+            ret = av_write_trailer(ctx.avfCtxOutput);
         } finally {
             returnTranscodePermission(ctx.OPAQUE);
 

@@ -65,9 +65,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final int minUploadIDTransfer =
             FFmpegConfig.getMinUploadIdTransferSize(RW_BUFFER_SIZE);
 
-    // This is the smallest amount of data that will be flushed to the SageTV server.
-    private final int minDirectFlush = FFmpegConfig.getMinDirectFlush();
-
     private final int ffmpegThreadPriority = FFmpegConfig.getThreadPriority();
 
     private int uploadIDPort = FFmpegConfig.getUploadIdPort();
@@ -184,7 +181,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             ctx.STREAM_PROCESSOR.initStreamOutput(ctx, currentEncoderFilename, currentWriter, currentCcWriter);
 
-            initBufferedData = circularBuffer.totalBytesAvailable();
+            initBufferedData = ctx.getDetectionBytes();
 
             ctx.STREAM_PROCESSOR.streamOutput();
 
@@ -737,12 +734,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 return -1;
             }
 
-            /*long currentFileLength = recordingFile.length();
-            if (currentFileLength < lastFilelength) {
-                logger.warn("Going backwards! {} < {}", currentFileLength, lastFilelength);
-            }
-            lastFilelength = currentFileLength;*/
-
             if (length == 0) {
                 return length;
             }
@@ -863,8 +854,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 int writeBytes;
                 long currentBytes;
                 long currentBytesStreamed;
-                long currentFileCheck = System.currentTimeMillis();
-                long lastFileCheck = currentFileCheck;
 
                 while (true) {
                     synchronized (asyncBuffer) {
@@ -939,86 +928,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         canWrite = false;
                         asyncBuffer.notifyAll();
                     }
-
-                    if (minDirectFlush != -1 &&
-                            bytesFlushCounter >= minDirectFlush &&
-                            stvRecordBufferSize == 0 &&
-                            (currentFileCheck = System.currentTimeMillis()) - lastFileCheck < 500) {
-
-                        bytesFlushCounter = 0;
-
-                        // If the file should have some data, but it doesn't, flush the data to disk
-                        // to verify that the file in fact taking data.
-                        synchronized (bytesStreamedLock) {
-                            currentBytesStreamed = bytesStreamed;
-                        }
-
-                        if (currentBytesStreamed > 0 &&
-                                recordingFile.length() < currentBytesStreamed) {
-
-                            try {
-                                fileChannel.force(true);
-                            } catch (IOException e) {
-                                logger.info("Unable to flush output => ", e);
-                            }
-                        }
-
-                        // According to many sources, if the file is deleted an IOException will
-                        // not be thrown. This handles the possible scenario. This also means
-                        // previously written data is now lost.
-
-                        if (!recordingFile.exists() ||
-                                (currentBytesStreamed > 0 &&
-                                recordingFile.length() < currentBytesStreamed)) {
-
-                            if (recordingFile.length() < currentBytesStreamed) {
-                                logger.warn("The file '{}' is {} bytes, expected {} bytes",
-                                        directFilename, recordingFile.length(), currentBytesStreamed);
-                            }
-
-                            try {
-                                fileChannel.close();
-                            } catch (Exception e) {
-                                logger.debug("Exception while closing missing file => ", e);
-                            }
-
-                            autoOffset = 0;
-
-                            while (ctx != null && !ctx.isInterrupted()) {
-                                try {
-                                    // Sleep one second before trying to re-open the file in case
-                                    // this is not the first time a this situation has happened.
-                                    Thread.sleep(1000);
-
-                                    fileChannel = FileChannel.open(
-                                            Paths.get(directFilename),
-                                            StandardOpenOption.WRITE,
-                                            StandardOpenOption.CREATE);
-
-                                    synchronized (bytesStreamedLock) {
-                                        bytesStreamed = recordingFile.length();
-                                    }
-                                    logger.warn("The file '{}' was re-opened.",
-                                            directFilename);
-
-                                    break;
-                                } catch (Exception e) {
-                                    logger.error("The file '{}' cannot be re-opened => ",
-                                            directFilename, e);
-
-                                    try {
-                                        Thread.sleep(1000);
-                                    } catch (InterruptedException e1) {
-                                        logger.debug("Interrupted while trying to re-opened recording file.");
-                                        break;
-                                    }
-                                    // Continue to re-try until interrupted.
-                                }
-                            }
-                        }
-                    }
-
-                    lastFileCheck = currentFileCheck;
 
                     synchronized (bytesStreamedLock) {
                         currentBytes = bytesStreamed += writeBytes;

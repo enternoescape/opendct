@@ -968,6 +968,10 @@
 >
 > sagetv.device.\<unique_id\>.streaming_url=
 >
+> sagetv.device.\<unique_id\>.streaming_url2=
+>
+> sagetv.device.\<unique_id\>.streaming_url2_channels=
+>
 > sagetv.device.\<unique_id\>.tuning_delay_ms=0
 >
 > sagetv.device.\<unique_id\>.tuning_executable=
@@ -986,14 +990,25 @@
 >
 > **pretuning_executable** is an optional executable that if defined,
 > will always be run before actually tuning the channel. You can add the
-> channel as an argument by using the variable %c%.
+> channel as an argument by using the variable %c%. Don't forget to
+> escape backslashes (\ needs to be \\).
 >
 > **stopping_executable** is an optional executable that if defined,
 > will always be run when the capture device is told to stop. You can
 > add the last tuned channel as an argument by using the variable %c%.
+> Don't forget to escape backslashes (\ needs to be \\).
 >
 > **streaming_url** is a URL that points directly to an audio/video
 > stream. HLS and m3u8 playlists are not supported at this time.
+>
+> **streaming_url2** is an alternative URL that points directly to an
+> audio/video stream. This stream will only be used if a channel matches
+> one of the ranges in **streaming_url2_channels**. HLS and m3u8
+> playlists are not supported at this time.
+>
+> **streaming_url2_channels** are the channel ranges that will use the
+> alternative URL. This uses the same formatting as the dynamic consumer
+> channel ranges.
 >
 > **tuning_delay_ms** is the amount of time in milliseconds to wait
 > after the program associated with **tuning_executable** has returned.
@@ -1002,8 +1017,9 @@
 > be used to change the channel being streamed. Insert %c% where the
 > channel needs to be provided to the executable. If %c% isn't provided,
 > but this property is defined, the channel number will be appended as
-> a final parameter. (Ex. /full/path/tune 0 %c% or
-> C:\Full\Path\tune.exe 0 %c%)
+> a final parameter. Don't forget to escape backslashes (\ needs to be
+> \\).
+> Ex. /full/path/tune 0 %c% or C:\\Full\\Path\\tune.exe 0 %c%
 
 > *Added 59 second videos that will be streamed in place of an actual
 > recording if the channel is detected to be Copy Once or Copy Never.
@@ -1028,6 +1044,11 @@
 
 > *Added a few efficiency improvements to the tuning monitor.
 
+> *Added more FFmpeg null condition handling.
+
+> *Changed initial bytes streamed for FFmpeg to be closer to what's
+> actually needed to start playback.
+
 > *Changed FFmpeg offset calculations so that all new and switched
 > recordings are offset as close to 0 as possible.
 
@@ -1036,6 +1057,8 @@
 > this could have the effect of dropping an entire commercial. That may
 > not sound like a bad thing, but that ~30 seconds missing could be
 > enough to make SageTV think there's a problem.  
+
+> *Improved responsiveness of raw consumer.
 
 > *Fixed FFmpeg audio channel selection so a greater weight is put on
 > the bitrate over the number of frames that have arrived.
@@ -1051,6 +1074,9 @@
 > new aggregate write feature.
 
 > *Removed PTS hack property and code. It's not as useful as expected. 
+
+> *Removed file missing and file size checking while directly writing
+> files from FFmpeg consumer.
 
 > *Removed waiting for key audio packet(s). Now once the first video key
 > frame is written, all audio packets from that point on are written. 

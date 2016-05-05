@@ -69,6 +69,7 @@ public class FFmpegContext {
 
     protected int preferredVideo;
     protected int preferredAudio;
+    protected long detectionBytes;
 
     // These are freed on avformat_close_input.
     protected AVStream videoOutStream;
@@ -158,6 +159,7 @@ public class FFmpegContext {
 
         preferredVideo = -1;
         preferredAudio = -1;
+        detectionBytes = 512000;
         videoOutStream = null;
         videoOutStream2 = null;
         secondaryStream = false;
@@ -531,6 +533,15 @@ public class FFmpegContext {
             default:
                 return 0;
         }
+    }
+
+    /**
+     * This is the number of bytes that were read during detection.
+     *
+     * @return The number of bytes read during detection.
+     */
+    public long getDetectionBytes() {
+        return detectionBytes;
     }
 
     /**

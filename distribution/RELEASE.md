@@ -1101,3 +1101,11 @@
 
 > *Internal: Capture devices now understand different device types as
 > requested by SageTV.
+
+> *Fixed a number formatting exception.
+
+> *Fixed multiple calles to get the OS version when it's already a
+> static final value.
+
+> *Added a little more logging around capture device detection and
+> loading. 

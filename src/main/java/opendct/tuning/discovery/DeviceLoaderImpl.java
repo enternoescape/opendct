@@ -37,14 +37,19 @@ public class DeviceLoaderImpl implements DeviceLoader {
 
     @Override
     public synchronized void advertiseDevice(DiscoveredDevice details, DeviceDiscoverer discovery) {
+
         if (DiscoveryManager.isDevicePermitted(details.getId()) && !alwaysEnable) {
+            logger.debug("The capture device '{}' is not permitted to loaded.", details.getName());
             return;
+        } else {
+            logger.debug("Advertising new capture device '{}'.", details.getName());
         }
 
         try {
             CaptureDevice captureDevice = discovery.loadCaptureDevice(details.getId());
 
             if (captureDevice == null) {
+                logger.error("The capture device '{}' did not load.", details.getName());
                 return;
             }
 
@@ -88,7 +93,7 @@ public class DeviceLoaderImpl implements DeviceLoader {
             logger.error("Unable to open a socket for the capture device '{}', id {} => ",
                     details.getName(), details.getId(), e);
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logger.error("Unexpected exception created by the capture device '{}', id {} => ",
                     details.getName(), details.getId(), e);
 

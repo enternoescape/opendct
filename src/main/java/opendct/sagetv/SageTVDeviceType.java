@@ -31,9 +31,10 @@ public enum SageTVDeviceType {
     VIDEO_ENCODER(13, "VideoEncoder"),
     SCART(14, "SCART"),
     BLACK(15, "Black"),
+    YPBPR_SPDIF(90, "Component+SPDIF"),
     FM_RADIO(99, "FM Radio"),
-    DIGITAL_TV_TUNER(100, "Digital TV Tuner"),
-    YPBPR_SPDIF(90, "Component+SPDIF");
+    DIGITAL_TV_TUNER(100, "Digital TV Tuner");
+
 
     public final int INDEX;
     public final String NAME;

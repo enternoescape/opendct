@@ -30,10 +30,6 @@
         </RollingFile>
     </Appenders>
     <Loggers>
-        <Root level="DEBUG">
-            <AppenderRef level="INFO" ref="Console"/>
-            <AppenderRef level="DEBUG" ref="RollingFile"/>
-        </Root>
         <Logger name="opendct.consumer.upload" level="DEBUG" additivity="false">
             <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
@@ -58,5 +54,9 @@
             <AppenderRef level="WARN" ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>
+        <Root level="DEBUG">
+            <AppenderRef level="INFO" ref="Console"/>
+            <AppenderRef level="DEBUG" ref="RollingFile"/>
+        </Root>
     </Loggers>
 </Configuration>

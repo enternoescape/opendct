@@ -389,6 +389,13 @@ public class HDHomeRunDiscovery implements Runnable {
                                     break;
 
                                 default:
+                                    try {
+                                        logger.warn("The capture device '{}' does not have any tuners.",
+                                                device.getUniqueDeviceName());
+                                    } catch (Exception e) {
+                                        logger.warn("The capture device does not have any tuners => ",
+                                                e);
+                                    }
                                     break;
                             }
                         }

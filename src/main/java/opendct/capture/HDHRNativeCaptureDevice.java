@@ -485,7 +485,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
             // This will automatically create channels for channels that SageTV requests.
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN && tvChannel == null) {
-                String vfChannel = channel.substring(0, firstIndex - 1);
+                String vfChannel = channel.substring(0, firstIndex);
                 String vChannel = channel.substring(firstIndex + 1);
 
                 tvChannel = ChannelManager.getChannel(encoderLineup, vChannel);

@@ -1098,3 +1098,6 @@
 > exit code 12000, all currently buffered data will be dumped. This is
 > mostly useful if the channel resolution changed so you don't get a
 > recording containing the event.
+
+> *Internal: Capture devices now understand different device types as
+> requested by SageTV.

@@ -135,7 +135,8 @@ public class SageTVManager implements PowerEventListener {
                         captureDevice.getEncoderUniqueHash(),
                         "",
                         0,
-                        captureDevice.canSwitch()
+                        captureDevice.canSwitch(),
+                        captureDevice.getSageTVDeviceTypes()
                 );
 
             } else if (!SageTVDiscovery.isRunning()) {
@@ -445,9 +446,6 @@ public class SageTVManager implements PowerEventListener {
         captureDeviceNameToCaptureDeviceLock.readLock().lock();
 
         try {
-            if (deviceName.endsWith(" Digital TV Tuner")) {
-                deviceName = deviceName.substring(0, deviceName.length() - " Digital TV Tuner".length());
-            }
             captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
@@ -635,11 +633,11 @@ public class SageTVManager implements PowerEventListener {
         return logger.exit(captureDevices);
     }
 
-    protected static ArrayList<String> getAllTunerProperties(SageTVRequestHandler requestHandler) {
+    protected static String getAllTunerProperties(SageTVRequestHandler requestHandler) {
         logger.entry();
 
         captureDeviceNameToCaptureDeviceLock.readLock().lock();
-        ArrayList<String> tunerPropertiesList = new ArrayList<String>();
+        StringBuilder tunerPropertiesList = new StringBuilder();
 
         try {
             for (Map.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {
@@ -676,14 +674,15 @@ public class SageTVManager implements PowerEventListener {
                         )
                 );
 
-                String tunerProperties[] = buildTunerProperty(
+                StringBuilder tunerProperties = buildTunerProperty(
                         captureDevice.getEncoderName(),
                         captureDevice.getEncoderUniqueHash(),
                         localAddress,
                         listenPort,
-                        captureDevice.canSwitch()
+                        captureDevice.canSwitch(),
+                        captureDevice.getSageTVDeviceTypes()
                 );
-                tunerPropertiesList.addAll(Arrays.asList(tunerProperties));
+                tunerPropertiesList.append(tunerProperties);
             }
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
@@ -691,52 +690,53 @@ public class SageTVManager implements PowerEventListener {
             captureDeviceNameToCaptureDeviceLock.readLock().unlock();
         }
 
-        return logger.exit(tunerPropertiesList);
+        return logger.exit(tunerPropertiesList.toString());
     }
 
-    private static String[] buildTunerProperty(String encoderName, Integer encoderUniqueHash, String socketServerAddress, int socketServerPort, boolean canSwitch) {
+    private static StringBuilder buildTunerProperty(String encoderName, Integer encoderUniqueHash, String socketServerAddress, int socketServerPort, boolean canSwitch, SageTVDeviceType types[]) {
 
         String propertiesRoot = "sagetv.device." + encoderUniqueHash + ".";
 
-        String prefix = "mmc/encoders/" + encoderUniqueHash;
+        String prefix = "mmc/encoders/" + encoderUniqueHash + "/";
 
-        return new String[]{
-                prefix + "/100/0/brightness=-1",
-                prefix + "/100/0/contrast=-1",
-                prefix + "/100/0/encode_digital_tv_as_program_stream=false",
-                prefix + "/100/0/hue=-1",
-                prefix + "/100/0/last_channel=",
-                prefix + "/100/0/saturation=-1",
-                prefix + "/100/0/sharpness=-1",
-                prefix + "/100/0/tuning_mode=Cable",
-                prefix + "/100/0/tuning_plugin=",
-                prefix + "/100/0/tuning_plugin_port=0",
-                prefix + "/100/0/video_crossbar_index=0",
-                prefix + "/100/0/video_crossbar_type=100",
-                prefix + "/audio_capture_device_name=",
-                prefix + "/broadcast_standard=",
-                prefix + "/capture_config=" + (MPEG_PURE_CAPTURE_MASK | MPEG_LIVE_PREVIEW_MASK),
-                prefix + "/default_device_quality=",
-                prefix + "/delay_to_wait_after_tuning=" +
-                        Config.getInteger(propertiesRoot + "delay_to_wait_after_tuning", 0),
-                prefix + "/device_class=NetworkEncoder",
-                prefix + "/encoder_host=" + socketServerAddress + ":" + socketServerPort,
-                prefix + "/encoder_merit=" +
-                        Config.getInteger(propertiesRoot + "encoder_merit", 0),
-                prefix + "/encoding_host=" + socketServerAddress + ":" + socketServerPort,
-                prefix + "/fast_network_encoder_switch=" +
-                        Config.getBoolean(propertiesRoot + "fast_network_encoder_switch",
-                                canSwitch),
-                prefix + "/forced_video_storage_path_prefix=",
-                prefix + "/last_cross_index=0",
-                prefix + "/last_cross_type=100",
-                prefix + "/live_audio_input=",
-                prefix + "/multicast_host=",
-                prefix + "/never_stop_encoding=false",
-                prefix + "/video_capture_device_name=" + encoderName,
-                prefix + "/video_capture_device_num=0",
-                prefix + "/video_encoding_params=Great"
-        };
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (SageTVDeviceType type : types) {
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/brightness=-1").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/contrast=-1").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/encode_digital_tv_as_program_stream=false").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/hue=-1").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/last_channel=").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/saturation=-1").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/sharpness=-1").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/tuning_mode=Cable").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/tuning_plugin=").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/tuning_plugin_port=0").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/video_crossbar_index=0").append("\r\n");
+            stringBuilder.append(prefix).append(type.INDEX).append("/0/video_crossbar_type=").append(type.INDEX).append("\r\n");
+        }
+
+        stringBuilder.append(prefix).append("audio_capture_device_name=\r\n");
+        stringBuilder.append(prefix).append("broadcast_standard=\r\n");
+        stringBuilder.append(prefix).append("capture_config=").append(MPEG_PURE_CAPTURE_MASK | MPEG_LIVE_PREVIEW_MASK).append("\r\n");
+        stringBuilder.append(prefix).append("default_device_quality=\r\n");
+        stringBuilder.append(prefix).append("delay_to_wait_after_tuning=").append(Config.getInteger(propertiesRoot + "delay_to_wait_after_tuning", 0)).append("\r\n");
+        stringBuilder.append(prefix).append("device_class=NetworkEncoder\r\n");
+        stringBuilder.append(prefix).append("encoder_host=").append(socketServerAddress).append(":").append(socketServerPort).append("\r\n");
+        stringBuilder.append(prefix).append("encoder_merit=").append(Config.getInteger(propertiesRoot + "encoder_merit", 0)).append("\r\n");
+        stringBuilder.append(prefix).append("encoding_host=").append(socketServerAddress).append(":").append(socketServerPort).append("\r\n");
+        stringBuilder.append(prefix).append("fast_network_encoder_switch=").append(Config.getBoolean(propertiesRoot + "fast_network_encoder_switch", canSwitch)).append("\r\n");
+        stringBuilder.append(prefix).append("forced_video_storage_path_prefix=\r\n");
+        stringBuilder.append(prefix).append("last_cross_index=0\r\n");
+        stringBuilder.append(prefix).append("last_cross_type=").append(types[0].INDEX).append("\r\n");
+        stringBuilder.append(prefix).append("live_audio_input=\r\n");
+        stringBuilder.append(prefix).append("multicast_host=\r\n");
+        stringBuilder.append(prefix).append("never_stop_encoding=false\r\n");
+        stringBuilder.append(prefix).append("video_capture_device_name=").append(encoderName).append("\r\n");
+        stringBuilder.append(prefix).append("video_capture_device_num=0\r\n");
+        stringBuilder.append(prefix).append("video_encoding_params=Great\r\n");
+
+        return stringBuilder;
     }
 
     /**

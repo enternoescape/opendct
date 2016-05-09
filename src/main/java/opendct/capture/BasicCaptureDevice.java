@@ -22,6 +22,7 @@ import opendct.config.Config;
 import opendct.consumer.DynamicConsumerImpl;
 import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
+import opendct.sagetv.SageTVDeviceType;
 import opendct.sagetv.SageTVManager;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -192,6 +193,18 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      */
     public CaptureDeviceType getEncoderDeviceType() {
         return encoderDeviceType;
+    }
+
+    /**
+     * This is used to let SageTV know what ways it can request to use this device.
+     * <p/>
+     * Typically the device will be a Digital TV Tuner, but it could also be HDMI for example. This
+     * will provide that option from withing SageTV.
+     *
+     * @return Available devices types.
+     */
+    public SageTVDeviceType[] getSageTVDeviceTypes() {
+        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER };
     }
 
     /**

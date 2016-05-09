@@ -16,17 +16,23 @@
 
 package opendct.util;
 
+import com.sun.xml.internal.messaging.saaj.util.Base64;
 import opendct.config.Config;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
+import java.net.*;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -508,5 +514,90 @@ public class Util {
         }
 
         return returnValue;
+    }
+
+    /**
+     * Connects to a URL and returns an XML DOM parser.
+     *
+     * @param address This is the URL to download.
+     * @param username This is an optional username for the connection.
+     * @param password This is an optional password for the connection.
+     * @param timeout This is a timeout for the connection. 0 = infinite
+     * @return An parsed XML document or null if the document could not be parsed.
+     * @throws IOException If the connection could not be be established or there was a problem
+     *                     reading the returned data.
+     */
+    private static DocumentBuilderFactory domFactory;
+    private static DocumentBuilder domBuilder;
+    public static Document getUrlXml(URL address, final String username, final String password, int timeout) throws IOException {
+        String returnValue[];
+
+        final URLConnection connection = address.openConnection();
+        connection.setConnectTimeout(timeout);
+
+        if (!Util.isNullOrEmpty(username) && !Util.isNullOrEmpty(password)) {
+            byte[] encodedBytes = Base64.encode((username + ":" + password).getBytes());
+            connection.setRequestProperty("Authorization", "Basic " + new String(encodedBytes, StandardCharsets.UTF_8));
+        }
+
+        if (domFactory == null) {
+            domFactory = DocumentBuilderFactory.newInstance();
+            domFactory.setValidating(true);
+            domFactory.setIgnoringElementContentWhitespace(true);
+
+            try {
+                domBuilder = domFactory.newDocumentBuilder();
+            } catch (ParserConfigurationException e) {
+                domFactory = null;
+                return null;
+            }
+        }
+
+        try {
+            return domBuilder.parse(connection.getInputStream());
+        } catch (SAXException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public static Node getDeepNode(String name[], NodeList nodes) {
+        for (int i = 0; i < nodes.getLength(); i++ ) {
+            Node node = nodes.item(i);
+            if (node.getNodeName().equalsIgnoreCase(name[0])) {
+                if (name.length == 1) {
+                    return node;
+                } else {
+                    return getDeepNode(name, node.getChildNodes(), 1);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public static Node getDeepNode(String name[], NodeList nodes, int offset) {
+        for (int i = 0; i < nodes.getLength(); i++ ) {
+            Node node = nodes.item(i);
+            if (node.getNodeName().equalsIgnoreCase(name[offset])) {
+                if (name.length - 1 == offset) {
+                    return node;
+                } else {
+                    return getDeepNode(name, node.getChildNodes(), offset + 1);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public Node getNode(String name, NodeList nodes) {
+        for (int i = 0; i < nodes.getLength(); i++ ) {
+            Node node = nodes.item(i);
+            if (node.getNodeName().equalsIgnoreCase(name)) {
+                return node;
+            }
+        }
+
+        return null;
     }
 }

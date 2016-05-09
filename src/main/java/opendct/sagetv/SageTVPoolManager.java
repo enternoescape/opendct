@@ -560,11 +560,6 @@ public class SageTVPoolManager  {
         vCaptureDeviceToPoolNameLock.readLock().lock();
 
         try {
-            if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-                vCaptureDevice = vCaptureDevice.substring(0,
-                        vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
-            }
-
             returnValue = vCaptureDeviceToPoolName.get(vCaptureDevice);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ",
@@ -593,11 +588,6 @@ public class SageTVPoolManager  {
         captureDeviceMappingLock.readLock().lock();
 
         try {
-            if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-                vCaptureDevice = vCaptureDevice.substring(0,
-                        vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
-            }
-
             returnValue = vCaptureDeviceToPoolCaptureDevice.get(vCaptureDevice);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ",
@@ -623,11 +613,6 @@ public class SageTVPoolManager  {
         captureDeviceMappingLock.readLock().lock();
 
         try {
-            if (pCaptureDevice.endsWith(" Digital TV Tuner")) {
-                pCaptureDevice = pCaptureDevice.substring(0,
-                        pCaptureDevice.length() - " Digital TV Tuner".length()).trim();
-            }
-
             returnValue = poolCaptureDeviceToVCaptureDevice.get(pCaptureDevice);
         } catch (Exception e) {
             logger.warn("There was an unhandled exception while using a ReentrantReadWriteLock => ",

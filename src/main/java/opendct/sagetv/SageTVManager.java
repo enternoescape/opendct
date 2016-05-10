@@ -44,6 +44,7 @@ public class SageTVManager implements PowerEventListener {
     private static AtomicBoolean broadcasting = new AtomicBoolean(false);
     private static SageTVDevicesLoaded devicesWaitingThread = null;
 
+    public static final int HDPVR_ENCODER_MASK = 0x100000;
     public static final int MPEG_PURE_CAPTURE_MASK = 0x2000;
     public static final int MPEG_LIVE_PREVIEW_MASK = 0x1000;
 
@@ -700,8 +701,13 @@ public class SageTVManager implements PowerEventListener {
         String prefix = "mmc/encoders/" + encoderUniqueHash + "/";
 
         StringBuilder stringBuilder = new StringBuilder();
+        boolean analogCapture = false;
 
         for (SageTVDeviceType type : types) {
+            if (type != SageTVDeviceType.DIGITAL_TV_TUNER) {
+                analogCapture = true;
+            }
+
             stringBuilder.append(prefix).append(type.INDEX).append("/0/brightness=-1").append("\r\n");
             stringBuilder.append(prefix).append(type.INDEX).append("/0/contrast=-1").append("\r\n");
             stringBuilder.append(prefix).append(type.INDEX).append("/0/encode_digital_tv_as_program_stream=false").append("\r\n");
@@ -718,8 +724,12 @@ public class SageTVManager implements PowerEventListener {
 
         stringBuilder.append(prefix).append("audio_capture_device_name=\r\n");
         stringBuilder.append(prefix).append("broadcast_standard=\r\n");
-        stringBuilder.append(prefix).append("capture_config=").append(MPEG_PURE_CAPTURE_MASK | MPEG_LIVE_PREVIEW_MASK).append("\r\n");
-        stringBuilder.append(prefix).append("default_device_quality=\r\n");
+        stringBuilder.append(prefix).append("capture_config=").append(MPEG_PURE_CAPTURE_MASK).append("\r\n");
+        if (analogCapture) {
+            stringBuilder.append(prefix).append("default_device_quality=Great\r\n");
+        } else {
+            stringBuilder.append(prefix).append("default_device_quality=\r\n");
+        }
         stringBuilder.append(prefix).append("delay_to_wait_after_tuning=").append(Config.getInteger(propertiesRoot + "delay_to_wait_after_tuning", 0)).append("\r\n");
         stringBuilder.append(prefix).append("device_class=NetworkEncoder\r\n");
         stringBuilder.append(prefix).append("encoder_host=").append(socketServerAddress).append(":").append(socketServerPort).append("\r\n");

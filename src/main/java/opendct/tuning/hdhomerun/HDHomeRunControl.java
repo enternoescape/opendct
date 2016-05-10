@@ -113,8 +113,9 @@ public class HDHomeRunControl {
                 HDHomeRunPacket.HDHOMERUN_CONTROL_TCP_PORT));
 
         if (logger.isDebugEnabled()) {
-            logger.debug("key: '{}' value: '{}' lockKey: '{}' sendLength: {}",
-                    key, value, lockkey, txPacket.BUFFER.remaining());
+            logger.debug("key: '{}' value: '{}' lockKey: '{}' sendLength: {} address: {}",
+                    key, value, lockkey, txPacket.BUFFER.remaining(),
+                    address != null ? address.getHostAddress() : null);
         }
 
         IOException errorMessage = null;

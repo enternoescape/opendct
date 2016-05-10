@@ -16,12 +16,14 @@
 
 package opendct.capture;
 
+import opendct.capture.services.HTTPCaptureDeviceServices;
 import opendct.channel.*;
 import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
+import opendct.sagetv.SageTVDeviceType;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
 import opendct.tuning.http.GenericHttpDiscoveredDevice;
@@ -30,6 +32,8 @@ import opendct.util.StreamLogger;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -48,11 +52,12 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private final GenericHttpDiscoveredDeviceParent parent;
     private final GenericHttpDiscoveredDevice device;
 
+    private final Map<String, String> resolutionMap = new ConcurrentHashMap<>();
     private final Map<String, URL> channelMap = new ConcurrentHashMap<>();
     private final static Runtime runtime = Runtime.getRuntime();
     private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
     private URL sourceUrl;
-    private Thread tuningThread;
+    long lastTuneTime = System.currentTimeMillis();
 
     private HTTPProducer httpProducer;
 
@@ -97,6 +102,11 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
                         tuningUrl);
             }
         }
+    }
+
+    @Override
+    public SageTVDeviceType[] getSageTVDeviceTypes() {
+        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER, SageTVDeviceType.COMPONENT };
     }
 
     private URL getURL(String channel) throws MalformedURLException {
@@ -151,9 +161,9 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
     StringBuilder stdOutBuilder = new StringBuilder();
     StringBuilder errOutBuilder = new StringBuilder();
-    private boolean executeCommand(String execute) throws InterruptedException {
+    private int executeCommand(String execute) throws InterruptedException {
         if (Util.isNullOrEmpty(execute)) {
-            return true;
+            return 0;
         }
 
         try {
@@ -170,13 +180,112 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             stdRunnable.run();
 
             tunerProcess.waitFor();
+
+            int returnValue = tunerProcess.exitValue();
+            logger.debug("Exit code: {}", returnValue);
+            return returnValue;
         } catch (IOException e) {
             logger.error("Unable to run tuning executable '{}' => ", execute, e);
-            return false;
         }
 
-        return true;
+        return -1;
     }
+
+    private static final String hdmiRoot[] = { "status", "hdmi" };
+    private static final String hdmiVideoSize[] = { "video", "size" };
+    private static final String chnVideoSizeWidth[] = { "chn_stat", "width" };
+    private static final String chnVideoSizeHeight[] = { "chn_stat", "height" };
+
+    /**
+     * Check if the currently detected resolution matches the encoded resolution.
+     *
+     * @param getStatus The URL to check.
+     * @param username The username to use for authentication.
+     * @param password The password to use for authentication.
+     * @param match If this is not <i>null</i>, it will be checked against the detected resolution
+     *              instead of using the encoded resolution.
+     * @return The matching resolution if they match or the device cannot be reached. Empty string
+     *         if URL is unreachable/parsable. <i>null</i> if they do not match.
+     */
+    private static String getVideoMatches(URL getStatus, String username, String password, String match) {
+        Document document = null;
+        try {
+            document = Util.getUrlXml(getStatus, username, password, 5000);
+        } catch (IOException e) {
+            logger.error("Unable to download/parse the XML from the URL '{}' => ", getStatus, e);
+
+            // If the URL can't be opened/parsed, return that it's a match since it is likely that
+            // the device doesn't support the way we are trying to access it.
+            return "";
+        }
+
+        if (document != null) {
+            Node hdmiRootNode = Util.getDeepNode(hdmiRoot, document.getChildNodes());
+
+            if (hdmiRootNode != null) {
+                Node videoSizeNode = Util.getDeepNode(hdmiVideoSize, hdmiRootNode.getChildNodes());
+
+                if (match == null) {
+                    Node chnWidthNode = Util.getDeepNode(chnVideoSizeWidth, hdmiRootNode.getChildNodes());
+                    Node chnHeightNode = Util.getDeepNode(chnVideoSizeHeight, hdmiRootNode.getChildNodes());
+
+                    if (chnWidthNode != null && chnHeightNode != null) {
+                        String chnWidth = chnWidthNode.getTextContent();
+                        String chnHeight = chnHeightNode.getTextContent();
+                        match = chnWidth + "*" + chnHeight;
+                    }
+                }
+
+                if (videoSizeNode != null && match != null) {
+                    String videoSize = videoSizeNode.getTextContent();
+
+                    if (videoSize.startsWith(match)) {
+                        return videoSize;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /*private void waitForResolutionChange(String channel) {
+        try {
+            String username = device.getResolutionChangeUsername();
+            String password = device.getResolutionChangePassword();
+
+            URL getStatus = new URL("http", getURL(channel).getHost(), 80, "get_status");
+            String expectedResolution = resolutionMap.get(channel);
+
+            // If we have a known value for this channel, this can speed things up.
+            if (expectedResolution != null) {
+                if (getVideoMatches(getStatus, username, password, expectedResolution) != null) {
+                    return;
+                }
+            }
+
+            Thread.sleep(5000);
+
+            int retry = 20;
+            while (retry-- > 0) {
+                String returnedValue = getVideoMatches(getStatus, username, password, expectedResolution);
+                if (returnedValue != null) {
+                    if (returnedValue.length() > 0) {
+                        resolutionMap.put(channel, returnedValue);
+                        return;
+                    }
+                }
+
+                Thread.sleep(1000);
+            }
+
+
+        } catch (InterruptedException e) {
+            logger.debug("Interrupted while waiting for resolution to change.");
+        } catch (MalformedURLException e) {
+            logger.error("Unable to create a valid URL to get the current status of the device.");
+        }
+    }*/
 
     @Override
     public boolean isLocked() {
@@ -233,7 +342,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceType.DIGITAL_TV_TUNER)) {
                 return logger.exit(false);
             }
 
@@ -247,15 +356,13 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize) {
-        return startEncoding(channel, filename, encodingQuality, bufferSize, -1, null);
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType) {
+        return startEncoding(channel, filename, encodingQuality, bufferSize, deviceType, -1, null);
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
-
-        tuningThread = Thread.currentThread();
 
         synchronized (exclusiveLock) {
             return startEncodingSync(
@@ -292,6 +399,14 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             scanOnly = true;
         }
 
+        long currentTime = System.currentTimeMillis();
+        if (retune) {
+            if (currentTime - lastTuneTime < 2000) {
+                logger.info("Re-tune came back too fast. Skipping.");
+                return true;
+            }
+        }
+
         httpServices.stopProducing(false);
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
@@ -320,7 +435,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
         String execute = getExecutionString(device.getPretuneExecutable(), channel, false);
         try {
-            if (!executeCommand(execute)) {
+            if (executeCommand(execute) == -1) {
                 logger.error("Failed to run pre-tune executable.");
                 return false;
             }
@@ -329,9 +444,23 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
+        logger.info("Configuring and starting the new SageTV producer...");
+
+        try {
+            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, getURL(channel))) {
+                return false;
+            }
+
+            httpProducer = newHTTPProducer;
+        } catch (MalformedURLException e) {
+            logger.error("Unable to start streaming because the URL is invalid.");
+            return false;
+        }
+
+        int returnCode;
         execute = getExecutionString(device.getTuningExecutable(), channel, true);
         try {
-            if (!executeCommand(execute)) {
+            if ((returnCode = executeCommand(execute)) == -1) {
                 logger.error("Failed to run tuning executable.");
                 return false;
             }
@@ -340,23 +469,24 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
+        /*if (device.getResolutionChangeDelay()) {
+            waitForResolutionChange(channel);
+        }*/
+
+        if (returnCode == 12000) {
+            logger.debug("Clearing buffer.");
+            newConsumer.clearBuffer();
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                logger.debug("Interrupted while emptying buffer.");
+            }
+        }
+
         try {
             Thread.sleep(device.getTuningDelay());
         } catch (InterruptedException e) {
             logger.warn("Tuning delay was interrupted => ", e.getMessage());
-            return false;
-        }
-
-        logger.info("Configuring and starting the new SageTV producer...");
-
-        httpProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
-
-        try {
-            if (!httpServices.startProducing(encoderName, httpProducer, newConsumer, getURL(channel))) {
-                return false;
-            }
-        } catch (MalformedURLException e) {
-            logger.error("Unable to start streaming because the URL is invalid.");
             return false;
         }
 
@@ -379,6 +509,8 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         sageTVConsumerRunnable.isStreaming(GenericHttpDiscoverer.getStreamingWait());
+
+        lastTuneTime = System.currentTimeMillis();
 
         return true;
     }
@@ -499,7 +631,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
             String execute = getExecutionString(device.getPretuneExecutable(), lastChannel, false);
             try {
-                if (!executeCommand(execute)) {
+                if (executeCommand(execute) == -1) {
                     logger.error("Failed to run stop executable.");
                     return;
                 }

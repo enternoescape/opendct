@@ -138,7 +138,8 @@ public class SageTVTuningMonitor {
     }
 
     public static void monitorRecording(CaptureDevice captureDevice, String channel,
-                                        String encodingQuality, long bufferSize) {
+                                        String encodingQuality, long bufferSize,
+                                        SageTVDeviceType deviceType) {
 
         Thread checkThread = monitorThread;
         if (checkThread == null || !checkThread.isAlive()) {
@@ -151,7 +152,7 @@ public class SageTVTuningMonitor {
 
         try {
             MonitoredRecording newRecording = new MonitoredRecording(
-                    captureDevice, channel, encodingQuality, bufferSize, -1, null);
+                    captureDevice, channel, encodingQuality, bufferSize, deviceType, -1, null);
 
             recordingQueue.put(captureDevice.getEncoderName(), newRecording);
         } catch (Throwable e) {
@@ -164,6 +165,7 @@ public class SageTVTuningMonitor {
 
     public static void monitorRecording(CaptureDevice captureDevice, String channel,
                                         String encodingQuality, long bufferSize,
+                                        SageTVDeviceType deviceType,
                                         int uploadID, InetAddress remoteAddress) {
 
         Thread checkThread = monitorThread;
@@ -177,7 +179,8 @@ public class SageTVTuningMonitor {
 
         try {
             MonitoredRecording newRecording = new MonitoredRecording(
-                    captureDevice, channel, encodingQuality, bufferSize, uploadID, remoteAddress);
+                    captureDevice, channel, encodingQuality, bufferSize, deviceType,
+                    uploadID, remoteAddress);
 
             recordingQueue.put(captureDevice.getEncoderName(), newRecording);
         } catch (Throwable e) {
@@ -229,17 +232,20 @@ public class SageTVTuningMonitor {
         protected final String channel;
         protected final String encodingQuality;
         protected final long bufferSize;
+        protected final SageTVDeviceType deviceType;
         protected int uploadID;
         protected InetAddress remoteAddress;
 
         public MonitoredRecording(CaptureDevice captureDevice, String channel,
                                   String encodingQuality, long bufferSize,
+                                  SageTVDeviceType deviceType,
                                   int uploadID, InetAddress remoteAddress) {
 
             this.captureDevice = captureDevice;
             this.channel = channel;
             this.encodingQuality = encodingQuality;
             this.bufferSize = bufferSize;
+            this.deviceType = deviceType;
             this.uploadID = uploadID;
             this.remoteAddress = remoteAddress;
         }
@@ -389,6 +395,7 @@ public class SageTVTuningMonitor {
                             final String channel = recording.channel;
                             final String encodingQuality = recording.encodingQuality;
                             final long bufferSize = recording.bufferSize;
+                            final SageTVDeviceType deviceType = recording.deviceType;
                             final int uploadID = recording.uploadID;
                             final InetAddress remoteAddress = recording.remoteAddress;
                             recording.noRecordedBytes = 0;
@@ -428,12 +435,12 @@ public class SageTVTuningMonitor {
                                             if (uploadID > 0) {
                                                 tuned = captureDevice.startEncoding(
                                                         channel, recording.filename,
-                                                        encodingQuality, bufferSize,
+                                                        encodingQuality, bufferSize, deviceType,
                                                         uploadID, remoteAddress);
                                             } else {
                                                 tuned = captureDevice.startEncoding(
                                                         channel, recording.filename,
-                                                        encodingQuality, bufferSize);
+                                                        encodingQuality, bufferSize, deviceType);
                                             }
                                         } else {
                                             logger.info("Re-tune was cancelled because the capture" +
@@ -473,12 +480,12 @@ public class SageTVTuningMonitor {
                                             if (uploadID > 0) {
                                                 captureDevice.startEncoding(
                                                         channel, recording.filename,
-                                                        encodingQuality, bufferSize,
+                                                        encodingQuality, bufferSize, deviceType,
                                                         uploadID, remoteAddress);
                                             } else {
                                                 captureDevice.startEncoding(
                                                         channel, recording.filename,
-                                                        encodingQuality, bufferSize);
+                                                        encodingQuality, bufferSize, deviceType);
                                             }
                                         }
                                     }

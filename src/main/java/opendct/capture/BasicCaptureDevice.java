@@ -22,6 +22,7 @@ import opendct.config.Config;
 import opendct.consumer.DynamicConsumerImpl;
 import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
+import opendct.sagetv.SageTVDeviceType;
 import opendct.sagetv.SageTVManager;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -68,6 +69,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected String encoderPoolName = "";
     protected String encoderLineup = "unknown";
 
+    protected static boolean streamErrors;
     protected boolean offlineChannelScan;
 
     // Pre-pend this value for saving and getting properties related to just this tuner.
@@ -77,7 +79,11 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected final String propertiesDeviceParent;
 
     // Pre-pend this value for saving and getting properties related to all tuners.
-    protected final String propertiesDevicesGlobal = "sagetv.device.global.";
+    protected static final String propertiesDevicesGlobal = "sagetv.device.global.";
+
+    static {
+        streamErrors = Config.getBoolean("error_videos_enabled", true);
+    }
 
     /**
      * Create a new version 3.0 basic capture device.
@@ -192,6 +198,18 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      */
     public CaptureDeviceType getEncoderDeviceType() {
         return encoderDeviceType;
+    }
+
+    /**
+     * This is used to let SageTV know what ways it can request to use this device.
+     * <p/>
+     * Typically the device will be a Digital TV Tuner, but it could also be HDMI for example. This
+     * will provide that option from withing SageTV.
+     *
+     * @return Available devices types.
+     */
+    public SageTVDeviceType[] getSageTVDeviceTypes() {
+        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER };
     }
 
     /**
@@ -415,6 +433,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     @Override
     public void streamError(File sourceFile) {
 
+        if (!streamErrors) {
+            return;
+        }
+
         String currentFile = getRecordFilename();
 
         if (Util.isNullOrEmpty(currentFile)) {
@@ -423,8 +445,16 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             return;
         }
 
-        stopConsuming(true);
-        logger.info("Displaying message in place of the recording '{}'", currentFile);
+        boolean inProgress = getRecordedBytes() > 10485760;
+        if (inProgress) {
+            logger.warn("Appending message since the recording appears to" +
+                    " actually be in progress. Bytes recorded: {}", getRecordedBytes());
+
+            logger.info("Appending message to end of the recording '{}'", currentFile);
+        } else {
+            logger.info("Displaying message in place of the recording '{}'", currentFile);
+            stopConsuming(true);
+        }
 
         sageTVConsumerLock.readLock().lock();
 
@@ -435,8 +465,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 try {
                     long sourceLength = sourceFile.length();
 
-                    Util.copyFile(sourceFile, new File(currentFile), true);
-                    errorBytesStreamed = sourceLength;
+                    if (!inProgress) {
+                        Util.copyFile(sourceFile, new File(currentFile), true);
+                        errorBytesStreamed = sourceLength;
+                    }
 
                     for (int i = 0; i < 7; i++) {
                         Util.appendFile(sourceFile, new File(currentFile));

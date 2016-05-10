@@ -16,6 +16,8 @@
 
 package opendct.capture;
 
+import opendct.capture.services.HTTPCaptureDeviceServices;
+import opendct.capture.services.RTPCaptureDeviceServices;
 import opendct.channel.*;
 import opendct.config.Config;
 import opendct.config.options.BooleanDeviceOption;
@@ -26,6 +28,7 @@ import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
 import opendct.producer.RTPProducer;
 import opendct.producer.SageTVProducer;
+import opendct.sagetv.SageTVDeviceType;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.*;
@@ -370,7 +373,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceType.DIGITAL_TV_TUNER)) {
                 return logger.exit(false);
             }
 
@@ -459,12 +462,12 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize) {
-        return startEncoding(channel, filename, encodingQuality, bufferSize, -1, null);
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType) {
+        return startEncoding(channel, filename, encodingQuality, bufferSize, deviceType, -1, null);
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
 
         tuningThread = Thread.currentThread();
@@ -482,7 +485,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
             // This will automatically create channels for channels that SageTV requests.
             if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN && tvChannel == null) {
-                String vfChannel = channel.substring(0, firstIndex - 1);
+                String vfChannel = channel.substring(0, firstIndex);
                 String vChannel = channel.substring(firstIndex + 1);
 
                 tvChannel = ChannelManager.getChannel(encoderLineup, vChannel);

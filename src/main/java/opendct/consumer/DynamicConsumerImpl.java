@@ -437,6 +437,15 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     }
 
     @Override
+    public void clearBuffer() {
+        SageTVConsumer consumer = sageTVConsumer;
+
+        if (consumer != null) {
+            consumer.clearBuffer();
+        }
+    }
+
+    @Override
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
                 defaultConsumer,

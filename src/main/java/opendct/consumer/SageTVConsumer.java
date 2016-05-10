@@ -62,6 +62,13 @@ public interface SageTVConsumer extends Runnable, DeviceOptions {
     public void write(ByteBuffer buffer) throws IOException;
 
     /**
+     * Clear the buffer. This is used mostly for situations whereby the channel was just tuned as it
+     * has been decided that the data currently buffer should be dumped because it might produce a
+     * bad recording start.
+     */
+    public void clearBuffer();
+
+    /**
      * Set the recording buffer size.
      * <p/>
      * It's up to the consumer to actually implement this. This is needed if you want to be able to

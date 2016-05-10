@@ -1081,3 +1081,37 @@
 > *Removed ability to use the old UPnP detection method and device.
 
 > *Removed the old FFmpeg implementation.
+
+#### 0.5.4-Beta
+> *Added code to make sure if DRM is encountered mid-recording, the
+  recording doesn't get completely wiped. Instead the message will be
+  appended to the end.
+
+> *Added a little more logging around capture device detection and
+> loading.
+
+> *Added handling for when SageTV makes a second request while we are
+> still waiting for the resolution to change.
+
+> *Added option to turn off the copy protection videos. Set
+> error_videos_enabled to false to disable the videos.
+
+> *Added assumption that 0 tuners on an HDHomeRun device should be 2. If
+> this adjustment is needed and wasn't expected, it will appear in the
+> logs.
+
+> *Moved streaming to start before tuning_executable and after
+> pretuning_executable. This results in the streaming starting sooner.
+
+> *Due to the change above now if your script/executable returns the
+> exit code 12000, all currently buffered data will be dumped. This is
+> mostly useful if the channel resolution changed so you don't get a
+> recording containing the event.
+
+> *Fixed a number formatting exception.
+
+> *Fixed multiple calls to get the OS version when it's already a
+> static final value.
+
+> *Internal: Capture devices now understand different device types as
+> requested by SageTV.

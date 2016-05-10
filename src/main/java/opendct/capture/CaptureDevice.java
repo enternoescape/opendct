@@ -20,6 +20,7 @@ import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOptions;
+import opendct.sagetv.SageTVDeviceType;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -153,6 +154,16 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @return The encoder type as an enum of <b>CaptureDeviceType</b>.
      */
     public CaptureDeviceType getEncoderDeviceType();
+
+    /**
+     * This is used to let SageTV know what ways it can request to use this device.
+     * <p/>
+     * Typically the device will be a Digital TV Tuner, but it could also be HDMI for example. This
+     * will provide that option from withing SageTV.
+     *
+     * @return Available devices types.
+     */
+    public SageTVDeviceType[] getSageTVDeviceTypes();
 
     /**
      * This is used to identify devices that are all on the same parent device.
@@ -355,9 +366,11 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @param encodingQuality A string representation of the quality/codec to be used.
      * @param bufferSize      The file size at which point we circle back to the beginning of the file
      *                        again.
+     * @param deviceType      This is the device type that SageTV requested. This is only needed if
+     *                        the device has more than one way to capture video.
      * @return <i>true</i> if the the recording started was successfully.
      */
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize);
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType);
 
     /**
      * According to the consumer being used, can this capture device write to a file directly for
@@ -379,12 +392,14 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @param encodingQuality A string representation of the quality/codec to be used.
      * @param bufferSize      The file size at which point we circle back to the beginning of the file
      *                        again.
+     * @param deviceType      This is the device type that SageTV requested. This is only needed if
+     *                        the device has more than one way to capture video.
      * @param uploadID        This is the uploadID provided by SageTV to permit you to record via the
      *                        MediaServer.
      * @param remoteAddress   This is the IP address of the SageTV server requesting the recording.
      * @return <i>true</i> if the the recording started was successfully.
      */
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress);
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress);
 
     /**
      * According to the consumer being used, can this capture device use uploadID for recordings.

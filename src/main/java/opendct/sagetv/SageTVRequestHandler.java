@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 public class SageTVRequestHandler implements Runnable {
@@ -147,6 +146,9 @@ public class SageTVRequestHandler implements Runnable {
                             //It appears we can have more than one tuner on the same port.
                             String deviceName = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
+                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(deviceName);
+                            deviceName = SageTVDeviceType.trimToName(deviceName, deviceType);
+
                             //This is not a mistake.
                             CaptureDevice captureDevice = getVCaptureDeviceToPoolCaptureDevice(deviceName, true);
 
@@ -189,12 +191,14 @@ public class SageTVRequestHandler implements Runnable {
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else {
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
+
+                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
                         // I guess this is to synchronize time with the server.
@@ -217,10 +221,13 @@ public class SageTVRequestHandler implements Runnable {
                                 if (captureDevice.isReady()) {
                                     if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                         logger.debug("Starting network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                        success = captureDevice.startEncoding(channel, filename, encoding, 0, uploadID, socket.getInetAddress());
+                                        success = captureDevice.startEncoding(
+                                                channel, filename, encoding, 0, deviceType,
+                                                uploadID, socket.getInetAddress());
                                     } else {
                                         logger.debug("Starting network encoder to file name '{}'.", filename);
-                                        success = captureDevice.startEncoding(channel, filename, encoding, 0);
+                                        success = captureDevice.startEncoding(
+                                                channel, filename, encoding, 0, deviceType);
                                     }
 
                                     if (success) {
@@ -234,9 +241,12 @@ public class SageTVRequestHandler implements Runnable {
                                         sendResponse("OK");
 
                                         if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0, uploadID, socket.getInetAddress());
+                                            SageTVTuningMonitor.monitorRecording(
+                                                    captureDevice, channel, encoding, 0, deviceType,
+                                                    uploadID, socket.getInetAddress());
                                         } else {
-                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, 0);
+                                            SageTVTuningMonitor.monitorRecording(
+                                                    captureDevice, channel, encoding, 0, deviceType);
                                         }
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
@@ -267,12 +277,14 @@ public class SageTVRequestHandler implements Runnable {
                         if (tokens.countTokens() == 6) {
                             // V3 has upload file ID
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else {
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
+
+                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
                         long bufferSize = Long.parseLong(tokens.nextToken());
@@ -294,10 +306,13 @@ public class SageTVRequestHandler implements Runnable {
                                 if (captureDevice.isReady()) {
                                     if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                         logger.debug("Starting buffered network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                        success = captureDevice.startEncoding(channel, filename, encoding, bufferSize, uploadID, socket.getInetAddress());
+                                        success = captureDevice.startEncoding(
+                                                channel, filename, encoding, bufferSize, deviceType,
+                                                uploadID, socket.getInetAddress());
                                     } else {
                                         logger.debug("Starting buffered network encoder to file name '{}'.", filename);
-                                        success = captureDevice.startEncoding(channel, filename, encoding, bufferSize);
+                                        success = captureDevice.startEncoding(
+                                                channel, filename, encoding, bufferSize, deviceType);
                                     }
 
                                     if (success) {
@@ -311,9 +326,13 @@ public class SageTVRequestHandler implements Runnable {
                                         sendResponse("OK");
 
                                         if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize, uploadID, socket.getInetAddress());
+                                            SageTVTuningMonitor.monitorRecording(
+                                                    captureDevice, channel, encoding, bufferSize,
+                                                    deviceType, uploadID, socket.getInetAddress());
                                         } else {
-                                            SageTVTuningMonitor.monitorRecording(captureDevice, channel, encoding, bufferSize);
+                                            SageTVTuningMonitor.monitorRecording(
+                                                    captureDevice, channel, encoding, bufferSize,
+                                                    deviceType);
                                         }
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
@@ -342,12 +361,14 @@ public class SageTVRequestHandler implements Runnable {
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 4) {
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else if (tokens.countTokens() == 3) {
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
+
+                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
                         long bufferSize = Long.parseLong(tokens.nextToken());
@@ -367,10 +388,13 @@ public class SageTVRequestHandler implements Runnable {
 
                                 if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                     logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                    success = captureDevice.switchEncoding(channel, filename, bufferSize, uploadID, socket.getInetAddress());
+                                    success = captureDevice.switchEncoding(
+                                            channel, filename, bufferSize,
+                                            uploadID, socket.getInetAddress());
                                 } else {
                                     logger.debug("Switching network encoder to filename '{}'.", filename);
-                                    success = captureDevice.switchEncoding(channel, filename, bufferSize);
+                                    success = captureDevice.switchEncoding(
+                                            channel, filename, bufferSize);
                                 }
                             } catch (Exception e) {
                                 success = false;
@@ -388,7 +412,8 @@ public class SageTVRequestHandler implements Runnable {
                                 sendResponse("OK");
 
                                 if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice, uploadID, socket.getInetAddress());
+                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice,
+                                            uploadID, socket.getInetAddress());
                                 } else {
                                     SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
                                 }
@@ -411,12 +436,14 @@ public class SageTVRequestHandler implements Runnable {
                         String vCaptureDevice = null;
                         if (tokens.countTokens() == 4) {
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                             uploadID = Integer.parseInt(tokens.nextToken());
                         } else if (tokens.countTokens() == 3) {
                             vCaptureDevice = tokens.nextToken();
-                            captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
+
+                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
                         String filename = tokens.nextToken();
@@ -435,7 +462,8 @@ public class SageTVRequestHandler implements Runnable {
 
                                 if (captureDevice.canEncodeUploadID() && uploadID != 0) {
                                     logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                    success = captureDevice.switchEncoding(channel, filename, 0, uploadID, socket.getInetAddress());
+                                    success = captureDevice.switchEncoding(channel, filename, 0,
+                                            uploadID, socket.getInetAddress());
                                 } else {
                                     logger.debug("Switching network encoder to filename '{}'.", filename);
                                     success = captureDevice.switchEncoding(channel, filename, 0);
@@ -456,7 +484,8 @@ public class SageTVRequestHandler implements Runnable {
                                 sendResponse("OK");
 
                                 if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice, uploadID, socket.getInetAddress());
+                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice,
+                                            uploadID, socket.getInetAddress());
                                 } else {
                                     SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
                                 }
@@ -477,6 +506,9 @@ public class SageTVRequestHandler implements Runnable {
                         if (lastRequest.indexOf(' ') != -1) {
                             // V3 encoder
                             vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
+
+                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -494,6 +526,9 @@ public class SageTVRequestHandler implements Runnable {
                         if (lastRequest.indexOf(' ') != -1) {
                             // V3 encoder
                             vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
+
+                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -540,6 +575,9 @@ public class SageTVRequestHandler implements Runnable {
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
                             vCaptureDevice = tokens.nextToken();
+
+                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -565,6 +603,9 @@ public class SageTVRequestHandler implements Runnable {
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
                             vCaptureDevice = tokens.nextToken();
+
+                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -592,6 +633,9 @@ public class SageTVRequestHandler implements Runnable {
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
                             vCaptureDevice = tokens.nextToken();
+
+                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -618,6 +662,8 @@ public class SageTVRequestHandler implements Runnable {
                         String vCaptureDevice = tokens.nextToken();
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
+                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -637,16 +683,18 @@ public class SageTVRequestHandler implements Runnable {
                         //=============================================================================================
                     } else if (lastRequest.equals("PROPERTIES")) {
 
-                        ArrayList<String> properties = SageTVManager.getAllTunerProperties(this);
+                        String properties = SageTVManager.getAllTunerProperties(this);
 
-                        StringBuilder stringBuilder = new StringBuilder();
+                        int size = 0;
 
-                        for (String property : properties) {
-                            stringBuilder.append(property).append("\r\n");
+                        for (char letter : properties.toCharArray()) {
+                            if (letter == '\r') {
+                                size += 1;
+                            }
                         }
 
-                        out.write(String.valueOf(properties.size()) + "\r\n");
-                        out.write(stringBuilder.toString());
+                        out.write(String.valueOf(size) + "\r\n");
+                        out.write(properties);
                         out.flush();
 
                         logger.info("Sent PROPERTIES.");
@@ -665,12 +713,15 @@ public class SageTVRequestHandler implements Runnable {
             }
 
             if (logger.isTraceEnabled()) {
-                logger.trace("Closing connection to {} on port {}", socket.getInetAddress().getHostAddress(), socket.getPort());
+                logger.trace("Closing connection to {} on port {}",
+                        socket.getInetAddress().getHostAddress(), socket.getPort());
             }
         } catch (Exception e) {
             // This kind of exception appears to mostly happen when stopping the SageTV server.
             logger.debug("An unhandled exception was created => ", e);
         } catch (Throwable e) {
+            // This exception usually catches issues like a buffer could not be allocated. If this
+            // exception is being thrown, we have a problem that must be fixed.
             logger.error("An unhandled throwable was created => ", e);
         } finally {
 
@@ -718,16 +769,8 @@ public class SageTVRequestHandler implements Runnable {
             }
         }
 
-        if (virtualDevice != null && virtualDevice.endsWith(" Digital TV Tuner")) {
-            virtualDevice = virtualDevice.substring(0, virtualDevice.length() - " Digital TV Tuner".length());
-        }
-
         if (virtualDevice == null) {
             virtualDevice = "Unknown";
-        }
-
-        if (poolDevice != null && poolDevice.endsWith(" Digital TV Tuner")) {
-            poolDevice = poolDevice.substring(0, poolDevice.length() - " Digital TV Tuner".length());
         }
 
         String newThreadName;

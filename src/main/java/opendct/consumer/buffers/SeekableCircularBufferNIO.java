@@ -108,6 +108,7 @@ public class SeekableCircularBufferNIO {
                 readPasses = 0;
                 bytesOverflow.set(0);
                 bytesLost.set(0);
+                overflowQueue.clear();
                 closed = false;
                 noWrap = false;
             }

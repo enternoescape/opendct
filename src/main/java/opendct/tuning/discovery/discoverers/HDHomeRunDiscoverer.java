@@ -450,7 +450,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
             String uniqueParentName = discoveredDevice.getUniqueDeviceName();
 
-            logger.info("Discovered a new HDHomeRun device '{}'.", uniqueParentName);
+            logger.info("Discovered a new HDHomeRun device '{}' with {} tuners.",
+                    uniqueParentName, discoveredDevice.getTunerCount());
 
             HDHomeRunDiscoveredDeviceParent parentDevice = new HDHomeRunDiscoveredDeviceParent(
                     uniqueParentName,
@@ -634,7 +635,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             loadException = e;
         } catch (CaptureDeviceIgnoredException e) {
             logger.warn("Capture device will not be loaded => {}", e.getMessage());
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logger.error("An unhandled exception happened in loadCaptureDevice while using" +
                     " discoveredDevicesLock => ", e);
         } finally {
@@ -759,7 +760,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             try {
                 broadcastPort.setValue(0);
             } catch (DeviceOptionException e) {
-
+                logger.error("Unable to set 'broadcastPort' device option => ", e);
             }
             Config.setInteger("hdhr.broadcast_port", 0);
 

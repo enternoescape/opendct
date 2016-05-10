@@ -21,6 +21,7 @@ import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.sagetv.SageTVDeviceType;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -52,6 +53,11 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public CaptureDeviceType getEncoderDeviceType() {
         return CaptureDeviceType.UNKNOWN;
+    }
+
+    @Override
+    public SageTVDeviceType[] getSageTVDeviceTypes() {
+        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER };
     }
 
     public String getEncoderParentName() {
@@ -134,7 +140,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         return "-1";
     }
 
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType) {
         return false;
     }
 
@@ -143,7 +149,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         return false;
     }
 
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
         return false;
     }
 

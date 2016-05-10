@@ -30,7 +30,7 @@ import static org.bytedeco.javacpp.avfilter.avfilter_register_all;
 import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
 
-public abstract class FFmpegUtil {
+public class FFmpegUtil {
     private static final Logger logger = LogManager.getLogger(FFmpegUtil.class);
 
     public static final FFmpegLogger logCallback = new FFmpegLogger();
@@ -106,16 +106,43 @@ public abstract class FFmpegUtil {
         int numPrograms = ic.nb_programs();
 
         for (int programIndex = 0; programIndex < numPrograms; programIndex++) {
-            if ( ic.programs(programIndex).id() == desiredProgram) {
-                AVProgram program = ic.programs(programIndex);
+
+            AVProgram program = ic.programs(programIndex);
+
+            if (program == null || program.isNull()) {
+                logger.info("program index {} is null", programIndex);
+                continue;
+            }
+
+            if ( program.id() == desiredProgram) {
                 IntPointer streamIndexArray = program.stream_index();
+
+                if (streamIndexArray == null || streamIndexArray.isNull()) {
+                    logger.info("program stream index {} is null", programIndex);
+                    continue;
+                }
+
                 int streamIndexArrayLength = program.nb_stream_indexes();
                 boolean foundAllCodecs = true;
 
                 for (int streamIndexArrayIndex = 0; streamIndexArrayIndex < streamIndexArrayLength; streamIndexArrayIndex++) {
                     int streamIndex = streamIndexArray.get(streamIndexArrayIndex);
                     AVStream st = ic.streams(streamIndex);
+
+                    if (st == null || st.isNull()) {
+                        logger.info("stream index {} is null", streamIndex);
+                        foundAllCodecs = false;
+                        continue;
+                    }
+
                     avcodec.AVCodecContext avctx = st.codec();
+
+                    if (avctx == null || avctx.isNull()) {
+                        logger.info("AVCodecContext for stream index {} is null", streamIndex);
+                        foundAllCodecs = false;
+                        continue;
+                    }
+
                     int codecType = avctx.codec_type();
                     if (codecType == AVMEDIA_TYPE_AUDIO && (avctx.channels() == 0 || avctx.sample_rate() == 0)) {
                         logger.info("Audio stream " + streamIndex + " has no channels or no sample rate.");
@@ -135,13 +162,13 @@ public abstract class FFmpegUtil {
     }
 
     public static avcodec.AVCodecContext getCodecContext(AVStream inputStream) {
-        if (inputStream == null) {
+        if (inputStream == null || inputStream.isNull()) {
             return null;
         }
 
         avcodec.AVCodecContext codecCtxInput = inputStream.codec();
 
-        if (codecCtxInput == null) {
+        if (codecCtxInput == null || codecCtxInput.isNull()) {
             return null;
         }
 
@@ -218,26 +245,26 @@ public abstract class FFmpegUtil {
 
     public static AVStream addCopyStreamToContext(AVFormatContext outputContext, AVStream in_stream) {
 
-        if (outputContext == null) {
+        if (outputContext == null || outputContext.isNull()) {
             logger.error("Codec output context was not allocated");
             return null;
         }
 
-        if (in_stream == null) {
+        if (in_stream == null || in_stream.isNull()) {
             logger.error("Stream input context was not allocated");
             return null;
         }
 
         AVCodecContext codecCtxInput = in_stream.codec();
 
-        if (codecCtxInput == null) {
+        if (codecCtxInput == null || codecCtxInput.isNull()) {
             logger.error("Codec input context was not allocated");
             return null;
         }
 
         AVStream out_stream = avformat_new_stream(outputContext, codecCtxInput.codec());
 
-        if (out_stream == null) {
+        if (out_stream == null || out_stream.isNull()) {
             logger.error("Could not allocate stream");
             return null;
         }

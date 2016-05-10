@@ -48,9 +48,9 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     private IntegerDeviceOption tuningDelay;
     private StringDeviceOption customChannels;
     private IntegerDeviceOption padChannel;
-    private BooleanDeviceOption resolutionChangeDelay;
+    /*private BooleanDeviceOption resolutionChangeDelay;
     private StringDeviceOption resolutionChangeUsername;
-    private StringDeviceOption resolutionChangePassword;
+    private StringDeviceOption resolutionChangePassword;*/
 
     GenericHttpDiscoveredDeviceParent parent;
 
@@ -154,7 +154,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                             " set to 3.)"
             );
 
-            resolutionChangeDelay = new BooleanDeviceOption(
+            /*resolutionChangeDelay = new BooleanDeviceOption(
                     Config.getBoolean(propertiesDeviceRoot + "resolution_change_delay", false),
                     false,
                     "Resolution Change Delay",
@@ -179,7 +179,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     propertiesDeviceRoot + "resolution_change_password",
                     "This is the password that the Resolution Change Delay will use to access the" +
                             " capture device."
-            );
+            );*/
 
             Config.mapDeviceOptions(
                     deviceOptions,
@@ -191,10 +191,10 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     tuningExecutable,
                     stoppingExecutable,
                     tuningDelay,
-                    padChannel,
+                    padChannel/*,
                     resolutionChangeDelay,
                     resolutionChangeUsername,
-                    resolutionChangePassword
+                    resolutionChangePassword*/
             );
 
             // This information is used to ensure that the interface that will be used to
@@ -230,10 +230,10 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                 tuningExecutable,
                 stoppingExecutable,
                 tuningDelay,
-                padChannel,
+                padChannel/*,
                 resolutionChangeDelay,
                 resolutionChangeUsername,
-                resolutionChangePassword
+                resolutionChangePassword*/
         };
     }
 
@@ -290,7 +290,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
         return ChannelRangesDeviceOption.parseRanges(altStreamingChannels.getValue());
     }
 
-    public boolean getResolutionChangeDelay() {
+    /*public boolean getResolutionChangeDelay() {
         return resolutionChangeDelay.getBoolean();
     }
 
@@ -300,5 +300,5 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
 
     public String getResolutionChangePassword() {
         return resolutionChangePassword.getValue();
-    }
+    }*/
 }

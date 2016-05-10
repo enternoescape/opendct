@@ -249,7 +249,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         return null;
     }
 
-    private void waitForResolutionChange(String channel) {
+    /*private void waitForResolutionChange(String channel) {
         try {
             String username = device.getResolutionChangeUsername();
             String password = device.getResolutionChangePassword();
@@ -285,7 +285,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         } catch (MalformedURLException e) {
             logger.error("Unable to create a valid URL to get the current status of the device.");
         }
-    }
+    }*/
 
     @Override
     public boolean isLocked() {
@@ -469,9 +469,9 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
-        if (device.getResolutionChangeDelay()) {
+        /*if (device.getResolutionChangeDelay()) {
             waitForResolutionChange(channel);
-        }
+        }*/
 
         if (returnCode == 12000) {
             logger.debug("Clearing buffer.");

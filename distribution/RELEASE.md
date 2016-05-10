@@ -1097,11 +1097,11 @@
 > error_videos_enabled to false to disable the videos.
 
 > *Added assumption that 0 tuners on an HDHomeRun device should be 2. If
-> this adjustment is needed wand wasn't expected, it will appear in the
+> this adjustment is needed and wasn't expected, it will appear in the
 > logs.
 
 > *Moved streaming to start before tuning_executable and after
-> pretuning_executable. This results in the picture starting sooner.
+> pretuning_executable. This results in the streaming starting sooner.
 
 > *Due to the change above now if your script/executable returns the
 > exit code 12000, all currently buffered data will be dumped. This is

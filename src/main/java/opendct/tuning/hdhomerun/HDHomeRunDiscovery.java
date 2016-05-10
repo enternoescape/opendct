@@ -376,7 +376,7 @@ public class HDHomeRunDiscovery implements Runnable {
                         }
 
                         // Silicondust fixes for old firmware.
-                        if (device.getTunerCount() == 0) {
+                        if (device.getTunerCount() <= 0) {
                             switch (device.getDeviceId() >> 20) {
                                 case 0x102:
                                     device.setTunerCount(1);
@@ -389,11 +389,13 @@ public class HDHomeRunDiscovery implements Runnable {
                                     break;
 
                                 default:
+                                    // 2 is a safe bet for most HDHomeRun capture devices.
+                                    device.setTunerCount(2);
                                     try {
-                                        logger.warn("The capture device '{}' does not have any tuners.",
+                                        logger.warn("The capture device '{}' does not have any tuners. Assuming 2.",
                                                 device.getUniqueDeviceName());
                                     } catch (Exception e) {
-                                        logger.warn("The capture device does not have any tuners => ",
+                                        logger.warn("The capture device does not have any tuners. Assuming 2 => ",
                                                 e);
                                     }
                                     break;

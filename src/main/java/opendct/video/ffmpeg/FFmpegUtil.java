@@ -30,7 +30,7 @@ import static org.bytedeco.javacpp.avfilter.avfilter_register_all;
 import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
 
-public abstract class FFmpegUtil {
+public class FFmpegUtil {
     private static final Logger logger = LogManager.getLogger(FFmpegUtil.class);
 
     public static final FFmpegLogger logCallback = new FFmpegLogger();

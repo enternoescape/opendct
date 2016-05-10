@@ -838,6 +838,15 @@
 
 > *Increased re-tune timeout to 16000ms.
 
+> *Fixed counter not resetting on SWITCH for direct FFmpeg consumer.
+
+#### 0.4.49-Stable
+> *Backported the FFmpeg stream detection from 0.5.3.
+
+> *Added some more null pointer checking.
+
+> *Fixed some wording in the consumer factory logging.
+
 #### 0.5.0-Beta
 > *CCExtractor support for FFmpeg transcoder has been added. This
 > feature only works when OpenDCT is configured to write directly (not

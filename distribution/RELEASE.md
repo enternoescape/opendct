@@ -845,4 +845,4 @@
 
 > *Added some more null pointer checking.
 
-> *Fixed a some wording in the consumer factory logging.
+> *Fixed some wording in the consumer factory logging.

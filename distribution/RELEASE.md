@@ -1085,11 +1085,20 @@
 #### 0.5.4-Beta
 > *Added code to make sure if DRM is encountered mid-recording, the
   recording doesn't get completely wiped. Instead the message will be
-  appended to the end. This situation has not happened yet, but why wait
-  until it does.
+  appended to the end.
+
+> *Added a little more logging around capture device detection and
+> loading.
 
 > *Added handling for when SageTV makes a second request while we are
 > still waiting for the resolution to change.
+
+> *Added option to turn off the copy protection videos. Set
+> error_videos_enabled to false to disable the videos.
+
+> *Added assumption that 0 tuners on an HDHomeRun device should be 2. If
+> this adjustment is needed wand wasn't expected, it will appear in the
+> logs.
 
 > *Moved streaming to start before tuning_executable and after
 > pretuning_executable. This results in the picture starting sooner.
@@ -1099,13 +1108,10 @@
 > mostly useful if the channel resolution changed so you don't get a
 > recording containing the event.
 
-> *Internal: Capture devices now understand different device types as
-> requested by SageTV.
-
 > *Fixed a number formatting exception.
 
-> *Fixed multiple calles to get the OS version when it's already a
+> *Fixed multiple calls to get the OS version when it's already a
 > static final value.
 
-> *Added a little more logging around capture device detection and
-> loading. 
+> *Internal: Capture devices now understand different device types as
+> requested by SageTV.

@@ -69,6 +69,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected String encoderPoolName = "";
     protected String encoderLineup = "unknown";
 
+    protected static boolean streamErrors;
     protected boolean offlineChannelScan;
 
     // Pre-pend this value for saving and getting properties related to just this tuner.
@@ -78,7 +79,11 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected final String propertiesDeviceParent;
 
     // Pre-pend this value for saving and getting properties related to all tuners.
-    protected final String propertiesDevicesGlobal = "sagetv.device.global.";
+    protected static final String propertiesDevicesGlobal = "sagetv.device.global.";
+
+    static {
+        streamErrors = Config.getBoolean("error_videos_enabled", true);
+    }
 
     /**
      * Create a new version 3.0 basic capture device.
@@ -427,6 +432,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
     @Override
     public void streamError(File sourceFile) {
+
+        if (!streamErrors) {
+            return;
+        }
 
         String currentFile = getRecordFilename();
 

@@ -839,3 +839,8 @@
 > *Increased re-tune timeout to 16000ms.
 
 > *Fixed counter not resetting on SWITCH for direct FFmpeg consumer.
+
+#### 0.4.49-Stable
+> *Backported the FFmpeg stream detection from 0.5.3.
+
+> *Fixed a some wording in the consumer factory logging.

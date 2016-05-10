@@ -52,7 +52,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private final GenericHttpDiscoveredDeviceParent parent;
     private final GenericHttpDiscoveredDevice device;
 
-    private final Map<String, String> resolutionMap = new ConcurrentHashMap<>();
+    //private final Map<String, String> resolutionMap = new ConcurrentHashMap<>();
     private final Map<String, URL> channelMap = new ConcurrentHashMap<>();
     private final static Runtime runtime = Runtime.getRuntime();
     private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
@@ -106,7 +106,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
     @Override
     public SageTVDeviceType[] getSageTVDeviceTypes() {
-        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER, SageTVDeviceType.COMPONENT };
+        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER, SageTVDeviceType.HDMI };
     }
 
     private URL getURL(String channel) throws MalformedURLException {

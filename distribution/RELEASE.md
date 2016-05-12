@@ -1100,7 +1100,7 @@
 > loading.
 
 > *Added handling for when SageTV makes a second request while we are
-> still waiting for the resolution to change.
+> still waiting for the resolution to change on HTTP capture devices.
 
 > *Added option to turn off the copy protection videos. Set
 > error_videos_enabled to false to disable the videos.
@@ -1108,6 +1108,10 @@
 > *Added assumption that 0 tuners on an HDHomeRun device should be 2. If
 > this adjustment is needed and wasn't expected, it will appear in the
 > logs.
+
+> *Added HTTP HDMI capture device to the device presented to SageTV. In
+> a future release of SageTV 9, you will be able to use the local SageTV
+> server tuning plugins instead of the tuning executables.  
 
 > *Moved streaming to start before tuning_executable and after
 > pretuning_executable. This results in the streaming starting sooner.

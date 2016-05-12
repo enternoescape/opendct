@@ -706,11 +706,12 @@ public class SageTVManager implements PowerEventListener {
         for (SageTVDeviceType type : types) {
             if (type != SageTVDeviceType.DIGITAL_TV_TUNER) {
                 analogCapture = true;
+            } else {
+                stringBuilder.append(prefix).append(type.INDEX).append("/0/encode_digital_tv_as_program_stream=false").append("\r\n");
             }
 
             stringBuilder.append(prefix).append(type.INDEX).append("/0/brightness=-1").append("\r\n");
             stringBuilder.append(prefix).append(type.INDEX).append("/0/contrast=-1").append("\r\n");
-            stringBuilder.append(prefix).append(type.INDEX).append("/0/encode_digital_tv_as_program_stream=false").append("\r\n");
             stringBuilder.append(prefix).append(type.INDEX).append("/0/hue=-1").append("\r\n");
             stringBuilder.append(prefix).append(type.INDEX).append("/0/last_channel=").append("\r\n");
             stringBuilder.append(prefix).append(type.INDEX).append("/0/saturation=-1").append("\r\n");
@@ -726,7 +727,8 @@ public class SageTVManager implements PowerEventListener {
         stringBuilder.append(prefix).append("broadcast_standard=\r\n");
         stringBuilder.append(prefix).append("capture_config=").append(MPEG_PURE_CAPTURE_MASK).append("\r\n");
         if (analogCapture) {
-            stringBuilder.append(prefix).append("default_device_quality=Great\r\n");
+            // This is needed to get a Transport Steam. Otherwise a Program Stream will be expected.
+            stringBuilder.append(prefix).append("default_device_quality=Great-H.264\r\n");
         } else {
             stringBuilder.append(prefix).append("default_device_quality=\r\n");
         }

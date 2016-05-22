@@ -274,6 +274,10 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
         return pretuneExecutable.getValue();
     }
 
+    public String getStoppingExecutable() {
+        return stoppingExecutable.getValue();
+    }
+
     public String getCustomChannels() {
         return customChannels.getValue();
     }

@@ -219,16 +219,10 @@ public class SageTVRequestHandler implements Runnable {
                                 SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
                                 if (captureDevice.isReady()) {
-                                    if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                        logger.debug("Starting network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                        success = captureDevice.startEncoding(
-                                                channel, filename, encoding, 0, deviceType,
-                                                uploadID, socket.getInetAddress());
-                                    } else {
-                                        logger.debug("Starting network encoder to file name '{}'.", filename);
-                                        success = captureDevice.startEncoding(
-                                                channel, filename, encoding, 0, deviceType);
-                                    }
+                                    logger.debug("Starting network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
+                                    success = captureDevice.startEncoding(
+                                            channel, filename, encoding, 0, deviceType,
+                                            uploadID, socket.getInetAddress());
 
                                     if (success) {
                                         currentRecordFile = filename;
@@ -240,14 +234,9 @@ public class SageTVRequestHandler implements Runnable {
 
                                         sendResponse("OK");
 
-                                        if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                            SageTVTuningMonitor.monitorRecording(
-                                                    captureDevice, channel, encoding, 0, deviceType,
-                                                    uploadID, socket.getInetAddress());
-                                        } else {
-                                            SageTVTuningMonitor.monitorRecording(
-                                                    captureDevice, channel, encoding, 0, deviceType);
-                                        }
+                                        SageTVTuningMonitor.monitorRecording(
+                                                captureDevice, channel, encoding, 0, deviceType,
+                                                uploadID, socket.getInetAddress());
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
                                         logger.error("Encoder device is unable to start.");
@@ -304,16 +293,10 @@ public class SageTVRequestHandler implements Runnable {
                                 SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
                                 if (captureDevice.isReady()) {
-                                    if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                        logger.debug("Starting buffered network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                        success = captureDevice.startEncoding(
-                                                channel, filename, encoding, bufferSize, deviceType,
-                                                uploadID, socket.getInetAddress());
-                                    } else {
-                                        logger.debug("Starting buffered network encoder to file name '{}'.", filename);
-                                        success = captureDevice.startEncoding(
-                                                channel, filename, encoding, bufferSize, deviceType);
-                                    }
+                                    logger.debug("Starting buffered network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
+                                    success = captureDevice.startEncoding(
+                                            channel, filename, encoding, bufferSize, deviceType,
+                                            uploadID, socket.getInetAddress());
 
                                     if (success) {
                                         currentRecordFile = filename;
@@ -325,15 +308,9 @@ public class SageTVRequestHandler implements Runnable {
 
                                         sendResponse("OK");
 
-                                        if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                            SageTVTuningMonitor.monitorRecording(
-                                                    captureDevice, channel, encoding, bufferSize,
-                                                    deviceType, uploadID, socket.getInetAddress());
-                                        } else {
-                                            SageTVTuningMonitor.monitorRecording(
-                                                    captureDevice, channel, encoding, bufferSize,
-                                                    deviceType);
-                                        }
+                                        SageTVTuningMonitor.monitorRecording(
+                                                captureDevice, channel, encoding, bufferSize,
+                                                deviceType, uploadID, socket.getInetAddress());
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
                                         logger.error("Encoder device is unable to start.");
@@ -386,16 +363,10 @@ public class SageTVRequestHandler implements Runnable {
                                 // file.
                                 SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
-                                if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                    logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                    success = captureDevice.switchEncoding(
-                                            channel, filename, bufferSize,
-                                            uploadID, socket.getInetAddress());
-                                } else {
-                                    logger.debug("Switching network encoder to filename '{}'.", filename);
-                                    success = captureDevice.switchEncoding(
-                                            channel, filename, bufferSize);
-                                }
+                                logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
+                                success = captureDevice.switchEncoding(
+                                        channel, filename, bufferSize,
+                                        uploadID, socket.getInetAddress());
                             } catch (Exception e) {
                                 success = false;
                                 logger.error("Unexpected exception while switching network encoder to filename '{}' => ", filename, e);
@@ -411,12 +382,8 @@ public class SageTVRequestHandler implements Runnable {
 
                                 sendResponse("OK");
 
-                                if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice,
-                                            uploadID, socket.getInetAddress());
-                                } else {
-                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
-                                }
+                                SageTVTuningMonitor.resumeMonitorRecording(captureDevice,
+                                        uploadID, socket.getInetAddress());
                             } else {
                                 sendResponse("ERROR Device Switch Failed");
                                 logger.error("Encoder device is unable to switch.");
@@ -460,14 +427,9 @@ public class SageTVRequestHandler implements Runnable {
                                 // file.
                                 SageTVTuningMonitor.pauseMonitorRecording(captureDevice);
 
-                                if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                    logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
-                                    success = captureDevice.switchEncoding(channel, filename, 0,
-                                            uploadID, socket.getInetAddress());
-                                } else {
-                                    logger.debug("Switching network encoder to filename '{}'.", filename);
-                                    success = captureDevice.switchEncoding(channel, filename, 0);
-                                }
+                                logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
+                                success = captureDevice.switchEncoding(channel, filename, 0,
+                                        uploadID, socket.getInetAddress());
                             } catch (Exception e) {
                                 success = false;
                                 logger.error("Unexpected exception while switching network encoder to filename '{}' => ", filename, e);
@@ -483,12 +445,8 @@ public class SageTVRequestHandler implements Runnable {
 
                                 sendResponse("OK");
 
-                                if (captureDevice.canEncodeUploadID() && uploadID != 0) {
-                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice,
-                                            uploadID, socket.getInetAddress());
-                                } else {
-                                    SageTVTuningMonitor.resumeMonitorRecording(captureDevice);
-                                }
+                                SageTVTuningMonitor.resumeMonitorRecording(captureDevice,
+                                        uploadID, socket.getInetAddress());
                             } else {
                                 sendResponse("ERROR Device Switch Failed");
                                 logger.error("Encoder device is unable to switch.");

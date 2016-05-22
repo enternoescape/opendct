@@ -44,13 +44,9 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private static final Logger logger = LogManager.getLogger(RawSageTVConsumerImpl.class);
 
     private final boolean acceptsUploadID = uploadIdEnabledOpt.getBoolean();
-
     private final int minTransferSize = minTransferSizeOpt.getInteger();
-
     private final int maxTransferSize = maxTransferSizeOpt.getInteger();
-
     private final int bufferSize = bufferSizeOpt.getInteger();
-
     private final int rawThreadPriority = threadPriorityOpt.getInteger();
 
     // Atomic because long values take two clocks to process in 32-bit. We could get incomplete
@@ -73,6 +69,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private long stvRecordBufferSize = 0;
     private AtomicLong stvRecordBufferPos = new AtomicLong(0);
 
+    private int switchAttempts = 100;
     private volatile boolean switchFile = false;
     private final Object switchMonitor = new Object();
 
@@ -94,7 +91,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public void run() {
-        logger.entry();
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("Raw consumer is already running.");
         }
@@ -209,12 +205,28 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                 try {
                     if (uploadEnabled) {
                         if (switchFile) {
-                            int switchIndex = VideoUtil.getTsVideoPatStartByte(
-                                    streamBuffer,
-                                    false
-                            );
+                            int switchIndex;
+
+                            if (switchAttempts-- > 0) {
+                                switchIndex = VideoUtil.getTsVideoRandomAccessIndicator(
+                                        streamBuffer,
+                                        false
+                                );
+                            } else {
+                                if (switchAttempts == -1) {
+                                    logger.warn("Stream does not appear to contain any random access" +
+                                            " indicators. Using the nearest PES packet.");
+                                }
+
+                                switchIndex = VideoUtil.getTsVideoPesStartByte(
+                                        streamBuffer,
+                                        false
+                                );
+                            }
 
                             if (switchIndex > -1) {
+                                switchAttempts = 100;
+
                                 synchronized (switchMonitor) {
                                     int lastBytesToStream = 0;
                                     if (switchIndex > streamBuffer.position()) {
@@ -234,7 +246,9 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
                                     bytesStreamed.addAndGet(lastBytesToStream);
 
-                                    if (!nioSageTVUploadID.switchUpload(
+                                    nioSageTVUploadID.endUpload(true);
+                                    nioSageTVUploadID.reset();
+                                    if (!nioSageTVUploadID.startUpload(uploadIDSocket,
                                             switchRecordingFilename, switchUploadID)) {
 
                                         logger.error("Raw consumer did not receive OK from SageTV" +
@@ -412,18 +426,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         this.stvRecordBufferSize = bufferSize;
     }
 
-    public void setRecordBufferPosition(long bufferPosition) {
-        stvRecordBufferPos.set(bufferPosition);
-    }
-
-    public long getRecordBufferPosition() {
-        return stvRecordBufferPos.get();
-    }
-
-    public boolean canBuffer() {
-        return true;
-    }
-
     public boolean canSwitch() {
         return true;
     }
@@ -479,7 +481,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public synchronized boolean switchStreamToUploadID(String filename, long bufferSize, int uploadId) {
-        logger.entry(filename, uploadId);
+        logger.entry(filename, bufferSize, uploadId);
 
         logger.info("SWITCH to '{}' via uploadID '{}' was requested.", filename, uploadId);
 
@@ -678,7 +680,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                 Config.setInteger("consumer.raw.min_transfer_size", 65536);
                 Config.setInteger("consumer.raw.max_transfer_size", 1048476);
                 Config.setInteger("consumer.raw.stream_buffer_size", 2097152);
-                Config.setInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2);
+                Config.setInteger("consumer.raw.thread_priority", Thread.MAX_PRIORITY - 2);
                 Config.setInteger("consumer.raw.upload_id_port", 7818);
                 continue;
             }

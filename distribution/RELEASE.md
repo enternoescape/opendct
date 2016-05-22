@@ -1128,3 +1128,15 @@
 
 > *Internal: Capture devices now understand different device types as
 > requested by SageTV.
+
+#### 0.5.5-Beta
+> *Re-worked how capture devices determine if the MediaServer will be
+> used or not. This will allow for DynamicConsumerImpl to be more
+> faithful to the individual consumer preference.
+
+> *Devices no longer need to be re-detected after standby. They are now 
+> re-loaded immediately and detection is only used to verify that the IP
+> addresses have not changed.
+
+> *Fixed stopping executable not running as expected for Generic HTTP
+> capture device.

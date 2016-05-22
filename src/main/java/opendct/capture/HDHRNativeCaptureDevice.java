@@ -58,6 +58,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     private final AtomicBoolean locked = new AtomicBoolean(false);
     private final Object exclusiveLock = new Object();
     private Thread tuningThread;
+    private final Frequency lookupMap[];
 
     private final Map<String, DeviceOption> deviceOptions;
     private BooleanDeviceOption forceExternalUnlock;
@@ -167,9 +168,14 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
                         setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
                         break;
-
-                    case US_IRC:
-                    case US_HRC:
+                    case EU_BCAST:
+                        encoderDeviceType = CaptureDeviceType.DVBT_HDHOMERUN;
+                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-t"));
+                        break;
+                    case EU_CABLE:
+                        encoderDeviceType = CaptureDeviceType.DVBC_HDHOMERUN;
+                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-c"));
+                        break;
                     case UNKNOWN:
                         throw new CaptureDeviceLoadException("The program currently does not" +
                                 " know how to use the channel map '" + channelMapName + "'.");
@@ -217,6 +223,20 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             }
 
             httpServices = new HTTPCaptureDeviceServices();
+        }
+
+        switch (encoderDeviceType) {
+            case DVBC_HDHOMERUN:
+                lookupMap = Frequencies.EU_CABLE;
+                break;
+            case DVBT_HDHOMERUN:
+                lookupMap = Frequencies.EU_BCAST;
+                break;
+            case ATSC_HDHOMERUN:
+                lookupMap = Frequencies.US_BCAST;
+                break;
+            default:
+                lookupMap = Frequencies.US_CABLE;
         }
 
         rtpServices = new RTPCaptureDeviceServices(encoderName, propertiesDeviceParent);
@@ -479,7 +499,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             dotChannel = channel.substring(firstIndex + 1).replace("-", ".");
 
             // This will automatically create channels for channels that SageTV requests.
-            if (encoderDeviceType == CaptureDeviceType.ATSC_HDHOMERUN && tvChannel == null) {
+            if (encoderDeviceType != CaptureDeviceType.DCT_HDHOMERUN && tvChannel == null) {
                 String vfChannel = channel.substring(0, firstIndex);
                 String vChannel = channel.substring(firstIndex + 1);
 
@@ -492,10 +512,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 try {
                     int fChannel = Integer.parseInt(vfChannel);
 
-                    if (fChannel < 2 || fChannel > Frequencies.US_BCAST.length ) {
-                        logger.error("The channel number {} is not a valid ATSC channel number.", fChannel);
+                    if (fChannel < 2 || fChannel > lookupMap.length ) {
+                        logger.error("The channel number {} is not a valid {} channel number.", fChannel, lookupMap[5].STANDARD);
                     } else {
-                        tvChannel.setFrequency(Frequencies.US_BCAST[fChannel].FREQUENCY);
+                        tvChannel.setFrequency(lookupMap[fChannel].FREQUENCY);
                     }
                 } catch (NumberFormatException e) {
                     logger.error("Unable to parse '{}' into int => ", vfChannel, e);
@@ -619,6 +639,8 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     return logger.exit(false);
                 }
                 break;
+            case DVBC_HDHOMERUN:
+            case DVBT_HDHOMERUN:
             case ATSC_HDHOMERUN:
                 try {
                     if (tvChannel != null) {
@@ -1064,13 +1086,15 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         int fChannel;
 
         switch (encoderDeviceType) {
+            case DVBC_HDHOMERUN:
+            case DVBT_HDHOMERUN:
             case ATSC_HDHOMERUN:
-                if (channelNumber <= 1 || channelNumber > Frequencies.US_BCAST.length) {
+                if (channelNumber <= 1 || channelNumber > lookupMap.length) {
                     logger.error("legacyTuneChannel: The channel number {} is not a valid ATSC channel.");
                     return false;
                 }
 
-                fChannel = Frequencies.US_BCAST[channelNumber].FREQUENCY;
+                fChannel = lookupMap[channelNumber].FREQUENCY;
                 break;
 
             default:
@@ -1299,8 +1323,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         String returnValue = "ERROR";
 
         switch (encoderDeviceType) {
+            case DVBC_HDHOMERUN:
+            case DVBT_HDHOMERUN:
             case ATSC_HDHOMERUN:
-                if (!isTuneLegacy()) {
+                if (!isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
                     String nextChannel = super.scanChannelInfo(channel, false);
 
                     int firstDash = nextChannel.indexOf("-");
@@ -1351,14 +1377,14 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                 int timeout = 12;
 
-                if (scanChannelIndex++ > Frequencies.US_BCAST.length) {
+                if (scanChannelIndex++ > lookupMap.length) {
                     return "ERROR";
                 }
 
                 try {
                     tuner.setChannel(
                             "auto",
-                            Frequencies.US_BCAST[scanChannelIndex].FREQUENCY,
+                            lookupMap[scanChannelIndex].FREQUENCY,
                             false);
 
                 } catch (IOException e) {
@@ -1421,6 +1447,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     StringBuilder stringBuilder = new StringBuilder();
 
                     for (HDHomeRunProgram program : programs) {
+                        if (program.ENCRYPTED) {
+                            continue;
+                        }
+
                         stringBuilder.append(scanChannelIndex)
                                 .append("-")
                                 .append(program.CHANNEL.replace(".", "-"))
@@ -1603,8 +1633,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         switch (encoderDeviceType) {
             case DCT_HDHOMERUN:
             case QAM_HDHOMERUN:
+            case DVBC_HDHOMERUN:
                 return BroadcastStandard.QAM256;
             case ATSC_HDHOMERUN:
+            case DVBT_HDHOMERUN:
                 return BroadcastStandard.ATSC;
         }
 

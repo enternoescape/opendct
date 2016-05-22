@@ -20,8 +20,6 @@ public class Frequency {
     public final FrequencyType STANDARD;
     public final int CHANNEL;
     public final int FREQUENCY;
-    public final int LOW_FREQUENCY;
-    public final int HIGH_FREQUENCY;
 
     /**
      * Create a new frequency.
@@ -30,14 +28,11 @@ public class Frequency {
      *
      * @param standard The video standard that should be in use on this frequency.
      * @param channel The channel number associated with this frequency.
-     * @param lowFrequency The lower edge of this frequency in Hz.
-     * @param highFrequency The upper edge of this frequency in Hz.
+     * @param frequency The center frequency in Hz.
      */
-    public Frequency(FrequencyType standard, int channel, int lowFrequency, int highFrequency) {
+    public Frequency(FrequencyType standard, int channel, int frequency) {
         STANDARD = standard;
         CHANNEL = channel;
-        LOW_FREQUENCY = lowFrequency;
-        HIGH_FREQUENCY = highFrequency;
-        FREQUENCY = (LOW_FREQUENCY + HIGH_FREQUENCY) / 2;
+        FREQUENCY = frequency;
     }
 }

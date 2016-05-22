@@ -55,7 +55,9 @@ public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDevicePare
                                 " on CableCARD devices.",
                         "",
                         "us-cable",
-                        "us-bcast"
+                        "us-bcast",
+                        "eu-cable",
+                        "eu-bcast"
                 );
 
                 Config.mapDeviceOptions(

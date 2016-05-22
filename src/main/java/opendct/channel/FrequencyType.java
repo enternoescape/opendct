@@ -18,5 +18,7 @@ package opendct.channel;
 
 public enum  FrequencyType {
     US_BCAST,
-    US_CABLE
+    US_CABLE,
+    EU_BCAST,
+    EU_CABLE
 }

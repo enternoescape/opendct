@@ -355,32 +355,6 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public String getLastChannel();
 
     /**
-     * Start a new recording directly to the provided file.
-     * <p/>
-     * This method must work correctly as a bare minimum for a capture device to be able to stream
-     * anything to SageTV.
-     *
-     * @param channel         A string representation of the channel to be tuned. Any needed translations
-     *                        must be implemented by the capture device.
-     * @param filename        This is the full path and filename to be used for recording.
-     * @param encodingQuality A string representation of the quality/codec to be used.
-     * @param bufferSize      The file size at which point we circle back to the beginning of the file
-     *                        again.
-     * @param deviceType      This is the device type that SageTV requested. This is only needed if
-     *                        the device has more than one way to capture video.
-     * @return <i>true</i> if the the recording started was successfully.
-     */
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType);
-
-    /**
-     * According to the consumer being used, can this capture device write to a file directly for
-     * recordings.
-     *
-     * @return <i>true</i> if the consumer being used supports direct file writing.
-     */
-    public boolean canEncodeFilename();
-
-    /**
      * Start a new recording using the provided uploadID.
      * <p/>
      * This method must work correctly as a bare minimum for a capture device to be able to stream
@@ -400,32 +374,6 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @return <i>true</i> if the the recording started was successfully.
      */
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress);
-
-    /**
-     * According to the consumer being used, can this capture device use uploadID for recordings.
-     *
-     * @return <i>true</i> if the consumer being used supports uploadID file writing.
-     */
-    public boolean canEncodeUploadID();
-
-    /**
-     * Switch out the current recording and transition into a new recording.
-     * <p/>
-     * Typically you will pass this request on to the consumer. It will need to determine a good
-     * place within the stream to stop writing to the current stream and to start writing to the new
-     * stream. The streams should be able to be combined and playback smoothly. In the case of
-     * MPEG-TS is is recommended to start the new stream with an I frame. This should be implemented
-     * by the consumer, but it is passed through the capture device in case we need to handle a
-     * channel change too.
-     *
-     * @param channel    The channel number should not be getting changed, but this is here because
-     *                   SageTV could use it.
-     * @param filename   This is the new filename to be used.
-     * @param bufferSize The file size at which point we circle back to the beginning of the file
-     *                   again.
-     * @return <i>true</i> if the transition was successful.
-     */
-    public boolean switchEncoding(String channel, String filename, long bufferSize);
 
     /**
      * Switch out the current recording and transition into a new recording.

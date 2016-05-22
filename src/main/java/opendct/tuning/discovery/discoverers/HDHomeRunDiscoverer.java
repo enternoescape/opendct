@@ -30,6 +30,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -328,6 +329,38 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         this.deviceLoader = deviceLoader;
 
+        // This speeds up resume from standby. If the IP addresses changed while the computer was
+        // sleeping, they will be updated during the next discovery.
+        if (hdHomeRunDevices.size() > 0) {
+            HashSet<HDHomeRunDevice> loadDevices = new HashSet<>(hdHomeRunDevices.size());
+
+            discoveredDevicesLock.writeLock().lock();
+
+            try {
+                for (Map.Entry<Integer, HDHomeRunDevice> device : hdHomeRunDevices.entrySet()) {
+                    loadDevices.add(device.getValue());
+                }
+            } catch (Exception e) {
+                logger.error("startDetection created an unexpected exception while using" +
+                        " discoveredDevicesLock => ", e);
+            } finally {
+                // There's no reason this could create an exception, but why chance that the lock
+                // could get stuck.
+                try {
+                    hdHomeRunDevices.clear();
+                } catch (Exception e) {
+                    logger.error("startDetection created an unexpected exception while using" +
+                            " discoveredDevicesLock => ", e);
+                }
+
+                discoveredDevicesLock.writeLock().unlock();
+            }
+
+            for (HDHomeRunDevice device : loadDevices) {
+                addCaptureDevice(device);
+            }
+        }
+
         try {
             discovery.start(this);
         } catch (IOException e) {
@@ -346,7 +379,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         discoveredDevicesLock.writeLock().lock();
 
         try {
-            hdHomeRunDevices.clear();
             discoveredDevices.clear();
             discoveredParents.clear();
         } catch (Exception e) {
@@ -368,7 +400,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         discoveredDevicesLock.writeLock().lock();
 
         try {
-            hdHomeRunDevices.clear();
             discoveredDevices.clear();
             discoveredParents.clear();
         } catch (Exception e) {

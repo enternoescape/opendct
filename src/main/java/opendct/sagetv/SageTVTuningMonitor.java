@@ -93,27 +93,6 @@ public class SageTVTuningMonitor {
         }
     }
 
-    public static void resumeMonitorRecording(CaptureDevice captureDevice) {
-        queueLock.readLock().lock();
-
-        try {
-            MonitoredRecording monitoredRecording = recordingQueue.get(captureDevice.getEncoderName());
-
-            if (monitoredRecording == null) {
-                logger.warn("Unable to resume the capture device '{}' because it is not currently monitored.",
-                        captureDevice.getEncoderName());
-                return;
-            }
-
-            monitoredRecording.active = true;
-        } catch (Throwable e) {
-            logger.error("Unexpected exception while pausing '{}' => ",
-                    captureDevice.getEncoderName(), e);
-        } finally {
-            queueLock.readLock().unlock();
-        }
-    }
-
     public static void resumeMonitorRecording(CaptureDevice captureDevice, int uploadID, InetAddress remoteAddress) {
         queueLock.readLock().lock();
 
@@ -134,32 +113,6 @@ public class SageTVTuningMonitor {
                     captureDevice.getEncoderName(), e);
         } finally {
             queueLock.readLock().unlock();
-        }
-    }
-
-    public static void monitorRecording(CaptureDevice captureDevice, String channel,
-                                        String encodingQuality, long bufferSize,
-                                        SageTVDeviceType deviceType) {
-
-        Thread checkThread = monitorThread;
-        if (checkThread == null || !checkThread.isAlive()) {
-            logger.debug("Tuning monitor is not running." +
-                    " This recording will not re-tune automatically.");
-            return;
-        }
-
-        queueLock.writeLock().lock();
-
-        try {
-            MonitoredRecording newRecording = new MonitoredRecording(
-                    captureDevice, channel, encodingQuality, bufferSize, deviceType, -1, null);
-
-            recordingQueue.put(captureDevice.getEncoderName(), newRecording);
-        } catch (Throwable e) {
-            logger.error("Unexpected exception while tuning '{}' => ",
-                    captureDevice.getEncoderName(), e);
-        } finally {
-            queueLock.writeLock().unlock();
         }
     }
 
@@ -432,16 +385,10 @@ public class SageTVTuningMonitor {
 
                                     if (!consumerStuck) {
                                         if (captureDevice.isLocked()) {
-                                            if (uploadID > 0) {
-                                                tuned = captureDevice.startEncoding(
-                                                        channel, recording.filename,
-                                                        encodingQuality, bufferSize, deviceType,
-                                                        uploadID, remoteAddress);
-                                            } else {
-                                                tuned = captureDevice.startEncoding(
-                                                        channel, recording.filename,
-                                                        encodingQuality, bufferSize, deviceType);
-                                            }
+                                            tuned = captureDevice.startEncoding(
+                                                    channel, recording.filename,
+                                                    encodingQuality, bufferSize, deviceType,
+                                                    uploadID, remoteAddress);
                                         } else {
                                             logger.info("Re-tune was cancelled because the capture" +
                                                     " device is no longer internally locked." +
@@ -477,16 +424,10 @@ public class SageTVTuningMonitor {
                                         captureDevice.stopEncoding();
 
                                         if (captureDevice.isLocked()) {
-                                            if (uploadID > 0) {
-                                                captureDevice.startEncoding(
-                                                        channel, recording.filename,
-                                                        encodingQuality, bufferSize, deviceType,
-                                                        uploadID, remoteAddress);
-                                            } else {
-                                                captureDevice.startEncoding(
-                                                        channel, recording.filename,
-                                                        encodingQuality, bufferSize, deviceType);
-                                            }
+                                            captureDevice.startEncoding(
+                                                    channel, recording.filename,
+                                                    encodingQuality, bufferSize, deviceType,
+                                                    uploadID, remoteAddress);
                                         }
                                     }
                                 }

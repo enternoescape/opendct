@@ -37,6 +37,12 @@ public class NIOSageTVUploadID {
     private AtomicBoolean uploadInProgress = new AtomicBoolean(false);
     private long autoOffset = 0;
 
+    private boolean stopLogging = false;
+    private boolean remuxEnabled = false;
+    private String containerFormat = "PS";
+    private int program = 0;
+    private int initializeSize = 8192;
+
     private ByteBuffer messageInBuffer = ByteBuffer.allocate(4096);
     private StringBuilder messageInBuilder = new StringBuilder();
     private int messageInBytes = 0;
@@ -99,9 +105,101 @@ public class NIOSageTVUploadID {
             } catch (Exception e) {
                 response = e.getMessage();
             }
+
+            if (remuxEnabled && response.equals("OK")) {
+                setupRemux(containerFormat, program, initializeSize);
+            }
         }
 
         return logger.exit(response != null && response.equals("OK"));
+    }
+
+    public boolean setupRemux(String containerFormat, int program, int initializeSize) throws IOException {
+        boolean returnValue;
+
+        synchronized (uploadLock) {
+            sendMessage("REMUX_SETUP " + containerFormat + " " + program + " " + initializeSize);
+
+            String response;
+
+            try {
+                response = waitForMessage();
+            } catch (Exception e) {
+                response = e.getMessage();
+            }
+
+            returnValue = remuxEnabled = response != null && response.equals("OK");
+
+            if (remuxEnabled) {
+                this.containerFormat = containerFormat;
+                this.program = program;
+                this.initializeSize = initializeSize;
+            }
+        }
+
+        return logger.exit(returnValue);
+    }
+
+    public boolean isRemuxInitialized() throws IOException {
+        boolean returnValue;
+
+        synchronized (uploadLock) {
+            sendMessage("REMUX_CONFIG INIT");
+
+            String response;
+
+            try {
+                response = waitForMessage();
+            } catch (Exception e) {
+                response = e.getMessage();
+            }
+
+            returnValue = response != null && response.equals("TRUE");
+
+            stopLogging = returnValue;
+        }
+
+        return logger.exit(returnValue);
+    }
+
+    public boolean setRemuxBuffer(long bufferSize) throws IOException {
+        boolean returnValue;
+
+        synchronized (uploadLock) {
+            sendMessage("REMUX_CONFIG BUFFER " + bufferSize);
+
+            String response;
+
+            try {
+                response = waitForMessage();
+            } catch (Exception e) {
+                response = e.getMessage();
+            }
+
+            returnValue = response != null && response.equals("TRUE");
+        }
+
+        return logger.exit(returnValue);
+    }
+
+    public long getSize() throws IOException {
+        long returnValue = 0;
+
+        synchronized (uploadLock) {
+            sendMessage("SIZE");
+
+            String response = null;
+
+            try {
+                response = waitForMessage();
+                response = response.substring(0, response.lastIndexOf(" "));
+                returnValue = Long.parseLong(response);
+            } catch (Exception e) {
+                logger.error("Unable to get/parse size '{}' => ", response, e);
+            }
+        }
+
+        return logger.exit(returnValue);
     }
 
     /**
@@ -124,6 +222,8 @@ public class NIOSageTVUploadID {
             }
         }
 
+        stopLogging = false;
+        remuxEnabled = false;
         socketChannel = null;
         uploadFilename = null;
         uploadID = -1;
@@ -134,12 +234,16 @@ public class NIOSageTVUploadID {
 
         synchronized (uploadLock) {
             if (!Thread.currentThread().isInterrupted() && uploadFilename != null && uploadID > 0 && currentServerSocket != null) {
-                startUpload(currentServerSocket, uploadFilename, uploadID, autoOffset);
+                SocketAddress address = currentServerSocket;
+                currentServerSocket = null;
+
+                startUpload(address, uploadFilename, uploadID, autoOffset);
             } else {
                 throw new IOException("The upload cannot be resumed" +
                         " because the upload was never started.");
             }
         }
+
         logger.exit();
     }
 
@@ -151,6 +255,29 @@ public class NIOSageTVUploadID {
         }
 
         return logger.exit(false);
+    }
+
+    public boolean switchRemux(String uploadFilename, int uploadID) throws IOException {
+        logger.entry(uploadFilename, uploadID);
+        boolean returnValue = false;
+        stopLogging = false;
+
+        synchronized (uploadLock) {
+            autoOffset = 0;
+            sendMessage("REMUX_SWITCH " + uploadFilename + " " + uploadID);
+
+            String response;
+
+            try {
+                response = waitForMessage();
+            } catch (Exception e) {
+                response = e.getMessage();
+            }
+
+            returnValue = remuxEnabled = response != null && response.equals("OK");
+        }
+
+        return logger.exit(returnValue);
     }
 
     public boolean switchUpload(String uploadFilename, int uploadID) throws IOException {
@@ -268,6 +395,7 @@ public class NIOSageTVUploadID {
      */
     public boolean endUpload(boolean disconnect) throws IOException {
         String response = null;
+        stopLogging = false;
 
         synchronized (uploadLock) {
             sendMessage("CLOSE");
@@ -296,7 +424,7 @@ public class NIOSageTVUploadID {
         logger.entry(message);
 
         if (socketChannel != null && socketChannel.isConnected()) {
-            if (message.startsWith("WRITE ")) {
+            if (!stopLogging || message.startsWith("WRITE ")) {
                 logger.trace("Sending '{}' to SageTV server...", message);
             } else {
                 logger.info("Sending '{}' to SageTV server...", message);
@@ -321,7 +449,6 @@ public class NIOSageTVUploadID {
     private String waitForMessage() throws IOException {
         logger.entry();
         messageInBuilder.setLength(0);
-        byte toString[] = new byte[1];
 
         // This should keep stale messages from coming in.
         if (System.currentTimeMillis() > messageInTimeout) {
@@ -335,7 +462,9 @@ public class NIOSageTVUploadID {
 
         if (socketChannel != null && socketChannel.isConnected()) {
             while (messageReceivedTimeout > System.currentTimeMillis()) {
-                logger.debug("messageInBytes = {}", messageInBytes);
+                if (!stopLogging) {
+                    logger.debug("messageInBytes = {}", messageInBytes);
+                }
                 if (messageInBytes > 0) {
                     while (messageInBuffer.hasRemaining()) {
                         byte readChar = messageInBuffer.get();
@@ -350,18 +479,21 @@ public class NIOSageTVUploadID {
                             messageInBytes = messageInBytes - (messageInBuilder.length() + 2);
 
                             String returnString = messageInBuilder.toString();
-                            logger.info("Received message from SageTV server '{}'", returnString);
+                            if (!stopLogging) {
+                                logger.info("Received message from SageTV server '{}'", returnString);
+                            }
                             return logger.exit(returnString);
                         } else {
-                            toString[0] = readChar;
-                            messageInBuilder.append(new String(toString, Config.STD_BYTE));
+                            messageInBuilder.append((char)readChar);
                         }
                     }
                 } else {
                     messageInBuffer.clear();
                     messageInBytes = socketChannel.read(messageInBuffer);
                     messageInBuffer.flip();
-                    logger.debug("Received {} bytes from SageTV server.", messageInBytes);
+                    if (!stopLogging) {
+                        logger.debug("Received {} bytes from SageTV server.", messageInBytes);
+                    }
                 }
             }
         }

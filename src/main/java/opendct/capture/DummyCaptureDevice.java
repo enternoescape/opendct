@@ -140,24 +140,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         return "-1";
     }
 
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType) {
-        return false;
-    }
-
-
-    public boolean canEncodeFilename() {
-        return false;
-    }
-
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
-        return false;
-    }
-
-    public boolean canEncodeUploadID() {
-        return false;
-    }
-
-    public boolean switchEncoding(String channel, String filename, long bufferSize) {
         return false;
     }
 
@@ -175,18 +158,6 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     public long getRecordedBytes() {
         return 0;
-    }
-
-    public void tuneToChannel(String channel) {
-
-    }
-
-    public boolean autoTuneChannel(String channel) {
-        return false;
-    }
-
-    public boolean autoScanChannel(String channel) {
-        return false;
     }
 
     public String scanChannelInfo(String channel) {

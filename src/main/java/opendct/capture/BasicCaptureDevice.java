@@ -50,8 +50,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
     // Capabilities
     protected final boolean canSwitch;
-    protected final boolean canEncodeFilename;
-    protected final boolean canEncodeUploadID;
 
     // Consumer parameters
     protected CaptureDevice[] childCaptureDevices = new CaptureDevice[0];
@@ -163,8 +161,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         sageTVConsumerRunnable = getNewSageTVConsumer("");
         canSwitch = Config.getBoolean(propertiesDeviceRoot + "fast_network_encoder_switch", sageTVConsumerRunnable.canSwitch());
-        canEncodeFilename = sageTVConsumerRunnable.acceptsFilename();
-        canEncodeUploadID = sageTVConsumerRunnable.acceptsUploadID();
 
         // Populates the transcode quality field.
         getTranscodeQuality();
@@ -281,28 +277,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     protected void setLastChannel(String lastChannel) {
         this.lastChannel = lastChannel;
         Config.setString(propertiesDeviceRoot + "last_channel", this.lastChannel);
-    }
-
-    /**
-     * Can this capture device encode directly to a filename?
-     * <p/>
-     * This value is derived at initialization from the selected consumer.
-     *
-     * @return <i>true</i> if the consumer supports encoding directly to a filename.
-     */
-    public boolean canEncodeFilename() {
-        return canEncodeFilename;
-    }
-
-    /**
-     * Can this capture device encode via uploadID?
-     * <p/>
-     * This value is derived at initialization from the selected consumer.
-     *
-     * @return <i>true</i> if the consumer supports encoding via uploadID.
-     */
-    public boolean canEncodeUploadID() {
-        return canEncodeUploadID;
     }
 
     /**
@@ -621,47 +595,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     }
 
     /**
-     * Switch the recording to a new filename without interrupting the stream.
-     *
-     * @param channel The channel number should not be getting changed, but this is here because
-     *                SageTV could use it.
-     * @param filename This is the new filename to be used.
-     * @param recordBufferSize Buffer sizes greater than 0 will create a circular file-based buffer
-     *                         of the requested length.
-     * @return <i>true</i> if the switch was successful.
-     */
-    public boolean switchEncoding(String channel, String filename, long recordBufferSize) {
-        logger.entry();
-        if (!canSwitch) {
-            logger.error("'{}' was requested to switch, but the consumer thread" +
-                    " does not support it.", BasicCaptureDevice.class.toString());
-            return logger.exit(false);
-        }
-
-        boolean returnValue = true;
-
-        sageTVConsumerLock.writeLock().lock();
-
-        try {
-            if (sageTVConsumerRunnable != null) {
-                setLastChannel(channel);
-                sageTVConsumerRunnable.setChannel(channel);
-                sageTVConsumerRunnable.switchStreamToFilename(filename, recordBufferSize);
-                recordingStartTime.getAndSet(System.currentTimeMillis());
-                recordLastFilename = filename;
-            } else {
-                logger.error("'{}' was requested to switch, but the consumer thread is null.",
-                        BasicCaptureDevice.class.toString());
-                returnValue = false;
-            }
-        } finally {
-            sageTVConsumerLock.writeLock().unlock();
-        }
-
-        return logger.exit(returnValue);
-    }
-
-    /**
      * Switch the recording to a new uploadID without interrupting the stream.
      *
      * @param channel The channel number should not be getting changed, but this is here because
@@ -692,7 +625,13 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             if (sageTVConsumerRunnable != null) {
                 setLastChannel(channel);
                 sageTVConsumerRunnable.setChannel(channel);
-                sageTVConsumerRunnable.switchStreamToUploadID(filename, recordBufferSize, uploadID);
+
+                if (sageTVConsumerRunnable.acceptsUploadID()) {
+                    sageTVConsumerRunnable.switchStreamToUploadID(filename, recordBufferSize, uploadID);
+                } else {
+                    sageTVConsumerRunnable.switchStreamToFilename(filename, recordBufferSize);
+                }
+
                 recordingStartTime.getAndSet(System.currentTimeMillis());
                 recordLastFilename = filename;
                 recordLastUploadID = uploadID;

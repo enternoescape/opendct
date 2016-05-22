@@ -20,10 +20,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
-import opendct.consumer.DynamicConsumerImpl;
-import opendct.consumer.FFmpegTransSageTVConsumerImpl;
-import opendct.consumer.RawSageTVConsumerImpl;
-import opendct.consumer.SageTVConsumer;
+import opendct.consumer.*;
 import opendct.producer.*;
 import opendct.util.Util;
 import opendct.video.rtsp.DCTRTSPClientImpl;
@@ -44,7 +41,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 4;
+    public static final int VERSION_BUILD = 5;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -1013,20 +1010,22 @@ public class Config {
      * @return A string array of all available consumers.
      */
     public static String[] getSageTVConsumers() {
-        String returnValues[] = new String[3];
+        String returnValues[] = new String[4];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = RawSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[2] = DynamicConsumerImpl.class.getCanonicalName();
+        returnValues[1] = MediaServerConsumerImpl.class.getCanonicalName();
+        returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[3] = DynamicConsumerImpl.class.getCanonicalName();
 
         return returnValues;
     }
 
     public static String[] getSageTVConsumersLessDynamic() {
-        String returnValues[] = new String[2];
+        String returnValues[] = new String[3];
 
         returnValues[0] = FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
-        returnValues[1] = RawSageTVConsumerImpl.class.getCanonicalName();
+        returnValues[1] = MediaServerConsumerImpl.class.getCanonicalName();
+        returnValues[2] = RawSageTVConsumerImpl.class.getCanonicalName();
 
         return returnValues;
     }
@@ -1059,6 +1058,8 @@ public class Config {
             returnValue = new RawSageTVConsumerImpl();
         } else if (consumerName.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
             returnValue = new FFmpegTransSageTVConsumerImpl();
+        } else if (consumerName.endsWith(MediaServerConsumerImpl.class.getSimpleName())) {
+            returnValue = new MediaServerConsumerImpl();
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
             returnValue = DynamicConsumerImpl.getConsumer(channel);
             properties.setProperty(key, DynamicConsumerImpl.class.getName());

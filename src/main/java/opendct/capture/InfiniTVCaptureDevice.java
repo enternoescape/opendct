@@ -243,7 +243,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceType.DIGITAL_TV_TUNER)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceType.DIGITAL_TV_TUNER, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -355,11 +355,6 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType) {
-        return startEncoding(channel, filename, encodingQuality, bufferSize, deviceType, -1, null);
-    }
-
-    @Override
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
 
@@ -405,22 +400,13 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress, tvChannel);
 
         boolean retune = false;
-        boolean scanOnly = false;
+        boolean scanOnly = (filename == null);
 
         if (recordLastFilename != null && recordLastFilename.equals(filename)) {
             retune = true;
             logger.info("Re-tune: {}", getTunerStatusString());
         } else {
             recordLastFilename = filename;
-        }
-
-        if (remoteAddress != null) {
-            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}' via the upload id '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename, uploadID);
-        } else if (filename != null) {
-            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename);
-        } else {
-            logger.info("Starting a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
-            scanOnly = true;
         }
 
         // The producer and consumer methods are requested to not block. If they don't shut down in
@@ -444,6 +430,18 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             newConsumer.consumeToNull(true);
         } else {
             newConsumer = getNewSageTVConsumer(channel);
+        }
+
+        if (!newConsumer.acceptsUploadID()) {
+            remoteAddress = null;
+        }
+
+        if (remoteAddress != null) {
+            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}' via the upload id '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename, uploadID);
+        } else if (filename != null) {
+            logger.info("{} the encoding for the channel '{}' from the device '{}' to the file '{}'...", retune ? "Retuning" : "Starting", channel, encoderName, filename);
+        } else {
+            logger.info("Starting a channel scan for the channel '{}' from the device '{}'...", channel, encoderName);
         }
 
         InetAddress iEncoderAddress = parent.getRemoteAddress();

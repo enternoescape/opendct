@@ -35,6 +35,7 @@ import org.fourthline.cling.model.meta.RemoteDevice;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -176,6 +177,46 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
         this.deviceLoader = deviceLoader;
 
+        // This speeds up resume from standby. If the IP addresses changed while the computer was
+        // sleeping, they will be updated during the next discovery.
+        if (discoveredParents.size() > 0) {
+            Map<UpnpDiscoveredDeviceParent, UpnpDiscoveredDevice[]> loadDevices = new HashMap<>(discoveredParents.size());
+
+            discoveredDevicesLock.writeLock().lock();
+
+            try {
+                for (Map.Entry<Integer, UpnpDiscoveredDeviceParent> device : discoveredParents.entrySet()) {
+                    int childDevices[] = device.getValue().getChildDevices();
+                    UpnpDiscoveredDevice devices[] = new UpnpDiscoveredDevice[childDevices.length];
+
+                    for (int i = 0; i < childDevices.length; i++) {
+                        devices[i] = discoveredDevices.get(childDevices[i]);
+                    }
+
+                    loadDevices.put(device.getValue(), devices);
+                }
+            } catch (Exception e) {
+                logger.error("startDetection created an unexpected exception while using" +
+                        " discoveredDevicesLock => ", e);
+            } finally {
+                // There's no reason this could create an exception, but why chance that the lock
+                // could get stuck.
+                try {
+                    discoveredDevices.clear();
+                    discoveredParents.clear();
+                } catch (Exception e) {
+                    logger.error("startDetection created an unexpected exception while using" +
+                            " discoveredDevicesLock => ", e);
+                }
+
+                discoveredDevicesLock.writeLock().unlock();
+            }
+
+            for (Map.Entry<UpnpDiscoveredDeviceParent, UpnpDiscoveredDevice[]> device : loadDevices.entrySet()) {
+                addCaptureDevice(device.getKey(), device.getValue());
+            }
+        }
+
         UpnpManager.startUpnpServices(
                 DCTDefaultUpnpServiceConfiguration.getDCTDefault(),
                 new DiscoveryRegistryListener(this));
@@ -190,18 +231,6 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         }
 
         UpnpManager.stopUpnpServices();
-
-        discoveredDevicesLock.writeLock().lock();
-
-        try {
-            discoveredDevices.clear();
-            discoveredParents.clear();
-        } catch (Exception e) {
-            logger.error("stopDetection created an unexpected exception while using" +
-                    " discoveredDevicesLock => ", e);
-        } finally {
-            discoveredDevicesLock.writeLock().unlock();
-        }
     }
 
     @Override
@@ -220,18 +249,6 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
             }
         } catch (Exception e) {
             logger.error("UPnP shutdown created an exception => ", e);
-        }
-
-        discoveredDevicesLock.writeLock().lock();
-
-        try {
-            discoveredDevices.clear();
-            discoveredParents.clear();
-        } catch (Exception e) {
-            logger.error("waitForStopDetection created an unexpected exception while using" +
-                    " discoveredDevicesLock => ", e);
-        } finally {
-            discoveredDevicesLock.writeLock().unlock();
         }
     }
 

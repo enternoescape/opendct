@@ -298,7 +298,7 @@ public class VideoUtil {
             if (!skip) {
                 int tsPacketID = ((packet.get(currentSyncByte + 1) & 0x1f) << 8) | ((packet.get(currentSyncByte + 2) & 0xff));
                 if (tsPacketID == 0) {
-                    logger.debug("PMT packet found at index {}.", currentSyncByte);
+                    logger.debug("PAT packet found at index {}.", currentSyncByte);
                     returnByte = currentSyncByte;
                     break;
                 }
@@ -327,7 +327,7 @@ public class VideoUtil {
      * @param packet This is the ByteBuffer to be processed.
      * @param synced <i>true</i> if the offset matches the beginning of a packet and detection does
      *               not need to be done.
-     * @return The index value of the first located PAT start byte or -1 if a PES start byte was not
+     * @return The index value of the first located PES start byte or -1 if a PES start byte was not
      *         found.
      */
     public static int getTsVideoPesStartByte(ByteBuffer packet, boolean synced) {
@@ -358,7 +358,7 @@ public class VideoUtil {
             if (!skip) {
                 int tsPacketID = ((packet.get(currentSyncByte + 1) & 0x1f) << 8) | ((packet.get(currentSyncByte + 2) & 0xff));
                 if (tsPacketID == 0) {
-                    logger.debug("PMT packet found at index {}.", currentSyncByte);
+                    logger.debug("PAT packet found at index {}.", currentSyncByte);
                 } else {
                     for (int i = currentSyncByte; i < currentSyncByte + MTS_PACKET_LEN - 5; i++) {
                         if (packet.get(i) == 0x00 &&
@@ -366,6 +366,146 @@ public class VideoUtil {
                                 packet.get(i + 2) == 0x00 &&
                                 packet.get(i + 3) == 0x01) {
 
+                            return currentSyncByte;
+                        }
+                    }
+                }
+            }
+
+            if (currentSyncByte < limit) {
+                ByteBuffer duplicate = packet.duplicate();
+                packetOffset = currentSyncByte + MTS_PACKET_LEN;
+                duplicate.position(packetOffset);
+
+                currentSyncByte = getTsStartSyncByte(duplicate, true);
+            } else {
+                break;
+            }
+        }
+
+        return returnByte;
+    }
+
+    public static int getTsVideoTransition(ByteBuffer packet, boolean synced) {
+        int returnByte = -1;
+        int packetOffset;
+        int videoPacketID = -1;
+        int currentSyncByte = getTsStartSyncByte(packet, synced);
+
+        if (currentSyncByte < 0) {
+            return returnByte;
+        }
+
+        int limit = packet.limit();
+        while (currentSyncByte > -1) {
+            boolean skip = false;
+
+            if (currentSyncByte + MTS_PACKET_LEN > limit) {
+                break;
+            }
+
+            if ((packet.get(currentSyncByte + 3) & 0x10) == 0) {
+                logger.debug("getTsVideoPatStartByte: No TS payload.");
+                skip = true;
+            } else if ((packet.get(currentSyncByte + 1) & 0x80) != 0) {
+                logger.debug("getTsVideoPatStartByte: Demod bad TS packet.");
+                skip = true;
+            }
+
+            if (!skip) {
+                int tsPacketID = ((packet.get(currentSyncByte + 1) & 0x1f) << 8) | ((packet.get(currentSyncByte + 2) & 0xff));
+
+                if (tsPacketID == 0) {
+                    logger.debug("PAT packet found at index {}.", currentSyncByte);
+                } else if (videoPacketID == -1 || videoPacketID == tsPacketID) {
+                    boolean searchPacket = false;
+
+                    for (int i = currentSyncByte; i < currentSyncByte + MTS_PACKET_LEN - 5; i++) {
+                        if (!searchPacket) {
+                            if (packet.get(i) == 0x00 &&
+                                    packet.get(i + 1) == 0x00 &&
+                                    packet.get(i + 2) == 0x00 &&
+                                    packet.get(i + 3) == 0x01) {
+
+                                //logger.debug("PES packet found at index {}, packet ID {}.", currentSyncByte, tsPacketID);
+                                videoPacketID = tsPacketID;
+                                searchPacket = true;
+                            }
+                        } else {
+                            if (packet.get(i) == 0x00 &&
+                                    packet.get(i + 1) == 0x00 &&
+                                    packet.get(i + 2) == 0x01 &&
+                                    packet.get(i + 3) == 0xBA) {
+
+                                logger.debug("MPEG2 packet found at index {}, packet ID {}.", currentSyncByte, tsPacketID);
+                                videoPacketID = tsPacketID;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (currentSyncByte < limit) {
+                ByteBuffer duplicate = packet.duplicate();
+                packetOffset = currentSyncByte + MTS_PACKET_LEN;
+                duplicate.position(packetOffset);
+
+                currentSyncByte = getTsStartSyncByte(duplicate, true);
+            } else {
+                break;
+            }
+        }
+
+        return returnByte;
+    }
+
+    /**
+     * Get the index of the first random access indicator.
+     * <p/>
+     * This will search the buffer without actually incrementing the position of the buffer. The
+     * index is relative to the beginning of the buffer.
+     *
+     * @param packet This is the ByteBuffer to be processed.
+     * @param synced <i>true</i> if the offset matches the beginning of a packet and detection does
+     *               not need to be done.
+     * @return The index value of the first packet containing a random access indicator or -1 if
+     *         the packet was not found.
+     */
+    public static int getTsVideoRandomAccessIndicator(ByteBuffer packet, boolean synced) {
+        int returnByte = -1;
+        int packetOffset;
+        int currentSyncByte = getTsStartSyncByte(packet, synced);
+
+        if (currentSyncByte < 0) {
+            return returnByte;
+        }
+
+        int limit = packet.limit();
+        while (currentSyncByte > -1) {
+            boolean skip = false;
+
+            if (currentSyncByte + MTS_PACKET_LEN > limit) {
+                break;
+            }
+
+            if ((packet.get(currentSyncByte + 3) & 0x10) == 0) {
+                logger.debug("getTsVideoPatStartByte: No TS payload.");
+                skip = true;
+            } else if ((packet.get(currentSyncByte + 1) & 0x80) != 0) {
+                logger.debug("getTsVideoPatStartByte: Demod bad TS packet.");
+                skip = true;
+            }
+
+            if (!skip) {
+                int adaptationField = packet.get(currentSyncByte + 3) & 0x20;
+
+                if (adaptationField > 0) {
+                    int adapatationFieldLength = packet.get(currentSyncByte + 4) & 0xff;
+                    if (adapatationFieldLength > 0) {
+                        logger.info("Adaptation field present. length = {}", adapatationFieldLength);
+                        int randomAccessIndicator = packet.get(currentSyncByte + 5) & 0x40;
+                        if (randomAccessIndicator > 0) {
+                            logger.info("Random Access Indicator present.");
                             return currentSyncByte;
                         }
                     }

@@ -1140,3 +1140,5 @@
 
 > *Fixed stopping executable not running as expected for Generic HTTP
 > capture device.
+
+> *Added experimental eu-bcast and eu-cable support.

@@ -22,8 +22,8 @@ public enum HDHomeRunChannelMap {
     UNKNOWN("unknown", "Unknown"),
     US_BCAST("us-bcast", "US, Canada"),
     US_CABLE("us-cable", "US, Canada"),
-    US_HRC("us-hrc", "US, Canada"),
-    US_IRC("us-irc", "US, Canada");
+    EU_BCAST("eu-bcast", "Europe, New Zealand"),
+    EU_CABLE("eu-cable", "Europe, New Zealand");
 
     public final String CHANNEL_MAP_NAME;
     public final String LOCATION;

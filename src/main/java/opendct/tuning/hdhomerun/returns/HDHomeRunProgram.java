@@ -22,17 +22,20 @@ public class HDHomeRunProgram {
     public final String PROGRAM;
     public final String CHANNEL;
     public final String CALLSIGN;
+    public final boolean ENCRYPTED;
 
-    public HDHomeRunProgram(String program, String channel, String callsign) {
+    public HDHomeRunProgram(String program, String channel, String callsign, boolean encrypted) {
         PROGRAM = program;
         CHANNEL = channel;
         CALLSIGN = callsign;
+        ENCRYPTED = encrypted;
     }
 
     public HDHomeRunProgram(String hdhrProgram) {
         String program = null;
         String channel = null;
         String callsign = null;
+        boolean encrypted = hdhrProgram.trim().endsWith("(encrypted)");
 
         if (!Util.isNullOrEmpty(hdhrProgram)) {
             int colonIndex = hdhrProgram.indexOf(":");
@@ -67,6 +70,7 @@ public class HDHomeRunProgram {
         PROGRAM = !Util.isNullOrEmpty(program) ? program : null;
         CHANNEL = !Util.isNullOrEmpty(channel) ? channel : null;
         CALLSIGN = !Util.isNullOrEmpty(callsign) ? callsign : null;
+        ENCRYPTED = encrypted;
     }
 
     @Override

@@ -23,19 +23,22 @@ public class HDHomeRunProgram {
     public final String CHANNEL;
     public final String CALLSIGN;
     public final boolean ENCRYPTED;
+    public final boolean CONTROL;
+    public final boolean NO_DATA;
 
-    public HDHomeRunProgram(String program, String channel, String callsign, boolean encrypted) {
+    public HDHomeRunProgram(String program, String channel, String callsign, boolean encrypted, boolean control, boolean noData) {
         PROGRAM = program;
         CHANNEL = channel;
         CALLSIGN = callsign;
         ENCRYPTED = encrypted;
+        CONTROL = control;
+        NO_DATA = noData;
     }
 
     public HDHomeRunProgram(String hdhrProgram) {
         String program = null;
         String channel = null;
         String callsign = null;
-        boolean encrypted = hdhrProgram.trim().endsWith("(encrypted)");
 
         if (!Util.isNullOrEmpty(hdhrProgram)) {
             int colonIndex = hdhrProgram.indexOf(":");
@@ -70,7 +73,13 @@ public class HDHomeRunProgram {
         PROGRAM = !Util.isNullOrEmpty(program) ? program : null;
         CHANNEL = !Util.isNullOrEmpty(channel) ? channel : null;
         CALLSIGN = !Util.isNullOrEmpty(callsign) ? callsign : null;
-        ENCRYPTED = encrypted;
+        ENCRYPTED = hdhrProgram.trim().endsWith(" (encrypted)");
+        CONTROL = hdhrProgram.trim().endsWith(" (control)");
+        NO_DATA = hdhrProgram.trim().endsWith(" (no data)");
+    }
+
+    public boolean isTunable() {
+        return !ENCRYPTED && !CONTROL && !NO_DATA;
     }
 
     @Override
@@ -79,6 +88,9 @@ public class HDHomeRunProgram {
                 "PROGRAM='" + PROGRAM + '\'' +
                 ", CHANNEL='" + CHANNEL + '\'' +
                 ", CALLSIGN='" + CALLSIGN + '\'' +
+                ", ENCRYPTED=" + ENCRYPTED +
+                ", CONTROL=" + CONTROL +
+                ", NO_DATA=" + NO_DATA +
                 '}';
     }
 }

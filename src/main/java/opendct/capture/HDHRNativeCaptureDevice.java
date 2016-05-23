@@ -1447,7 +1447,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     StringBuilder stringBuilder = new StringBuilder();
 
                     for (HDHomeRunProgram program : programs) {
-                        if (program.ENCRYPTED) {
+                        if (!program.isTunable()) {
                             continue;
                         }
 

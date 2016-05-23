@@ -797,8 +797,7 @@ public class ChannelManager implements PowerEventListener {
 
                 TVChannel refChannel = ChannelManager.getChannel(device.getChannelLineup(), tvChannel.getChannel());
 
-                if (refChannel != null && refChannel.getFrequency() > 0 &&
-                        !Util.isNullOrEmpty(refChannel.getProgram())) {
+                if (refChannel != null && refChannel.getFrequency() > 0 && refChannel.getProgram() > 0) {
 
                     tvChannel.setModulation(refChannel.getModulation());
                     tvChannel.setFrequency(refChannel.getFrequency());
@@ -872,7 +871,7 @@ public class ChannelManager implements PowerEventListener {
      * @return The new channel that matches the program and frequency or <i>null</i> if no channel
      *         was found.
      */
-    public static String autoFrequencyProgramToCableChannel(CaptureDevice captureDevice, int frequency, String program) {
+    public static String autoFrequencyProgramToCableChannel(CaptureDevice captureDevice, int frequency, int program) {
         ArrayList<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
 
@@ -884,7 +883,7 @@ public class ChannelManager implements PowerEventListener {
             TVChannel channels[] = ChannelManager.getChannelList(device.getChannelLineup(), true, true);
 
             for (TVChannel channel : channels) {
-                if (channel.getFrequency() == frequency && channel.getProgram().equals(program)) {
+                if (channel.getFrequency() == frequency && channel.getProgram() == program) {
                     return channel.getChannel();
                 }
             }

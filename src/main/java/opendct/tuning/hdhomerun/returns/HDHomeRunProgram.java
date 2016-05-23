@@ -19,14 +19,14 @@ package opendct.tuning.hdhomerun.returns;
 import opendct.util.Util;
 
 public class HDHomeRunProgram {
-    public final String PROGRAM;
+    public final int PROGRAM;
     public final String CHANNEL;
     public final String CALLSIGN;
     public final boolean ENCRYPTED;
     public final boolean CONTROL;
     public final boolean NO_DATA;
 
-    public HDHomeRunProgram(String program, String channel, String callsign, boolean encrypted, boolean control, boolean noData) {
+    public HDHomeRunProgram(int program, String channel, String callsign, boolean encrypted, boolean control, boolean noData) {
         PROGRAM = program;
         CHANNEL = channel;
         CALLSIGN = callsign;
@@ -36,7 +36,7 @@ public class HDHomeRunProgram {
     }
 
     public HDHomeRunProgram(String hdhrProgram) {
-        String program = null;
+        int program = 0;
         String channel = null;
         String callsign = null;
 
@@ -45,12 +45,20 @@ public class HDHomeRunProgram {
 
             //Format Example:
             //3: 8.1 WGAL-TV
+            //11: 16 ProSieben
+            //5040: 0 Horizon data (control)
+            //7005: 501 TC Star (encrypted)
+            //7098: 0 TC_SW_Kaon_HD (no data)
             if (colonIndex > 0) {
-                program = hdhrProgram.substring(0, colonIndex).trim();
+                try {
+                    program = Integer.parseInt(hdhrProgram.substring(0, colonIndex).trim());
+                } catch (NumberFormatException e) {
+                    program = 0;
+                }
 
                 int spaceIndex;
 
-                if (Util.isNullOrEmpty(program)) {
+                if (program == 0) {
                     spaceIndex = -1;
                 } else {
                     spaceIndex = hdhrProgram.indexOf(" ", colonIndex);
@@ -70,7 +78,7 @@ public class HDHomeRunProgram {
             }
         }
 
-        PROGRAM = !Util.isNullOrEmpty(program) ? program : null;
+        PROGRAM = program;
         CHANNEL = !Util.isNullOrEmpty(channel) ? channel : null;
         CALLSIGN = !Util.isNullOrEmpty(callsign) ? callsign : null;
         ENCRYPTED = hdhrProgram.trim().endsWith(" (encrypted)");

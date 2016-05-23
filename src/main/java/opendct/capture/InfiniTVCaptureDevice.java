@@ -31,7 +31,6 @@ import opendct.tuning.http.InfiniTVStatus;
 import opendct.tuning.http.InfiniTVTuning;
 import opendct.tuning.upnp.InfiniTVDiscoveredDevice;
 import opendct.tuning.upnp.InfiniTVDiscoveredDeviceParent;
-import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -372,7 +371,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                 tvChannel = new TVChannelImpl(channel, "Unknown");
             }
 
-            if (tvChannel.getFrequency() < 0 || Util.isNullOrEmpty(tvChannel.getProgram())) {
+            if (tvChannel.getFrequency() <= 0 || tvChannel.getProgram() <= 0) {
                 tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, tvChannel);
             }
 

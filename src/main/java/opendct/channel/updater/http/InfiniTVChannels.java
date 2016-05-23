@@ -223,7 +223,7 @@ public class InfiniTVChannels {
                                                 values[1],
                                                 values[2],
                                                 frequency,
-                                                String.valueOf(program),
+                                                program,
                                                 ignore);
 
                                         channelLineup.addChannel(infiniTVChannel);
@@ -235,13 +235,13 @@ public class InfiniTVChannels {
                                             updated = true;
                                         }
 
-                                        if (frequency > 0 && !(oldChannel.getFrequency() == frequency)) {
+                                        if (frequency > 0 && oldChannel.getFrequency() != frequency) {
                                             oldChannel.setFrequency(frequency);
                                             updated = true;
                                         }
 
-                                        if (program > 0 && !oldChannel.getProgram().equals(String.valueOf(program))) {
-                                            oldChannel.setProgram(String.valueOf(program));
+                                        if (program > 0 && oldChannel.getProgram() != program) {
+                                            oldChannel.setProgram(program);
                                             updated = true;
                                         }
 

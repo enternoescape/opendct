@@ -33,7 +33,7 @@ public class TVChannelImpl implements TVChannel {
     private String url = "";
     private String modulation = "";
     private int frequency = -1;
-    private String program = "";
+    private int program = 0;
     private String[] changes = new String[12];
 
     private static final int iChannel = 0;
@@ -67,16 +67,37 @@ public class TVChannelImpl implements TVChannel {
         modulation = properties[iModulation];
 
         try {
-            frequency = Util.isNullOrEmpty(properties[iFrequency]) ? -1 : Integer.parseInt(properties[iFrequency]);
+            frequency = Util.isNullOrEmpty(properties[iFrequency]) ? 0 : Integer.parseInt(properties[iFrequency]);
+
+            if (frequency < 0) {
+                frequency = 0;
+            }
         } catch (NumberFormatException e) {
             logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for frequency.", properties[iFrequency]);
             frequency = -1;
         }
 
-        program = properties[iProgram];
+        try {
+            if (Util.isNullOrEmpty(properties[iProgram])) {
+                program = 0;
+            } else {
+                program = Integer.parseInt(properties[iProgram]);
+
+                if (program < 0) {
+                    program = 0;
+                }
+            }
+        } catch (NumberFormatException e) {
+            logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for program.", properties[iProgram]);
+            program = 0;
+        }
 
         try {
             signalStrength = Integer.parseInt(properties[iSignalStrength]);
+
+            if (signalStrength < 0) {
+                signalStrength = 0;
+            }
         } catch (NumberFormatException e) {
             logger.warn("Expected an integer, but '{}' was provided. Using the default 0 for signalStrength.", properties[iSignalStrength]);
             signalStrength = 0;
@@ -101,7 +122,7 @@ public class TVChannelImpl implements TVChannel {
         this.ignore = ignore;
     }
 
-    public TVChannelImpl(String channel, String name, String modulation, int frequency, String program, boolean ignore) {
+    public TVChannelImpl(String channel, String name, String modulation, int frequency, int program, boolean ignore) {
         this.channel = channel;
         this.name = name;
         this.modulation = modulation;
@@ -111,7 +132,7 @@ public class TVChannelImpl implements TVChannel {
         this.ignore = ignore;
     }
 
-    public TVChannelImpl(String channel, String channelRemap, boolean tunable, String name, String url, String modulation, int frequency, String program, int signalStrength, CopyProtection cci, boolean ignore) {
+    public TVChannelImpl(String channel, String channelRemap, boolean tunable, String name, String url, String modulation, int frequency, int program, int signalStrength, CopyProtection cci, boolean ignore) {
         this.channel = channel;
         this.channelRemap = channelRemap;
         this.tunable = tunable;
@@ -134,7 +155,7 @@ public class TVChannelImpl implements TVChannel {
                 url,
                 modulation,
                 String.valueOf(frequency),
-                program,
+                String.valueOf(program),
                 "", // Placeholder for EIA which is no longer collected.
                 String.valueOf(signalStrength),
                 cci.name(),
@@ -157,20 +178,28 @@ public class TVChannelImpl implements TVChannel {
     }
 
     public void setFrequency(int frequency) {
+        if (frequency < 0) {
+            frequency = 0;
+        }
+
         this.frequency = frequency;
         changes[iFrequency] = String.valueOf(frequency);
     }
 
-    public void setProgram(String program) {
+    public void setProgram(int program) {
+        if (program < 0) {
+            program = 0;
+        }
+
         this.program = program;
-        changes[iProgram] = program;
+        changes[iProgram] = String.valueOf(program);
     }
 
     public int getFrequency() {
         return frequency;
     }
 
-    public String getProgram() {
+    public int getProgram() {
         return program;
     }
 
@@ -205,6 +234,10 @@ public class TVChannelImpl implements TVChannel {
     }
 
     public void setSignalStrength(int signalStrength) {
+        if (signalStrength < 0) {
+            signalStrength = 0;
+        }
+
         this.signalStrength = signalStrength;
         changes[iSignalStrength] = String.valueOf(signalStrength);
     }
@@ -267,11 +300,10 @@ public class TVChannelImpl implements TVChannel {
         TVChannelImpl tvChannel = (TVChannelImpl) o;
 
         if (frequency != tvChannel.frequency) return false;
+        if (program != tvChannel.program) return false;
         if (channel != null ? !channel.equals(tvChannel.channel) : tvChannel.channel != null)
             return false;
-        if (modulation != null ? !modulation.equals(tvChannel.modulation) : tvChannel.modulation != null)
-            return false;
-        return program != null ? program.equals(tvChannel.program) : tvChannel.program == null;
+        return modulation != null ? modulation.equals(tvChannel.modulation) : tvChannel.modulation == null;
 
     }
 
@@ -280,7 +312,7 @@ public class TVChannelImpl implements TVChannel {
         int result = channel != null ? channel.hashCode() : 0;
         result = 31 * result + (modulation != null ? modulation.hashCode() : 0);
         result = 31 * result + frequency;
-        result = 31 * result + (program != null ? program.hashCode() : 0);
+        result = 31 * result + program;
         return result;
     }
 }

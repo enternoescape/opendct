@@ -1142,3 +1142,5 @@
 > capture device.
 
 > *Added experimental eu-bcast and eu-cable support.
+
+> *Internal: Programs are now stored as integers.

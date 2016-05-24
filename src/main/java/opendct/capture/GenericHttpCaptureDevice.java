@@ -52,12 +52,13 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private final GenericHttpDiscoveredDeviceParent parent;
     private final GenericHttpDiscoveredDevice device;
 
-    //private final Map<String, String> resolutionMap = new ConcurrentHashMap<>();
     private final Map<String, URL> channelMap = new ConcurrentHashMap<>();
     private final static Runtime runtime = Runtime.getRuntime();
     private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
     private URL sourceUrl;
     long lastTuneTime = System.currentTimeMillis();
+
+    private Thread stoppingThread;
 
     private HTTPProducer httpProducer;
 
@@ -375,6 +376,11 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
                                       long bufferSize, int uploadID, InetAddress remoteAddress,
                                       TVChannel tvChannel) {
 
+        if (stoppingThread != null) {
+            stoppingThread.interrupt();
+            stoppingThread = null;
+        }
+
         boolean retune = false;
         boolean scanOnly = (filename == null);
 
@@ -618,6 +624,10 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
     @Override
     public void stopEncoding() {
+        stopEncoding(device.getStoppingDelay() == 0);
+    }
+
+    public void stopEncoding(boolean immediateStop) {
 
         logger.debug("Stopping encoding...");
 
@@ -627,15 +637,50 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
             super.stopEncoding();
 
-            String execute = getExecutionString(device.getStoppingExecutable(), lastChannel, false);
-            try {
-                if (executeCommand(execute) == -1) {
-                    logger.error("Failed to run stop executable.");
-                    return;
+            final Runnable delayedRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    String execute = getExecutionString(device.getStoppingExecutable(), lastChannel, false);
+                    try {
+                        if (executeCommand(execute) == -1) {
+                            logger.error("Failed to run stop executable.");
+                            return;
+                        }
+                    } catch (InterruptedException e) {
+                        logger.debug("Stop was interrupted => {}", e.getMessage());
+                        return;
+                    }
                 }
-            } catch (InterruptedException e) {
-                logger.debug("Stop was interrupted => {}", e.getMessage());
-                return;
+            };
+
+            if (immediateStop) {
+                delayedRunnable.run();
+            } else {
+                stoppingThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            int stoppingDelay = device.getStoppingDelay();
+
+                            logger.debug("Stopping executable will be run in {} milliseconds.", stoppingDelay);
+                            Thread.sleep(stoppingDelay);
+
+                            synchronized (exclusiveLock) {
+                                if (stoppingThread != Thread.currentThread() ||
+                                        Thread.currentThread().isInterrupted()) {
+
+                                    return;
+                                }
+
+                                delayedRunnable.run();
+                            }
+                        } catch (InterruptedException e) {
+                            logger.debug("Stopping executable was cancelled.");
+                        }
+                    }
+                });
+                stoppingThread.setName("StoppingThread-" + stoppingThread.getId());
+                stoppingThread.start();
             }
         }
     }
@@ -644,6 +689,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     public void stopDevice() {
         logger.debug("Stopping device...");
 
-        stopEncoding();
+        stopEncoding(true);
     }
 }

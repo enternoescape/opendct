@@ -45,6 +45,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     private StringDeviceOption pretuneExecutable;
     private StringDeviceOption tuningExecutable;
     private StringDeviceOption stoppingExecutable;
+    private IntegerDeviceOption stoppingDelay;
     private IntegerDeviceOption tuningDelay;
     private StringDeviceOption customChannels;
     private IntegerDeviceOption padChannel;
@@ -121,6 +122,18 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                             " provided."
             );
 
+            stoppingDelay = new IntegerDeviceOption(
+                    Config.getInteger(propertiesDeviceRoot + "stopping_executable_delay_ms", 15000),
+                    false,
+                    "Stopping Executable Delay (ms)",
+                    propertiesDeviceRoot + "stopping_executable_delay_ms",
+                    "If this value is greater than zero, the capture device will wait for this" +
+                            " much time to pass in milliseconds before executing the stopping" +
+                            " executable. If a new recording starts before this timeout, the" +
+                            " stopping executable will not run. This will prevent channel" +
+                            " changing from doing a full stop/start with each change."
+            );
+
             tuningDelay = new IntegerDeviceOption(
                     Config.getInteger(propertiesDeviceRoot + "tuning_delay_ms", 0),
                     false,
@@ -190,6 +203,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     pretuneExecutable,
                     tuningExecutable,
                     stoppingExecutable,
+                    stoppingDelay,
                     tuningDelay,
                     padChannel/*,
                     resolutionChangeDelay,
@@ -229,6 +243,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                 pretuneExecutable,
                 tuningExecutable,
                 stoppingExecutable,
+                stoppingDelay,
                 tuningDelay,
                 padChannel/*,
                 resolutionChangeDelay,
@@ -276,6 +291,10 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
 
     public String getStoppingExecutable() {
         return stoppingExecutable.getValue();
+    }
+
+    public int getStoppingDelay() {
+        return stoppingDelay.getInteger();
     }
 
     public String getCustomChannels() {

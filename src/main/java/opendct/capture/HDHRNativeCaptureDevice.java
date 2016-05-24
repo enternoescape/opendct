@@ -446,7 +446,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             }
 
             try {
-                tvChannel.setProgram(String.valueOf(tuner.getProgram()));
+                tvChannel.setProgram(tuner.getProgram());
             } catch (Exception e) {
                 logger.error("Unable to get program from HDHomeRun => ", e);
             }
@@ -699,7 +699,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 try {
                     String modulation = tvChannel.getModulation();
                     int frequency = tvChannel.getFrequency();
-                    String program = tvChannel.getProgram();
+                    int program = tvChannel.getProgram();
 
                     if (!isTuneLegacy() &&
                             !HDHomeRunDiscoverer.getQamRemap()) {
@@ -730,7 +730,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         return logger.exit(false);
                     }
 
-                    if (program == null) {
+                    if (program == 0) {
                         logger.error("The channel '{}' does not have a program" +
                                 " on the lineup '{}'.", channel, encoderLineup);
                         return logger.exit(false);
@@ -752,7 +752,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                             int tProgram = tuner.getProgram();
 
                             if (!tFrequency.endsWith(String.valueOf(":" + frequency)) ||
-                                    !program.equals(String.valueOf(tProgram))) {
+                                    program != tProgram) {
 
                                 tvChannel.setChannelRemap("");
                                 ChannelManager.updateChannel(encoderLineup, tvChannel);
@@ -797,7 +797,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                                 }
 
                                 program = tvChannel.getProgram();
-                                if (program == null) {
+                                if (program == 0) {
                                     logger.error("The channel '{}' does not have a program" +
                                                     " on the lineup '{}'.",
                                             channel,
@@ -832,7 +832,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                                     int tProgram = tuner.getProgram();
 
                                     if (tFrequency.endsWith(String.valueOf(":" + frequency)) &&
-                                            program.equals(String.valueOf(tProgram))) {
+                                            program == tProgram) {
 
                                         qamChannel.setChannelRemap(tvChannel.getChannel());
                                         qamChannel.setModulation(modulation);
@@ -861,8 +861,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                                                 int optFrequency =
                                                         Integer.parseInt(split[split.length - 1]);
 
-                                                String optProgram =
-                                                        String.valueOf(tuner.getProgram());
+                                                int optProgram = tuner.getProgram();
 
                                                 String optChannel =
                                                         ChannelManager.
@@ -1051,7 +1050,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     private boolean legacyTuneChannel(String channel) {
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
-        if (tvChannel != null && tvChannel.getFrequency() > 0 && !Util.isNullOrEmpty(tvChannel.getProgram())) {
+        if (tvChannel != null && tvChannel.getFrequency() > 0 && tvChannel.getProgram() > 0) {
             try {
                 tuner.setChannel("auto", tvChannel.getFrequency(), false);
                 tuner.setProgram(tvChannel.getProgram());
@@ -1143,7 +1142,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 }
 
                 for (HDHomeRunProgram program : streamInfo.getProgramsParsed()) {
-                    if (program.PROGRAM != null && program.CHANNEL != null && program.CHANNEL.equals(programName)) {
+                    if (program.PROGRAM != 0 && program.CHANNEL != null && program.CHANNEL.equals(programName)) {
 
                         logger.info("Found '{}' in '{}' out of '{}'.", programName, program, streamInfo.getProgramsRaw());
                         tuner.setProgram(program.PROGRAM);
@@ -1295,6 +1294,8 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         }
 
                         break;
+                    case DVBC_HDHOMERUN:
+                    case DVBT_HDHOMERUN:
                     case DCT_HDHOMERUN:
                     case QAM_HDHOMERUN:
                         break;
@@ -1305,7 +1306,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         }
 
         try {
-            tvChannel.setProgram(String.valueOf(tuner.getProgram()));
+            tvChannel.setProgram(tuner.getProgram());
         } catch (Exception e) {
             logger.error("Unable to get program from HDHomeRun => ", e);
         }
@@ -1445,16 +1446,21 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     HDHomeRunProgram programs[] = streamInfo.getProgramsParsed();
 
                     StringBuilder stringBuilder = new StringBuilder();
+                    StringBuilder tuneChannel = new StringBuilder();
 
                     for (HDHomeRunProgram program : programs) {
                         if (!program.isTunable()) {
                             continue;
                         }
 
-                        stringBuilder.append(scanChannelIndex)
+                        tuneChannel.setLength(0);
+                        tuneChannel.append(scanChannelIndex)
                                 .append("-")
-                                .append(program.CHANNEL.replace(".", "-"))
-                                .append(";");
+                                .append(program.CHANNEL.replace(".", "-"));
+                        stringBuilder.append(tuneChannel).append(";");
+
+                        TVChannel tvChannel = new TVChannelImpl(tuneChannel.toString(), program.CHANNEL, true, program.CALLSIGN, "", "auto", lookupMap[scanChannelIndex].FREQUENCY, program.PROGRAM, 100, CopyProtection.NONE, false);
+                        ChannelManager.addChannel(encoderLineup, tvChannel);
                     }
 
                     // Remove the extra ;.

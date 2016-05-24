@@ -177,13 +177,25 @@ public class HDHomeRunTuner {
      * Set the currently tuned program.
      *
      * @param program The program to select.
-     * @throws IOException     Thrown if communication with the device was incomplete or is not possible
-     *                         at this time.
+     * @throws IOException Thrown if communication with the device was incomplete or is not possible
+     *                     at this time.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
-    public void setProgram(String program) throws IOException, GetSetException {
-        set("program", program);
+    public void setProgram(int program) throws IOException, GetSetException {
+        set("program", String.valueOf(program));
     }
+
+    /**
+     * Set the currently tuned program.
+     *
+     * @param program The program to select.
+     * @throws IOException Thrown if communication with the device was incomplete or is not possible
+     *                     at this time.
+     * @throws GetSetException Thrown if the device returns an error instead of a value.
+     */
+    /*public void setProgram(String program) throws IOException, GetSetException {
+        set("program", program);
+    }*/
 
     /**
      * Get stream information.

@@ -1144,3 +1144,9 @@
 > *Added experimental eu-bcast and eu-cable support.
 
 > *Internal: Programs are now stored as integers.
+
+#### 0.5.6-Beta
+> *Added configurable delay in milliseconds for the stop command to be
+> executed for Generic HTTP capture devices. The new property is
+> sagetv.device.\<unique_id\>.stopping_executable_delay_ms. If the
+> value of this property is 0, the delay is disabled.

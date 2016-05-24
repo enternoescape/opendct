@@ -286,6 +286,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return <i>true</i> if the consumer supports switching.
      */
+    @Override
     public boolean canSwitch() {
         return canSwitch;
     }

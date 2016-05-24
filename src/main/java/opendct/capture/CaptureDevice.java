@@ -28,34 +28,21 @@ import java.net.InetAddress;
 public interface CaptureDevice extends DeviceOptions {
 /*
 Capture Device Flow
-  *based on DCT network encoder, the first two steps could be
-   different for another type of device.
+  *based on HDHomeRun network encoder.
 
 ====================================================================================================
  Discovery and initialization of a capture device
 ====================================================================================================
 
-RegistryListener - Returns when a remote device is ready for use. It should only do this once
+DeviceDiscoverer - Returns when a remote device is ready for use. It should only do this once
                    per device.
 
-RegisterDevice - Checks if the device is already being used by this program. Creates
-                 CaptureDevice based on if the remote device is something we know how to use. This
-                 is also the point when the unique device name should already be decided. The device
-                 name can be customized after the capture device has been uniquely identified.
+DeviceLoader - Presents the capture device to SageTVManager if permitted. Otherwise the device is
+               stored in the DeviceDiscoverer until the user chooses to have it loaded.
 
-    DCTCaptureDeviceImpl - This is currently the only implementation available for CableCARD based
-                           UPnP devices.
-
-    RTPCaptureDevice - DCTCaptureDeviceImpl is based on this class. Anything generic about creating
-                       and capturing an RTP connection arguably should be in this class. This class
-                       should not contain anything that is only used for a specific type of capture
-                       device.
-
-    BasicCaptureDevice - RTPCaptureDevice is based on this class. This abstract class should be used
-                         as the basis for all new capture devices. It contains methods that manage
-                         many of the most trivial parts when designing a capture device. During
-                         initialization is also checks for if the device should be loaded or not
-                         based on preferences in the configuration properties file.
+BasicCaptureDevice - This abstract class should be used as the basis for all new capture devices. It
+                     contains methods that manage many of the most common/basic parts when designing
+                     a capture device.
 
 SageTVManager - Receives any CaptureDevice implementation and gives it a port number for the SageTV
                 server to begin communication. If allowed in the properties and the implementation
@@ -94,14 +81,14 @@ CaptureDevice - This interface needs to implement everything needed to have a fu
                 possibility that your device is left in a undesirable state (Ex. you need to reboot
                 before everything starts working again).
 
-                In the DCTCaptureDeviceImpl implementation, tuning a channel will tune in a channel
+                In the InfiniTVCaptureDevice implementation, tuning a channel will tune in a channel
                 on the DCT. The consumer is then initialized and started. This is required because
                 the producer has nowhere to place data until the consumer at least exists. Then the
                 producer is initialized and started. It selects a port to listen for UDP. That port
                 is then used to configure the DCT over RTSP to start broadcasting to a local port
                 and the local IP address that discovered the DCT. Now that data is currently being
                 written to the consumer from the producer, the consumer will start data processing
-                and transfer that data to directly to a file or via uploadID.
+                and transfer that data to directly to a file or via the Media Server.
 
 ====================================================================================================
  Tuning a channel for playback
@@ -110,7 +97,7 @@ CaptureDevice - This interface needs to implement everything needed to have a fu
 SageTVRequestHandler - Requests by a SageTV server for anything regarding a CaptureDevice always
                        start here.
 
-DCTCaptureDeviceImpl - Receives the tune request. Tunes the channel.
+InfiniTVCaptureDevice - Receives the tune request. Tunes the channel.
 
 RawSageTVConsumer - Provides a buffer via the write() method for the producer to buffer the data it
                     produces. When this is created, its own thread is also started. It will begin

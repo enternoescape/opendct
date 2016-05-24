@@ -83,12 +83,12 @@ public interface DeviceDiscoverer extends DeviceOptions {
     /**
      * Waits for a previous stop detection request to complete.
      * <p/>
-     * This is only called on suspend and shutdown. When this is called, any local cache of
-     * discovered devices or methods to keep the capture devices up to date must be cleared before
-     * this returns. Also all threads must be completely stopped before this returns. Typically all
-     * discovery methods will receive stopDetection() sequentially so they can all start cleaning up
-     * in parallel, then this method is called sequentially to ensure they have completely stopped.
+     * This is only called on suspend and shutdown. All threads must be completely stopped before
+     * this returns. Typically all discovery methods will receive stopDetection() sequentially so
+     * they can all start cleaning up in parallel, then this method is called sequentially to ensure
+     * they have completely stopped.
      *
+     * @throws InterruptedException Thrown if interrupted while waiting.
      */
     public void waitForStopDetection() throws InterruptedException;
 

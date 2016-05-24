@@ -20,11 +20,13 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.OSVersion;
-import opendct.config.options.*;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
+import opendct.config.options.StringDeviceOption;
 import opendct.tuning.discovery.*;
-import opendct.tuning.http.GenericHttpDiscoveredDevice;
-import opendct.tuning.http.GenericHttpDiscoveredDeviceParent;
-import opendct.tuning.http.GenericHttpLoader;
+import opendct.tuning.hybrid.HybridDiscoveredDevice;
+import opendct.tuning.hybrid.HybridDiscoveredDeviceParent;
+import opendct.tuning.hybrid.HybridLoader;
 import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,13 +35,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class GenericHttpDiscoverer implements DeviceDiscoverer {
-    private static final Logger logger = LogManager.getLogger(HDHomeRunDiscoverer.class);
+public class HybridDiscoverer implements DeviceDiscoverer {
+    private static final Logger logger = LogManager.getLogger(HybridDiscoverer.class);
 
-    // Static information about this discovery method.
-    private final static String name = "Generic HTTP";
-    private final static String description = "Discovers predefined capture devices available via" +
-            " the combination of a static HTTP URL and tuning method.";
+    private final static String name = "Hybrid";
+    private final static String description = "Allows you to create pairings of capture devices" +
+            " so that they will act like one capture device. (Ex. H.264 Encoder + QAM)";
 
     private final static OSVersion[] supportedOS = new OSVersion[] {
             OSVersion.WINDOWS,
@@ -48,10 +49,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
 
     // Global generic HTTP device settings.
     private final static Map<String, DeviceOption> deviceOptions;
-    private static IntegerDeviceOption offlineDetectionSeconds;
-    private static IntegerDeviceOption offlineDetectionMinBytes;
     private static StringDeviceOption deviceNames;
-    private static LongDeviceOption streamingWait;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -60,11 +58,11 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     DeviceLoader deviceLoader;
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final Map<Integer, GenericHttpDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, GenericHttpDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HybridDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HybridDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
 
     static {
-        enabled = Config.getBoolean("generic.http.discoverer_enabled", true);
+        enabled = Config.getBoolean("generic.hybrid.discoverer_enabled", true);
         running = false;
 
         errorMessage = null;
@@ -73,59 +71,20 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
         while (true) {
             try {
                 deviceNames = new StringDeviceOption(
-                        Config.getStringArray("generic.http.device_names_csv"),
+                        Config.getStringArray("generic.hybrid.device_names_csv"),
                         true,
                         false,
                         "Device Names",
-                        "generic.http.device_names_csv",
-                        "This is a comma separated list of the names to be used for each device." +
-                                " Each name in this list will create all of the required" +
+                        "generic.hybrid.device_names_csv",
+                        "This is a comma separated list of the names to be used for each pair of" +
+                                " devices. Each name in this list will create all of the required" +
                                 " properties to create a functional capture device."
-                );
-
-                streamingWait = new LongDeviceOption(
-                        Config.getLong("generic.http.wait_for_streaming", 15000),
-                        false,
-                        "Return to SageTV",
-                        "generic.http.wait_for_streaming",
-                        "This is the maximum number of milliseconds to wait before returning to" +
-                                " SageTV regardless of if the requested channel is actually streaming."
-                );
-
-                offlineDetectionSeconds = new IntegerDeviceOption(
-                        Config.getInteger("generic.http.wait_for_offline_detection_s", 8),
-                        false,
-                        "Offline Channel Detection Seconds",
-                        "generic.http.wait_for_offline_detection_s",
-                        "This is the value in seconds to wait after tuning a channel before" +
-                                " making a final determination on if it is tunable or not." +
-                                " This applies only to offline scanning."
-                );
-
-                offlineDetectionMinBytes = new IntegerDeviceOption(
-                        Config.getInteger("generic.http.offline_detection_min_bytes", 10528),
-                        false,
-                        "Offline Channel Detection Bytes",
-                        "generic.http.offline_detection_min_bytes",
-                        "This is the value in bytes that must be consumed before a channel is" +
-                                " considered tunable."
-                );
-
-                Config.mapDeviceOptions(
-                        deviceOptions,
-                        deviceNames,
-                        streamingWait,
-                        offlineDetectionSeconds,
-                        offlineDetectionMinBytes
                 );
             } catch (DeviceOptionException e) {
                 logger.error("Unable to configure device options for GenericHttpDiscoverer." +
                         " Reverting to defaults. => ", e);
 
-                Config.setInteger("generic.http.wait_for_offline_detection_s", 8);
-                Config.setInteger("generic.http.offline_detection_min_bytes", 10528);
-                Config.setString("generic.http.device_names_csv", "");
-                Config.setLong("generic.http.wait_for_streaming", 15000);
+                Config.setString("generic.hybrid.device_names_csv", "");
 
                 continue;
             }
@@ -150,9 +109,9 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public synchronized void setEnabled(boolean enabled) {
-        GenericHttpDiscoverer.enabled = enabled;
-        Config.setBoolean("generic.http.discoverer_enabled", enabled);
+    public void setEnabled(boolean enabled) {
+        HybridDiscoverer.enabled = enabled;
+        Config.setBoolean("generic.hybrid.discoverer_enabled", enabled);
     }
 
     @Override
@@ -161,16 +120,16 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public synchronized void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
+    public void startDetection(DeviceLoader deviceLoader) throws DiscoveryException {
         discoveredDevicesLock.writeLock().lock();
 
         try {
-            GenericHttpDiscoverer.running = true;
+            HybridDiscoverer.running = true;
 
             this.deviceLoader = deviceLoader;
 
-            Thread loadDevices = new Thread(new GenericHttpLoader(deviceNames.getArrayValue(), this));
-            loadDevices.setName("GenericHttpLoader-" + loadDevices.getId());
+            Thread loadDevices = new Thread(new HybridLoader(deviceNames.getArrayValue(), this));
+            loadDevices.setName("HybridLoader-" + loadDevices.getId());
             loadDevices.setDaemon(true);
             loadDevices.start();
         } finally {
@@ -179,16 +138,16 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public synchronized void stopDetection() throws DiscoveryException {
+    public void stopDetection() throws DiscoveryException {
         // There is nothing to stop.
         discoveredDevicesLock.writeLock().lock();
 
         try {
-            GenericHttpDiscoverer.running = false;
+            HybridDiscoverer.running = false;
             discoveredDevices.clear();
             discoveredParents.clear();
         } finally {
-          discoveredDevicesLock.writeLock().unlock();
+            discoveredDevicesLock.writeLock().unlock();
         }
     }
 
@@ -205,35 +164,6 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     @Override
     public String getErrorMessage() {
         return errorMessage;
-    }
-
-    public void addCaptureDevice(GenericHttpDiscoveredDevice device, GenericHttpDiscoveredDeviceParent parent) {
-
-        discoveredDevicesLock.writeLock().lock();
-
-        try {
-            if (!GenericHttpDiscoverer.running) {
-                return;
-            }
-
-            GenericHttpDiscoveredDeviceParent lastParentDevice =
-                    discoveredParents.get(device.getParentId());
-
-            if (lastParentDevice != null) {
-                if (!lastParentDevice.getRemoteAddress().equals(parent.getRemoteAddress())) {
-                    lastParentDevice.setRemoteAddress(parent.getRemoteAddress());;
-                }
-
-                return;
-            }
-
-            discoveredParents.put(parent.getParentId(), parent);
-            discoveredDevices.put(device.getId(), device);
-
-            deviceLoader.advertiseDevice(device, this);
-        } finally {
-            discoveredDevicesLock.writeLock().unlock();
-        }
     }
 
     @Override
@@ -261,7 +191,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             returnValues = new DiscoveredDevice[discoveredDevices.size()];
 
             int i = 0;
-            for (Map.Entry<Integer, GenericHttpDiscoveredDevice> discoveredDevice : discoveredDevices.entrySet()) {
+            for (Map.Entry<Integer, HybridDiscoveredDevice> discoveredDevice : discoveredDevices.entrySet()) {
                 returnValues[i++] = discoveredDevice.getValue();
             }
 
@@ -307,7 +237,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             returnValues = new UpnpDiscoveredDeviceParent[discoveredParents.size()];
 
             int i = 0;
-            for (Map.Entry<Integer, GenericHttpDiscoveredDeviceParent> discoveredParent : discoveredParents.entrySet()) {
+            for (Map.Entry<Integer, HybridDiscoveredDeviceParent> discoveredParent : discoveredParents.entrySet()) {
                 returnValues[i++] = discoveredParent.getValue();
             }
 
@@ -348,7 +278,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
 
         CaptureDevice returnValue = null;
-        GenericHttpDiscoveredDevice discoveredDevice;
+        HybridDiscoveredDevice discoveredDevice;
         CaptureDeviceLoadException loadException = null;
 
         discoveredDevicesLock.readLock().lock();
@@ -384,17 +314,14 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     @Override
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
-                deviceNames,
-                streamingWait,
-                offlineDetectionSeconds,
-                offlineDetectionMinBytes
+                deviceNames
         };
     }
 
     @Override
     public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
         for (DeviceOption option : deviceOptions) {
-            DeviceOption optionReference = GenericHttpDiscoverer.deviceOptions.get(option.getProperty());
+            DeviceOption optionReference = HybridDiscoverer.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
                 continue;
@@ -409,27 +336,11 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             Config.setDeviceOption(optionReference);
 
             // If any new devices have been added at runtime, this will make sure they get added.
-            if (optionReference.getProperty().equals("generic.http.device_names_csv")) {
-                new GenericHttpLoader(deviceNames.getArrayValue(), this).run();
+            if (optionReference.getProperty().equals("generic.hybrid.device_names_csv")) {
+                new HybridLoader(deviceNames.getArrayValue(), this).run();
             }
         }
 
         Config.saveConfig();
-    }
-
-    public static long getStreamingWait() {
-        return streamingWait.getLong();
-    }
-
-    public static int getOfflineDetectionSeconds() {
-        return offlineDetectionSeconds.getInteger();
-    }
-
-    public static int getOfflineDetectionMinBytes() {
-        return offlineDetectionMinBytes.getInteger();
-    }
-
-    public static String[] getDeviceNames() {
-        return deviceNames.getArrayValue();
     }
 }

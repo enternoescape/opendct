@@ -39,9 +39,11 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static final Logger logger = LogManager.getLogger(HDHomeRunDiscoverer.class);
 
     // Static information about this discovery method.
-    private static String name = "HDHomeRun";
-    private static String description = "Discovers capture devices available via HDHomeRun native protocol.";
-    private static OSVersion[] supportedOS = new OSVersion[] {
+    private final static String name = "HDHomeRun";
+    private final static String description = "Discovers capture devices available via HDHomeRun" +
+            " native protocol.";
+
+    private final static OSVersion[] supportedOS = new OSVersion[] {
             OSVersion.WINDOWS,
             OSVersion.LINUX
     };

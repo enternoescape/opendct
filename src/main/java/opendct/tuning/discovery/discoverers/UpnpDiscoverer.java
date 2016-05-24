@@ -44,9 +44,9 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     private static final Logger logger = LogManager.getLogger(UpnpDiscoverer.class);
 
     // Static information about this discovery method.
-    private static String name = "UPnP";
-    private static String description = "Discovers capture devices available via UPnP.";
-    private static OSVersion[] supportedOS = new OSVersion[] {
+    private final static String name = "UPnP";
+    private final static String description = "Discovers capture devices available via UPnP.";
+    private final static OSVersion[] supportedOS = new OSVersion[] {
             OSVersion.WINDOWS,
             OSVersion.LINUX
     };

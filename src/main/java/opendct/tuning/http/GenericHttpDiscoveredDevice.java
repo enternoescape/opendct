@@ -60,7 +60,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
         this.parent = parent;
 
         propertiesDeviceRoot = "sagetv.device." + id + ".";
-        deviceOptions = new ConcurrentHashMap<>(5);
+        deviceOptions = new ConcurrentHashMap<>(10);
 
         try {
             streamingUrl = new StringDeviceOption(

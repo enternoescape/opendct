@@ -1150,3 +1150,6 @@
 > executed for Generic HTTP capture devices. The new property is
 > sagetv.device.\<unique_id\>.stopping_executable_delay_ms. If the
 > value of this property is 0, the delay is disabled.
+
+#### 0.5.7-Beta
+> *

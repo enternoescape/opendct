@@ -88,7 +88,9 @@ dependencies {
     compile 'it.unimi.dsi:fastutil:7.0.12'
     compile "net.java.dev.jna:jna:${jnaVersion}"
 	compile "net.java.dev.jna:jna-platform:${jnaVersion}"
-	compile "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}"
+    compile 'org.nanohttpd:nanohttpd:2.3.0'
+    compile 'org.nanohttpd:nanohttpd-nanolets:2.3.0'
+    compile "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}"
 
 	windows_x86 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86"
 	windows_x86 configurations.compile

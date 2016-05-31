@@ -61,6 +61,7 @@ ext {
     javaVersion = '1.7'
     buildVersion = "${majorVersion}.${minorVersion}.${buildVersion}"
     buildVersionString = "${buildVersion}-${buildType}"
+
 }
 
 version = buildVersion
@@ -90,19 +91,21 @@ dependencies {
 	compile "net.java.dev.jna:jna-platform:${jnaVersion}"
     compile 'org.nanohttpd:nanohttpd:2.3.0'
     compile 'org.nanohttpd:nanohttpd-nanolets:2.3.0'
-    compile "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}"
+    compile 'com.google.code.gson:gson:2.6.2'
+    compile 'org.bytedeco:javacpp:1.1'
+    compile ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}") { transitive = false }
 
-	windows_x86 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86"
-	windows_x86 configurations.compile
+    windows_x86 configurations.compile
+	windows_x86 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86") { transitive = false }
 
-	windows_x86_64 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64"
-	windows_x86_64 configurations.compile
+    windows_x86_64 configurations.compile
+	windows_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64") { transitive = false }
 
-	linux_x86 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86"
-	linux_x86 configurations.compile
+    linux_x86 configurations.compile
+    linux_x86 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86") { transitive = false }
 
-	linux_x86_64 "org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64"
-	linux_x86_64 configurations.compile
+    linux_x86_64 configurations.compile
+	linux_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64") { transitive = false }
 }
 
 test {
@@ -614,7 +617,7 @@ bintray {
     dryRun = false //Whether to run this as dry-run, without deploying
     publish = true //If version should be auto published after an upload
     pkg {
-        repo = 'Beta'
+        repo = 'Testing'
         name = 'OpenDCT'
         userOrg = 'opendct'
         desc = "OpenDCT Release"

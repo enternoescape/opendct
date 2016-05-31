@@ -24,24 +24,34 @@ public class BooleanDeviceOption extends BaseDeviceOption {
 
     public BooleanDeviceOption(boolean value, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
         super(DeviceOptionType.BOOLEAN, readonly, name, property, description, validValues);
-        super.setValue(String.valueOf(value));
+        super.setInitValue(String.valueOf(value));
         values = new boolean[]{value};
     }
 
     public BooleanDeviceOption(boolean[] values, boolean allowEmpty, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
         super(DeviceOptionType.BOOLEAN, allowEmpty, readonly, name, property, description, validValues);
-        super.setValue(Util.arrayToStringArray(values));
+        super.setInitValue(Util.arrayToStringArray(values));
         this.values = values;
     }
 
     public BooleanDeviceOption(String value, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
         super(DeviceOptionType.BOOLEAN, readonly, name, property, description, validValues);
-        setValue(value);
+        setInitValue(value);
     }
 
     public BooleanDeviceOption(String[] values, boolean allowEmpty, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
         super(DeviceOptionType.BOOLEAN, allowEmpty, readonly, name, property, description, validValues);
-        setValue(values);
+        setInitValue(values);
+    }
+
+    protected void setInitValue(String... newValues) throws DeviceOptionException {
+        super.setInitValue(newValues);
+
+        values = new boolean[newValues.length];
+
+        for (int i = 0; i < newValues.length; i++) {
+            values[i] = Boolean.valueOf(newValues[i]);
+        }
     }
 
     @Override

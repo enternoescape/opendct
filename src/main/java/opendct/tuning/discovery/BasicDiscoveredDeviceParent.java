@@ -21,6 +21,7 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.nanohttpd.pojo.JsonOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -152,14 +153,14 @@ public abstract class BasicDiscoveredDeviceParent implements DiscoveredDevicePar
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             if (option.getProperty().equals(propertiesDeviceParentName)) {
                 if (Config.setUniqueParentName(getParentId(), option.getValue())) {
                     setFriendlyName(option.getValue());
                 } else {
                     throw new DeviceOptionException("The requested new parent device name" +
-                            " conflicts with another parent device with the same name.", option);
+                            " conflicts with another parent device with the same name.", option.getProperty());
                 }
             }
         }

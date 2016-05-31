@@ -19,13 +19,13 @@ package opendct.capture;
 import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
-import opendct.config.options.DeviceOptions;
-import opendct.sagetv.SageTVDeviceType;
+import opendct.config.options.DeviceOptionException;
+import opendct.sagetv.SageTVDeviceCrossbar;
 
 import java.io.File;
 import java.net.InetAddress;
 
-public interface CaptureDevice extends DeviceOptions {
+public interface CaptureDevice {
 /*
 Capture Device Flow
   *based on HDHomeRun network encoder.
@@ -150,7 +150,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *
      * @return Available devices types.
      */
-    public SageTVDeviceType[] getSageTVDeviceTypes();
+    public SageTVDeviceCrossbar[] getSageTVDeviceCrossbars();
 
     /**
      * This is used to identify devices that are all on the same parent device.
@@ -213,7 +213,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *
      * @return <i>true</i> if the encoder is in progress.
      */
-    public boolean isLocked();
+    public boolean isInternalLocked();
 
     /**
      * Set the locked status for the capture device.
@@ -236,14 +236,14 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *
      * @return Merit value.
      */
-    public int getMerit();
+    public int getPoolMerit();
 
     /**
      * Sets the merit for this encoder. This is used to change the merit value at runtime.
      *
      * @param merit New merit value.
      */
-    public void setMerit(int merit);
+    public void setPoolMerit(int merit);
 
     /**
      * Is this encoder allowed to participate in offline channel scanning.
@@ -259,14 +259,12 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      */
     public void setOfflineChannelScan(boolean offlineChannelScan);
 
-
-
     /**
      * Returns the name of the tuner pool for this encoder.
      *
      * @return The name of the tuner pool.
      */
-    public String getEncoderPoolName();
+    public String getPoolName();
 
     /**
      * Sets the name of the tuner pool for this encoder.
@@ -276,7 +274,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *
      * @param poolName The new name of the tuner pool.
      */
-    public void setEncoderPoolName(String poolName);
+    public void setPoolName(String poolName);
 
     /**
      * Is the encoder is currently locked by an external program?
@@ -360,7 +358,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @param remoteAddress   This is the IP address of the SageTV server requesting the recording.
      * @return <i>true</i> if the the recording started was successfully.
      */
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress);
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress);
 
     /**
      * Switch out the current recording and transition into a new recording.
@@ -545,4 +543,39 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *                   length of this file should replace the file length reported
      */
     public void streamError(File sourceFile);
+
+    /**
+     * This returns the name of the currently selected consumer.
+     *
+     * @return The currently selected consumer.
+     */
+    public String getConsumerName();
+
+    /**
+     * This sets the name of the currently selected consumer.
+     * <p/>
+     * This will also validate the setting.
+     *
+     * @return The currently selected consumer.
+     * @throws DeviceOptionException If the setting is invalid.
+     */
+    public void setConsumerName(String consumerName) throws DeviceOptionException;
+
+    /**
+     * This gets the name of the currently desired transcode profile.
+     * <p/>
+     * A blank entry indicates that a profile is not to be used. This option is only available when
+     * FFmpeg is being used.
+     *
+     * @return The currently selected profile.
+     */
+    public String getTranscodeProfile();
+
+    /**
+     * This sets the currently selected transcode profile.
+     *
+     * @param transcodeProfile The new profile to be selected.
+     * @throws DeviceOptionException If the profile doesn't exist.
+     */
+    public void setTranscodeProfile(String transcodeProfile) throws DeviceOptionException;
 }

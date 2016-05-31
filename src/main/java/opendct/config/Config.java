@@ -21,6 +21,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.*;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.producer.*;
 import opendct.util.Util;
 import opendct.video.rtsp.DCTRTSPClientImpl;
@@ -957,6 +958,14 @@ public class Config {
     public static void setDeviceOption(DeviceOption option) throws DeviceOptionException {
         if (option.isArray()) {
             setStringArray(option.getProperty(), option.getArrayValue());
+        } else {
+            setString(option.getProperty(), option.getValue());
+        }
+    }
+
+    public static void setJsonOption(JsonOption option) throws DeviceOptionException {
+        if (option.isArray()) {
+            setStringArray(option.getProperty(), option.getValues());
         } else {
             setString(option.getProperty(), option.getValue());
         }

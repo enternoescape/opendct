@@ -152,6 +152,10 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
         if (limitLogging && message != null && (
+                // This is because FFmpeg 3.0 started using AVCodecParameter. Because this new
+                // feature is still very much being developed and the examples are not yet updated
+                // on how to use this properly, I am not going to waste time updating the code.
+                message.endsWith("Using AVStream.codec to pass codec parameters to muxers is deprecated, use AVStream.codecpar instead.") ||
                 // This message is handled by increasing probe sizes based on the currently
                 // available data.
                 message.endsWith("Invalid frame dimensions 0x0.") ||

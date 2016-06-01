@@ -210,7 +210,7 @@ public class FFmpegUtil {
                 continue;
             }
 
-            avcodec.AVCodecParameters codec = stream.codecpar();
+            avcodec.AVCodecContext codec = stream.codec();
 
             if (codec == null || codec.isNull()) {
                 continue;

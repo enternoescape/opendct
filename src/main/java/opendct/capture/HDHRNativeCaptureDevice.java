@@ -20,15 +20,11 @@ import opendct.capture.services.HTTPCaptureDeviceServices;
 import opendct.capture.services.RTPCaptureDeviceServices;
 import opendct.channel.*;
 import opendct.config.Config;
-import opendct.config.options.BooleanDeviceOption;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
-import opendct.config.options.StringDeviceOption;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
 import opendct.producer.RTPProducer;
 import opendct.producer.SageTVProducer;
-import opendct.sagetv.SageTVDeviceType;
+import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.*;
@@ -43,8 +39,6 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
@@ -57,12 +51,9 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
     private final AtomicBoolean locked = new AtomicBoolean(false);
     private final Object exclusiveLock = new Object();
-    private Thread tuningThread;
+    //private Thread tuningThread;
     private final Frequency lookupMap[];
-
-    private final Map<String, DeviceOption> deviceOptions;
-    private BooleanDeviceOption forceExternalUnlock;
-    private StringDeviceOption channelMap;
+    private long lastTuneTime = 0;
 
     private RTPCaptureDeviceServices rtpServices;
     private HTTPCaptureDeviceServices httpServices;
@@ -102,38 +93,6 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         }
 
         // =========================================================================================
-        // Initialize and configure device options.
-        // =========================================================================================
-
-        deviceOptions = new ConcurrentHashMap<>();
-
-        while(true) {
-            try {
-                forceExternalUnlock = new BooleanDeviceOption(
-                        Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false),
-                        false,
-                        "Always Force Unlock",
-                        propertiesDeviceRoot + "always_force_external_unlock",
-                        "This will allow the program to always override the HDHomeRun lock when" +
-                                " SageTV requests a channel to be tuned."
-                );
-
-                Config.mapDeviceOptions(
-                        deviceOptions,
-                        forceExternalUnlock
-                );
-            } catch (DeviceOptionException e) {
-                logger.warn("Invalid options. Reverting to defaults => ", e);
-
-                Config.setBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
-
-                continue;
-            }
-
-            break;
-        }
-
-        // =========================================================================================
         // Determine device tuning mode.
         // =========================================================================================
         encoderDeviceType = CaptureDeviceType.HDHOMERUN;
@@ -145,10 +104,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                 if (cableCardPresent) {
                     encoderDeviceType = CaptureDeviceType.DCT_HDHOMERUN;
-                    setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
+                    setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
                 } else {
                     encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
-                    setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
+                    setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
                 }
             } else {
                 if (!discoveredDeviceParent.getChannelMap().equals("")) {
@@ -161,20 +120,20 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 switch (channelMap) {
                     case US_BCAST:
                         encoderDeviceType = CaptureDeviceType.ATSC_HDHOMERUN;
-                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "atsc_" + device.getDeviceIdHex().toLowerCase()));
+                        setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "atsc_" + device.getDeviceIdHex().toLowerCase()));
                         break;
 
                     case US_CABLE:
                         encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
-                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
+                        setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
                         break;
                     case EU_BCAST:
                         encoderDeviceType = CaptureDeviceType.DVBT_HDHOMERUN;
-                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-t"));
+                        setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-t"));
                         break;
                     case EU_CABLE:
                         encoderDeviceType = CaptureDeviceType.DVBC_HDHOMERUN;
-                        setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-c"));
+                        setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-c"));
                         break;
                     case UNKNOWN:
                         throw new CaptureDeviceLoadException("The program currently does not" +
@@ -292,7 +251,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean isLocked() {
+    public boolean isInternalLocked() {
         return locked.get();
     }
 
@@ -344,7 +303,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     public boolean setExternalLock(boolean locked) {
         if (HDHomeRunDiscoverer.getHdhrLock() && locked) {
             try {
-                if (forceExternalUnlock.getBoolean()) {
+                if (discoveredDevice.getForceExternalUnlock()) {
                     tuner.forceClearLockkey();
                 }
 
@@ -359,7 +318,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             }
         } else if (HDHomeRunDiscoverer.getHdhrLock()) {
             try {
-                if (forceExternalUnlock.getBoolean()) {
+                if (discoveredDevice.getForceExternalUnlock()) {
                     tuner.forceClearLockkey();
                 } else {
                     tuner.clearLockkey();
@@ -382,18 +341,18 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         logger.entry(tvChannel);
 
-        if (isLocked() || isExternalLocked()) {
+        if (isInternalLocked() || isExternalLocked()) {
             return false;
         }
 
         synchronized (exclusiveLock) {
             // Return immediately if an exclusive lock was set between here and the first check if
             // there is an exclusive lock set.
-            if (isLocked()) {
+            if (isInternalLocked()) {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceType.DIGITAL_TV_TUNER, 0, null)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -406,7 +365,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         copyProtection == CopyProtection.UNKNOWN) &&
                         timeout-- > 0) {
 
-                    if (isLocked()) {
+                    if (isInternalLocked()) {
                         stopEncoding();
                         return logger.exit(false);
                     }
@@ -482,10 +441,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
 
-        tuningThread = Thread.currentThread();
+        //tuningThread = Thread.currentThread();
 
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
         String dotChannel = channel;
@@ -553,9 +512,17 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             recordLastFilename = filename;
         }
 
+        long currentTime = System.currentTimeMillis();
+        if (retune) {
+            if (currentTime - lastTuneTime < 2000) {
+                logger.info("Re-tune came back too fast. Skipping.");
+                return true;
+            }
+        }
+
         // Only lock the HDHomeRun if this device is locked too. This will prevent any offline
         // activities from taking the tuner away from outside programs.
-        if (isLocked()) {
+        if (isInternalLocked()) {
             int timeout = 5;
             while (!setExternalLock(true) && !Thread.currentThread().isInterrupted()) {
                 if (timeout-- < 0) {
@@ -571,9 +538,9 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     return logger.exit(false);
                 }
 
-                if (tuningThread != Thread.currentThread()) {
+                /*if (tuningThread != Thread.currentThread()) {
                     return logger.exit(false);
-                }
+                }*/
             }
         }
 
@@ -817,9 +784,9 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                             for (TVChannel qamChannel : qamChannels) {
 
-                                if (tuningThread != Thread.currentThread()) {
+                                /*if (tuningThread != Thread.currentThread()) {
                                     return false;
-                                }
+                                }*/
 
                                 if (Util.isNullOrEmpty(qamChannel.getUrl())) {
                                     continue;
@@ -987,11 +954,11 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         break;
                     }
 
-                    if (tuningThread != Thread.currentThread()) {
+                    /*if (tuningThread != Thread.currentThread()) {
                         rtpServices.stopProducing(false);
                         logger.info("tuningThread != Thread.currentThread()");
                         return logger.exit(false);
-                    }
+                    }*/
                 }
             } catch (IOException e) {
                 logger.error("HDHomeRun is unable to get program because the device cannot be reached => ", e);
@@ -1036,14 +1003,14 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 }
 
                 if (copyProtection == CopyProtection.COPY_ONCE ||
-                        copyProtection == CopyProtection.COPY_NEVER ||
-                        tuningThread != Thread.currentThread()) {
+                        copyProtection == CopyProtection.COPY_NEVER) {
 
                     break;
                 }
             }
         }
 
+        lastTuneTime = System.currentTimeMillis();
         return logger.exit(true);
     }
 
@@ -1583,7 +1550,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
             // Only remove the external lock if we are not performing an offline activity. This also
             // prevents the device from possibly being forced to be unlocked.
-            if (isLocked()) {
+            if (isInternalLocked()) {
                 setExternalLock(false);
             }
         }
@@ -1693,33 +1660,5 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         return device.isLegacy() ||
                 (encoderDeviceType != CaptureDeviceType.DCT_HDHOMERUN &&
                         HDHomeRunDiscoverer.getAlwaysTuneLegacy());
-    }
-
-    @Override
-    public DeviceOption[] getOptions() {
-        return new DeviceOption[] {
-                forceExternalUnlock
-        };
-    }
-
-    @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
-            DeviceOption optionReference = this.deviceOptions.get(option.getProperty());
-
-            if (optionReference == null) {
-                continue;
-            }
-
-            if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
-            } else {
-                optionReference.setValue(option.getValue());
-            }
-
-            Config.setDeviceOption(optionReference);
-        }
-
-        Config.saveConfig();
     }
 }

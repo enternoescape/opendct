@@ -85,7 +85,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
     private long firstPtsByStreamIndex[] = new long[0];
     private long lastDtsByStreamIndex[] = new long[0];
     private long lastPtsByStreamIndex[] = new long[0];
-    boolean mpegTsCbrEnabled = false;
     private AtomicInteger encodedFrames[] = new AtomicInteger[0];
     private long startTime = 0;
     private AVDictionary muxerDict;
@@ -199,7 +198,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                                  FFmpegWriter writer, FFmpegWriter writer2, boolean firstRun)
             throws FFmpegException, InterruptedException {
 
-        mpegTsCbrEnabled = FFmpegConfig.getUseMpegTsCBR();
         long muxRate = 0;
         int ret;
         this.ctx = ctx;
@@ -219,9 +217,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
         int numInputStreams = ctx.avfCtxInput.nb_streams();
 
         // Creates the output container and AVFormatContext.
-        ctx.allocAvfContainerOutputContext(outputFilename);
+        ctx.allocAvfContainerOutputContext(outputFilename, ctx.videoInCodecCtx.codec_id());
         if (ctx.secondaryStream) {
-            ctx.allocAvfContainerOutputContext2(outputFilename);
+            ctx.allocAvfContainerOutputContext2(outputFilename, ctx.videoInCodecCtx.codec_id());
 
             ctx.streamMap2 = new OutputStreamMap[numInputStreams];
 
@@ -422,6 +420,29 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
             throw new FFmpegException("initFilters: Unable to allocate filters.", ret);
         }
 
+
+        // TODO: Someone needs to fix this so we are using the new AVCodecParameter.
+        for (int i = 0; i < ctx.streamMap.length; i++) {
+            if (ctx.streamMap[i] == null) {
+                continue;
+            }
+
+            avcodec_parameters_from_context(
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i].outStreamIndex).codecpar(),
+                    ctx.avfCtxOutput.streams(ctx.streamMap[i].outStreamIndex).codec());
+
+            // The secondary stream is just video.
+            if (ctx.secondaryStream) {
+                if (ctx.streamMap2[i] == null) {
+                    continue;
+                }
+
+                avcodec_parameters_from_context(
+                        ctx.avfCtxOutput2.streams(ctx.streamMap[i].outStreamIndex).codecpar(),
+                        ctx.avfCtxOutput2.streams(ctx.streamMap[i].outStreamIndex).codec());
+            }
+        }
+
         ctx.dumpOutputFormat();
         ctx.allocIoOutputContext(writer);
 
@@ -443,35 +464,12 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
         logger.debug("Writing header");
 
-        if (mpegTsCbrEnabled && !ctx.streamMap[ctx.preferredVideo].transcode && outputFilename.endsWith(".ts")) {
-            // This value will generally be the safest guess 99% of the time. If the value is guessed
-            // too low, there will be issues during remuxing and we can't go back and fix a live
-            // stream.
-            muxRate = ctx.avfCtxInput.streams(ctx.preferredVideo).codec().rc_max_rate();
+        muxerDict = new AVDictionary(null);
 
-            // No normal broadcast content should be over 20mb/s.
-            if (muxRate == 0 || muxRate > 20000000) {
-                muxRate = 20000000;
-            }
+        av_dict_set_int(muxerDict, "pat_period", 1, 0);
+        av_dict_set_int(muxerDict, "sdt_period", 10, 0);
 
-            // Audio + margin of error.
-            muxRate += 2000000;
-
-            logger.debug("Using MPEG-TS CBR {} kb/s.", muxRate / 1000);
-            muxerDict = new AVDictionary(null);
-            av_dict_set_int(muxerDict, "muxrate", muxRate, 0);
-            av_dict_set_int(muxerDict, "pat_period", 1, 0);
-            av_dict_set_int(muxerDict, "sdt_period", 10, 0);
-
-            ret = avformat_write_header(ctx.avfCtxOutput, muxerDict);
-        } else {
-            muxerDict = new AVDictionary(null);
-
-            av_dict_set_int(muxerDict, "pat_period", 1, 0);
-            av_dict_set_int(muxerDict, "sdt_period", 10, 0);
-
-            ret = avformat_write_header(ctx.avfCtxOutput, muxerDict);
-        }
+        ret = avformat_write_header(ctx.avfCtxOutput, muxerDict);
 
         if (ret < 0) {
             deallocFilterGraphs();
@@ -785,17 +783,6 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         synchronized (switchLock) {
                             try {
                                 switchStreamOutput();
-
-                                long minDts = packet.dts();
-                                for (int i = 0; i < lastPreOffsetDts.length; i++) {
-                                    if (lastPreOffsetDts[i] > 0) {
-                                        minDts = Math.min(minDts, lastPreOffsetDts[i]);
-                                    }
-                                }
-
-                                Arrays.fill(lastDtsByStreamIndex, 0);
-                                Arrays.fill(lastPtsByStreamIndex, 0);
-                                Arrays.fill(tsOffsets, -minDts);
 
                                 errorCounter = 0;
                             } catch (InterruptedException e) {

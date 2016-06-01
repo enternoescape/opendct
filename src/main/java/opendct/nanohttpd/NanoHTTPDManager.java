@@ -16,7 +16,118 @@
 
 package opendct.nanohttpd;
 
-public class NanoHTTPDManager {
+import opendct.config.Config;
+import opendct.power.PowerEventListener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+public class NanoHTTPDManager implements PowerEventListener {
+    private static final Logger logger = LogManager.getLogger(NanoHTTPDManager.class);
+    public static final NanoHTTPDManager POWER_EVENT_LISTENTER = new NanoHTTPDManager();
+
+    public static final boolean ENABLED = Config.getBoolean("web.enabled", true);
+    private static int port = Config.getInteger("web.port", 9090);
+    private static NanoServlet currentServer = null;
+
+    /**
+     * Start the webserver on the default port.
+     *
+     * @return <i>true</i> if successful.
+     */
+    public synchronized static boolean startWebServer() {
+        return startWebServer(NanoHTTPDManager.port);
+    }
+
+    /**
+     * Start the webserver on a specific port.
+     * <p/>
+     * If a webserver is already running, it will not be stopped until the new one successfully
+     * starts.
+     *
+     * @param port The port number.
+     * @return <i>true</i> if the server was able to start.
+     */
+    public synchronized static boolean startWebServer(int port) {
+        if (!ENABLED) {
+            return false;
+        }
+
+        if (currentServer != null && port == NanoHTTPDManager.port) {
+            logger.warn("Webserver is already running on port {}...", port);
+            return true;
+        }
+
+        logger.info("Starting webserver on port {}...", port);
+
+        try {
+            NanoServlet nanoServlet = new NanoServlet(port);
+            nanoServlet.start();
+            NanoHTTPDManager.port = port;
+
+            stopWebServer();
+
+            currentServer = nanoServlet;
+
+            return true;
+        } catch (Exception e) {
+            logger.error("Unable to open webserver on port {} => ", port, e);
+        }
+
+        return false;
+    }
+
+    public synchronized static void stopWebServer() {
+        if (currentServer != null) {
+            logger.info("Stopping webserver on port {}...", port);
+
+            currentServer.stop();
+            currentServer = null;
+        }
+    }
+
+    /**
+     * Changes the saved port used by the webserver while the program is still running.
+     * <p/>
+     * The port saved doesn't get updated unless the new port was opened successfully.
+     *
+     * @param port The new webserver port.
+     * @return <i>true</i> if the change was successful.
+     */
+    public synchronized static boolean changePort(int port) {
+        stopWebServer();
+
+        if (startWebServer(port)) {
+            Config.setInteger("web.port", port);
+            return true;
+        }
+
+        logger.warn("Unable to start webserver on port {}, reverted back to {}.",
+                port, NanoHTTPDManager.port);
+
+        return false;
+    }
+
+    @Override
+    public void onSuspendEvent() {
+        stopWebServer();
+    }
+
+    @Override
+    public void onResumeSuspendEvent() {
+        startWebServer();
+    }
+
+    @Override
+    public void onResumeCriticalEvent() {
+        startWebServer();
+    }
+
+    @Override
+    public void onResumeAutomaticEvent() {
+        startWebServer();
+    }
+
+
     //TODO: [js] Create a simple web server for communicating with and troubleshooting the network encoder.
 
     /*

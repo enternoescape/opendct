@@ -20,6 +20,7 @@ import opendct.channel.ChannelManager;
 import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
+import opendct.nanohttpd.NanoHTTPDManager;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
@@ -233,6 +234,22 @@ public class Main {
                         DiscoveryManager.stopDeviceDiscovery();
                     } catch (InterruptedException e) {
                         logger.debug("Stopping device discovery services was interrupted => ", e);
+                    }
+                }
+            });
+        }
+
+        if (NanoHTTPDManager.startWebServer()) {
+            PowerMessageManager.EVENTS.addListener(NanoHTTPDManager.POWER_EVENT_LISTENTER);
+
+            Runtime.getRuntime().addShutdownHook(new Thread("NanoHTTPDShutdown") {
+                @Override
+                public void run() {
+                    logger.info("Stopping web server...");
+                    try {
+                        NanoHTTPDManager.stopWebServer();
+                    } catch (Exception e) {
+                        logger.debug("Stopping web server created an exception => ", e);
                     }
                 }
             });

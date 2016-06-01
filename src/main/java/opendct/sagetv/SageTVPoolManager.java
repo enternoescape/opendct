@@ -144,7 +144,7 @@ public class SageTVPoolManager  {
                     continue;
                 }
 
-                if (captureDevice.isLocked()) {
+                if (captureDevice.isInternalLocked()) {
                     continue;
                 }
 
@@ -177,7 +177,7 @@ public class SageTVPoolManager  {
 
             // If we can't find a device that's not locked, then we need to use one that is.
             for (CaptureDevice captureDevice : externalLocked) {
-                if (captureDevice.isLocked()) {
+                if (captureDevice.isInternalLocked()) {
                     // If suddenly a capture device has become locked and all of the other
                     // devices are externally locked, go back to see if anything else is now
                     // unlocked and doesn't have an external lock.
@@ -209,7 +209,7 @@ public class SageTVPoolManager  {
             // unlocked tuner.
             // If we can't find a device that's not locked, then we need to use one that is.
             for (CaptureDevice captureDevice : externalLocked) {
-                if (captureDevice.isLocked()) {
+                if (captureDevice.isInternalLocked()) {
                     // If suddenly a capture device has become locked and all of the other
                     // devices are externally locked, go back to see if anything else is now
                     // unlocked and doesn't have an external lock.
@@ -274,11 +274,6 @@ public class SageTVPoolManager  {
         captureDeviceMappingLock.writeLock().lock();
 
         try {
-            if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-                vCaptureDevice = vCaptureDevice.substring(0,
-                        vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
-            }
-
             String pCaptureDevice = vCaptureDeviceToPoolCaptureDevice.get(vCaptureDevice);
 
             if (pCaptureDevice != null) {
@@ -306,11 +301,6 @@ public class SageTVPoolManager  {
         vCaptureDeviceToPoolNameLock.writeLock().lock();
 
         try {
-            if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-                vCaptureDevice = vCaptureDevice.substring(0,
-                        vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
-            }
-
             ArrayList<String> removePools = new ArrayList<>();
 
             for (Map.Entry<String, ArrayList<String>> poolCaptureDeviceKVP :
@@ -464,9 +454,9 @@ public class SageTVPoolManager  {
                                 return 1;
                             }
 
-                            if (c1.getMerit() > c2.getMerit()) {
+                            if (c1.getPoolMerit() > c2.getPoolMerit()) {
                                 return -1;
-                            } else if (c1.getMerit() < c2.getMerit()) {
+                            } else if (c1.getPoolMerit() < c2.getPoolMerit()) {
                                 return 1;
                             }
 
@@ -524,9 +514,9 @@ public class SageTVPoolManager  {
                             return 1;
                         }
 
-                        if (c1.getMerit() > c2.getMerit()) {
+                        if (c1.getPoolMerit() > c2.getPoolMerit()) {
                             return -1;
-                        } else if (c1.getMerit() < c2.getMerit()) {
+                        } else if (c1.getPoolMerit() < c2.getPoolMerit()) {
                             return 1;
                         }
 

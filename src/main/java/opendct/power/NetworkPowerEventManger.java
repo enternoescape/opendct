@@ -22,6 +22,7 @@ import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.DeviceOptions;
 import opendct.config.options.IntegerDeviceOption;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -75,6 +76,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         }
     }
 
+    @Override
     public DeviceOption[] getOptions() {
         try {
             return new DeviceOption[]{
@@ -106,10 +108,11 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         return new DeviceOption[0];
     }
 
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption deviceOption : deviceOptions) {
+    @Override
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption deviceOption : deviceOptions) {
             // This covers all values that should not be changed instantly and makes the values persistent.
-            Config.setDeviceOption(deviceOption);
+            Config.setJsonOption(deviceOption);
 
             if (deviceOption.getProperty().equals("pm.network.resume_timeout_ms")) {
                 try {

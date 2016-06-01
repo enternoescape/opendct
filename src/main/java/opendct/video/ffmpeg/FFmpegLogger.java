@@ -152,6 +152,8 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
 
         // Clean up logging. Everything ignored here is expected and does not need to be logged.
         if (limitLogging && message != null && (
+                // This message is handled by increasing probe sizes based on the currently
+                // available data.
                 message.endsWith("Invalid frame dimensions 0x0.") ||
                 // This message is handled by increasing probe sizes based on the currently
                 // available data.

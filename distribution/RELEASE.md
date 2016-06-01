@@ -1152,8 +1152,6 @@
 > value of this property is 0, the delay is disabled.
 
 #### 0.5.7-Beta
-> *Upgraded FFmpeg libraries to 3.0.2.
-
 > *Added a final check to ensure that Non-MPEG1/2 video codecs do not
 > get remuxed into MPEG-PS containers.
 

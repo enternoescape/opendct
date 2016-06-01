@@ -422,7 +422,9 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
 
 
         // TODO: Someone needs to fix this so we are using the new AVCodecParameter.
-        for (int i = 0; i < ctx.streamMap.length; i++) {
+        // This may or may not be needed. There's a bug in JavaCPP and this deprecation was included
+        // in the latest suggested solution.
+        /*for (int i = 0; i < ctx.streamMap.length; i++) {
             if (ctx.streamMap[i].outStreamIndex != NO_STREAM_IDX) {
                 avcodec_parameters_from_context(
                         ctx.avfCtxOutput.streams(ctx.streamMap[i].outStreamIndex).codecpar(),
@@ -436,7 +438,7 @@ public class FFmpegTranscoder implements FFmpegStreamProcessor {
                         ctx.avfCtxOutput2.streams(ctx.streamMap2[i].outStreamIndex).codecpar(),
                         ctx.avfCtxOutput2.streams(ctx.streamMap2[i].outStreamIndex).codec());
             }
-        }
+        }*/
 
         ctx.dumpOutputFormat();
         ctx.allocIoOutputContext(writer);

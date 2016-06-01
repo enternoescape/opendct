@@ -723,24 +723,28 @@ public class FFmpegContext {
 
     /**
      * Create a new output AVFormatContext and initialize it for a specific container based on the
-     * provided filename. This method only allows for MPEG-TS (default) and MPEG-PS (*.mpg).
+     * provided filename. This method only allows for MPEG-TS (default) and MPEG-PS (*.mpg) if the
+     * codec ID is compatible.
      * <p/>
      * If AVFormatContext is already allocated, it must be de-allocated before using this method.
      *
      * @param filename The filename to use to determine the output format. This value can be
      *                 <i>null</i> if the default of MPEG-TS is desired.
+     * @param codecId The codec ID to be used to determine if an MPEG-PS container can be used.
      * @throws IllegalStateException Thrown if any of the contexts cannot be allocated. AVIOContext
      *                               context is de-allocated on exception.
      */
-    public void allocAvfContainerOutputContext(String filename) throws FFmpegException {
+    public void allocAvfContainerOutputContext(String filename, int codecId) throws FFmpegException {
         avfCtxOutput = new AVFormatContext(null);
+
+        boolean isMpeg = codecId == AV_CODEC_ID_MPEG1VIDEO || codecId == AV_CODEC_ID_MPEG2VIDEO;
 
         outputFilename = filename != null ? filename : "output.ts";
 
         logger.debug("Calling avformat_alloc_output_context2");
 
         int ret;
-        if (outputFilename.endsWith(".mpg")) {
+        if (outputFilename.endsWith(".mpg") && isMpeg) {
             ret = avformat_alloc_output_context2(avfCtxOutput, null, "vob", null);
         } else {
             ret = avformat_alloc_output_context2(avfCtxOutput, null, null, "output.ts");
@@ -754,28 +758,32 @@ public class FFmpegContext {
     }
 
     /**
-     * Create a new secondar output AVFormatContext and initialize it for a specific container based
-     * on the provided filename. This method only allows for MPEG-TS (default) and MPEG-PS (*.mpg).
+     * Create a new secondary output AVFormatContext and initialize it for a specific container
+     * based on the provided filename. This method only allows for MPEG-TS (default) and MPEG-PS
+     * (*.mpg) if the codec ID is compatible.
      * <p/>
      * If AVFormatContext is already allocated, it must be de-allocated before using this method.
      *
      * @param filename2 The filename to use to determine the output format. This value can be
      *                 <i>null</i> if the default of MPEG-TS is desired.
+     * @param codecId The codec ID to be used to determine if an MPEG-PS container can be used.
      * @throws IllegalStateException Thrown if any of the contexts cannot be allocated. AVIOContext
      *                               context is de-allocated on exception.
      */
-    public void allocAvfContainerOutputContext2(String filename2) throws FFmpegException {
+    public void allocAvfContainerOutputContext2(String filename2, int codecId) throws FFmpegException {
         avfCtxOutput2 = new AVFormatContext(null);
 
-        outputFilename2 = filename2 != null ? filename2 : "output.ts";
+        boolean isMpeg = codecId == AV_CODEC_ID_MPEG1VIDEO || codecId == AV_CODEC_ID_MPEG2VIDEO;
+
+        outputFilename2 = filename2 != null ? filename2 : "output2.ts";
 
         logger.debug("Calling avformat_alloc_output_context2");
 
         int ret;
-        if (outputFilename2.endsWith(".mpg")) {
+        if (outputFilename2.endsWith(".mpg") && isMpeg) {
             ret = avformat_alloc_output_context2(avfCtxOutput2, null, "vob", null);
         } else {
-            ret = avformat_alloc_output_context2(avfCtxOutput2, null, null, "output.ts");
+            ret = avformat_alloc_output_context2(avfCtxOutput2, null, null, "output2.ts");
         }
 
         if (ret < 0) {

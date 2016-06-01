@@ -23,6 +23,7 @@ import opendct.config.OSVersion;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.*;
 import opendct.tuning.hybrid.HybridDiscoveredDevice;
 import opendct.tuning.hybrid.HybridDiscoveredDeviceParent;
@@ -319,8 +320,8 @@ public class HybridDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference = HybridDiscoverer.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
@@ -328,7 +329,7 @@ public class HybridDiscoverer implements DeviceDiscoverer {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }

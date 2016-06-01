@@ -15,7 +15,8 @@
 
 package opendct.sagetv;
 
-public enum SageTVDeviceType {
+public enum SageTVDeviceCrossbar {
+    UNKNOWN(0, "Unknown"),
     TV_TUNER(1, "TV Tuner"),
     COMPOSITE(2, "Composite"),
     S_VIDEO(3, "S Video"),
@@ -39,17 +40,17 @@ public enum SageTVDeviceType {
     public final int INDEX;
     public final String NAME;
 
-    SageTVDeviceType(int code, String name) {
+    SageTVDeviceCrossbar(int code, String name) {
         INDEX = code;
         NAME = name;
     }
 
-    public static SageTVDeviceType getTypeForName(String deviceName) {
+    public static SageTVDeviceCrossbar getTypeForName(String deviceName) {
         if (deviceName.endsWith(DIGITAL_TV_TUNER.NAME)) {
             return DIGITAL_TV_TUNER;
         }
 
-        for (SageTVDeviceType type : SageTVDeviceType.values()) {
+        for (SageTVDeviceCrossbar type : SageTVDeviceCrossbar.values()) {
             if (deviceName.endsWith(type.NAME)) {
                 return type;
             }
@@ -59,7 +60,7 @@ public enum SageTVDeviceType {
         return DIGITAL_TV_TUNER;
     }
 
-    public static String trimToName(String deviceName, SageTVDeviceType type) {
+    public static String trimToName(String deviceName, SageTVDeviceCrossbar type) {
         if (deviceName.endsWith(type.NAME)) {
             return deviceName.substring(0, deviceName.length() - type.NAME.length()).trim();
         }

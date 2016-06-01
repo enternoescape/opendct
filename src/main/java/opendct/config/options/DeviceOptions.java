@@ -16,6 +16,8 @@
 
 package opendct.config.options;
 
+import opendct.nanohttpd.pojo.JsonOption;
+
 public interface DeviceOptions {
 
     /**
@@ -32,6 +34,6 @@ public interface DeviceOptions {
      * @throws DeviceOptionException The first option to encounter an error will be returned in this
      *                               exception.
      */
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException;
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException;
 
 }

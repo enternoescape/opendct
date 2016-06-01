@@ -18,9 +18,8 @@ package opendct.capture;
 import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
-import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
-import opendct.sagetv.SageTVDeviceType;
+import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.sagetv.SageTVManager;
 import opendct.sagetv.SageTVPoolManager;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
@@ -122,8 +121,8 @@ public class HybridCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public SageTVDeviceType[] getSageTVDeviceTypes() {
-        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER };
+    public SageTVDeviceCrossbar[] getSageTVDeviceCrossbars() {
+        return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.DIGITAL_TV_TUNER };
     }
 
     @Override
@@ -146,7 +145,7 @@ public class HybridCaptureDevice implements CaptureDevice {
         return device.getId();
     }
 
-    public boolean isLocked() {
+    public boolean isInternalLocked() {
         return locked.get();
     }
 
@@ -174,12 +173,12 @@ public class HybridCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public int getMerit() {
+    public int getPoolMerit() {
         return 0;
     }
 
     @Override
-    public void setMerit(int merit) {
+    public void setPoolMerit(int merit) {
 
     }
 
@@ -194,12 +193,12 @@ public class HybridCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public String getEncoderPoolName() {
+    public String getPoolName() {
         return null;
     }
 
     @Override
-    public void setEncoderPoolName(String poolName) {
+    public void setPoolName(String poolName) {
 
     }
 
@@ -234,7 +233,7 @@ public class HybridCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
         return false;
     }
 
@@ -319,12 +318,22 @@ public class HybridCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public DeviceOption[] getOptions() {
-        return new DeviceOption[0];
+    public String getConsumerName() {
+        return null;
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+    public void setConsumerName(String consumerName) throws DeviceOptionException {
+
+    }
+
+    @Override
+    public String getTranscodeProfile() {
+        return null;
+    }
+
+    @Override
+    public void setTranscodeProfile(String transcodeProfile) throws DeviceOptionException {
 
     }
 }

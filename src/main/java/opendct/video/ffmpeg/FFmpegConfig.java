@@ -18,6 +18,7 @@ package opendct.video.ffmpeg;
 
 import opendct.config.Config;
 import opendct.config.options.*;
+import opendct.nanohttpd.pojo.JsonOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -40,7 +41,6 @@ public class FFmpegConfig {
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption fixStream;
     private static BooleanDeviceOption useCompatibilityTimebase;
-    private static BooleanDeviceOption useMpegTsCBR;
     private static BooleanDeviceOption ccExtractor;
     private static BooleanDeviceOption ccExtractorAllStreams;
     private static StringDeviceOption ccExtractorCustomOptions;
@@ -63,7 +63,6 @@ public class FFmpegConfig {
                 uploadIdPort,
                 fixStream,
                 useCompatibilityTimebase,
-                useMpegTsCBR,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
@@ -200,17 +199,6 @@ public class FFmpegConfig {
                                 " outside of SageTV."
                 );
 
-                useMpegTsCBR = new BooleanDeviceOption(
-                        Config.getBoolean("consumer.ffmpeg.use_mpegts_cbr", false),
-                        false,
-                        "Use CBR for MPEG-TS Container",
-                        "consumer.ffmpeg.use_mpegts_cbr",
-                        "This enables using CBR when recording to MPEG-TS containers. Only" +
-                                " enable this option if you are having issues with playback" +
-                                " outside of SageTV. This will result in files that are larger" +
-                                " than they need to be due to padding."
-                );
-
                 ccExtractor = new BooleanDeviceOption(
                         Config.getBoolean("consumer.ffmpeg.ccextractor_enabled", false),
                         false,
@@ -281,15 +269,14 @@ public class FFmpegConfig {
                 uploadIdPort,
                 fixStream,
                 useCompatibilityTimebase,
-                useMpegTsCBR,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
         };
     }
 
-    public static void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public static void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference = FFmpegConfig.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
@@ -297,7 +284,7 @@ public class FFmpegConfig {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }
@@ -376,9 +363,5 @@ public class FFmpegConfig {
 
     public static boolean getUseCompatiblityTimebase() {
         return useCompatibilityTimebase.getBoolean();
-    }
-
-    public static boolean getUseMpegTsCBR() {
-        return useMpegTsCBR.getBoolean();
     }
 }

@@ -19,11 +19,9 @@ package opendct.capture;
 import opendct.capture.services.HTTPCaptureDeviceServices;
 import opendct.channel.*;
 import opendct.config.Config;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
-import opendct.sagetv.SageTVDeviceType;
+import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
 import opendct.tuning.http.GenericHttpDiscoveredDevice;
@@ -40,8 +38,6 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GenericHttpCaptureDevice extends BasicCaptureDevice {
@@ -52,7 +48,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private final GenericHttpDiscoveredDeviceParent parent;
     private final GenericHttpDiscoveredDevice device;
 
-    private final Map<String, URL> channelMap = new ConcurrentHashMap<>();
     private final static Runtime runtime = Runtime.getRuntime();
     private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
     private URL sourceUrl;
@@ -69,7 +64,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         device = loadDevice;
 
         try {
-            getURL(null);
+            device.getURL(null);
         } catch (MalformedURLException e) {
             throw new CaptureDeviceLoadException(e);
         }
@@ -82,59 +77,12 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             ChannelManager.addChannelLineup(new ChannelLineup(encoderLineup, encoderName, ChannelSourceType.STATIC, ""), false);
         }
 
-        super.setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "generic_http"));
-
-        String tuningUrl = device.getAltStreamingUrl();
-
-        if (!Util.isNullOrEmpty(tuningUrl)) {
-            try {
-                URL altStreamingUrl = new URL(tuningUrl);
-                String channels[] = device.getAltStreamingChannels();
-
-                for (String channel : channels) {
-                    channelMap.put(channel, altStreamingUrl);
-                }
-
-                logger.info("The secondary URL '{}'" +
-                        " will be used for the channels: {}", tuningUrl, channels);
-            } catch (MalformedURLException e) {
-                logger.warn("The secondary URL '{}' is not a valid URL." +
-                                " Defaulting to primary URL.",
-                        tuningUrl);
-            }
-        }
+        super.setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "generic_http"));
     }
 
     @Override
-    public SageTVDeviceType[] getSageTVDeviceTypes() {
-        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER, SageTVDeviceType.HDMI };
-    }
-
-    private URL getURL(String channel) throws MalformedURLException {
-        URL newUrl;
-
-        if (channel != null) {
-            newUrl = channelMap.get(channel);
-
-            if (newUrl != null) {
-                return newUrl;
-            }
-        }
-
-        String loadUrl = device.getStreamingUrl();
-
-        try {
-            newUrl = new URL(loadUrl);
-            sourceUrl = newUrl;
-        } catch (MalformedURLException e) {
-            if (sourceUrl == null) {
-                throw new MalformedURLException(
-                        "Unable to start capture device because '" +
-                                loadUrl + "' is not a valid URL.");
-            }
-        }
-
-        return sourceUrl;
+    public SageTVDeviceCrossbar[] getSageTVDeviceCrossbars() {
+        return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.DIGITAL_TV_TUNER, SageTVDeviceCrossbar.HDMI };
     }
 
     private String getExecutionString(String execute, String channel, boolean appendChannel) {
@@ -289,7 +237,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     }*/
 
     @Override
-    public boolean isLocked() {
+    public boolean isInternalLocked() {
         return locked.get();
     }
 
@@ -332,18 +280,18 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         logger.entry(tvChannel, skipCCI);
 
-        if (isLocked() || isExternalLocked()) {
+        if (isInternalLocked() || isExternalLocked()) {
             return logger.exit(false);
         }
 
         synchronized (exclusiveLock) {
             // Return immediately if an exclusive lock was set between here and the first check if
             // there is an exclusive lock set.
-            if (isLocked()) {
+            if (isInternalLocked()) {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceType.DIGITAL_TV_TUNER, 0, null)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -357,7 +305,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
         synchronized (exclusiveLock) {
@@ -451,7 +399,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         logger.info("Configuring and starting the new SageTV producer...");
 
         try {
-            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, getURL(channel))) {
+            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, device.getURL(channel))) {
                 return false;
             }
 
@@ -588,38 +536,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     @Override
     public CopyProtection getCopyProtection() {
         return CopyProtection.NONE;
-    }
-
-    @Override
-    public DeviceOption[] getOptions() {
-        return device.getOptions();
-    }
-
-    @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        device.setOptions(deviceOptions);
-
-        // Update channel map.
-        String tuningUrl = device.getAltStreamingUrl();
-        channelMap.clear();
-
-        if (!Util.isNullOrEmpty(tuningUrl)) {
-            try {
-                URL altStreamingUrl = new URL(tuningUrl);
-                String channels[] = device.getAltStreamingChannels();
-
-                for (String channel : channels) {
-                    channelMap.put(channel, altStreamingUrl);
-                }
-
-                logger.info("The secondary URL '{}'" +
-                        " will be used for the channels: {}", tuningUrl, channels);
-            } catch (MalformedURLException e) {
-                logger.warn("The secondary URL '{}' is not a valid URL." +
-                                " Defaulting to primary URL.",
-                        tuningUrl);
-            }
-        }
     }
 
     @Override

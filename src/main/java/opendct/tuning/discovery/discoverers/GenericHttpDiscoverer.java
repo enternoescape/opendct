@@ -21,6 +21,7 @@ import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.OSVersion;
 import opendct.config.options.*;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.*;
 import opendct.tuning.http.GenericHttpDiscoveredDevice;
 import opendct.tuning.http.GenericHttpDiscoveredDeviceParent;
@@ -34,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class GenericHttpDiscoverer implements DeviceDiscoverer {
-    private static final Logger logger = LogManager.getLogger(HDHomeRunDiscoverer.class);
+    private static final Logger logger = LogManager.getLogger(GenericHttpDiscoverer.class);
 
     // Static information about this discovery method.
     private final static String name = "Generic HTTP";
@@ -392,8 +393,8 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference = GenericHttpDiscoverer.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
@@ -401,7 +402,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }

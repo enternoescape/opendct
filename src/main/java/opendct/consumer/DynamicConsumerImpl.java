@@ -21,6 +21,7 @@ import opendct.config.options.ChannelRangesDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.nanohttpd.pojo.JsonOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -478,8 +479,8 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference =
                     DynamicConsumerImpl.deviceOptions.get(option.getProperty());
 
@@ -488,7 +489,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }

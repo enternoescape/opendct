@@ -1150,3 +1150,35 @@
 > executed for Generic HTTP capture devices. The new property is
 > sagetv.device.\<unique_id\>.stopping_executable_delay_ms. If the
 > value of this property is 0, the delay is disabled.
+
+#### 0.5.7-Beta
+> *Upgraded FFmpeg libraries to 3.0.2.
+
+> *Added a final check to ensure that Non-MPEG1/2 video codecs do not
+> get remuxed into MPEG-PS containers.
+
+> *Added more logging for FFmpeg initialization.
+
+> *Added additional smart detection trigger after startup if a capture
+> device is requested by SageTV, but it doesn't yet exist.
+
+> *Further optimized FFmpeg initialization routine.
+
+> *Added handling for SageTV sending additional requests to start
+> streaming when it takes too long to return OK.
+
+> *Fixed a potential race while switching with the async file writer.
+
+> *Removed unnecessary device name checks/sanitizing in the device
+> pooling since these checks are now handled earlier.
+
+> *Removed CBR option since the timebase compatibility fix seems to be
+> working the best and CBR has some requirements that might have broken
+> switching for some users.
+
+> *Merged loaded device options with discovered device options, so
+> there is only one place to check for options.
+
+> *Added web server on port 9090 to support runtime configuration via
+> JSON calls. This will be utilized at a later date and is listed here
+> for those that notice that OpenDCT is now using port 9090.

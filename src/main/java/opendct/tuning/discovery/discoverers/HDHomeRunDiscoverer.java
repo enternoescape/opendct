@@ -22,6 +22,7 @@ import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.OSVersion;
 import opendct.config.options.*;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.*;
 import opendct.tuning.hdhomerun.*;
 import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
@@ -704,8 +705,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference = HDHomeRunDiscoverer.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
@@ -713,7 +714,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }

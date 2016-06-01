@@ -21,7 +21,7 @@ import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
-import opendct.sagetv.SageTVDeviceType;
+import opendct.sagetv.SageTVDeviceCrossbar;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -56,8 +56,8 @@ public class DummyCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public SageTVDeviceType[] getSageTVDeviceTypes() {
-        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER };
+    public SageTVDeviceCrossbar[] getSageTVDeviceCrossbars() {
+        return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.DIGITAL_TV_TUNER };
     }
 
     public String getEncoderParentName() {
@@ -78,7 +78,7 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     private AtomicBoolean locked = new AtomicBoolean(false);
 
-    public boolean isLocked() {
+    public boolean isInternalLocked() {
         return locked.get();
     }
 
@@ -90,11 +90,11 @@ public class DummyCaptureDevice implements CaptureDevice {
         return true;
     }
 
-    public int getMerit() {
+    public int getPoolMerit() {
         return merit;
     }
 
-    public void setMerit(int merit) {
+    public void setPoolMerit(int merit) {
         this.merit = merit;
     }
 
@@ -108,11 +108,11 @@ public class DummyCaptureDevice implements CaptureDevice {
         this.offlineChannelScan = offlineChannelScan;
     }
 
-    public String getEncoderPoolName() {
+    public String getPoolName() {
         return poolName;
     }
 
-    public void setEncoderPoolName(String poolName) {
+    public void setPoolName(String poolName) {
         this.poolName = poolName;
     }
 
@@ -140,7 +140,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         return "-1";
     }
 
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
         return false;
     }
 
@@ -215,6 +215,26 @@ public class DummyCaptureDevice implements CaptureDevice {
 
     @Override
     public void streamError(File sourceFile) {
+
+    }
+
+    @Override
+    public String getConsumerName() {
+        return null;
+    }
+
+    @Override
+    public void setConsumerName(String consumerName) throws DeviceOptionException {
+
+    }
+
+    @Override
+    public String getTranscodeProfile() {
+        return null;
+    }
+
+    @Override
+    public void setTranscodeProfile(String transcodeProfile) throws DeviceOptionException {
 
     }
 }

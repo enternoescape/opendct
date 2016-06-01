@@ -19,10 +19,11 @@ package opendct.capture;
 import opendct.channel.ChannelManager;
 import opendct.channel.TVChannel;
 import opendct.config.Config;
+import opendct.config.options.DeviceOptionException;
 import opendct.consumer.DynamicConsumerImpl;
 import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
-import opendct.sagetv.SageTVDeviceType;
+import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.sagetv.SageTVManager;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -163,7 +164,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         canSwitch = Config.getBoolean(propertiesDeviceRoot + "fast_network_encoder_switch", sageTVConsumerRunnable.canSwitch());
 
         // Populates the transcode quality field.
-        getTranscodeQuality();
+        getTranscodeProfile();
 
         lastChannel = Config.getString(propertiesDeviceRoot + "last_channel", "-1");
         encoderMerit = Config.getInteger(propertiesDeviceRoot + "encoder_merit", 0);
@@ -204,8 +205,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return Available devices types.
      */
-    public SageTVDeviceType[] getSageTVDeviceTypes() {
-        return new SageTVDeviceType[] { SageTVDeviceType.DIGITAL_TV_TUNER };
+    public SageTVDeviceCrossbar[] getSageTVDeviceCrossbars() {
+        return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.DIGITAL_TV_TUNER };
     }
 
     /**
@@ -296,7 +297,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return The current merit value.
      */
-    public int getMerit() {
+    public int getPoolMerit() {
         return encoderMerit;
     }
 
@@ -307,7 +308,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @param merit New merit value.
      */
-    public void setMerit(int merit) {
+    public void setPoolMerit(int merit) {
         Config.setInteger("encoder_merit", merit);
         encoderMerit = merit;
     }
@@ -317,7 +318,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return The the name of the current pool.
      */
-    public String getEncoderPoolName() {
+    public String getPoolName() {
         return encoderPoolName;
     }
 
@@ -329,7 +330,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @param poolName The new name of the tuner pool.
      */
-    public void setEncoderPoolName(String poolName) {
+    public void setPoolName(String poolName) {
         Config.setString(propertiesDeviceRoot + "encoder_pool", poolName);
         encoderPoolName = poolName;
     }
@@ -461,7 +462,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                     break;
                 }
 
-                if (!isLocked()) {
+                if (!isInternalLocked()) {
                     break;
                 }
             }
@@ -686,7 +687,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             sageTVConsumerRunnable.setRecordBufferSize(recordBufferSize);
 
             if (sageTVConsumer instanceof FFmpegTransSageTVConsumerImpl) {
-                sageTVConsumerRunnable.setEncodingQuality(getTranscodeQuality());
+                sageTVConsumerRunnable.setEncodingQuality(getTranscodeProfile());
             } else {
                 sageTVConsumerRunnable.setEncodingQuality(recordEncodingQuality);
             }
@@ -731,16 +732,30 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                         FFmpegTransSageTVConsumerImpl.class.getName()), "");
     }
 
-    /**
-     * Get the preferred transcode profile per the preferences in properties.
-     *
-     * @return The preferred transcode profile.
-     */
-    protected String getTranscodeQuality() {
+    @Override
+    public void setTranscodeProfile(String transcodeProfile) throws DeviceOptionException {
+        Config.setString(propertiesDeviceRoot + "transcode_profile", transcodeProfile);
+    }
+
+    @Override
+    public String getTranscodeProfile() {
         return Config.getString(
                 propertiesDeviceRoot + "transcode_profile",
                 Config.getString("sagetv.new.default_transcode_profile",
                         ""));
+    }
+
+    @Override
+    public void setConsumerName(String consumerName) throws DeviceOptionException {
+        Config.setString(propertiesDeviceRoot + "consumer", consumerName);
+    }
+
+    @Override
+    public String getConsumerName() {
+        return Config.getString(
+                propertiesDeviceRoot + "consumer",
+                Config.getString("sagetv.new.default_consumer_impl",
+                        DynamicConsumerImpl.class.getName()));
     }
 
     /**
@@ -830,6 +845,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      * This does not stop the producer. The producer should override this method and call this
      * method along with the needed actions to stop the producer.
      */
+    @Override
     public void stopEncoding() {
         logger.entry();
 

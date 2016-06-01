@@ -23,6 +23,7 @@ import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
 import opendct.consumer.buffers.SeekableCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -712,8 +713,8 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference =
                     RawSageTVConsumerImpl.deviceOptions.get(option.getProperty());
 
@@ -722,7 +723,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }

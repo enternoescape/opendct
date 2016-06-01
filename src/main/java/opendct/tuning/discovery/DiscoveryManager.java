@@ -543,6 +543,35 @@ public class DiscoveryManager implements PowerEventListener {
     }
 
     /**
+     * Get details for a specific capture device.
+     *
+     * @param id This is the unique ID associated with the capture device.
+     * @return Details about capture device.
+     */
+    public static DiscoveredDevice getDiscoveredDevice(int id) {
+        DiscoveredDevice deviceDetails = null;
+
+        discoverLock.readLock().lock();
+
+        try {
+            for (DeviceDiscoverer discovery : deviceDiscoveries) {
+                deviceDetails = discovery.getDeviceDetails(id);
+
+                if (deviceDetails != null) {
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("getDiscoveredDeviceParent created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
+        }
+
+        return  deviceDetails;
+    }
+
+    /**
      * Implements a callback for Suspend Event.
      * <p/>
      * This is a callback for the PowerMessagePump. This method should not be getting called by

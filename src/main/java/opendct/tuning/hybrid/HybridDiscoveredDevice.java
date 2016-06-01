@@ -19,6 +19,7 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.options.*;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.BasicDiscoveredDevice;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import org.apache.logging.log4j.LogManager;
@@ -122,8 +123,8 @@ public class HybridDiscoveredDevice extends BasicDiscoveredDevice {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference = this.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
@@ -131,7 +132,7 @@ public class HybridDiscoveredDevice extends BasicDiscoveredDevice {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }
@@ -161,4 +162,5 @@ public class HybridDiscoveredDevice extends BasicDiscoveredDevice {
     public boolean getSecondaryPooling() {
         return secondaryPooling.getBoolean();
     }
+
 }

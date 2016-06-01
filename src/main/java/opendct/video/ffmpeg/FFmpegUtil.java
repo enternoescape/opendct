@@ -199,7 +199,7 @@ public class FFmpegUtil {
         int preferredAudio = -1;
         int maxChannels = 0;
         int maxFrames = 0;
-        int maxBitrate = 0;
+        long maxBitrate = 0;
         boolean hasAudio = false;
         int numStreams = inputContext.nb_streams();
 
@@ -210,19 +210,17 @@ public class FFmpegUtil {
                 continue;
             }
 
-            avcodec.AVCodecContext codec = stream.codec();
+            avcodec.AVCodecParameters codec = stream.codecpar();
 
             if (codec == null || codec.isNull()) {
                 continue;
             }
 
-            //AVDictionaryEntry lang = av_dict_get(stream.metadata(), "language", null, 0);
-
             if (codec.codec_type() == AVMEDIA_TYPE_AUDIO) {
                 hasAudio = true;
                 int cChannels = codec.channels();
                 int cFrames = stream.codec_info_nb_frames();
-                int cBitrate = codec.bit_rate(); // The bitrate is not always set.
+                long cBitrate = codec.bit_rate(); // The bitrate is not always set.
 
                 if (cChannels > maxChannels ||
                         (cChannels == maxChannels && cFrames > maxFrames) ||
@@ -287,16 +285,6 @@ public class FFmpegUtil {
             // 90000hz is standard for most MPEG-TS streams.
             out_stream.time_base(av_make_q(0x1, 0x15F90));
         }
-
-        // The language is not always available, but it's nice to have when it is.
-        /*AVDictionaryEntry lang = av_dict_get(in_stream.metadata(), "language", null, 0);
-
-        if (lang != null && lang.value() != null) {
-            String language = lang.value().getString();
-            AVDictionary dict = new AVDictionary(null);
-            av_dict_set(dict, "language", language, 0);
-            out_stream.metadata(in_stream.metadata());
-        }*/
 
         AVDictionary metadata = in_stream.metadata();
 

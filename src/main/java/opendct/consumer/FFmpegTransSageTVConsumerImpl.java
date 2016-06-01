@@ -21,6 +21,7 @@ import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.util.Util;
 import opendct.video.ccextractor.CCExtractorSrtInstance;
 import opendct.video.ffmpeg.*;
@@ -440,7 +441,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
         // Device options are re-loaded when the consumer is re-loaded. It would be a very bad idea
         // to change settings immediately while remuxing.
         FFmpegConfig.setOptions(deviceOptions);
@@ -836,8 +837,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     try {
                         asyncBuffer.wait(500);
                     } catch (InterruptedException e) {
-                        logger.error("Interrupted while waiting for the buffer => ",
-                                directFilename, e);
+                        logger.error("Interrupted while waiting for the buffer to return" +
+                                " for filename '{}' => ", directFilename, e);
                         break;
                     }
                 }
@@ -845,6 +846,16 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 closed = true;
                 canWrite = true;
                 asyncBuffer.notifyAll();
+
+                while (fileChannel != null) {
+                    try {
+                        asyncBuffer.wait(500);
+                    } catch (InterruptedException e) {
+                        logger.error("Interrupted while waiting for the buffer to return" +
+                                " for filename '{}' => ", directFilename, e);
+                        break;
+                    }
+                }
             }
         }
 
@@ -881,6 +892,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                                 try {
                                     fileChannel.close();
+                                    fileChannel = null;
                                 } catch (IOException e) {
                                     logger.error("Unable to close the file '{}' => ",
                                             directFilename, e);

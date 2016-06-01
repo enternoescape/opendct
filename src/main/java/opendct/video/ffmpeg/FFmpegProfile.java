@@ -144,7 +144,7 @@ public class FFmpegProfile extends ConfigBag {
      */
     public boolean canInterlaceDetect(int height, int width) {
         return !profileDisabled && interlaceDetect && gtHeight < height && gtWidth < width &&
-                (eqHeight > 0 && eqHeight == height) && (eqWidth > 0 && eqWidth == width);
+                (eqHeight == 0 || eqHeight == height) && (eqWidth == 0 || eqWidth == width);
     }
 
     public boolean canTranscodeVideo(boolean interlaced, String decoderCodec, int height, int width) {

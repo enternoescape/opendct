@@ -20,6 +20,7 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.NetworkDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -101,10 +102,10 @@ public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDevicePare
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
         super.setOptions(deviceOptions);
 
-        for (DeviceOption option : deviceOptions) {
+        for (JsonOption option : deviceOptions) {
             DeviceOption optionReference = this.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
@@ -112,7 +113,7 @@ public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDevicePare
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }

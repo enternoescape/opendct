@@ -18,32 +18,40 @@ package opendct.config.options;
 
 public class DeviceOptionException extends Exception {
     public final DeviceOption deviceOption;
+    public final String property;
 
     public DeviceOptionException(DeviceOption option) {
         deviceOption = option;
+        property = deviceOption.getProperty();
     }
 
     public DeviceOptionException(String message, DeviceOption option) {
         super(message);
         deviceOption = option;
+        property = deviceOption.getProperty();
+    }
+
+    public DeviceOptionException(String message, String property) {
+        super(message);
+        deviceOption = null;
+        this.property = property;
     }
 
     public DeviceOptionException(String message, Throwable cause, DeviceOption option) {
         super(message, cause);
         deviceOption = option;
+        property = deviceOption.getProperty();
     }
 
     public DeviceOptionException(Throwable cause, DeviceOption option) {
         super(cause);
         deviceOption = option;
+        property = deviceOption.getProperty();
     }
 
     public DeviceOptionException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace, DeviceOption option) {
         super(message, cause, enableSuppression, writableStackTrace);
         deviceOption = option;
-    }
-
-    public DeviceOption getDeviceOption() {
-        return deviceOption;
+        property = deviceOption.getProperty();
     }
 }

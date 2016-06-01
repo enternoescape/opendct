@@ -21,6 +21,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.*;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.producer.*;
 import opendct.util.Util;
 import opendct.video.rtsp.DCTRTSPClientImpl;
@@ -41,7 +42,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 6;
+    public static final int VERSION_BUILD = 7;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -957,6 +958,14 @@ public class Config {
     public static void setDeviceOption(DeviceOption option) throws DeviceOptionException {
         if (option.isArray()) {
             setStringArray(option.getProperty(), option.getArrayValue());
+        } else {
+            setString(option.getProperty(), option.getValue());
+        }
+    }
+
+    public static void setJsonOption(JsonOption option) throws DeviceOptionException {
+        if (option.isArray()) {
+            setStringArray(option.getProperty(), option.getValues());
         } else {
             setString(option.getProperty(), option.getValue());
         }

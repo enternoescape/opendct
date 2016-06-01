@@ -75,6 +75,14 @@ public abstract class BaseDeviceOption implements DeviceOption {
         this.isArray = true;
     }
 
+    public void setValue(String... newValues) throws DeviceOptionException {
+        if (readonly) {
+            throw new DeviceOptionException("The value cannot be set because this is a read-only option.", this);
+        }
+
+        setInitValue(newValues);
+    }
+
     /**
      * Validates the provided value or values, then sets the new value or values.
      *
@@ -83,10 +91,8 @@ public abstract class BaseDeviceOption implements DeviceOption {
      * @throws DeviceOptionException Thrown if any of the any of the provided values do not pass
      *                               validation.
      */
-    public void setValue(String... newValues) throws DeviceOptionException {
-        if (readonly) {
-            throw new DeviceOptionException("The value cannot be set because this is a read-only option.", this);
-        } else if (newValues.length > 1 && !isArray) {
+    protected void setInitValue(String... newValues) throws DeviceOptionException {
+        if (newValues.length > 1 && !isArray) {
             throw new DeviceOptionException("The value cannot be set because an array was provided and this is not an array based option.", this);
         } else if (newValues.length == 0 && !isArray) {
             throw new DeviceOptionException("The value cannot be set because an empty array was provided and this is not an array based option.", this);

@@ -35,6 +35,9 @@
     <port protocol="tcp" port="8501"/>
 
     <!-- HDHomeRun discovery receiving port -->
-    <port protocol="tcp" port="64998"/>
+    <port protocol="udp" port="64998"/>
+
+    <!-- Default Web Server port -->
+    <port protocol="tcp" port="9090"/>
 
 </service>

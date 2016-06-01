@@ -826,7 +826,7 @@ public class ChannelManager implements PowerEventListener {
                     continue;
                 }
 
-                if (!device.isLocked() &&
+                if (!device.isInternalLocked() &&
                         (device.getEncoderDeviceType() == CaptureDeviceType.DCT_HDHOMERUN ||
                                 device.getEncoderDeviceType() == CaptureDeviceType.DCT_INFINITV)) {
 

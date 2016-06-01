@@ -32,7 +32,7 @@ public class TVChannelImpl implements TVChannel {
     private final String name;
     private String url = "";
     private String modulation = "";
-    private int frequency = -1;
+    private int frequency = 0;
     private int program = 0;
     private String[] changes = new String[12];
 

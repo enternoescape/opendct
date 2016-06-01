@@ -20,15 +20,26 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.capture.HDHRNativeCaptureDevice;
 import opendct.config.Config;
+import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.BasicDiscoveredDevice;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
     private final static Logger logger = LogManager.getLogger(HDHomeRunDiscoveredDevice.class);
+
+    // Pre-pend this value for saving and getting properties related to just this tuner.
+    protected final String propertiesDeviceRoot;
+
+    private final Map<String, DeviceOption> deviceOptions;
+    private BooleanDeviceOption forceExternalUnlock;
 
     private int tunerNumber;
     private HDHomeRunDiscoveredDeviceParent deviceParent;
@@ -38,6 +49,35 @@ public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
 
         this.tunerNumber = tunerNumber;
         this.deviceParent = deviceParent;
+
+        propertiesDeviceRoot = "sagetv.device." + id + ".";
+        deviceOptions = new ConcurrentHashMap<>(1);
+
+        while(true) {
+            try {
+                forceExternalUnlock = new BooleanDeviceOption(
+                        Config.getBoolean(propertiesDeviceRoot + "always_force_external_unlock", false),
+                        false,
+                        "Always Force Unlock",
+                        propertiesDeviceRoot + "always_force_external_unlock",
+                        "This will allow the program to always override the HDHomeRun lock when" +
+                                " SageTV requests a channel to be tuned."
+                );
+
+                Config.mapDeviceOptions(
+                        deviceOptions,
+                        forceExternalUnlock
+                );
+            } catch (DeviceOptionException e) {
+                logger.warn("Invalid options. Reverting to defaults => ", e);
+
+                Config.setBoolean(propertiesDeviceRoot + "always_force_external_unlock", false);
+
+                continue;
+            }
+
+            break;
+        }
     }
 
     @Override
@@ -54,7 +94,8 @@ public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
     public DeviceOption[] getOptions() {
         try {
             return new DeviceOption[] {
-                    getDeviceNameOption()
+                    getDeviceNameOption(),
+                    forceExternalUnlock
             };
         } catch (DeviceOptionException e) {
             logger.error("Unable to build options for device => ", e);
@@ -64,13 +105,33 @@ public class HDHomeRunDiscoveredDevice extends BasicDiscoveredDevice {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption deviceOption : deviceOptions) {
-            if (deviceOption.getProperty().equals(propertiesDeviceName)) {
-                setFriendlyName(deviceOption.getValue());
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
+
+            if (option.getProperty().equals(propertiesDeviceName)) {
+                setFriendlyName(option.getValue());
+                continue;
             }
 
-            Config.setDeviceOption(deviceOption);
+            DeviceOption optionReference = this.deviceOptions.get(option.getProperty());
+
+            if (optionReference == null) {
+                continue;
+            }
+
+            if (optionReference.isArray()) {
+                optionReference.setValue(option.getValues());
+            } else {
+                optionReference.setValue(option.getValue());
+            }
+
+            Config.setDeviceOption(optionReference);
         }
+
+        Config.saveConfig();
+    }
+
+    public boolean getForceExternalUnlock() {
+        return forceExternalUnlock.getBoolean();
     }
 }

@@ -20,6 +20,7 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.sagetv.SageTVManager;
 
 public abstract class BasicDiscoveredDevice implements DiscoveredDevice {
     private final String name;
@@ -78,8 +79,18 @@ public abstract class BasicDiscoveredDevice implements DiscoveredDevice {
         return friendlyName;
     }
 
-    protected void setFriendlyName(String friendlyName) {
-        this.friendlyName = friendlyName;
+    protected void setFriendlyName(String friendlyName) throws DeviceOptionException {
+        if (DiscoveryManager.isDevicePermitted(id)) {
+            throw new DeviceOptionException("Unable to change the name of this capture device" +
+                    " because it is currently loaded.", getDeviceNameOption());
+        }
+
+        if (Config.setUniqueDeviceName(getId(), friendlyName)) {
+            this.friendlyName = friendlyName;
+        } else {
+            throw new DeviceOptionException("The requested new device name" +
+                    " conflicts with another device with the same name.", getDeviceNameOption());
+        }
     }
 
     @Override
@@ -100,7 +111,7 @@ public abstract class BasicDiscoveredDevice implements DiscoveredDevice {
     public DeviceOption getDeviceNameOption() throws DeviceOptionException {
         return new StringDeviceOption(
                 friendlyName,
-                false,
+                DiscoveryManager.isDevicePermitted(id) || SageTVManager.getSageTVCaptureDevice(id) != null,
                 "Name",
                 propertiesDeviceName,
                 "This is the name of the capture device that SageTV will use. If this" +

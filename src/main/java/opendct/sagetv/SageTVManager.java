@@ -24,6 +24,8 @@ import opendct.channel.ChannelManager;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.power.PowerEventListener;
+import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
+import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -118,11 +120,11 @@ public class SageTVManager implements PowerEventListener {
             captureDeviceNameToCaptureDevice.put(captureDevice.getEncoderName(), captureDevice);
             captureDeviceIdToCaptureDevice.put(captureDevice.getEncoderUniqueHash(), captureDevice);
 
-            if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) &&
+            if (!Util.isNullOrEmpty(captureDevice.getPoolName()) &&
                     SageTVPoolManager.isUsePools()) {
 
                 SageTVPoolManager.addPoolCaptureDevice(
-                        captureDevice.getEncoderPoolName(),
+                        captureDevice.getPoolName(),
                         captureDevice.getEncoderName());
             }
 
@@ -138,7 +140,7 @@ public class SageTVManager implements PowerEventListener {
                         "",
                         0,
                         captureDevice.canSwitch(),
-                        captureDevice.getSageTVDeviceTypes()
+                        captureDevice.getSageTVDeviceCrossbars()
                 );
 
             } else if (!SageTVDiscovery.isRunning()) {
@@ -165,10 +167,10 @@ public class SageTVManager implements PowerEventListener {
             }
         }
 
-        if (!Util.isNullOrEmpty(captureDevice.getEncoderPoolName()) &&
+        if (!Util.isNullOrEmpty(captureDevice.getPoolName()) &&
                 SageTVPoolManager.isUsePools()) {
 
-            SageTVPoolManager.resortMerits(captureDevice.getEncoderPoolName());
+            SageTVPoolManager.resortMerits(captureDevice.getPoolName());
         }
 
         if (captureDevice.isOfflineChannelScan()) {
@@ -448,7 +450,7 @@ public class SageTVManager implements PowerEventListener {
         captureDeviceNameToCaptureDeviceLock.readLock().lock();
 
         try {
-            captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
+            captureDevice = captureDeviceNameToCaptureDevice.get(deviceName);
         } catch (Exception e) {
             logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
         } finally {
@@ -469,7 +471,7 @@ public class SageTVManager implements PowerEventListener {
                 captureDeviceNameToCaptureDeviceLock.readLock().lock();
 
                 try {
-                    captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
+                    captureDevice = captureDeviceNameToCaptureDevice.get(deviceName);
                 } catch (Exception e) {
                     logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
                 } finally {
@@ -480,29 +482,12 @@ public class SageTVManager implements PowerEventListener {
                     break;
                 }
             }
+        }
 
-            // In case the capture device was not loaded yet, we can wait for an further expected
-            // devices here before trying one more time.
-            /*if (captureDevice == null) {
-                try {
-                    blockUntilCaptureDevicesLoaded();
-                } catch (InterruptedException e) {
-                    logger.debug("getSageTVCaptureDevice was interrupted while waiting for all capture devices to be loaded.");
-                }
-
-                captureDeviceNameToCaptureDeviceLock.readLock().lock();
-
-                try {
-                    if (deviceName.endsWith(" Digital TV Tuner")) {
-                        deviceName = deviceName.substring(0, deviceName.length() - " Digital TV Tuner".length());
-                    }
-                    captureDevice = captureDeviceNameToCaptureDevice.get(deviceName.trim());
-                } catch (Exception e) {
-                    logger.debug("There was an unhandled exception while using a ReentrantReadWriteLock => ", e);
-                } finally {
-                    captureDeviceNameToCaptureDeviceLock.readLock().unlock();
-                }
-            }*/
+        if (captureDevice == null) {
+            logger.debug("The requested capture device '{}' did not exist. Triggering re-discovery.", deviceName);
+            HDHomeRunDiscoverer.requestBroadcast();
+            UpnpDiscoverer.requestBroadcast();
         }
 
         return logger.exit(captureDevice);
@@ -682,7 +667,7 @@ public class SageTVManager implements PowerEventListener {
                         localAddress,
                         listenPort,
                         captureDevice.canSwitch(),
-                        captureDevice.getSageTVDeviceTypes()
+                        captureDevice.getSageTVDeviceCrossbars()
                 );
                 tunerPropertiesList.append(tunerProperties);
             }
@@ -695,7 +680,7 @@ public class SageTVManager implements PowerEventListener {
         return logger.exit(tunerPropertiesList.toString());
     }
 
-    private static StringBuilder buildTunerProperty(String encoderName, Integer encoderUniqueHash, String socketServerAddress, int socketServerPort, boolean canSwitch, SageTVDeviceType types[]) {
+    private static StringBuilder buildTunerProperty(String encoderName, Integer encoderUniqueHash, String socketServerAddress, int socketServerPort, boolean canSwitch, SageTVDeviceCrossbar types[]) {
 
         String propertiesRoot = "sagetv.device." + encoderUniqueHash + ".";
 
@@ -704,8 +689,8 @@ public class SageTVManager implements PowerEventListener {
         StringBuilder stringBuilder = new StringBuilder();
         boolean analogCapture = false;
 
-        for (SageTVDeviceType type : types) {
-            if (type != SageTVDeviceType.DIGITAL_TV_TUNER) {
+        for (SageTVDeviceCrossbar type : types) {
+            if (type != SageTVDeviceCrossbar.DIGITAL_TV_TUNER) {
                 analogCapture = true;
             } else {
                 stringBuilder.append(prefix).append(type.INDEX).append("/0/encode_digital_tv_as_program_stream=false").append("\r\n");

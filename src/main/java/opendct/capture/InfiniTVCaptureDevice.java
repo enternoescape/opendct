@@ -19,12 +19,10 @@ package opendct.capture;
 import opendct.capture.services.RTPCaptureDeviceServices;
 import opendct.channel.*;
 import opendct.config.Config;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.RTPProducer;
 import opendct.producer.SageTVProducer;
-import opendct.sagetv.SageTVDeviceType;
+import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.http.InfiniTVStatus;
@@ -46,6 +44,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
 
     private final RTPCaptureDeviceServices rtpServices;
     private final int encoderNumber;
+    private long lastTuneTime = 0;
 
     private final AtomicBoolean locked;
     private final Object exclusiveLock;
@@ -107,10 +106,10 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
 
         if (cableCardPresent) {
             encoderDeviceType = CaptureDeviceType.DCT_INFINITV;
-            setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
+            setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dct"));
         } else {
             encoderDeviceType = CaptureDeviceType.QAM_INFINITV;
-            setEncoderPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
+            setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
         }
 
         try {
@@ -176,7 +175,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean isLocked() {
+    public boolean isInternalLocked() {
         return locked.get();
     }
 
@@ -231,18 +230,18 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         logger.entry(tvChannel);
 
-        if (isLocked() || isExternalLocked()) {
+        if (isInternalLocked() || isExternalLocked()) {
             return logger.exit(false);
         }
 
         synchronized (exclusiveLock) {
             // Return immediately if an exclusive lock was set between here and the first check if
             // there is an exclusive lock set.
-            if (isLocked()) {
+            if (isInternalLocked()) {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceType.DIGITAL_TV_TUNER, 0, null)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -252,7 +251,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             while (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning() &&
                     getRecordedBytes() < offlineDetectionMinBytes && timeout-- > 0) {
 
-                if (isLocked()) {
+                if (isInternalLocked()) {
                     stopEncoding();
                     return logger.exit(false);
                 }
@@ -271,7 +270,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                         copyProtection == CopyProtection.UNKNOWN) &&
                         timeout-- > 0) {
 
-                    if (isLocked()) {
+                    if (isInternalLocked()) {
                         stopEncoding();
                         return logger.exit(false);
                     }
@@ -354,7 +353,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceType deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
 
         // This is used to detect a second tuning attempt while a tuning is still in progress. When
@@ -406,6 +405,14 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             logger.info("Re-tune: {}", getTunerStatusString());
         } else {
             recordLastFilename = filename;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        if (retune) {
+            if (currentTime - lastTuneTime < 2000) {
+                logger.info("Re-tune came back too fast. Skipping.");
+                return true;
+            }
         }
 
         // The producer and consumer methods are requested to not block. If they don't shut down in
@@ -561,6 +568,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
             }
         }
 
+        lastTuneTime = System.currentTimeMillis();
         return logger.exit(true);
     }
 
@@ -685,15 +693,5 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     @Override
     public String scanChannelInfo(String channel) {
         return super.scanChannelInfo(channel, true);
-    }
-
-    @Override
-    public DeviceOption[] getOptions() {
-        return new DeviceOption[0];
-    }
-
-    @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-
     }
 }

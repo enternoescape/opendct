@@ -48,11 +48,11 @@ ext {
     winWixSource = 'build/wix/source'
     winWixConfig = 'build/wix/config'
 
-	ffmpegVersion = '2.8.1-1.1'
-	log4jVersion = '2.5'
+    ffmpegVersion = '2.8.1-1.1'
+    log4jVersion = '2.5'
     jnaVersion = '4.2.1'
 
-	versionText = new File('src/main/java/opendct/config/Config.java').text
+    versionText = new File('src/main/java/opendct/config/Config.java').text
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
     minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
     buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
@@ -70,10 +70,10 @@ sourceCompatibility = javaVersion
 
 configurations {
     compile
-	windows_x86
-	windows_x86_64
-	linux_x86
-	linux_x86_64
+    windows_x86
+    windows_x86_64
+    linux_x86
+    linux_x86_64
 }
 
 dependencies {
@@ -138,14 +138,6 @@ idea {
         } else {
             scopes.TEST.plus += [configurations.linux_x86]
             scopes.TEST.plus += [configurations.linux_x86_64]
-        }
-
-        if (OperatingSystem.current().isWindows()) {
-            scopes.COMPILE.plus += [configurations.windows_x86]
-            scopes.COMPILE.plus += [configurations.windows_x86_64]
-        } else {
-            scopes.COMPILE.plus += [configurations.linux_x86]
-            scopes.COMPILE.plus += [configurations.linux_x86_64]
         }
 
         downloadJavadoc = true
@@ -625,7 +617,7 @@ bintray {
     dryRun = false //Whether to run this as dry-run, without deploying
     publish = true //If version should be auto published after an upload
     pkg {
-        repo = 'Testing'
+        repo = 'Beta'
         name = 'OpenDCT'
         userOrg = 'opendct'
         desc = "OpenDCT Release"

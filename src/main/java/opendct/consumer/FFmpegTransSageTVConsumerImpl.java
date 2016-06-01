@@ -837,8 +837,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     try {
                         asyncBuffer.wait(500);
                     } catch (InterruptedException e) {
-                        logger.error("Interrupted while waiting for the buffer => ",
-                                directFilename, e);
+                        logger.error("Interrupted while waiting for the buffer to return" +
+                                " for filename '{}' => ", directFilename, e);
                         break;
                     }
                 }
@@ -846,6 +846,16 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 closed = true;
                 canWrite = true;
                 asyncBuffer.notifyAll();
+
+                while (fileChannel != null) {
+                    try {
+                        asyncBuffer.wait(500);
+                    } catch (InterruptedException e) {
+                        logger.error("Interrupted while waiting for the buffer to return" +
+                                " for filename '{}' => ", directFilename, e);
+                        break;
+                    }
+                }
             }
         }
 
@@ -882,6 +892,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
                                 try {
                                     fileChannel.close();
+                                    fileChannel = null;
                                 } catch (IOException e) {
                                     logger.error("Unable to close the file '{}' => ",
                                             directFilename, e);

@@ -300,7 +300,7 @@ public class OfflineChannelScan {
         // DCT_INFINITV can tune the same channels unless you have multiple cable
         // providers which we will look at if that ever actually comes up.
         for (CaptureDevice device : devices) {
-            if (!device.isLocked()) {
+            if (!device.isInternalLocked()) {
                 devicesUnlocked = true;
             }
 
@@ -375,7 +375,7 @@ public class OfflineChannelScan {
                             break;
                         }
 
-                        if (!captureDevice.isLocked()) {
+                        if (!captureDevice.isInternalLocked()) {
                             logger.info("Scanning the channel '{}' ({}).", channel.getChannel(), channel.getName());
                             result = captureDevice.getChannelInfoOffline(channel, false);
                         } else {

@@ -20,6 +20,7 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.StringDeviceOption;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -83,8 +84,8 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
             if (option.getProperty().equals(propertiesLocalAddressOverride)) {
                 try {
                     String setValue = option.getValue();
@@ -100,10 +101,10 @@ public abstract class NetworkDiscoveredDeviceParent extends BasicDiscoveredDevic
                         }
                     }
 
-                    Config.setDeviceOption(option);
+                    Config.setJsonOption(option);
                 } catch (UnknownHostException e) {
                     throw new DeviceOptionException("The provided address is not a valid hostname" +
-                            " or IP address.", option);
+                            " or IP address.", option.getProperty());
                 }
             } else {
                 super.setOptions(option);

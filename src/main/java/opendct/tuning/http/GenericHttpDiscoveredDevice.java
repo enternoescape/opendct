@@ -20,8 +20,10 @@ import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.capture.GenericHttpCaptureDevice;
 import opendct.config.Config;
 import opendct.config.options.*;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.BasicDiscoveredDevice;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
+import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -38,6 +40,9 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     // Pre-pend this value for saving and getting properties related to just this tuner.
     protected final String propertiesDeviceRoot;
 
+    private final Map<String, URL> channelMap = new ConcurrentHashMap<>();
+    private URL sourceUrl = null;
+
     private final Map<String, DeviceOption> deviceOptions;
     private StringDeviceOption streamingUrl;
     private StringDeviceOption altStreamingUrl;
@@ -49,9 +54,6 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     private IntegerDeviceOption tuningDelay;
     private StringDeviceOption customChannels;
     private IntegerDeviceOption padChannel;
-    /*private BooleanDeviceOption resolutionChangeDelay;
-    private StringDeviceOption resolutionChangeUsername;
-    private StringDeviceOption resolutionChangePassword;*/
 
     GenericHttpDiscoveredDeviceParent parent;
 
@@ -84,7 +86,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     Config.getString(propertiesDeviceRoot + "streaming_url2_channels", ""),
                     false,
                     "Streaming URL 2 Channels",
-                    propertiesDeviceRoot + "streaming_url2",
+                    propertiesDeviceRoot + "streaming_url2_channels",
                     "If Streaming URL 2 is defined and channel ranges are specified here, the" +
                             " secondary URL will be used if the channel being tuned matches one" +
                             " of the ranges here."
@@ -167,33 +169,6 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                             " set to 3.)"
             );
 
-            /*resolutionChangeDelay = new BooleanDeviceOption(
-                    Config.getBoolean(propertiesDeviceRoot + "resolution_change_delay", false),
-                    false,
-                    "Resolution Change Delay",
-                    propertiesDeviceRoot + "resolution_change_delay",
-                    "This will on devices that support it, allow the program to delay the start" +
-                            " of playback if a resolution transition appears to be happening."
-            );
-
-            resolutionChangeUsername = new StringDeviceOption(
-                    Config.getString(propertiesDeviceRoot + "resolution_change_username", "admin"),
-                    false,
-                    "Resolution Change Username",
-                    propertiesDeviceRoot + "resolution_change_username",
-                    "This is the username that the Resolution Change Delay will use to access the" +
-                            " capture device."
-            );
-
-            resolutionChangePassword = new StringDeviceOption(
-                    Config.getString(propertiesDeviceRoot + "resolution_change_password", "admin"),
-                    false,
-                    "Resolution Change Password",
-                    propertiesDeviceRoot + "resolution_change_password",
-                    "This is the password that the Resolution Change Delay will use to access the" +
-                            " capture device."
-            );*/
-
             Config.mapDeviceOptions(
                     deviceOptions,
                     streamingUrl,
@@ -205,10 +180,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     stoppingExecutable,
                     stoppingDelay,
                     tuningDelay,
-                    padChannel/*,
-                    resolutionChangeDelay,
-                    resolutionChangeUsername,
-                    resolutionChangePassword*/
+                    padChannel
             );
 
             // This information is used to ensure that the interface that will be used to
@@ -221,6 +193,8 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
             } catch (UnknownHostException e) {
                 logger.debug("Unable to resolve remote address => ", e);
             }
+
+            updateChannelMap();
 
         } catch (DeviceOptionException e) {
             logger.error("Unable to load the options for the generic capture device '{}'",
@@ -235,26 +209,37 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
 
     @Override
     public DeviceOption[] getOptions() {
-        return new DeviceOption[] {
-                streamingUrl,
-                altStreamingUrl,
-                altStreamingChannels,
-                customChannels,
-                pretuneExecutable,
-                tuningExecutable,
-                stoppingExecutable,
-                stoppingDelay,
-                tuningDelay,
-                padChannel/*,
-                resolutionChangeDelay,
-                resolutionChangeUsername,
-                resolutionChangePassword*/
-        };
+        try {
+            return new DeviceOption[] {
+                    getDeviceNameOption(),
+                    streamingUrl,
+                    altStreamingUrl,
+                    altStreamingChannels,
+                    customChannels,
+                    pretuneExecutable,
+                    tuningExecutable,
+                    stoppingExecutable,
+                    stoppingDelay,
+                    tuningDelay,
+                    padChannel
+            };
+        } catch (DeviceOptionException e) {
+            logger.error("Unable to build options for device => ", e);
+        }
+
+        return new DeviceOption[0];
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption option : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption option : deviceOptions) {
+
+            if (option.getProperty().equals(propertiesDeviceName)) {
+                setFriendlyName(option.getValue());
+                Config.setJsonOption(option);
+                continue;
+            }
+
             DeviceOption optionReference = this.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
@@ -262,15 +247,70 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
             }
 
             if (optionReference.isArray()) {
-                optionReference.setValue(option.getArrayValue());
+                optionReference.setValue(option.getValues());
             } else {
                 optionReference.setValue(option.getValue());
             }
 
             Config.setDeviceOption(optionReference);
+
+            if (option.getProperty().equals(altStreamingChannels.getProperty())) {
+                updateChannelMap();
+            }
         }
 
         Config.saveConfig();
+    }
+
+    private void updateChannelMap() {
+        // Update channel map.
+        String tuningUrl = getAltStreamingUrl();
+        channelMap.clear();
+
+        if (!Util.isNullOrEmpty(tuningUrl)) {
+            try {
+                URL altStreamingUrl = new URL(tuningUrl);
+                String channels[] = getAltStreamingChannels();
+
+                for (String channel : channels) {
+                    channelMap.put(channel, altStreamingUrl);
+                }
+
+                logger.info("The secondary URL '{}'" +
+                        " will be used for the channels: {}", tuningUrl, channels);
+            } catch (MalformedURLException e) {
+                logger.warn("The secondary URL '{}' is not a valid URL." +
+                                " Defaulting to primary URL.",
+                        tuningUrl);
+            }
+        }
+    }
+
+    public URL getURL(String channel) throws MalformedURLException {
+        URL newUrl;
+
+        if (channel != null) {
+            newUrl = channelMap.get(channel);
+
+            if (newUrl != null) {
+                return newUrl;
+            }
+        }
+
+        String loadUrl = getStreamingUrl();
+
+        try {
+            newUrl = new URL(loadUrl);
+            sourceUrl = newUrl;
+        } catch (MalformedURLException e) {
+            if (sourceUrl == null) {
+                throw new MalformedURLException(
+                        "Unable to start capture device because '" +
+                                loadUrl + "' is not a valid URL.");
+            }
+        }
+
+        return sourceUrl;
     }
 
     public String getTuningExecutable() {
@@ -312,16 +352,4 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     public String[] getAltStreamingChannels() {
         return ChannelRangesDeviceOption.parseRanges(altStreamingChannels.getValue());
     }
-
-    /*public boolean getResolutionChangeDelay() {
-        return resolutionChangeDelay.getBoolean();
-    }
-
-    public String getResolutionChangeUsername() {
-        return resolutionChangeUsername.getValue();
-    }
-
-    public String getResolutionChangePassword() {
-        return resolutionChangePassword.getValue();
-    }*/
 }

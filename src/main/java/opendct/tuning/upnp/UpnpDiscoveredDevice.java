@@ -19,6 +19,7 @@ package opendct.tuning.upnp;
 import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.BasicDiscoveredDevice;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -44,13 +45,13 @@ public abstract class UpnpDiscoveredDevice extends BasicDiscoveredDevice {
     }
 
     @Override
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-        for (DeviceOption deviceOption : deviceOptions) {
+    public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
+        for (JsonOption deviceOption : deviceOptions) {
             if (deviceOption.getProperty().equals(propertiesDeviceName)) {
                 setFriendlyName(deviceOption.getValue());
             }
 
-            Config.setDeviceOption(deviceOption);
+            Config.setJsonOption(deviceOption);
         }
     }
 }

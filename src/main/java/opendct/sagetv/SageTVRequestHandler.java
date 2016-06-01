@@ -146,8 +146,8 @@ public class SageTVRequestHandler implements Runnable {
                             //It appears we can have more than one tuner on the same port.
                             String deviceName = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
-                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(deviceName);
-                            deviceName = SageTVDeviceType.trimToName(deviceName, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(deviceName);
+                            deviceName = SageTVDeviceCrossbar.trimToName(deviceName, deviceType);
 
                             //This is not a mistake.
                             CaptureDevice captureDevice = getVCaptureDeviceToPoolCaptureDevice(deviceName, true);
@@ -196,8 +196,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
                         captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -271,8 +271,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
                         captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -343,8 +343,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
                         captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -408,8 +408,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
                         captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -465,8 +465,8 @@ public class SageTVRequestHandler implements Runnable {
                             // V3 encoder
                             vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
-                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
-                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -485,8 +485,8 @@ public class SageTVRequestHandler implements Runnable {
                             // V3 encoder
                             vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
-                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
-                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -620,8 +620,8 @@ public class SageTVRequestHandler implements Runnable {
                         String vCaptureDevice = tokens.nextToken();
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
-                            SageTVDeviceType deviceType = SageTVDeviceType.getTypeForName(vCaptureDevice);
-                            vCaptureDevice = SageTVDeviceType.trimToName(vCaptureDevice, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
+                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
                             captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 

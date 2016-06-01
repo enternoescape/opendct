@@ -20,11 +20,11 @@ public class StringDeviceOption extends BaseDeviceOption {
 
     public StringDeviceOption(String values[], boolean allowEmpty, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
         super(DeviceOptionType.STRING, allowEmpty, readonly, name, property, description, validValues);
-        super.setValue(values);
+        super.setInitValue(values);
     }
 
     public StringDeviceOption(String value, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
-        super(DeviceOptionType.STRING, readonly, name, property, description, validValues);
-        super.setValue(value);
+        super(DeviceOptionType.STRING, true, name, property, description, validValues);
+        super.setInitValue(value);
     }
 }

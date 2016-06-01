@@ -16,7 +16,6 @@
 
 package opendct.util;
 
-import com.sun.xml.internal.messaging.saaj.util.Base64;
 import opendct.config.Config;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -32,7 +31,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -536,8 +534,9 @@ public class Util {
         connection.setConnectTimeout(timeout);
 
         if (!Util.isNullOrEmpty(username) && !Util.isNullOrEmpty(password)) {
-            byte[] encodedBytes = Base64.encode((username + ":" + password).getBytes());
-            connection.setRequestProperty("Authorization", "Basic " + new String(encodedBytes, StandardCharsets.UTF_8));
+            // TODO: If this function is to be used again, this needs to be replaced with something else.
+            //byte[] encodedBytes = Base64.encode((username + ":" + password).getBytes());
+            //connection.setRequestProperty("Authorization", "Basic " + new String(encodedBytes, StandardCharsets.UTF_8));
         }
 
         if (domFactory == null) {

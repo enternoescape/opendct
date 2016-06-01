@@ -30,8 +30,6 @@ import opendct.util.StreamLogger;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -145,7 +143,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private static final String chnVideoSizeWidth[] = { "chn_stat", "width" };
     private static final String chnVideoSizeHeight[] = { "chn_stat", "height" };
 
-    /**
+    /*/**
      * Check if the currently detected resolution matches the encoded resolution.
      *
      * @param getStatus The URL to check.
@@ -156,7 +154,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
      * @return The matching resolution if they match or the device cannot be reached. Empty string
      *         if URL is unreachable/parsable. <i>null</i> if they do not match.
      */
-    private static String getVideoMatches(URL getStatus, String username, String password, String match) {
+    /*private static String getVideoMatches(URL getStatus, String username, String password, String match) {
         Document document = null;
         try {
             document = Util.getUrlXml(getStatus, username, password, 5000);
@@ -196,7 +194,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         return null;
-    }
+    }*/
 
     /*private void waitForResolutionChange(String channel) {
         try {

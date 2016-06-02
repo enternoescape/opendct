@@ -30,7 +30,7 @@ import opendct.tuning.discovery.DiscoveryManager;
 
 import java.lang.reflect.Type;
 
-public class DiscoveredDevicesSerializer implements JsonSerializer<DiscoveredDevice[]> {
+public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice[]> {
     public static final String ID = "id";
     public static final String ENABLED = "enabled";
     public static final String NAME = "name";

@@ -16,10 +16,7 @@
 package opendct.nanohttpd;
 
 import fi.iki.elonen.router.RouterNanoHTTPD;
-import opendct.nanohttpd.servlets.CaptureDevicesJsonServlet;
-import opendct.nanohttpd.servlets.ChannelJsonServlet;
-import opendct.nanohttpd.servlets.ChannelLinupsJsonServlet;
-import opendct.nanohttpd.servlets.ConsumerJsonServlet;
+import opendct.nanohttpd.servlets.*;
 
 public class NanoServlet extends RouterNanoHTTPD {
 
@@ -54,10 +51,17 @@ public class NanoServlet extends RouterNanoHTTPD {
         // DELETE: Remove an existing Channel by ID for a Channel Lineup ID
         addRoute("/channels/:channel_lineup/:channel", ChannelJsonServlet.GetPostPutDelete.class);
 
-        // GET: Get the names of all available consumers.
+        // GET: Get the names of all available consumers
         addRoute("/consumers", ConsumerJsonServlet.List.class);
-        // GET: Get the properties for a consumer.
-        // POST: Set the properties for a consumer.
+        // GET: Get the properties for a consumer or multiple consumers
+        // POST: Set the properties for a consumer or multiple consumers
         addRoute("/consumers/:consumer", ConsumerJsonServlet.GetPost.class);
+
+        // GET: Get the properties for all general options
+        // POST: Set the properties for general options
+        addRoute("/general", GeneralJsonServlet.GetPost.class);
+
+
+
     }
 }

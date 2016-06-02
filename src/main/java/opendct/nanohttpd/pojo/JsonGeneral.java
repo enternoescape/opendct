@@ -15,5 +15,23 @@
 
 package opendct.nanohttpd.pojo;
 
-public class JsonServerOption {
+public class JsonGeneral {
+    private String name;
+    private JsonOption options[];
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public JsonOption[] getOptions() {
+        return options;
+    }
+
+    public void setOptions(JsonOption[] options) {
+        this.options = options;
+    }
 }

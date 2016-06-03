@@ -18,28 +18,29 @@ package opendct.nanohttpd.servlets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.router.RouterNanoHTTPD;
-import opendct.config.Config;
 import opendct.config.options.DeviceOptionException;
-import opendct.consumer.DynamicConsumerImpl;
-import opendct.consumer.SageTVConsumer;
 import opendct.nanohttpd.HttpUtil;
+import opendct.nanohttpd.pojo.JsonException;
 import opendct.nanohttpd.pojo.JsonOption;
-import opendct.nanohttpd.serializer.ConsumerSerializer;
+import opendct.nanohttpd.serializer.DeviceDiscovererSerializer;
+import opendct.tuning.discovery.DeviceDiscoverer;
+import opendct.tuning.discovery.DiscoveryManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
 
-public class ConsumerJsonServlet {
-    private static final Logger logger = LogManager.getLogger(ConsumerJsonServlet.class);
+public class DiscovererJsonServlet {
+    private static final Logger logger = LogManager.getLogger(DiscovererJsonServlet.class);
 
     private static final GsonBuilder gsonBuilder = new GsonBuilder();
     private static final Gson gson;
 
     static {
-        gsonBuilder.registerTypeAdapter(SageTVConsumer.class, new ConsumerSerializer());
+        gsonBuilder.registerTypeAdapter(DeviceDiscoverer.class, new DeviceDiscovererSerializer());
         gsonBuilder.setPrettyPrinting();
         gson = gsonBuilder.create();
     }
@@ -47,7 +48,14 @@ public class ConsumerJsonServlet {
     public static class List extends RouterNanoHTTPD.DefaultHandler {
         @Override
         public String getText() {
-            return gson.toJson(Config.getSageTVConsumers());
+            DeviceDiscoverer discoverers[] = DiscoveryManager.getDiscoverers();
+            String returnValues[] = new String[discoverers.length];
+
+            for (int i = 0; i < discoverers.length; i++) {
+                returnValues[i] = discoverers[i].getName();
+            }
+
+            return gson.toJson(returnValues);
         }
 
         @Override
@@ -70,20 +78,34 @@ public class ConsumerJsonServlet {
 
         @Override
         public NanoHTTPD.Response get(RouterNanoHTTPD.UriResource uriResource, Map<String, String> urlParams, NanoHTTPD.IHTTPSession session) {
-            String consumers[] = urlParams.get("consumer").split("/");
+            String discovererLookup = urlParams.get("discoverer");
 
+            if (discovererLookup == null) {
+                return HttpUtil.returnException("", "No discoverer was requested.");
+            }
+
+            String discovererLookups[] = discovererLookup.split("/");
             JsonArray jsonArray = new JsonArray();
 
-            for (String consumer : consumers) {
-                SageTVConsumer sageTVConsumer;
+            for (String discoveredLookup : discovererLookups) {
+                DeviceDiscoverer discoverer = DiscoveryManager.getDiscoverer(discoveredLookup);
 
-                if (consumer.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
-                    sageTVConsumer = new DynamicConsumerImpl();
-                } else {
-                    sageTVConsumer = Config.getSageTVConsumer(null, consumer, null);
+                if (discoverer == null) {
+                    return HttpUtil.returnException(discoveredLookup, "The discoverer '" + discoveredLookup + "' does not exist.");
                 }
 
-                jsonArray.add(gson.toJsonTree(sageTVConsumer, SageTVConsumer.class));
+                if (session.getParms().size() > 0) {
+                    JsonObject newObject = new JsonObject();
+                    newObject.addProperty(DeviceDiscovererSerializer.NAME, discoverer.getName());
+
+                    for (Map.Entry<String, String> kvp : session.getParms().entrySet()) {
+                        DeviceDiscovererSerializer.addProperty(newObject, kvp.getKey(), discoverer);
+                    }
+
+                    jsonArray.add(newObject);
+                } else {
+                    jsonArray.add(gson.toJsonTree(discoverer, DeviceDiscoverer.class));
+                }
             }
 
             return NanoHTTPD.newFixedLengthResponse(gson.toJson(jsonArray));
@@ -91,7 +113,13 @@ public class ConsumerJsonServlet {
 
         @Override
         public NanoHTTPD.Response post(RouterNanoHTTPD.UriResource uriResource, Map<String, String> urlParams, NanoHTTPD.IHTTPSession session) {
-            String consumers[] = urlParams.get("consumer").split("/");
+            String discovererLookup = urlParams.get("discoverer");
+
+            if (discovererLookup == null) {
+                return HttpUtil.returnException("", "No discoverer was requested.");
+            }
+
+            String discovererLookups[] = discovererLookup.split("/");
 
             String response = HttpUtil.getPostContent(session);
 
@@ -102,19 +130,25 @@ public class ConsumerJsonServlet {
                 jsonOptions = new JsonOption[] { gson.fromJson(response, JsonOption.class) };
             }
 
-            for (String consumer : consumers) {
-                SageTVConsumer sageTVConsumer;
+            for (String discoveredLookup : discovererLookups) {
+                DeviceDiscoverer discoverer = DiscoveryManager.getDiscoverer(discoveredLookup);
 
-                if (consumer.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
-                    sageTVConsumer = new DynamicConsumerImpl();
-                } else {
-                    sageTVConsumer = Config.getSageTVConsumer(null, consumer, null);
+                if (discoverer == null) {
+                    return HttpUtil.returnException(discoveredLookup, "The discoverer '" + discoveredLookup + "' does not exist.");
                 }
 
                 try {
-                    sageTVConsumer.setOptions(jsonOptions);
+                    discoverer.setOptions(jsonOptions);
                 } catch (DeviceOptionException e) {
                     return HttpUtil.returnException(e);
+                }
+
+                for (JsonOption jsonOption : jsonOptions) {
+                    JsonException jsonException = DeviceDiscovererSerializer.setProperties(jsonOption, discoverer);
+
+                    if (jsonException != null) {
+                        return HttpUtil.returnException(jsonException);
+                    }
                 }
             }
 

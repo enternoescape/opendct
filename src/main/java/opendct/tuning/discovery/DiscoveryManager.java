@@ -225,6 +225,27 @@ public class DiscoveryManager implements PowerEventListener {
         return null;
     }
 
+    public static DeviceDiscoverer[] getDiscoverers() {
+        DeviceDiscoverer deviceDiscoverers[] = null;
+
+        discoverLock.readLock().lock();
+
+        try {
+            deviceDiscoverers = new DeviceDiscoverer[deviceDiscoveries.size()];
+
+            for (int i = 0; i < deviceDiscoverers.length; i++) {
+                deviceDiscoverers[i] = deviceDiscoveries.get(i);
+            }
+        } catch (Exception e) {
+            logger.error("getDiscoverer created an unexpected exception while using" +
+                    " discoverLock => ", e);
+        } finally {
+            discoverLock.readLock().unlock();
+        }
+
+        return deviceDiscoverers == null ? new DeviceDiscoverer[0] : deviceDiscoverers;
+    }
+
     /**
      * Start device discovery for all currently available discovery methods.
      */

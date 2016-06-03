@@ -23,29 +23,22 @@ import org.apache.logging.log4j.Logger;
 public class PowerMessageManager {
     private static final Logger logger = LogManager.getLogger(PowerMessageManager.class);
 
-    public static final PowerMessagePump EVENTS = createPowerMessagePump();
+    public static final PowerMessagePump EVENTS;
 
-    private static PowerMessagePump createPowerMessagePump() {
-        logger.entry();
-        // Since this is static, I'm initializing it here. I can't think of an easier way for this to be consistent
-        // since the initialization is going to vary by OS.
-
-        PowerMessagePump returnPump = null;
-
+    static {
         switch (Config.OS_VERSION) {
             case WINDOWS:
-                returnPump = new WindowsPowerMessagePump();
+                EVENTS = new WindowsPowerMessagePump();
                 break;
             case LINUX:
-                returnPump = new LinuxPowerMessagePump();
+                EVENTS = new LinuxPowerMessagePump();
                 break;
             case MAC:
-                returnPump = new MacPowerMessagePump();
+                EVENTS = new MacPowerMessagePump();
                 break;
-            case UNKNOWN:
+            default:
+                EVENTS = null;
                 break;
         }
-
-        return logger.exit(returnPump);
     }
 }

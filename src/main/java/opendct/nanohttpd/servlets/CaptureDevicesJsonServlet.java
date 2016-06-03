@@ -27,8 +27,8 @@ import opendct.config.options.DeviceOptionException;
 import opendct.nanohttpd.HttpUtil;
 import opendct.nanohttpd.pojo.JsonException;
 import opendct.nanohttpd.pojo.JsonOption;
+import opendct.nanohttpd.serializer.CaptureDevicesSerializer;
 import opendct.nanohttpd.serializer.DeviceOptionSerializer;
-import opendct.nanohttpd.serializer.DiscoveredDevicesSerializer;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.DiscoveredDevice;
 import opendct.tuning.discovery.DiscoveryManager;
@@ -45,7 +45,7 @@ public class CaptureDevicesJsonServlet {
     private static final Gson gson;
 
     static {
-        gsonBuilder.registerTypeAdapter(DiscoveredDevice.class, new DiscoveredDevicesSerializer());
+        gsonBuilder.registerTypeAdapter(DiscoveredDevice.class, new CaptureDevicesSerializer());
         gsonBuilder.setPrettyPrinting();
         gson = gsonBuilder.create();
     }
@@ -101,23 +101,23 @@ public class CaptureDevicesJsonServlet {
                     try {
                         device = DiscoveryManager.getDiscoveredDevice(Integer.parseInt(captureDeviceLookup));
                     } catch (NumberFormatException e) {
-                        return HttpUtil.returnException("","Capture device id '" + captureDeviceLookup + "' is not a valid id.");
+                        return HttpUtil.returnException(captureDeviceLookup,"Capture device id '" + captureDeviceLookup + "' is not a valid id.");
                     }
 
                     if (device == null) {
-                        return HttpUtil.returnException("","Capture device id '" + captureDeviceLookup + "' does not exist.");
+                        return HttpUtil.returnException(captureDeviceLookup,"Capture device id '" + captureDeviceLookup + "' does not exist.");
                     }
 
                     CaptureDevice loadedCaptureDevice = SageTVManager.getSageTVCaptureDevice(device.getId());
 
                     JsonObject newEntry = new JsonObject();
 
-                    newEntry.addProperty(DiscoveredDevicesSerializer.ID, device.getId());
+                    newEntry.addProperty(CaptureDevicesSerializer.ID, device.getId());
 
                     for (Map.Entry<String, String> kvp : session.getParms().entrySet()) {
                         String getProperty = kvp.getKey();
 
-                        DiscoveredDevicesSerializer.addProperty(newEntry, getProperty, device, loadedCaptureDevice);
+                        CaptureDevicesSerializer.addProperty(newEntry, getProperty, device, loadedCaptureDevice);
                     }
 
                     devices.add(newEntry);
@@ -178,7 +178,7 @@ public class CaptureDevicesJsonServlet {
                 if (loadedCaptureDevice != null) {
                     for (JsonOption jsonOption : jsonOptions) {
                         JsonException jsonException =
-                                DiscoveredDevicesSerializer.setProperty(jsonOption, loadedCaptureDevice);
+                                CaptureDevicesSerializer.setProperty(jsonOption, loadedCaptureDevice);
 
                         if (jsonException != null) {
                             return HttpUtil.returnException(jsonException);

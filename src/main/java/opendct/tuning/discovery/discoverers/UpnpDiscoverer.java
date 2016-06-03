@@ -506,6 +506,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         return new DeviceOption[] {
                 offlineDetectionSeconds,
                 offlineDetectionMinBytes,
+                streamingWait,
                 smartBroadcast
         };
     }

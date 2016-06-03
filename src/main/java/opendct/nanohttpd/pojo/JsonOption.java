@@ -15,6 +15,8 @@
 
 package opendct.nanohttpd.pojo;
 
+import opendct.config.options.DeviceOptionType;
+
 public class JsonOption {
     private String property;
     private String name;
@@ -24,6 +26,30 @@ public class JsonOption {
     private String validValues[];
     private String value;
     private String values[];
+
+    public JsonOption() {
+
+    }
+
+    public JsonOption(String property, String name, String description, boolean readonly, DeviceOptionType type, String validValues[], String values[]) {
+        this.property = property;
+        this.name = name;
+        this.description = description;
+        this.readonly = readonly;
+        this.type = type.toString();
+        this.validValues = validValues;
+        this.values = values;
+    }
+
+    public JsonOption(String property, String name, String description, boolean readonly, DeviceOptionType type, String validValues[], String value) {
+        this.property = property;
+        this.name = name;
+        this.description = description;
+        this.readonly = readonly;
+        this.type = type.toString();
+        this.validValues = validValues;
+        this.value = value;
+    }
 
     public String getProperty() {
         return property;

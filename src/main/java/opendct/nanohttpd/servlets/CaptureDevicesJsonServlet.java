@@ -101,11 +101,11 @@ public class CaptureDevicesJsonServlet {
                     try {
                         device = DiscoveryManager.getDiscoveredDevice(Integer.parseInt(captureDeviceLookup));
                     } catch (NumberFormatException e) {
-                        return HttpUtil.returnException("","Capture device id '" + captureDeviceLookup + "' is not a valid id.");
+                        return HttpUtil.returnException(captureDeviceLookup,"Capture device id '" + captureDeviceLookup + "' is not a valid id.");
                     }
 
                     if (device == null) {
-                        return HttpUtil.returnException("","Capture device id '" + captureDeviceLookup + "' does not exist.");
+                        return HttpUtil.returnException(captureDeviceLookup,"Capture device id '" + captureDeviceLookup + "' does not exist.");
                     }
 
                     CaptureDevice loadedCaptureDevice = SageTVManager.getSageTVCaptureDevice(device.getId());

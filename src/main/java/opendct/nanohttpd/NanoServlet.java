@@ -61,7 +61,10 @@ public class NanoServlet extends RouterNanoHTTPD {
         // POST: Set the properties for general options
         addRoute("/general", GeneralJsonServlet.GetPost.class);
 
-
-
+        // GET: Get the names of all available capture device discoverers
+        addRoute("/discovery", DiscovererJsonServlet.List.class);
+        // GET: Get the properties for a discoverer or multiple discoverers
+        // POST: Set the properties for a discoverer or multiple discoverers
+        addRoute("/discovery/:discoverer", DiscovererJsonServlet.GetPost.class);
     }
 }

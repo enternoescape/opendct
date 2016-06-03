@@ -21,8 +21,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.router.RouterNanoHTTPD;
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
+import opendct.config.options.DeviceOptionType;
 import opendct.nanohttpd.HttpUtil;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.nanohttpd.serializer.DeviceOptionSerializer;
@@ -44,10 +46,55 @@ public class GeneralJsonServlet {
         gson = gsonBuilder.create();
     }
 
+    public static final String NAME = "name";
+    public static final String OPTIONS = "options";
+    public static final String NETWORKING = "Networking";
+
+    public static final String POWER_MANAGEMENT = "Power Management";
+    public static final String POWER_MANAGEMENT_ENABLED_PROP = "pm.enabled";
+    public static final String POWER_MANAGEMENT_ENABLED_NAME = "Enabled";
+    public static final String POWER_MANAGEMENT_ENABLED_DESC = "When this option is enabled," +
+            " the program will be made aware of when the computer enters and exits standby." +
+            " This option currently only applies to Windows. A program restart is required" +
+            " for this setting to take effect.";
+
+    public static final String CAPTURE_DEVICE_POOLING = "Capture Device Pooling";
+    public static final String CAPTURE_DEVICE_POOLING_ENABLED_PROP = "pool.enabled";
+    public static final String CAPTURE_DEVICE_POOLING_ENABLED_NAME = "Enabled";
+    public static final String CAPTURE_DEVICE_POOLING_ENABLED_DESC = "When this option is" +
+            " enabled, the program will allow capture devices to be selected based on merit" +
+            " and availability instead of always using the capture device SageTV has" +
+            " requested. A program restart is required for this setting to take effect.";
+
+
+    public static final String SAGETV = "SageTV";
+    public static final String SAGETV_EARLY_PORT_ASSIGNMENT_PROP = "sagetv.early_port_assignment";
+    public static final String SAGETV_EARLY_PORT_ASSIGNMENT_NAME = "Early Port Assignment";
+    public static final String SAGETV_EARLY_PORT_ASSIGNMENT_DESC = "When this option is" +
+            " enabled, the program will open the defined port for every capture device that" +
+            " might load so that SageTV can begin communication immediately. At startup, the" +
+            " program will hold onto any requests for a capture device that is not currently" +
+            " available until the requested capture device becomes available for up to 15" +
+            " seconds before returning an error. The reason you might not want to enable this" +
+            " is because it has the potential to open ports on the computer that might not be" +
+            " used for anything if the corresponding capture device does not exist. A program" +
+            " restart is required for this setting to take effect.";
+
+    public static final String SAGETV_DISCOVERY_PORT_PROP = "sagetv.encoder_discovery_port";
+    public static final String SAGETV_DISCOVERY_PORT_NAME = "Discovery Port";
+    public static final String SAGETV_DISCOVERY_PORT_DESC = "This changes the port that the" +
+            " program will listen on for the SageTV discovery broadcast. Do not change this" +
+            " value unless you have changed the port on the SageTV side too. A program" +
+            " restart is required for this setting to take effect.";
+
+    public static final String SAGETV_AUTO_LOOPBACK_PROP = "sagetv.use_automatic_loopback";
+    public static final String SAGETV_AUTO_LOOPBACK_NAME = "Automatic Loopback";
+    public static final String SAGETV_AUTO_LOOPBACK_DESC = "When this is enabled, the program" +
+            " will determine if it's running on the same computer as the SageTV server and" +
+            " will automatically change to the loopback address for communications. A program" +
+            " restart is required for this setting to take effect.";
+
     public static class GetPost extends RouterNanoHTTPD.DefaultHandler {
-        public static final String NAME = "name";
-        public static final String OPTIONS = "options";
-        public static final String NETWORKING = "Networking";
 
         @Override
         public String getText() {
@@ -67,14 +114,76 @@ public class GeneralJsonServlet {
                             DeviceOption.class));
 
             jsonArray.add(newObject);
-            /*newObject = new JsonObject();
 
-            newObject.addProperty(NAME, "Networking");
-            newObject.add(OPTIONS,
-                    gson.toJsonTree(
-                            NetworkPowerEventManger.POWER_EVENT_LISTENER.getOptions(),
-                            DeviceOption.class));*/
+            // Power Management Properties
+            newObject = new JsonObject();
+            newObject.addProperty(NAME, POWER_MANAGEMENT);
+            JsonOption jsonOptions[] = new JsonOption[1];
 
+            jsonOptions[0] = new JsonOption(
+                    POWER_MANAGEMENT_ENABLED_PROP,
+                    POWER_MANAGEMENT_ENABLED_NAME,
+                    POWER_MANAGEMENT_ENABLED_DESC,
+                    false,
+                    DeviceOptionType.BOOLEAN,
+                    new String[0],
+                    Config.getString(POWER_MANAGEMENT_ENABLED_PROP));
+
+            newObject.add(OPTIONS, gson.toJsonTree(jsonOptions));
+            jsonArray.add(newObject);
+
+
+            // Capture Device Pooling Properties
+            newObject = new JsonObject();
+            newObject.addProperty(NAME, CAPTURE_DEVICE_POOLING);
+            jsonOptions = new JsonOption[1];
+
+            jsonOptions[0] = new JsonOption(
+                    CAPTURE_DEVICE_POOLING_ENABLED_PROP,
+                    CAPTURE_DEVICE_POOLING_ENABLED_NAME,
+                    CAPTURE_DEVICE_POOLING_ENABLED_DESC,
+                    false,
+                    DeviceOptionType.BOOLEAN,
+                    new String[0],
+                    Config.getString(CAPTURE_DEVICE_POOLING_ENABLED_PROP));
+
+            newObject.add(OPTIONS, gson.toJsonTree(jsonOptions));
+            jsonArray.add(newObject);
+
+            // Early Port Assignment Properties
+            newObject = new JsonObject();
+            newObject.addProperty(NAME, SAGETV);
+            jsonOptions = new JsonOption[3];
+
+            jsonOptions[0] = new JsonOption(
+                    SAGETV_EARLY_PORT_ASSIGNMENT_PROP,
+                    SAGETV_EARLY_PORT_ASSIGNMENT_NAME,
+                    SAGETV_EARLY_PORT_ASSIGNMENT_DESC,
+                    false,
+                    DeviceOptionType.BOOLEAN,
+                    new String[0],
+                    Config.getString(SAGETV_EARLY_PORT_ASSIGNMENT_PROP));
+
+            jsonOptions[1] = new JsonOption(
+                    SAGETV_DISCOVERY_PORT_PROP,
+                    SAGETV_DISCOVERY_PORT_NAME,
+                    SAGETV_DISCOVERY_PORT_DESC,
+                    false,
+                    DeviceOptionType.INTEGER,
+                    new String[0],
+                    Config.getString(SAGETV_EARLY_PORT_ASSIGNMENT_PROP));
+
+            jsonOptions[2] = new JsonOption(
+                    SAGETV_AUTO_LOOPBACK_PROP,
+                    SAGETV_AUTO_LOOPBACK_NAME,
+                    SAGETV_AUTO_LOOPBACK_DESC,
+                    false,
+                    DeviceOptionType.BOOLEAN,
+                    new String[0],
+                    Config.getString(SAGETV_AUTO_LOOPBACK_PROP));
+
+            newObject.add(OPTIONS, gson.toJsonTree(jsonOptions));
+            jsonArray.add(newObject);
 
             return NanoHTTPD.newFixedLengthResponse(gson.toJson(jsonArray));
         }
@@ -97,6 +206,29 @@ public class GeneralJsonServlet {
                 NetworkPowerEventManger.POWER_EVENT_LISTENER.setOptions(jsonOptions);
             } catch (DeviceOptionException e) {
                 return HttpUtil.returnException(e);
+            }
+
+            // All of these options are not runtime configuration. If they configured incorrectly,
+            // they will be corrected on restart. This is also a filter to ensure you can't change
+            // the properties for anything other than what you should be able to from here.
+            for (JsonOption jsonOption : jsonOptions) {
+                switch (jsonOption.getProperty()) {
+                    case POWER_MANAGEMENT_ENABLED_PROP:
+                        Config.setString(POWER_MANAGEMENT_ENABLED_PROP, jsonOption.getValue());
+                        break;
+                    case CAPTURE_DEVICE_POOLING_ENABLED_PROP:
+                        Config.setString(CAPTURE_DEVICE_POOLING_ENABLED_PROP, jsonOption.getValue());
+                        break;
+                    case SAGETV_EARLY_PORT_ASSIGNMENT_PROP:
+                        Config.setString(SAGETV_EARLY_PORT_ASSIGNMENT_PROP, jsonOption.getValue());
+                        break;
+                    case SAGETV_DISCOVERY_PORT_PROP:
+                        Config.setString(SAGETV_DISCOVERY_PORT_PROP, jsonOption.getValue());
+                        break;
+                    case SAGETV_AUTO_LOOPBACK_PROP:
+                        Config.setString(SAGETV_AUTO_LOOPBACK_PROP, jsonOption.getValue());
+                        break;
+                }
             }
 
             return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));

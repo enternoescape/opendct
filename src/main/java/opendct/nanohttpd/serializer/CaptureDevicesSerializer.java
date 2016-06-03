@@ -189,7 +189,7 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
         }
     }
 
-    public static JsonException setProperty(JsonOption jsonOption, CaptureDevice captureDevice) {
+    public static synchronized JsonException setProperty(JsonOption jsonOption, CaptureDevice captureDevice) {
         String newValue = jsonOption.getValue();
 
         switch (jsonOption.getProperty()) {

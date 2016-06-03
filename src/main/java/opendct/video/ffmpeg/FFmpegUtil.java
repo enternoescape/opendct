@@ -33,9 +33,7 @@ import static org.bytedeco.javacpp.avutil.*;
 public class FFmpegUtil {
     private static final Logger logger = LogManager.getLogger(FFmpegUtil.class);
 
-    public static final FFmpegLogger logCallback = new FFmpegLogger();
-    private static final Object isInitSync = new Object();
-    private static boolean isInit = false;
+    public static final FFmpegLogger logCallback;
 
     public static final int EAGAIN = -11;
     public static final int ENOMEM = -12;
@@ -44,32 +42,25 @@ public class FFmpegUtil {
     public static final String TRYING_AGAIN = " Trying again with an extended probe.";
     private static final boolean LOG_STREAM_DETAILS_FOR_ALL_PROGRAMS = Config.getBoolean("consumer.ffmpeg.log_stream_details_for_all_programs", false);
 
-    /**
-     * Initialize all one time FFmpeg common configuration.
-     * <p/>
-     * Additional calls to this method will just return without doing anything. This method is
-     * thread-safe.
-     */
+    static {
+        logger.debug("Initializing FFmpegLogger...");
+        logCallback = new FFmpegLogger();
+
+        logger.debug("Calling av_log_set_callback...");
+        av_log_set_callback(logCallback);
+
+        logger.debug("Calling avcodec_register_all...");
+        avcodec_register_all();
+
+        logger.debug("Calling avfilter_register_all...");
+        avfilter_register_all();
+
+        logger.debug("Calling av_register_all...");
+        av_register_all();
+    }
+
     public static void initAll() {
-
-        // This will prevent this method from causing a pileup of waiting threads once everything is
-        // one time configured. The sync is needed to make sure that nothing that requires this
-        // configuration is allowed to proceed until everything is registered.
-        if (isInit) {
-            return;
-        }
-
-        synchronized (isInitSync) {
-            if (!isInit) {
-                av_log_set_callback(logCallback);
-
-                avcodec_register_all();
-                avfilter_register_all();
-                av_register_all();
-
-                isInit = true;
-            }
-        }
+        // Triggers static initialization.
     }
 
     public void printAvailableHWAccel() {

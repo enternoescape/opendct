@@ -89,7 +89,7 @@ public enum ExitCode {
         // restart the program. When the program is started, right after the configuration folder is
         // set, the restart file is cleared.
         if (this == RESTART) {
-            File restartFile = new File(Config.getConfigDirectory() + Config.DIR_SEPARATOR + "restart");
+            File restartFile = new File(Config.getConfigDir() + Config.DIR_SEPARATOR + "restart");
             if (!restartFile.exists()) {
                 try {
                     if (restartFile.createNewFile()) {

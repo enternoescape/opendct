@@ -118,7 +118,7 @@ public class Config {
         VID_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR + "video" + DIR_SEPARATOR;
     }
 
-    public static String getConfigDirectory() {
+    public static String getConfigDir() {
         return Config.directory;
     }
 

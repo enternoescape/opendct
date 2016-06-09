@@ -312,11 +312,16 @@ public class SageTVTuningMonitor {
                         long recordedBytes = recording.captureDevice.getRecordedBytes();
 
                         if (recording.lastRecordedBytes == recordedBytes) {
+                            recording.filename = recording.captureDevice.getRecordFilename();
+                            recording.copyProtection = recording.captureDevice.getCopyProtection();
+
                             logger.debug("The consumer appears to be stuck at {}," +
-                                    " file system length {}.",
+                                    " file system length {}, file name '{}', copy protection {}.",
                                     recording.lastRecordedBytes,
                                     recording.filename != null ?
-                                            new File(recording.filename).length() : -1);
+                                            new File(recording.filename).length() : -1,
+                                    recording.filename != null ?
+                                            recording.filename : "");
 
                             if (recording.lastRecordedBytes != 0) {
                                 recording.noRecordedBytes += 1;

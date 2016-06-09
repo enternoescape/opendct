@@ -43,7 +43,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     private static final Map<String, String> dynamicMaps;
     private static StringDeviceOption defaultConsumer;
     private static ChannelRangesDeviceOption ffmpegTransConsumer;
-    //private static ChannelRangesDeviceOption mediaServerConsumer;
+    private static ChannelRangesDeviceOption mediaServerConsumer;
     private static ChannelRangesDeviceOption rawConsumer;
 
     private long bufferSize;
@@ -87,19 +87,21 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                     " opendct.consumer.FFmpegTransSageTVConsumerImpl for {}",
                     Arrays.toString(channels));
 
-            /*channels = ChannelRangesDeviceOption.parseRanges(mediaServerConsumer.getValue());
-            for (String channel : channels) {
-                dynamicMaps.put(channel, MediaServerConsumerImpl.class.getCanonicalName());
-            }
+            if (Config.MEDIA_SERVER_ENABLED) {
+                channels = ChannelRangesDeviceOption.parseRanges(mediaServerConsumer.getValue());
+                for (String channel : channels) {
+                    dynamicMaps.put(channel, MediaServerConsumerImpl.class.getCanonicalName());
+                }
 
-            logger.info("Dynamic consumer set to use" +
-                            " opendct.consumer.MediaServerConsumerImpl for {}",
-                    Arrays.toString(channels));
+                logger.info("Dynamic consumer set to use" +
+                                " opendct.consumer.MediaServerConsumerImpl for {}",
+                        Arrays.toString(channels));
+            }
 
             channels = ChannelRangesDeviceOption.parseRanges(rawConsumer.getValue());
             for (String channel : channels) {
                 dynamicMaps.put(channel, RawSageTVConsumerImpl.class.getCanonicalName());
-            }*/
+            }
 
             logger.info("Dynamic consumer set to use" +
                     " opendct.consumer.RawSageTVConsumerImpl for {}",
@@ -415,14 +417,16 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                                 " FFmpegTransSageTVConsumerImpl."
                 );
 
-                /*mediaServerConsumer = new ChannelRangesDeviceOption(
-                        Config.getString("consumer.dynamic.channels.media_server", ""),
-                        false,
-                        "Raw Consumer Channels",
-                        "consumer.dynamic.channels.media_server",
-                        "These are the channel ranges that will always use" +
-                                " MediaServerConsumerImpl."
-                );*/
+                if (Config.MEDIA_SERVER_ENABLED) {
+                    mediaServerConsumer = new ChannelRangesDeviceOption(
+                            Config.getString("consumer.dynamic.channels.media_server", ""),
+                            false,
+                            "Raw Consumer Channels",
+                            "consumer.dynamic.channels.media_server",
+                            "These are the channel ranges that will always use" +
+                                    " MediaServerConsumerImpl."
+                    );
+                }
 
                 rawConsumer = new ChannelRangesDeviceOption(
                         Config.getString("consumer.dynamic.channels.raw", ""),
@@ -450,13 +454,22 @@ public class DynamicConsumerImpl implements SageTVConsumer {
             break;
         }
 
-        Config.mapDeviceOptions(
-                deviceOptions,
-                defaultConsumer,
-                ffmpegTransConsumer,
-                //mediaServerConsumer,
-                rawConsumer
-        );
+        if (Config.MEDIA_SERVER_ENABLED) {
+            Config.mapDeviceOptions(
+                    deviceOptions,
+                    defaultConsumer,
+                    ffmpegTransConsumer,
+                    mediaServerConsumer,
+                    rawConsumer
+            );
+        } else {
+            Config.mapDeviceOptions(
+                    deviceOptions,
+                    defaultConsumer,
+                    ffmpegTransConsumer,
+                    rawConsumer
+            );
+        }
     }
 
     @Override
@@ -470,12 +483,20 @@ public class DynamicConsumerImpl implements SageTVConsumer {
 
     @Override
     public DeviceOption[] getOptions() {
-        return new DeviceOption[] {
-                defaultConsumer,
-                ffmpegTransConsumer,
-                //mediaServerConsumer,
-                rawConsumer
-        };
+        if (Config.MEDIA_SERVER_ENABLED) {
+            return new DeviceOption[]{
+                    defaultConsumer,
+                    ffmpegTransConsumer,
+                    mediaServerConsumer,
+                    rawConsumer
+            };
+        } else {
+            return new DeviceOption[]{
+                    defaultConsumer,
+                    ffmpegTransConsumer,
+                    rawConsumer
+            };
+        }
     }
 
     @Override

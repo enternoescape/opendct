@@ -65,7 +65,7 @@ public class Main {
             return;
         }
 
-        File restartFile = new File(Config.getConfigDirectory() + Config.DIR_SEPARATOR + "restart");
+        File restartFile = new File(Config.getConfigDir() + Config.DIR_SEPARATOR + "restart");
         if (restartFile.exists()) {
             if (!restartFile.delete()) {
                 logger.error("Unable to delete the file '{}'.", restartFile.getName());

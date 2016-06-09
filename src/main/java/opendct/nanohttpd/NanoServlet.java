@@ -29,6 +29,9 @@ public class NanoServlet extends RouterNanoHTTPD {
     public void addMappings() {
         super.addMappings();
 
+        // GET: Get program version and path information.
+        addRoute("/version", VersionJsonServlet.List.class);
+
         // GET: Get Capture Device ID's
         addRoute("/devices", CaptureDevicesJsonServlet.List.class);
         // GET: Get Capture Device Properties

@@ -321,7 +321,8 @@ public class SageTVTuningMonitor {
                                     recording.filename != null ?
                                             new File(recording.filename).length() : -1,
                                     recording.filename != null ?
-                                            recording.filename : "");
+                                            recording.filename : "",
+                                    recording.copyProtection);
 
                             if (recording.lastRecordedBytes != 0) {
                                 recording.noRecordedBytes += 1;

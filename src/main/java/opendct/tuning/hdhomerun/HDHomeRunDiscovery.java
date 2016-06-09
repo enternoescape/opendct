@@ -159,7 +159,7 @@ public class HDHomeRunDiscovery implements Runnable {
     }
 
     public void run() {
-        int retry = 3;
+        int retry = 5;
 
         logger.info("HDHomeRun discovery sender thread started.");
 
@@ -184,9 +184,10 @@ public class HDHomeRunDiscovery implements Runnable {
 
                 boolean logDiscovery = HDHomeRunDiscoverer.getSmartBroadcast() || discoverer.isWaitingForDevices();
 
+                boolean requested = HDHomeRunDiscoverer.needBroadcast();
                 if (retry == 1 &&
                         !discoverer.isWaitingForDevices() &&
-                        !HDHomeRunDiscoverer.needBroadcast() &&
+                        !requested &&
                         HDHomeRunDiscoverer.getSmartBroadcast()) {
 
                     break;
@@ -202,7 +203,7 @@ public class HDHomeRunDiscovery implements Runnable {
                     while (txPacket.BUFFER.hasRemaining()) {
                         try {
                             if (logDiscovery) {
-                                logger.info("Broadcasting HDHomeRun discovery packet to {}...", BROADCAST_SOCKET[i]);
+                                logger.info("Broadcasting HDHomeRun discovery packet to {}... ({})", BROADCAST_SOCKET[i], requested ? "requested" : "startup");
                             }
 
                             datagramChannels[i].send(txPacket.BUFFER, BROADCAST_SOCKET[i]);

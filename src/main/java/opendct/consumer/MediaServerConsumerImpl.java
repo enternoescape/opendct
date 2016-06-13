@@ -138,7 +138,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                 try {
                     remuxStarted = mediaServer.setupRemux(
                             currentRecordingFilename.endsWith(".mpg") ? "PS" : "TS",
-                            0, initDataSize);
+                            true);
 
                 } catch (IOException e) {
                     logger.error("Unable to communicate on socket {} => ", uploadIDSocket, e);
@@ -201,6 +201,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
                 streamBuffer.flip();
 
+                start = false;
                 if (start) {
                     int startIndex = VideoUtil.getTsVideoPatStartByte(
                             streamBuffer,
@@ -219,67 +220,11 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
                 if (switchFile) {
                     synchronized (switchMonitor) {
-                        int switchIndex;
+                        stateMessage = "Switching...";
 
-                        if (switchAttempts-- > 0) {
-                             switchIndex = VideoUtil.getTsVideoRandomAccessIndicator(
-                                    streamBuffer,
-                                    false
-                            );
-
-                            if (switchIndex > -1) {
-                                switchIndex += 188;
-                            }
-                        } else {
-                            if (switchAttempts == -1) {
-                                logger.warn("Stream does not appear to contain any random access" +
-                                        " indicators. Using the nearest PES packet.");
-                            }
-
-                            switchIndex = VideoUtil.getTsVideoPesStartByte(
-                                    streamBuffer,
-                                    false
-                            );
-
-                            if (switchIndex > -1) {
-                                switchIndex += 188;
-                            }
-                        }
-
-                        if (switchIndex > -1) {
-                            switchAttempts = 50;
-
-                            if (switchIndex > streamBuffer.position()) {
-                                ByteBuffer lastWriteBuffer = streamBuffer.duplicate();
-                                lastWriteBuffer.limit(switchIndex - 1);
-                                streamBuffer.position(switchIndex);
-
-                                mediaServer.uploadAutoIncrement(lastWriteBuffer);
-                            }
-
-                            while (!seekableBuffer.isClosed()) {
-                                stateMessage = "Opening file via MediaServer for SWITCH...";
-                                logger.info(stateMessage);
-
-                                try {
-                                    connected = mediaServer.switchRemux(
-                                            switchRecordingFilename, switchUploadID);
-                                } catch (IOException e) {
-                                    logger.error("Unable to connect to socket {} => ", uploadIDSocket, e);
-                                }
-
-                                if (!connected) {
-                                    logger.error("SageTV refused the creation of the file '{}'. Trying again...",
-                                            currentRecordingFilename);
-                                    Thread.sleep(1000);
-
-                                    continue;
-                                }
-
-                                break;
-                            }
-
-                            int initBytes = 0;
+                        logger.info("Attempting switch...");
+                        if (mediaServer.isSwitched()) {
+                            stateMessage = "Streaming...";
 
                             currentRecordingFilename = switchRecordingFilename;
                             currentUploadID = switchUploadID;
@@ -287,7 +232,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                             bytesStreamed.set(mediaServer.getSize());
                             switchFile = false;
 
-                            stateMessage = "Streaming...";
                             logger.info("SWITCH successful.");
                             switchMonitor.notifyAll();
                         }
@@ -356,7 +300,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
     @Override
     public boolean canSwitch() {
-        return false;
+        return true;
     }
 
     @Override
@@ -436,9 +380,18 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
         synchronized (switchMonitor) {
             this.switchUploadID = uploadId;
             this.switchRecordingFilename = filename;
+
+            try {
+                mediaServer.switchRemux(filename, uploadId);
+            } catch (IOException e) {
+                logger.error("Unable to initiate SWITCH because" +
+                        " of an expected communication error. => ", e);
+                return false;
+            }
+
             this.switchFile = true;
 
-            while (switchFile && this.getIsRunning()) {
+            while (switchFile && !seekableBuffer.isClosed()) {
                 try {
                     switchMonitor.wait(500);
                 } catch (Exception e) {

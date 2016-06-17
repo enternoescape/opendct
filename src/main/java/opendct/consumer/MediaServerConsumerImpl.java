@@ -445,7 +445,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
     private final static Map<String, DeviceOption> deviceOptions;
 
-    private static IntegerDeviceOption initDataSizeOpt;
     private static IntegerDeviceOption minTransferSizeOpt;
     private static IntegerDeviceOption maxTransferSizeOpt;
     private static IntegerDeviceOption bufferSizeOpt;
@@ -455,18 +454,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     private static void initDeviceOptions() {
         while (true) {
             try {
-                initDataSizeOpt = new IntegerDeviceOption(
-                        Config.getInteger("consumer.media_server.init_data_size", 1048576),
-                        false,
-                        "Min Initialization Data Size",
-                        "consumer.media_server.init_data_size",
-                        "This is the minimum number of bytes that SageTV will use while detecting" +
-                                " what streams are present to remux. This value cannot be less" +
-                                " than 8084 and cannot be greater than 5242756. This value will" +
-                                " auto-align to the nearest multiple of 188.",
-                        8084,
-                        52427560);
-
                 minTransferSizeOpt = new IntegerDeviceOption(
                         Config.getInteger("consumer.media_server.min_transfer_size", 64672),
                         false,
@@ -529,13 +516,11 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                         65535);
 
                 // Enforce 188 alignment.
-                initDataSizeOpt.setValue((initDataSizeOpt.getInteger() / 188) * 188);
                 minTransferSizeOpt.setValue((minTransferSizeOpt.getInteger() / 188) * 188);
                 maxTransferSizeOpt.setValue((maxTransferSizeOpt.getInteger() / 188) * 188);
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid options. Reverting to defaults => ", e);
 
-                Config.setInteger("consumer.media_server.init_data_size", 1048576);
                 Config.setInteger("consumer.media_server.min_transfer_size", 65536);
                 Config.setInteger("consumer.media_server.max_transfer_size", 1048476);
                 Config.setInteger("consumer.media_server.stream_buffer_size", 2097152);
@@ -549,7 +534,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
         Config.mapDeviceOptions(
                 deviceOptions,
-                initDataSizeOpt,
                 minTransferSizeOpt,
                 maxTransferSizeOpt,
                 bufferSizeOpt,
@@ -561,7 +545,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     @Override
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
-                initDataSizeOpt,
                 minTransferSizeOpt,
                 maxTransferSizeOpt,
                 bufferSizeOpt,
@@ -590,7 +573,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
         }
 
         // Enforce 188 alignment.
-        initDataSizeOpt.setValue((initDataSizeOpt.getInteger() / 188) * 188);
         minTransferSizeOpt.setValue((minTransferSizeOpt.getInteger() / 188) * 188);
         maxTransferSizeOpt.setValue((maxTransferSizeOpt.getInteger() / 188) * 188);
 

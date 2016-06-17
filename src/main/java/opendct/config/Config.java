@@ -70,7 +70,7 @@ public class Config {
 
     // Disable MediaServer for releases until the SageTV side of things is ready to support this
     // feature.
-    public final static boolean MEDIA_SERVER_ENABLED = false;
+    public final static boolean MEDIA_SERVER_ENABLED = true;
 
     private static int exitCode = 0;
 

@@ -22,7 +22,6 @@ import opendct.config.options.IntegerDeviceOption;
 import opendct.consumer.buffers.SeekableCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVUploadID;
 import opendct.nanohttpd.pojo.JsonOption;
-import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -40,7 +39,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MediaServerConsumerImpl implements SageTVConsumer {
     private static final Logger logger = LogManager.getLogger(MediaServerConsumerImpl.class);
 
-    private final int initDataSize = initDataSizeOpt.getInteger();
     private final int minTransferSize = minTransferSizeOpt.getInteger();
     private final int maxTransferSize = maxTransferSizeOpt.getInteger();
     private final int bufferSize = bufferSizeOpt.getInteger();
@@ -173,16 +171,11 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                 break;
             }
 
-            boolean start = true;
             stateMessage = "Streaming...";
-            //ByteBuffer tempBuffer = null;
+
             // Start actual streaming.
             streamBuffer.clear();
             while (!seekableBuffer.isClosed()) {
-                /*if (tempBuffer != null) {
-                    seekableBuffer.read(tempBuffer);
-                    tempBuffer = null;
-                }*/
 
                 seekableBuffer.read(streamBuffer);
 
@@ -190,46 +183,18 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                     continue;
                 }
 
-                /*int overBytes = streamBuffer.position() % 188;
-                if (overBytes > 0) {
-                    logger.info("overBytes = {}", overBytes);
-                    tempBuffer = streamBuffer.duplicate();
-                    tempBuffer.position(tempBuffer.position() - overBytes);
-                    tempBuffer.flip();
-                    streamBuffer.limit(tempBuffer.position() - 1);
-                }*/
-
                 streamBuffer.flip();
-
-                start = false;
-                if (start) {
-                    int startIndex = VideoUtil.getTsVideoPatStartByte(
-                            streamBuffer,
-                            false
-                    );
-
-                    if (startIndex > 0) {
-                        streamBuffer.position(startIndex);
-                        start = false;
-                        stateMessage = "Streaming...";
-                        logger.info("MediaServer consumer is now streaming...");
-                    } else {
-                        continue;
-                    }
-                }
 
                 if (switchFile) {
                     synchronized (switchMonitor) {
                         stateMessage = "Switching...";
 
-                        logger.info("Attempting switch...");
                         if (mediaServer.isSwitched()) {
                             stateMessage = "Streaming...";
 
                             currentRecordingFilename = switchRecordingFilename;
                             currentUploadID = switchUploadID;
 
-                            bytesStreamed.set(mediaServer.getSize());
                             switchFile = false;
 
                             logger.info("SWITCH successful.");
@@ -239,10 +204,13 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                 }
 
                 if (!currentInit) {
-                    currentInit = mediaServer.isRemuxInitialized();
+                    synchronized (streamingMonitor) {
+                        currentInit = mediaServer.isRemuxInitialized();
 
-                    if (currentInit) {
-                        synchronized (streamingMonitor) {
+                        if (currentInit) {
+                            String format = mediaServer.getFormatString();
+                            logger.info("Format: {}", format);
+
                             streamingMonitor.notifyAll();
                         }
                     }
@@ -325,8 +293,11 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
         } else if (currentInit) {
             synchronized (switchMonitor) {
                 try {
-                    long returnValue = mediaServer.getSize();
+                    long returnValue;
+
+                    returnValue = mediaServer.getSize();
                     bytesStreamed.set(returnValue);
+
                     return returnValue;
                 } catch (IOException e) {
                     logger.error("Unable to get bytes from MediaServer. Replying with estimate.");
@@ -497,7 +468,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                         52427560);
 
                 minTransferSizeOpt = new IntegerDeviceOption(
-                        Config.getInteger("consumer.media_server.min_transfer_size", 64860),
+                        Config.getInteger("consumer.media_server.min_transfer_size", 64672),
                         false,
                         "Min Transfer Rate",
                         "consumer.media_server.min_transfer_size",
@@ -514,10 +485,10 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                         "Max Transfer Rate",
                         "consumer.media_server.max_transfer_size",
                         "This is the maximum number of bytes to write at one time. This value" +
-                                " cannot be less than 786404 bytes and cannot be greater than" +
+                                " cannot be less than 524332 bytes and cannot be greater than" +
                                 " 1048476 bytes. This value will auto-align to the nearest" +
                                 " multiple of 188.",
-                        786404,
+                        524332,
                         1048476);
 
                 bufferSizeOpt = new IntegerDeviceOption(

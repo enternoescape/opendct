@@ -188,6 +188,22 @@ public class NIOSageTVUploadID {
         return logger.exit(returnValue);
     }
 
+    public String getFormatString() throws IOException {
+        String returnValue;
+
+        synchronized (uploadLock) {
+            sendMessage("REMUX_CONFIG FORMAT");
+
+            try {
+                returnValue = waitForMessage();
+            } catch (Exception e) {
+                returnValue = e.getMessage();
+            }
+        }
+
+        return logger.exit(returnValue);
+    }
+
     /**
      * Reset the MediaServer communications to a known state and clear all relevant variables.
      * <p/>
@@ -394,7 +410,7 @@ public class NIOSageTVUploadID {
         logger.entry(message);
 
         if (socketChannel != null && socketChannel.isConnected()) {
-            if (!stopLogging || message.startsWith("WRITE ")) {
+            if (stopLogging || message.startsWith("WRITE ")) {
                 logger.trace("Sending '{}' to SageTV server...", message);
             } else {
                 logger.info("Sending '{}' to SageTV server...", message);
@@ -419,19 +435,12 @@ public class NIOSageTVUploadID {
     private String waitForMessage() throws IOException {
         logger.entry();
 
-        // This should keep stale messages from coming in.
-        /*if (System.currentTimeMillis() > messageInTimeout) {
-            messageInBuffer.clear();
-            messageInBytes = 0;
-        }*/
-
-        // Set the timeout for 30 seconds. If the message has been waiting for that long it's not likely to be relevant.
-        //messageInTimeout = System.currentTimeMillis() + 30000;
-        //long messageReceivedTimeout = System.currentTimeMillis() + 2000;
+        // Only one response should ever come when listening.
+        messageInBuilder.setLength(0);
+        messageInBytes = 0;
 
         if (socketChannel != null && socketChannel.isConnected()) {
             while (!Thread.currentThread().isInterrupted()) {
-            //while (messageReceivedTimeout > System.currentTimeMillis()) {
                 if (!stopLogging) {
                     logger.debug("messageInBytes = {}", messageInBytes);
                 }
@@ -444,16 +453,26 @@ public class NIOSageTVUploadID {
                                 readChar = messageInBuffer.get();
                                 if (readChar != '\n') {
                                     logger.debug("Expected LF, but found '{}'. Returning message anyway.", readChar);
+
+                                    messageInBuffer.position(messageInBuffer.position() - 1);
+                                    messageInBytes -= (messageInBuilder.length() + 1);
+                                } else {
+                                    messageInBytes -= (messageInBuilder.length() + 2);
                                 }
+                            } else {
+                                messageInBytes -= (messageInBuilder.length() + 1);
                             }
-                            messageInBytes = messageInBytes - (messageInBuilder.length() + 2);
+
+                            if (messageInBytes > 0) {
+                                messageInBuilder.setLength(0);
+                                continue;
+                            }
 
                             String returnString = messageInBuilder.toString();
                             if (!stopLogging) {
                                 logger.info("Received message from SageTV server '{}'", returnString);
                             }
 
-                            messageInBuilder.setLength(0);
                             return logger.exit(returnString);
                         } else if (readChar != '\n'){
                             messageInBuilder.append((char)readChar);
@@ -469,10 +488,6 @@ public class NIOSageTVUploadID {
                 }
             }
         }
-
-        /*if (messageReceivedTimeout >= System.currentTimeMillis()) {
-            throw new IOException("No response from SageTV after 2 seconds.");
-        }*/
 
         logger.warn("Unable to receive because the socket has not been initialized.");
         throw new IOException("The socket is not available.");

@@ -22,6 +22,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import javax.xml.bind.DatatypeConverter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -31,6 +32,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -534,9 +536,8 @@ public class Util {
         connection.setConnectTimeout(timeout);
 
         if (!Util.isNullOrEmpty(username) && !Util.isNullOrEmpty(password)) {
-            // TODO: If this function is to be used again, this needs to be replaced with something else.
-            //byte[] encodedBytes = Base64.encode((username + ":" + password).getBytes());
-            //connection.setRequestProperty("Authorization", "Basic " + new String(encodedBytes, StandardCharsets.UTF_8));
+            String encodedBytes = DatatypeConverter.printBase64Binary((username + ":" + password).getBytes(StandardCharsets.UTF_8));
+            connection.setRequestProperty("Authorization", "Basic " + encodedBytes);
         }
 
         if (domFactory == null) {

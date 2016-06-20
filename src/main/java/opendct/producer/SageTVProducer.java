@@ -68,14 +68,4 @@ public interface SageTVProducer extends Runnable {
      * Stop anything that an interrupt will not stop in the producer as quickly as possible.
      */
     public void stopProducing();
-
-    /**
-     * Informs whatever thread is interested that the producer is not generating new data.
-     * <p/>
-     * Be sure to have a this value determined over a period of time long enough to be reasonably
-     * sure we are stalled.
-     *
-     * @return <i>true</i> if the producer is stalled.
-     */
-    public boolean isStalled();
 }

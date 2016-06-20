@@ -352,7 +352,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, null)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -441,8 +441,8 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
-        logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress) {
+        logger.entry(channel, filename, encodingQuality, bufferSize, deviceType, crossbarIndex, uploadID, remoteAddress);
 
         //tuningThread = Thread.currentThread();
 

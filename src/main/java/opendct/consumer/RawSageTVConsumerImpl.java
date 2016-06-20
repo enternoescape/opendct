@@ -82,9 +82,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private final int uploadIDPort = uploadIdPortOpt.getInteger();
     private SocketAddress uploadIDSocket = null;
 
-    private volatile boolean stalled = false;
-    private String stateMessage = "Waiting for first bytes...";
-
     static {
         deviceOptions = new ConcurrentHashMap<>();
 
@@ -95,9 +92,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("Raw consumer is already running.");
         }
-
-        stalled = false;
-        stateMessage = "Waiting for first bytes...";
 
         logger.debug("Thread priority is {}.", rawThreadPriority);
         Thread.currentThread().setPriority(rawThreadPriority);
@@ -128,9 +122,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                             uploadIDSocket, currentRecordingFilename, currentUploadID);
                 } catch (IOException e) {
                     logger.error("Unable to connect to SageTV server to start transfer via uploadID.");
-
-                    stalled = true;
-                    stateMessage = "ERROR: Unable to connect to SageTV server to start transfer via uploadID.";
                 }
 
                 if (!uploadIDConfigured) {
@@ -148,9 +139,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                         } catch (FileNotFoundException e) {
                             logger.error("Unable to create the recording file '{}'.", currentRecordingFilename);
                             currentRecordingFilename = null;
-
-                            stalled = true;
-                            stateMessage = "ERROR: Unable to create the recording file '" + currentRecordingFilename + "'.";
                         }
                     }
                 } else {
@@ -159,19 +147,15 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             } else if (currentRecordingFilename != null) {
                 currentFile = currentFileOutputStream.getChannel();
             } else if (consumeToNull) {
-                logger.debug("Consuming to a null output.");
-                stateMessage = "Consuming to a null output...";
+                logger.debug("Consuming to a null output...");
             } else {
                 logger.error("Raw consumer does not have a file or UploadID to use.");
-
-                stalled = true;
-                stateMessage = "ERROR: Raw consumer does not have a file or UploadID to use.";
                 throw new IllegalThreadStateException(
                         "Raw consumer does not have a file or UploadID to use.");
             }
 
             boolean start = true;
-            stateMessage = "Waiting for PES start byte...";
+            logger.info("Waiting for PES start byte...");
             while (!Thread.currentThread().isInterrupted()) {
                 streamBuffer.clear();
 
@@ -196,7 +180,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                     if (startIndex > 0) {
                         streamBuffer.position(startIndex);
                         start = false;
-                        stateMessage = "Streaming...";
                         logger.info("Raw consumer is now streaming...");
                     } else {
                         continue;
@@ -256,17 +239,11 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                                         " server to switch to the file '{}' via the" +
                                                         " upload id '{}'.",
                                                 switchRecordingFilename, switchUploadID);
-
-                                        stalled = true;
-                                        stateMessage = "ERROR: Failed to SWITCH...";
                                     } else {
                                         currentRecordingFilename = switchRecordingFilename;
                                         currentUploadID = switchUploadID;
                                         bytesStreamed.set(0);
                                         switchFile = false;
-
-                                        stalled = false;
-                                        stateMessage = "Streaming...";
 
                                         switchMonitor.notifyAll();
                                         logger.info("SWITCH was successful.");
@@ -335,9 +312,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                     }
                                     switchFile = false;
 
-                                    stalled = false;
-                                    stateMessage = "Streaming...";
-
                                     switchMonitor.notifyAll();
                                     logger.info("SWITCH was successful.");
                                 }
@@ -400,9 +374,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                 logger.debug("Bytes available to be read = {}", seekableBuffer.readAvailable());
                 logger.debug("Space available for writing in bytes = {}", seekableBuffer.writeAvailable());
             }
-
-            stateMessage = "Stopped.";
-            stalled = true;
 
             logger.info("Raw consumer thread has stopped.");
             running.set(false);
@@ -562,14 +533,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         this.tunedChannel = tunedChannel;
     }
 
-    public boolean isStalled() {
-        return stalled;
-    }
-
-    public String stateMessage() {
-        return stateMessage;
-    }
-
     /**
      * This method always returns immediately for the raw consumer because it just streams.
      *
@@ -585,7 +548,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             if (increment < 1000) {
                 Thread.sleep(timeout);
             } else {
-                while (stalled && segments-- > 0 && getBytesStreamed() > 1048576) {
+                while (segments-- > 0 && getBytesStreamed() > 1048576) {
                     Thread.sleep(increment);
                 }
             }
@@ -593,7 +556,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             logger.debug("Interrupted while waiting for streaming.");
         }
 
-        return !stalled;
+        return true;
     }
 
     private final static Map<String, DeviceOption> deviceOptions;

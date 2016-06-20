@@ -85,7 +85,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private long bytesStreamed = 0;
     private final Object bytesStreamedLock = new Object();
     private AtomicBoolean running = new AtomicBoolean(false);
-    private boolean stalled = false;
     private boolean streaming = false;
     private String currentChannel = "";
     private String currentEncoderFilename = "";
@@ -99,7 +98,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private InetSocketAddress uploadSocketAddress = null;
 
     int desiredProgram = 0;
-    private String stateMessage;
     private FFmpegCircularBufferNIO circularBuffer;
     private FFmpegContext ctx;
 
@@ -146,8 +144,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         logger.info("FFmpeg Transcoder consumer thread is now running.");
 
-        stateMessage = "Opening file...";
-        stalled = false;
         streaming = false;
 
         logger.debug("Thread priority is {}.", ffmpegThreadPriority);
@@ -175,8 +171,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             ctx.setEncodeProfile(profile);
 
             if (!ctx.initTsStream(currentEncoderFilename)) {
-                stateMessage = "Unable to detect any video.";
-                stalled = true;
+                logger.info("Unable to detect any video.");
                 return;
             }
 
@@ -188,7 +183,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         } catch (FFmpegException e) {
             logger.error("Unable to start streaming => ", e);
-            stateMessage = e.getMessage();
         } catch (Exception e) {
             if (e instanceof InterruptedException) {
                 logger.debug("FFmpeg Transcoder was interrupted.");
@@ -209,7 +203,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             buffers.offer(circularBuffer);
             circularBuffer = null;
 
-            stateMessage = "Stopped.";
             running.set(false);
             logger.info("FFmpeg Transcoder consumer thread stopped.");
         }
@@ -410,16 +403,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     @Override
     public String getChannel() {
         return currentChannel;
-    }
-
-    @Override
-    public boolean isStalled() {
-        return stalled;
-    }
-
-    @Override
-    public String stateMessage() {
-        return stateMessage;
     }
 
     @Override

@@ -60,13 +60,9 @@ public class SageTVPoolManager  {
      * @param vCaptureDevice The name of the virtual capture device.
      * @return The name of the pool capture device or <i>null</i> if no device is available.
      */
-    public static String getAndLockBestCaptureDevice(String vCaptureDevice) {
+    public static synchronized String getAndLockBestCaptureDevice(String vCaptureDevice) {
 
         long startTime = System.currentTimeMillis();
-
-        if (vCaptureDevice.endsWith(" Digital TV Tuner")) {
-            vCaptureDevice = vCaptureDevice.substring(0, vCaptureDevice.length() - " Digital TV Tuner".length()).trim();
-        }
 
         final String pCaptureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice);
 

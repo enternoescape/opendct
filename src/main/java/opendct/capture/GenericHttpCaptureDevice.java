@@ -80,7 +80,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
     @Override
     public SageTVDeviceCrossbar[] getSageTVDeviceCrossbars() {
-        return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.DIGITAL_TV_TUNER, SageTVDeviceCrossbar.HDMI };
+        return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.HDMI };
     }
 
     private String getExecutionString(String execute, String channel, boolean appendChannel) {
@@ -289,7 +289,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, null)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -303,7 +303,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress) {
         TVChannel tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
         synchronized (exclusiveLock) {

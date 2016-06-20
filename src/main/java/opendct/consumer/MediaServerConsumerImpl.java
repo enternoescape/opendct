@@ -75,9 +75,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     private final int uploadIDPort = uploadIdPortOpt.getInteger();
     private SocketAddress uploadIDSocket = null;
 
-    private volatile boolean stalled = false;
-    private String stateMessage = "Waiting for first bytes...";
-
     static {
         deviceOptions = new ConcurrentHashMap<>();
 
@@ -91,9 +88,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
         }
 
         logger.info("MediaServer thread started.");
-
-        stalled = false;
-        stateMessage = "Waiting for first bytes...";
 
         logger.debug("Thread priority is {}.", rawThreadPriority);
         Thread.currentThread().setPriority(rawThreadPriority);
@@ -114,8 +108,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
             // Connect and start remuxing if not buffering.
             while (!seekableBuffer.isClosed()) {
-                stateMessage = "Opening file via MediaServer...";
-                logger.info(stateMessage);
+                logger.info("Opening file via MediaServer...");
                 try {
                     connected = mediaServer.startUpload(
                             uploadIDSocket, currentRecordingFilename, currentUploadID);
@@ -131,8 +124,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                     continue;
                 }
 
-                stateMessage = "Setting up remuxing on MediaServer...";
-                logger.info(stateMessage);
+                logger.info("Setting up remuxing on MediaServer...");
                 try {
                     remuxStarted = mediaServer.setupRemux(
                             currentRecordingFilename.endsWith(".mpg") ? "PS" : "TS",
@@ -159,8 +151,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                 }
 
                 if (stvRecordBufferSize > 0) {
-                    stateMessage = "Setting BUFFER on MediaServer...";
-                    logger.info(stateMessage);
+                    logger.info("Setting BUFFER on MediaServer...");
                     try {
                         mediaServer.setRemuxBuffer(stvRecordBufferSize);
                     } catch (IOException e) {
@@ -171,7 +162,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                 break;
             }
 
-            stateMessage = "Streaming...";
+            logger.info("Media Server consumer is now streaming...");
 
             // Start actual streaming.
             streamBuffer.clear();
@@ -187,11 +178,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
                 if (switchFile) {
                     synchronized (switchMonitor) {
-                        stateMessage = "Switching...";
-
                         if (mediaServer.isSwitched()) {
-                            stateMessage = "Streaming...";
-
                             currentRecordingFilename = switchRecordingFilename;
                             currentUploadID = switchUploadID;
 
@@ -413,16 +400,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     @Override
     public String getChannel() {
         return tunedChannel;
-    }
-
-    @Override
-    public boolean isStalled() {
-        return false;
-    }
-
-    @Override
-    public String stateMessage() {
-        return stateMessage;
     }
 
     @Override

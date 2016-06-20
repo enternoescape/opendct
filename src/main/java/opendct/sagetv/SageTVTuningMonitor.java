@@ -118,7 +118,7 @@ public class SageTVTuningMonitor {
 
     public static void monitorRecording(CaptureDevice captureDevice, String channel,
                                         String encodingQuality, long bufferSize,
-                                        SageTVDeviceCrossbar deviceType,
+                                        SageTVDeviceCrossbar deviceType, int crossbarIndex,
                                         int uploadID, InetAddress remoteAddress) {
 
         Thread checkThread = monitorThread;
@@ -132,7 +132,7 @@ public class SageTVTuningMonitor {
 
         try {
             MonitoredRecording newRecording = new MonitoredRecording(
-                    captureDevice, channel, encodingQuality, bufferSize, deviceType,
+                    captureDevice, channel, encodingQuality, bufferSize, deviceType, crossbarIndex,
                     uploadID, remoteAddress);
 
             recordingQueue.put(captureDevice.getEncoderName(), newRecording);
@@ -186,12 +186,13 @@ public class SageTVTuningMonitor {
         protected final String encodingQuality;
         protected final long bufferSize;
         protected final SageTVDeviceCrossbar deviceType;
+        protected final int crossbarIndex;
         protected int uploadID;
         protected InetAddress remoteAddress;
 
         public MonitoredRecording(CaptureDevice captureDevice, String channel,
                                   String encodingQuality, long bufferSize,
-                                  SageTVDeviceCrossbar deviceType,
+                                  SageTVDeviceCrossbar deviceType, int crossbarIndex,
                                   int uploadID, InetAddress remoteAddress) {
 
             this.captureDevice = captureDevice;
@@ -199,6 +200,7 @@ public class SageTVTuningMonitor {
             this.encodingQuality = encodingQuality;
             this.bufferSize = bufferSize;
             this.deviceType = deviceType;
+            this.crossbarIndex = crossbarIndex;
             this.uploadID = uploadID;
             this.remoteAddress = remoteAddress;
         }
@@ -355,6 +357,7 @@ public class SageTVTuningMonitor {
                             final String encodingQuality = recording.encodingQuality;
                             final long bufferSize = recording.bufferSize;
                             final SageTVDeviceCrossbar deviceType = recording.deviceType;
+                            final int crossbarIndex = recording.crossbarIndex;
                             final int uploadID = recording.uploadID;
                             final InetAddress remoteAddress = recording.remoteAddress;
                             recording.noRecordedBytes = 0;
@@ -393,7 +396,8 @@ public class SageTVTuningMonitor {
                                         if (captureDevice.isInternalLocked()) {
                                             tuned = captureDevice.startEncoding(
                                                     channel, recording.filename,
-                                                    encodingQuality, bufferSize, deviceType,
+                                                    encodingQuality, bufferSize,
+                                                    deviceType, crossbarIndex,
                                                     uploadID, remoteAddress);
                                         } else {
                                             logger.info("Re-tune was cancelled because the capture" +
@@ -432,7 +436,8 @@ public class SageTVTuningMonitor {
                                         if (captureDevice.isInternalLocked()) {
                                             captureDevice.startEncoding(
                                                     channel, recording.filename,
-                                                    encodingQuality, bufferSize, deviceType,
+                                                    encodingQuality, bufferSize,
+                                                    deviceType, crossbarIndex,
                                                     uploadID, remoteAddress);
                                         }
                                     }

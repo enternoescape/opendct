@@ -241,7 +241,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, null)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -353,7 +353,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress) {
         logger.entry(channel, filename, encodingQuality, bufferSize, uploadID, remoteAddress);
 
         // This is used to detect a second tuning attempt while a tuning is still in progress. When

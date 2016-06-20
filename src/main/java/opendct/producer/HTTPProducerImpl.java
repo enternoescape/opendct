@@ -42,7 +42,7 @@ public class HTTPProducerImpl implements HTTPProducer {
 
     private AtomicBoolean running = new AtomicBoolean(false);
     private volatile boolean interrupted = false;
-    private volatile boolean stalled = false;
+    private boolean stalled = false;
 
     private HttpURLConnection httpURLConnection = null;
     BufferedInputStream inputStream = null;
@@ -162,12 +162,6 @@ public class HTTPProducerImpl implements HTTPProducer {
             }
         } catch (Exception e) {
             logger.debug("There was an error closing the input stream => ", e);
-        }
-    }
-
-    public boolean isStalled() {
-        synchronized (receivedLock) {
-            return stalled;
         }
     }
 

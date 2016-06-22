@@ -20,7 +20,7 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
-import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.util.Util;
 import opendct.video.ccextractor.CCExtractorSrtInstance;
@@ -251,6 +251,15 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             ctx.interrupt();
         }
         circularBuffer.close();
+
+        if (currentWriter instanceof FFmpegUploadIDWriter &&
+                ((FFmpegUploadIDWriter) currentWriter).mediaServer != null) {
+            try {
+                ((FFmpegUploadIDWriter)currentWriter).mediaServer.endUpload();
+            } catch (IOException e) {
+                logger.debug("There was a problem while disconnecting from Media Server => ", e);
+            }
+        }
     }
 
     @Override
@@ -431,18 +440,18 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public class FFmpegUploadIDWriter implements FFmpegWriter {
-        ByteBuffer streamBuffer = ByteBuffer.allocateDirect(minUploadIDTransfer * 2);
-        NIOSageTVUploadID upload = new NIOSageTVUploadID();
+        private ByteBuffer streamBuffer = ByteBuffer.allocateDirect(minUploadIDTransfer * 2);
+        protected NIOSageTVMediaServer mediaServer = new NIOSageTVMediaServer();
 
-        InetSocketAddress uploadSocket;
-        String uploadFilename;
-        int uploadID;
+        private InetSocketAddress uploadSocket;
+        private String uploadFilename;
+        private int uploadID;
 
-        long bytesFlushCounter;
-        boolean firstWrite;
+        private long bytesFlushCounter;
+        private boolean firstWrite;
 
         public FFmpegUploadIDWriter (InetSocketAddress uploadSocket, String uploadFilename, int uploadID) throws IOException {
-            upload.startUpload(uploadSocket, uploadFilename, uploadID);
+            mediaServer.startUpload(uploadSocket, uploadFilename, uploadID);
 
             this.uploadSocket = uploadSocket;
             this.uploadFilename = uploadFilename;
@@ -455,7 +464,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         @Override
         public void closeFile() {
             try {
-                upload.endUpload(true);
+                mediaServer.endUpload();
             } catch (IOException e) {
                 logger.error("Unable to close the file '{}' upload ID {} => ",
                         uploadFilename, uploadID, e);
@@ -504,9 +513,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             try {
                 if (stvRecordBufferSize > 0) {
-                    upload.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
+                    mediaServer.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
                 } else {
-                    upload.uploadAutoIncrement(streamBuffer);
+                    mediaServer.uploadAutoIncrement(streamBuffer);
                 }
 
                 long currentBytes;

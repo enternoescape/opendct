@@ -22,7 +22,7 @@ import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
 import opendct.consumer.buffers.SeekableCircularBufferNIO;
-import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
@@ -77,7 +77,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private ByteBuffer streamBuffer = ByteBuffer.allocate(maxTransferSize);
     private SeekableCircularBufferNIO seekableBuffer = new SeekableCircularBufferNIO(bufferSize);
 
-    private NIOSageTVUploadID nioSageTVUploadID = null;
+    private NIOSageTVMediaServer mediaServer = null;
 
     private final int uploadIDPort = uploadIdPortOpt.getInteger();
     private SocketAddress uploadIDSocket = null;
@@ -109,16 +109,16 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             logger.info("Raw consumer thread is now running.");
 
             if (currentUploadID > 0) {
-                if (nioSageTVUploadID == null) {
-                    nioSageTVUploadID = new NIOSageTVUploadID();
+                if (mediaServer == null) {
+                    mediaServer = new NIOSageTVMediaServer();
                 } else {
-                    nioSageTVUploadID.reset();
+                    mediaServer.reset();
                 }
 
                 boolean uploadIDConfigured = false;
 
                 try {
-                    uploadIDConfigured = nioSageTVUploadID.startUpload(
+                    uploadIDConfigured = mediaServer.startUpload(
                             uploadIDSocket, currentRecordingFilename, currentUploadID);
                 } catch (IOException e) {
                     logger.error("Unable to connect to SageTV server to start transfer via uploadID.");
@@ -222,17 +222,17 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
 
                                         if (stvRecordBufferSize > 0) {
-                                            nioSageTVUploadID.uploadAutoBuffered(stvRecordBufferSize, lastWriteBuffer);
+                                            mediaServer.uploadAutoBuffered(stvRecordBufferSize, lastWriteBuffer);
                                         } else {
-                                            nioSageTVUploadID.uploadAutoIncrement(lastWriteBuffer);
+                                            mediaServer.uploadAutoIncrement(lastWriteBuffer);
                                         }
                                     }
 
                                     bytesStreamed.addAndGet(lastBytesToStream);
 
-                                    nioSageTVUploadID.endUpload(true);
-                                    nioSageTVUploadID.reset();
-                                    if (!nioSageTVUploadID.startUpload(uploadIDSocket,
+                                    mediaServer.endUpload();
+                                    mediaServer.reset();
+                                    if (!mediaServer.startUpload(uploadIDSocket,
                                             switchRecordingFilename, switchUploadID)) {
 
                                         logger.error("Raw consumer did not receive OK from SageTV" +
@@ -255,9 +255,9 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
                         bytesToStream = streamBuffer.remaining();
                         if (stvRecordBufferSize > 0) {
-                            nioSageTVUploadID.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
+                            mediaServer.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
                         } else {
-                            nioSageTVUploadID.uploadAutoIncrement(streamBuffer);
+                            mediaServer.uploadAutoIncrement(streamBuffer);
                         }
 
                         bytesStreamed.addAndGet(bytesToStream);
@@ -360,13 +360,13 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                 }
             }
 
-            if (nioSageTVUploadID != null) {
+            if (mediaServer != null) {
                 try {
-                    nioSageTVUploadID.endUpload(true);
+                    mediaServer.endUpload();
                 } catch (IOException e) {
                     logger.debug("Raw consumer created an exception while ending the current upload id session => ", e);
                 } finally {
-                    nioSageTVUploadID = null;
+                    mediaServer = null;
                 }
             }
 
@@ -408,6 +408,13 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
     public void stopConsumer() {
         seekableBuffer.close();
+        if (mediaServer != null) {
+            try {
+                mediaServer.endUpload();
+            } catch (IOException e) {
+                logger.debug("There was a problem while disconnecting from Media Server => ", e);
+            }
+        }
     }
 
     public long getBytesStreamed() {

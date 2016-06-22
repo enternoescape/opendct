@@ -20,7 +20,7 @@ import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
 import opendct.consumer.buffers.SeekableCircularBufferNIO;
-import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.nanohttpd.pojo.JsonOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -68,7 +68,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     private volatile boolean switchFile = false;
     private final Object switchMonitor = new Object();
 
-    private NIOSageTVUploadID mediaServer = new NIOSageTVUploadID();
+    private NIOSageTVMediaServer mediaServer = new NIOSageTVMediaServer();
     private ByteBuffer streamBuffer = ByteBuffer.allocateDirect(maxTransferSize);
     private SeekableCircularBufferNIO seekableBuffer = new SeekableCircularBufferNIO(bufferSize);
 
@@ -140,7 +140,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                     Thread.sleep(1000);
 
                     try {
-                        mediaServer.endUpload(true);
+                        mediaServer.endUpload();
                     } catch (IOException e) {
                         logger.debug("There was an exception while closing the previous connection => ", e);
                     }
@@ -222,9 +222,9 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
             logger.warn("MediaServer consumer created an unexpected exception => ", e);
         } finally {
             try {
-                mediaServer.endUpload(true);
+                mediaServer.endUpload();
             } catch (IOException e) {
-                logger.error("There was a problem while disconnecting from MediaServer.");
+                logger.debug("There was a problem while disconnecting from MediaServer.");
             }
 
             logger.info("MediaServer thread stopped.");
@@ -266,6 +266,14 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     @Override
     public void stopConsumer() {
         seekableBuffer.close();
+        try {
+            if (mediaServer != null) {
+                // If we don't do this here, it could hang things up.
+                mediaServer.endUpload();
+            }
+        } catch (IOException e) {
+            logger.debug("Error while disconnecting from Media Server => ", e);
+        }
     }
 
     @Override

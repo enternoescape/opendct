@@ -26,8 +26,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class NIOSageTVUploadID {
-    private final Logger logger = LogManager.getLogger(NIOSageTVUploadID.class);
+public class NIOSageTVMediaServer {
+    private final Logger logger = LogManager.getLogger(NIOSageTVMediaServer.class);
 
     private final Object uploadLock = new Object();
     private SocketChannel socketChannel = null;
@@ -286,24 +286,6 @@ public class NIOSageTVUploadID {
         return logger.exit(returnValue);
     }
 
-    public boolean switchUpload(String uploadFilename, int uploadID) throws IOException {
-        logger.entry(uploadFilename, uploadID);
-        boolean returnValue = false;
-
-        synchronized (uploadLock) {
-            try {
-                endUpload(false);
-                returnValue = startUpload(currentServerSocket, uploadFilename, uploadID, 0);
-            } catch (IOException e) {
-                logger.warn("The connection to the SageTV server appears to have dropped => {}", e);
-                this.uploadFilename = uploadFilename;
-                this.uploadID = uploadID;
-            }
-        }
-
-        return logger.exit(returnValue);
-    }
-
     /**
      * Uploads all of the contents of the provided buffers to an automatically incrementing offset.
      *
@@ -375,35 +357,52 @@ public class NIOSageTVUploadID {
      * SageTV will close the previous upload session when you start a new upload, but for proper usage this should be
      * used when you are done uploading.
      *
-     * @param disconnect Set <i>true</i> if you want to also disconnect from the socket channel.
-     * @return Returns <i>true</i> if the SageTV server accepted the request.
      * @throws IOException If there was a problem writing the bytes to the to the SageTV server socket.
      */
-    public boolean endUpload(boolean disconnect) throws IOException {
-        String response = null;
-        stopLogging = false;
+    public void endUpload() throws IOException {
+        if (socketChannel != null) {
+            String response = null;
+            stopLogging = false;
 
-        synchronized (uploadLock) {
-            sendMessage("CLOSE");
+            Thread timeout = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(15000);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
 
-            // The expected responses are OK or NON_MEDIA.
-            response = waitForMessage();
-        }
+                    try {
+                        socketChannel.close();
+                    } catch (Exception e) {
+                        logger.debug("Exception while closing socket channel => ", e);
+                    }
+                }
+            });
 
-        if (disconnect) {
-            sendMessage("QUIT");
+            timeout.start();
+            synchronized (uploadLock) {
+                sendMessage("CLOSE");
 
-            if (socketChannel != null && socketChannel.isOpen()) {
-                socketChannel.close();
+                // The expected responses are OK or NON_MEDIA.
+                response = waitForMessage();
+                timeout.interrupt();
             }
 
-            socketChannel = null;
-            uploadFilename = null;
-            uploadID = -1;
-            currentServerSocket = null;
+            if (socketChannel.isOpen()) {
+                sendMessage("QUIT");
+            }
+
+            if (socketChannel.isOpen()) {
+                socketChannel.close();
+            }
         }
 
-        return logger.exit(response != null && response.equals("OK"));
+        socketChannel = null;
+        uploadFilename = null;
+        uploadID = -1;
+        currentServerSocket = null;
     }
 
     private void sendMessage(String message) throws IOException {

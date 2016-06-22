@@ -1152,8 +1152,17 @@
 > value of this property is 0, the delay is disabled.
 
 #### 0.5.7-Beta
-> *Added a final check to ensure that Non-MPEG1/2 video codecs do not
-> get remuxed into MPEG-PS containers.
+> *Fedora 24 is now supported. Fedora 22 support has ended.
+
+> *Added a new consumer that supports the new Media Server Remuxer
+> recently added to the SageTV core. To use this consumer you must
+> either compile a copy SageTV from GitHub or install a version of
+> SageTV newer than 9.0.4.252. At this time a new version has not yet
+> been released. The consumer name is
+> opendct.consumer.MediaServerConsumerImpl
+
+> *Added a final check to the FFmpeg consumer to ensure that
+> Non-MPEG1/2 video codecs do not get remuxed into MPEG-PS containers.
 
 > *Added more logging for FFmpeg initialization.
 
@@ -1165,7 +1174,12 @@
 > *Added handling for SageTV sending additional requests to start
 > streaming when it takes too long to return OK.
 
+> *Fixed some currently unused utility methods. 
+
 > *Fixed a potential race while switching with the async file writer.
+
+> *Fixed a few possible hanging issues with the OpenDCT Media Server
+> implementation.
 
 > *Removed unnecessary device name checks/sanitizing in the device
 > pooling since these checks are now handled earlier.
@@ -1177,6 +1191,6 @@
 > *Merged loaded device options with discovered device options, so
 > there is only one place to check for options.
 
-> *Added web server on port 9090 to support runtime configuration via
+> *Added web server on port 9091 to support runtime configuration via
 > JSON calls. This will be utilized at a later date and is listed here
-> for those that notice that OpenDCT is now using port 9090.
+> for those that notice that OpenDCT is now using port 9091.

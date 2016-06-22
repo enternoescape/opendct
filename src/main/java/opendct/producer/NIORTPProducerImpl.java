@@ -126,12 +126,6 @@ public class NIORTPProducerImpl implements RTPProducer {
         datagramChannel.socket().close();
     }
 
-    public boolean isStalled() {
-        synchronized (receiveMonitor) {
-            return stalled;
-        }
-    }
-
     public int getLocalPort() {
         return localPort;
     }

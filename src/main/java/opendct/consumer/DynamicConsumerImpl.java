@@ -374,20 +374,6 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     }
 
     @Override
-    public boolean isStalled() {
-        SageTVConsumer consumer = sageTVConsumer;
-
-        return consumer != null && consumer.isStalled();
-    }
-
-    @Override
-    public String stateMessage() {
-        SageTVConsumer consumer = sageTVConsumer;
-
-        return consumer != null ? consumer.stateMessage() : "Dynamic consumer not selected.";
-    }
-
-    @Override
     public boolean isStreaming(long timeout) {
         SageTVConsumer consumer = sageTVConsumer;
 

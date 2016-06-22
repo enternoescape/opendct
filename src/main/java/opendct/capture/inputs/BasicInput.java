@@ -13,30 +13,21 @@
  * limitations under the License.
  */
 
-package opendct.tuning.hybrid;
+package opendct.capture.inputs;
 
-import opendct.tuning.discovery.BasicDiscoveredDeviceParent;
+import opendct.sagetv.SageTVDeviceCrossbar;
 
-import java.net.InetAddress;
+public abstract class BasicInput {
 
-public class HybridDiscoveredDeviceParent extends BasicDiscoveredDeviceParent {
+    public final SageTVDeviceCrossbar CROSSBAR;
+    public final int CROSSBAR_INDEX;
 
-    public HybridDiscoveredDeviceParent(String name, int parentId) {
-        super(name, parentId);
+    public BasicInput(SageTVDeviceCrossbar crossbar, int index) {
+        this.CROSSBAR = crossbar;
+        this.CROSSBAR_INDEX = index;
     }
 
-    @Override
-    public boolean isNetworkDevice() {
-        return false;
-    }
-
-    @Override
-    public InetAddress getLocalAddress() {
-        return null;
-    }
-
-    @Override
-    public InetAddress getRemoteAddress() {
-        return null;
+    public String getName() {
+        return CROSSBAR_INDEX > 0 ? CROSSBAR.NAME + "_" + (CROSSBAR_INDEX + 1) : CROSSBAR.NAME;
     }
 }

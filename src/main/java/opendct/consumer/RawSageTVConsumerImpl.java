@@ -22,7 +22,7 @@ import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
 import opendct.consumer.buffers.SeekableCircularBufferNIO;
-import opendct.consumer.upload.NIOSageTVUploadID;
+import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
@@ -77,13 +77,10 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private ByteBuffer streamBuffer = ByteBuffer.allocate(maxTransferSize);
     private SeekableCircularBufferNIO seekableBuffer = new SeekableCircularBufferNIO(bufferSize);
 
-    private NIOSageTVUploadID nioSageTVUploadID = null;
+    private NIOSageTVMediaServer mediaServer = null;
 
     private final int uploadIDPort = uploadIdPortOpt.getInteger();
     private SocketAddress uploadIDSocket = null;
-
-    private volatile boolean stalled = false;
-    private String stateMessage = "Waiting for first bytes...";
 
     static {
         deviceOptions = new ConcurrentHashMap<>();
@@ -95,9 +92,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         if (running.getAndSet(true)) {
             throw new IllegalThreadStateException("Raw consumer is already running.");
         }
-
-        stalled = false;
-        stateMessage = "Waiting for first bytes...";
 
         logger.debug("Thread priority is {}.", rawThreadPriority);
         Thread.currentThread().setPriority(rawThreadPriority);
@@ -115,22 +109,19 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             logger.info("Raw consumer thread is now running.");
 
             if (currentUploadID > 0) {
-                if (nioSageTVUploadID == null) {
-                    nioSageTVUploadID = new NIOSageTVUploadID();
+                if (mediaServer == null) {
+                    mediaServer = new NIOSageTVMediaServer();
                 } else {
-                    nioSageTVUploadID.reset();
+                    mediaServer.reset();
                 }
 
                 boolean uploadIDConfigured = false;
 
                 try {
-                    uploadIDConfigured = nioSageTVUploadID.startUpload(
+                    uploadIDConfigured = mediaServer.startUpload(
                             uploadIDSocket, currentRecordingFilename, currentUploadID);
                 } catch (IOException e) {
                     logger.error("Unable to connect to SageTV server to start transfer via uploadID.");
-
-                    stalled = true;
-                    stateMessage = "ERROR: Unable to connect to SageTV server to start transfer via uploadID.";
                 }
 
                 if (!uploadIDConfigured) {
@@ -148,9 +139,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                         } catch (FileNotFoundException e) {
                             logger.error("Unable to create the recording file '{}'.", currentRecordingFilename);
                             currentRecordingFilename = null;
-
-                            stalled = true;
-                            stateMessage = "ERROR: Unable to create the recording file '" + currentRecordingFilename + "'.";
                         }
                     }
                 } else {
@@ -159,19 +147,15 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             } else if (currentRecordingFilename != null) {
                 currentFile = currentFileOutputStream.getChannel();
             } else if (consumeToNull) {
-                logger.debug("Consuming to a null output.");
-                stateMessage = "Consuming to a null output...";
+                logger.debug("Consuming to a null output...");
             } else {
                 logger.error("Raw consumer does not have a file or UploadID to use.");
-
-                stalled = true;
-                stateMessage = "ERROR: Raw consumer does not have a file or UploadID to use.";
                 throw new IllegalThreadStateException(
                         "Raw consumer does not have a file or UploadID to use.");
             }
 
             boolean start = true;
-            stateMessage = "Waiting for PES start byte...";
+            logger.info("Waiting for PES start byte...");
             while (!Thread.currentThread().isInterrupted()) {
                 streamBuffer.clear();
 
@@ -196,7 +180,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                     if (startIndex > 0) {
                         streamBuffer.position(startIndex);
                         start = false;
-                        stateMessage = "Streaming...";
                         logger.info("Raw consumer is now streaming...");
                     } else {
                         continue;
@@ -239,34 +222,28 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
 
                                         if (stvRecordBufferSize > 0) {
-                                            nioSageTVUploadID.uploadAutoBuffered(stvRecordBufferSize, lastWriteBuffer);
+                                            mediaServer.uploadAutoBuffered(stvRecordBufferSize, lastWriteBuffer);
                                         } else {
-                                            nioSageTVUploadID.uploadAutoIncrement(lastWriteBuffer);
+                                            mediaServer.uploadAutoIncrement(lastWriteBuffer);
                                         }
                                     }
 
                                     bytesStreamed.addAndGet(lastBytesToStream);
 
-                                    nioSageTVUploadID.endUpload(true);
-                                    nioSageTVUploadID.reset();
-                                    if (!nioSageTVUploadID.startUpload(uploadIDSocket,
+                                    mediaServer.endUpload();
+                                    mediaServer.reset();
+                                    if (!mediaServer.startUpload(uploadIDSocket,
                                             switchRecordingFilename, switchUploadID)) {
 
                                         logger.error("Raw consumer did not receive OK from SageTV" +
                                                         " server to switch to the file '{}' via the" +
                                                         " upload id '{}'.",
                                                 switchRecordingFilename, switchUploadID);
-
-                                        stalled = true;
-                                        stateMessage = "ERROR: Failed to SWITCH...";
                                     } else {
                                         currentRecordingFilename = switchRecordingFilename;
                                         currentUploadID = switchUploadID;
                                         bytesStreamed.set(0);
                                         switchFile = false;
-
-                                        stalled = false;
-                                        stateMessage = "Streaming...";
 
                                         switchMonitor.notifyAll();
                                         logger.info("SWITCH was successful.");
@@ -278,9 +255,9 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
                         bytesToStream = streamBuffer.remaining();
                         if (stvRecordBufferSize > 0) {
-                            nioSageTVUploadID.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
+                            mediaServer.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
                         } else {
-                            nioSageTVUploadID.uploadAutoIncrement(streamBuffer);
+                            mediaServer.uploadAutoIncrement(streamBuffer);
                         }
 
                         bytesStreamed.addAndGet(bytesToStream);
@@ -335,9 +312,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                     }
                                     switchFile = false;
 
-                                    stalled = false;
-                                    stateMessage = "Streaming...";
-
                                     switchMonitor.notifyAll();
                                     logger.info("SWITCH was successful.");
                                 }
@@ -386,13 +360,13 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                 }
             }
 
-            if (nioSageTVUploadID != null) {
+            if (mediaServer != null) {
                 try {
-                    nioSageTVUploadID.endUpload(true);
+                    mediaServer.endUpload();
                 } catch (IOException e) {
                     logger.debug("Raw consumer created an exception while ending the current upload id session => ", e);
                 } finally {
-                    nioSageTVUploadID = null;
+                    mediaServer = null;
                 }
             }
 
@@ -400,9 +374,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                 logger.debug("Bytes available to be read = {}", seekableBuffer.readAvailable());
                 logger.debug("Space available for writing in bytes = {}", seekableBuffer.writeAvailable());
             }
-
-            stateMessage = "Stopped.";
-            stalled = true;
 
             logger.info("Raw consumer thread has stopped.");
             running.set(false);
@@ -437,6 +408,13 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
     public void stopConsumer() {
         seekableBuffer.close();
+        if (mediaServer != null) {
+            try {
+                mediaServer.endUpload();
+            } catch (IOException e) {
+                logger.debug("There was a problem while disconnecting from Media Server => ", e);
+            }
+        }
     }
 
     public long getBytesStreamed() {
@@ -562,14 +540,6 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         this.tunedChannel = tunedChannel;
     }
 
-    public boolean isStalled() {
-        return stalled;
-    }
-
-    public String stateMessage() {
-        return stateMessage;
-    }
-
     /**
      * This method always returns immediately for the raw consumer because it just streams.
      *
@@ -585,7 +555,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             if (increment < 1000) {
                 Thread.sleep(timeout);
             } else {
-                while (stalled && segments-- > 0 && getBytesStreamed() > 1048576) {
+                while (segments-- > 0 && getBytesStreamed() > 1048576) {
                     Thread.sleep(increment);
                 }
             }
@@ -593,7 +563,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             logger.debug("Interrupted while waiting for streaming.");
         }
 
-        return !stalled;
+        return true;
     }
 
     private final static Map<String, DeviceOption> deviceOptions;

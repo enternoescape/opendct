@@ -166,7 +166,7 @@
                                 <fire:FirewallException Id="jswWrapper.exe.ex6" Name="OpenDCT (RTP)" Port="8300-8500" Protocol="udp" Scope="any" IgnoreFailure="yes" />
                                 <fire:FirewallException Id="jswWrapper.exe.ex7" Name="OpenDCT (Cling HTTP TCP)" Port="8501" Protocol="udp" Scope="any" IgnoreFailure="yes" />
                                 <fire:FirewallException Id="jswWrapper.exe.ex8" Name="OpenDCT (HDHomeRun Discovery)" Port="64998" Protocol="udp" Scope="any" IgnoreFailure="yes" />
-								<fire:FirewallException Id="jswWrapper.exe.ex9" Name="OpenDCT (Web Server)" Port="9090" Protocol="tcp" Scope="any" IgnoreFailure="yes" />
+								<fire:FirewallException Id="jswWrapper.exe.ex9" Name="OpenDCT (Web Server)" Port="9091" Protocol="tcp" Scope="any" IgnoreFailure="yes" />
 
 								<ServiceInstall Id="jswWrapper.exe.service" Name="opendct" DisplayName="SageTV OpenDCT" Type="ownProcess" Start="auto" Vital="yes"
 									ErrorControl="normal" Description="SageTV OpenDCT Java Network Encoder for Digital Cable Tuners"

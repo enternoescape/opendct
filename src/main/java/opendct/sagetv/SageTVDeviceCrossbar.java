@@ -36,7 +36,6 @@ public enum SageTVDeviceCrossbar {
     FM_RADIO(99, "FM Radio"),
     DIGITAL_TV_TUNER(100, "Digital TV Tuner");
 
-
     public final int INDEX;
     public final String NAME;
 
@@ -45,7 +44,29 @@ public enum SageTVDeviceCrossbar {
         NAME = name;
     }
 
-    public static SageTVDeviceCrossbar getTypeForName(String deviceName) {
+    /**
+     * Convert a device name to a crossbar and index (if there are more than one of the same
+     * crossbar.)
+     *
+     * @param deviceName The device name as provided to this network encoder by SageTV.
+     * @param index An array with at least one element. The index will be returned via this array.
+     * @return The device crossbar name.
+     */
+    public static SageTVDeviceCrossbar getTypeForName(String deviceName, int index[]) {
+        int multi = deviceName.lastIndexOf("_");
+
+        if (multi > 0) {
+            if (index.length > 0) {
+                try {
+                    index[0] = Integer.parseInt(deviceName.substring(multi + 1)) - 1;
+                } catch (NumberFormatException e) {
+                    index[0] = 0;
+                }
+            }
+
+            deviceName = deviceName.substring(0, multi);
+        }
+
         if (deviceName.endsWith(DIGITAL_TV_TUNER.NAME)) {
             return DIGITAL_TV_TUNER;
         }
@@ -60,9 +81,25 @@ public enum SageTVDeviceCrossbar {
         return DIGITAL_TV_TUNER;
     }
 
-    public static String trimToName(String deviceName, SageTVDeviceCrossbar type) {
-        if (deviceName.endsWith(type.NAME)) {
-            return deviceName.substring(0, deviceName.length() - type.NAME.length()).trim();
+    /**
+     * Remove the crossbar information from device name.
+     *
+     * @param deviceName The raw device name.
+     * @param type The crossbar type to be removed.
+     * @param index The index of the crossbar type to be removed.
+     * @return The filtered device name.
+     */
+    public static String trimToName(String deviceName, SageTVDeviceCrossbar type, int index) {
+        if (index > 0) {
+            String indexedName = type.NAME + "_" + (index + 1);
+
+            if (deviceName.endsWith(indexedName)) {
+                return deviceName.substring(0, deviceName.length() - indexedName.length()).trim();
+            }
+        } else {
+            if (deviceName.endsWith(type.NAME)) {
+                return deviceName.substring(0, deviceName.length() - type.NAME.length()).trim();
+            }
         }
 
         return deviceName;

@@ -43,7 +43,7 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
 
     private AtomicBoolean running = new AtomicBoolean(false);
     private volatile boolean interrupted = false;
-    private volatile boolean stalled = false;
+    private boolean stalled = false;
 
     private NIOHttpDownloader downloader = null;
     private URL currentURL = null;
@@ -156,12 +156,6 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
         interrupted = true;
 
         downloader.close();
-    }
-
-    public boolean isStalled() {
-        synchronized (receivedLock) {
-            return stalled;
-        }
     }
 
     private boolean isInterrupted() {

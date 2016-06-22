@@ -38,6 +38,6 @@
     <port protocol="udp" port="64998"/>
 
     <!-- Default Web Server port -->
-    <port protocol="tcp" port="9090"/>
+    <port protocol="tcp" port="9091"/>
 
 </service>

@@ -353,12 +353,13 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *                        again.
      * @param deviceType      This is the device type that SageTV requested. This is only needed if
      *                        the device has more than one way to capture video.
+     * @param crossbarIndex   The index of the crossbar if there is more than one of the same crossbar.
      * @param uploadID        This is the uploadID provided by SageTV to permit you to record via the
      *                        MediaServer.
      * @param remoteAddress   This is the IP address of the SageTV server requesting the recording.
      * @return <i>true</i> if the the recording started was successfully.
      */
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress);
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress);
 
     /**
      * Switch out the current recording and transition into a new recording.

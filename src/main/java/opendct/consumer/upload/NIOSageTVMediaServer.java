@@ -26,8 +26,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class NIOSageTVUploadID {
-    private final Logger logger = LogManager.getLogger(NIOSageTVUploadID.class);
+public class NIOSageTVMediaServer {
+    private final Logger logger = LogManager.getLogger(NIOSageTVMediaServer.class);
 
     private final Object uploadLock = new Object();
     private SocketChannel socketChannel = null;
@@ -39,9 +39,6 @@ public class NIOSageTVUploadID {
 
     private boolean stopLogging = false;
     private boolean remuxEnabled = false;
-    private String containerFormat = "PS";
-    private int program = 0;
-    private int initializeSize = 8192;
 
     private ByteBuffer messageInBuffer = ByteBuffer.allocate(4096);
     private StringBuilder messageInBuilder = new StringBuilder();
@@ -82,16 +79,11 @@ public class NIOSageTVUploadID {
         synchronized (uploadLock) {
             this.uploadFilename = null;
 
-            if (currentServerSocket == null && newServerSocket != null) {
-                logger.info("Connecting to SageTV server on socket {}...",
-                        newServerSocket.toString());
+            logger.info("Connecting to SageTV server on socket {}...",
+                    newServerSocket.toString());
 
-                socketChannel = SocketChannel.open(newServerSocket);
-                currentServerSocket = newServerSocket;
-            } else if (currentServerSocket == null) {
-                throw new IOException("The upload cannot be changed" +
-                        " because the upload was never started.");
-            }
+            socketChannel = SocketChannel.open(newServerSocket);
+            currentServerSocket = newServerSocket;
 
             this.uploadFilename = uploadFilename;
             this.uploadID = uploadID;
@@ -102,23 +94,23 @@ public class NIOSageTVUploadID {
             // The expected responses are OK or NON_MEDIA.
             try {
                 response = waitForMessage();
+
+                if (response.equals("NON_MEDIA")) {
+                    logger.error("SageTV replied NON_MEDIA!");
+                }
             } catch (Exception e) {
                 response = e.getMessage();
-            }
-
-            if (remuxEnabled && response.equals("OK")) {
-                setupRemux(containerFormat, program, initializeSize);
             }
         }
 
         return logger.exit(response != null && response.equals("OK"));
     }
 
-    public boolean setupRemux(String containerFormat, int program, int initializeSize) throws IOException {
+    public boolean setupRemux(String containerFormat, boolean isTV) throws IOException {
         boolean returnValue;
 
         synchronized (uploadLock) {
-            sendMessage("REMUX_SETUP " + containerFormat + " " + program + " " + initializeSize);
+            sendMessage("REMUX_SETUP AUTO " + containerFormat + " " + (isTV ? "TRUE" : "FALSE"));
 
             String response;
 
@@ -129,12 +121,6 @@ public class NIOSageTVUploadID {
             }
 
             returnValue = remuxEnabled = response != null && response.equals("OK");
-
-            if (remuxEnabled) {
-                this.containerFormat = containerFormat;
-                this.program = program;
-                this.initializeSize = initializeSize;
-            }
         }
 
         return logger.exit(returnValue);
@@ -202,6 +188,22 @@ public class NIOSageTVUploadID {
         return logger.exit(returnValue);
     }
 
+    public String getFormatString() throws IOException {
+        String returnValue;
+
+        synchronized (uploadLock) {
+            sendMessage("REMUX_CONFIG FORMAT");
+
+            try {
+                returnValue = waitForMessage();
+            } catch (Exception e) {
+                returnValue = e.getMessage();
+            }
+        }
+
+        return logger.exit(returnValue);
+    }
+
     /**
      * Reset the MediaServer communications to a known state and clear all relevant variables.
      * <p/>
@@ -227,24 +229,6 @@ public class NIOSageTVUploadID {
         socketChannel = null;
         uploadFilename = null;
         uploadID = -1;
-    }
-
-    private void reconnectUpload() throws IOException {
-        logger.entry();
-
-        synchronized (uploadLock) {
-            if (!Thread.currentThread().isInterrupted() && uploadFilename != null && uploadID > 0 && currentServerSocket != null) {
-                SocketAddress address = currentServerSocket;
-                currentServerSocket = null;
-
-                startUpload(address, uploadFilename, uploadID, autoOffset);
-            } else {
-                throw new IOException("The upload cannot be resumed" +
-                        " because the upload was never started.");
-            }
-        }
-
-        logger.exit();
     }
 
     public boolean isConnected() {
@@ -274,26 +258,29 @@ public class NIOSageTVUploadID {
                 response = e.getMessage();
             }
 
-            returnValue = remuxEnabled = response != null && response.equals("OK");
+            returnValue = response != null && response.equals("OK");
         }
 
         return logger.exit(returnValue);
     }
 
-    public boolean switchUpload(String uploadFilename, int uploadID) throws IOException {
-        logger.entry(uploadFilename, uploadID);
-        boolean returnValue = false;
+    public boolean isSwitched() throws IOException {
+        boolean returnValue;
 
         synchronized (uploadLock) {
+            sendMessage("REMUX_CONFIG SWITCHED");
+
+            String response;
+
             try {
-                endUpload(false);
-                returnValue = startUpload(null, uploadFilename, uploadID, 0);
-            } catch (IOException e) {
-                logger.warn("The connection to the SageTV server appears to have dropped => {}", e);
-                this.uploadFilename = uploadFilename;
-                this.uploadID = uploadID;
-                reconnectUpload();
+                response = waitForMessage();
+            } catch (Exception e) {
+                response = e.getMessage();
             }
+
+            returnValue = response != null && response.equals("TRUE");
+
+            stopLogging = returnValue;
         }
 
         return logger.exit(returnValue);
@@ -341,42 +328,23 @@ public class NIOSageTVUploadID {
      */
     public boolean upload(long offset, ByteBuffer byteBuffer) throws IOException {
         synchronized (uploadLock) {
-            // This will allow us to retransmit the bytes and not worry about how the the buffer is
-            // configured. It costs almost nothing since it's not a real copy.
-            ByteBuffer slice = byteBuffer.slice();
-            byteBuffer.position(byteBuffer.limit());
 
             // This way you can alternate between overloads if somehow that's useful.
-            autoOffset = offset + slice.remaining();
+            autoOffset = offset + byteBuffer.remaining();
 
             boolean returnValue = false;
 
-            while (true) {
-                try {
-                    sendMessage("WRITE " + offset + " " + slice.remaining());
-                    while (slice.hasRemaining() && !Thread.currentThread().isInterrupted()) {
-                        int sentBytes = socketChannel.write(slice);
-                        logger.trace("Transferred {} stream bytes to SageTV server. {} bytes remaining.", sentBytes, slice.remaining());
-                    }
-
-                    returnValue = true;
-
-                    break;
-                } catch (IOException e) {
-                    if (Thread.currentThread().isInterrupted()) {
-                        return logger.exit(false);
-                    }
-
-                    logger.warn("The SageTV server communication has stopped => {}", e);
-                    slice.rewind();
-
-                    logger.info("Attempting to reconnect to SageTV server...");
-
-                    // Try to reconnect once. This can throw an IOException that will break the
-                    // loop. This can be made more robust if disconnects become something we see
-                    // often.
-                    reconnectUpload();
+            try {
+                sendMessage("WRITE " + offset + " " + byteBuffer.remaining());
+                while (byteBuffer.hasRemaining() && !Thread.currentThread().isInterrupted()) {
+                    int sentBytes = socketChannel.write(byteBuffer);
+                    logger.trace("Transferred {} stream bytes to SageTV server. {} bytes remaining.", sentBytes, byteBuffer.remaining());
                 }
+
+                returnValue = true;
+            } catch (IOException e) {
+                logger.warn("The SageTV server communication has stopped => ", e);
+                returnValue = false;
             }
 
             return logger.exit(returnValue);
@@ -389,42 +357,59 @@ public class NIOSageTVUploadID {
      * SageTV will close the previous upload session when you start a new upload, but for proper usage this should be
      * used when you are done uploading.
      *
-     * @param disconnect Set <i>true</i> if you want to also disconnect from the socket channel.
-     * @return Returns <i>true</i> if the SageTV server accepted the request.
      * @throws IOException If there was a problem writing the bytes to the to the SageTV server socket.
      */
-    public boolean endUpload(boolean disconnect) throws IOException {
-        String response = null;
-        stopLogging = false;
+    public void endUpload() throws IOException {
+        if (socketChannel != null) {
+            String response = null;
+            stopLogging = false;
 
-        synchronized (uploadLock) {
-            sendMessage("CLOSE");
+            Thread timeout = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(15000);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
 
-            // The expected responses are OK or NON_MEDIA.
-            response = waitForMessage();
-        }
+                    try {
+                        socketChannel.close();
+                    } catch (Exception e) {
+                        logger.debug("Exception while closing socket channel => ", e);
+                    }
+                }
+            });
 
-        if (disconnect) {
-            sendMessage("QUIT");
+            timeout.start();
+            synchronized (uploadLock) {
+                sendMessage("CLOSE");
 
-            if (socketChannel != null && socketChannel.isOpen()) {
-                socketChannel.close();
+                // The expected responses are OK or NON_MEDIA.
+                response = waitForMessage();
+                timeout.interrupt();
             }
 
-            socketChannel = null;
-            uploadFilename = null;
-            uploadID = -1;
-            currentServerSocket = null;
+            if (socketChannel.isOpen()) {
+                sendMessage("QUIT");
+            }
+
+            if (socketChannel.isOpen()) {
+                socketChannel.close();
+            }
         }
 
-        return logger.exit(response != null && response.equals("OK"));
+        socketChannel = null;
+        uploadFilename = null;
+        uploadID = -1;
+        currentServerSocket = null;
     }
 
     private void sendMessage(String message) throws IOException {
         logger.entry(message);
 
         if (socketChannel != null && socketChannel.isConnected()) {
-            if (!stopLogging || message.startsWith("WRITE ")) {
+            if (stopLogging || message.startsWith("WRITE ")) {
                 logger.trace("Sending '{}' to SageTV server...", message);
             } else {
                 logger.info("Sending '{}' to SageTV server...", message);
@@ -448,20 +433,13 @@ public class NIOSageTVUploadID {
 
     private String waitForMessage() throws IOException {
         logger.entry();
+
+        // Only one response should ever come when listening.
         messageInBuilder.setLength(0);
-
-        // This should keep stale messages from coming in.
-        if (System.currentTimeMillis() > messageInTimeout) {
-            messageInBuffer.clear();
-            messageInBytes = 0;
-        }
-
-        // Set the timeout for 30 seconds. If the message has been waiting for that long it's not likely to be relevant.
-        messageInTimeout = System.currentTimeMillis() + 30000;
-        long messageReceivedTimeout = System.currentTimeMillis() + 2000;
+        messageInBytes = 0;
 
         if (socketChannel != null && socketChannel.isConnected()) {
-            while (messageReceivedTimeout > System.currentTimeMillis()) {
+            while (!Thread.currentThread().isInterrupted()) {
                 if (!stopLogging) {
                     logger.debug("messageInBytes = {}", messageInBytes);
                 }
@@ -474,16 +452,28 @@ public class NIOSageTVUploadID {
                                 readChar = messageInBuffer.get();
                                 if (readChar != '\n') {
                                     logger.debug("Expected LF, but found '{}'. Returning message anyway.", readChar);
+
+                                    messageInBuffer.position(messageInBuffer.position() - 1);
+                                    messageInBytes -= (messageInBuilder.length() + 1);
+                                } else {
+                                    messageInBytes -= (messageInBuilder.length() + 2);
                                 }
+                            } else {
+                                messageInBytes -= (messageInBuilder.length() + 1);
                             }
-                            messageInBytes = messageInBytes - (messageInBuilder.length() + 2);
+
+                            if (messageInBytes > 0) {
+                                messageInBuilder.setLength(0);
+                                continue;
+                            }
 
                             String returnString = messageInBuilder.toString();
                             if (!stopLogging) {
                                 logger.info("Received message from SageTV server '{}'", returnString);
                             }
+
                             return logger.exit(returnString);
-                        } else {
+                        } else if (readChar != '\n'){
                             messageInBuilder.append((char)readChar);
                         }
                     }
@@ -496,10 +486,6 @@ public class NIOSageTVUploadID {
                     }
                 }
             }
-        }
-
-        if (messageReceivedTimeout >= System.currentTimeMillis()) {
-            throw new IOException("No response from SageTV after 2 seconds.");
         }
 
         logger.warn("Unable to receive because the socket has not been initialized.");

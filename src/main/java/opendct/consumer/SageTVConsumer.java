@@ -32,11 +32,6 @@ public interface SageTVConsumer extends Runnable, DeviceOptions {
  */
 
     /**
-     * This is the starting method of the consuming thread.
-     */
-    public void run();
-
-    /**
      * Copy as many bytes as possible from the producer into a provided byte array.
      * <p/>
      * This method is needed for the producer to write it's data into the consumers buffer. This
@@ -153,7 +148,7 @@ public interface SageTVConsumer extends Runnable, DeviceOptions {
      * This value cannot be changed while the consumer is running. Maybe we can come up with
      * something creative for this like use it to set parameters for a live transcode.
      *
-     * @param encodingQuality
+     * @param encodingQuality The quality to be used for encoding.
      */
     public void setEncodingQuality(String encodingQuality);
 
@@ -250,23 +245,6 @@ public interface SageTVConsumer extends Runnable, DeviceOptions {
      * @return The set channel.
      */
     public String getChannel();
-
-    /**
-     * Gets if the consumer is unable to output anything.
-     *
-     * @return <i>true</i> if the consumer is stalled.
-     */
-    public boolean isStalled();
-
-    /**
-     * Gets the presumed or known state of the consumer.
-     * <p/>
-     * This will primarily be used to get a message about why the consumer is stalled. This may be
-     * displayed on a web page, so at least make it a presentable message.
-     *
-     * @return A brief message about the current state of the consumer.
-     */
-    public String stateMessage();
 
     /**
      * Gets if the consumer is currently streaming.

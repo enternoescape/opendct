@@ -140,7 +140,7 @@ public class DummyCaptureDevice implements CaptureDevice {
         return "-1";
     }
 
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress) {
         return false;
     }
 

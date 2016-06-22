@@ -26,7 +26,7 @@ public class NanoHTTPDManager implements PowerEventListener {
     public static final NanoHTTPDManager POWER_EVENT_LISTENTER = new NanoHTTPDManager();
 
     public static final boolean ENABLED = Config.getBoolean("web.enabled", true);
-    private static int port = Config.getInteger("web.port", 9090);
+    private static int port = Config.getInteger("web.port", 9091);
     private static NanoServlet currentServer = null;
 
     /**

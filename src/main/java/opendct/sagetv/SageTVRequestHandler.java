@@ -119,6 +119,9 @@ public class SageTVRequestHandler implements Runnable {
             // EncodingServer.java
             lastRequest = null;
 
+            // Guarantee that we don't change the size of this array.
+            final int crossbarIndex[] = new int[] { 0 };
+
             while (!Thread.currentThread().isInterrupted()) {
 
                 lastRequest = in.readLine();
@@ -146,8 +149,8 @@ public class SageTVRequestHandler implements Runnable {
                             //It appears we can have more than one tuner on the same port.
                             String deviceName = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
-                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(deviceName);
-                            deviceName = SageTVDeviceCrossbar.trimToName(deviceName, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(deviceName, crossbarIndex);
+                            deviceName = SageTVDeviceCrossbar.trimToName(deviceName, deviceType, crossbarIndex[0]);
 
                             //This is not a mistake.
                             CaptureDevice captureDevice = getVCaptureDeviceToPoolCaptureDevice(deviceName, true);
@@ -196,8 +199,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice, crossbarIndex);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType, crossbarIndex[0]);
                         captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -221,7 +224,7 @@ public class SageTVRequestHandler implements Runnable {
                                 if (captureDevice.isReady()) {
                                     logger.debug("Starting network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
                                     success = captureDevice.startEncoding(
-                                            channel, filename, encoding, 0, deviceType,
+                                            channel, filename, encoding, 0, deviceType, crossbarIndex[0],
                                             uploadID, socket.getInetAddress());
 
                                     if (success) {
@@ -235,7 +238,8 @@ public class SageTVRequestHandler implements Runnable {
                                         sendResponse("OK");
 
                                         SageTVTuningMonitor.monitorRecording(
-                                                captureDevice, channel, encoding, 0, deviceType,
+                                                captureDevice, channel, encoding, 0,
+                                                deviceType, crossbarIndex[0],
                                                 uploadID, socket.getInetAddress());
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
@@ -271,8 +275,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice, crossbarIndex);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType, crossbarIndex[0]);
                         captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -295,7 +299,8 @@ public class SageTVRequestHandler implements Runnable {
                                 if (captureDevice.isReady()) {
                                     logger.debug("Starting buffered network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
                                     success = captureDevice.startEncoding(
-                                            channel, filename, encoding, bufferSize, deviceType,
+                                            channel, filename, encoding, bufferSize,
+                                            deviceType, crossbarIndex[0],
                                             uploadID, socket.getInetAddress());
 
                                     if (success) {
@@ -310,7 +315,8 @@ public class SageTVRequestHandler implements Runnable {
 
                                         SageTVTuningMonitor.monitorRecording(
                                                 captureDevice, channel, encoding, bufferSize,
-                                                deviceType, uploadID, socket.getInetAddress());
+                                                deviceType, crossbarIndex[0],
+                                                uploadID, socket.getInetAddress());
                                     } else {
                                         sendResponse("ERROR Device Start Failed");
                                         logger.error("Encoder device is unable to start.");
@@ -343,8 +349,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice, crossbarIndex);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType, crossbarIndex[0]);
                         captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -408,8 +414,8 @@ public class SageTVRequestHandler implements Runnable {
                             vCaptureDevice = tokens.nextToken();
                         }
 
-                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
-                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
+                        SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice, crossbarIndex);
+                        vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType, crossbarIndex[0]);
                         captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
 
                         String channel = tokens.nextToken();
@@ -465,8 +471,8 @@ public class SageTVRequestHandler implements Runnable {
                             // V3 encoder
                             vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
-                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
-                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice, crossbarIndex);
+                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType, crossbarIndex[0]);
                             captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -485,8 +491,8 @@ public class SageTVRequestHandler implements Runnable {
                             // V3 encoder
                             vCaptureDevice = lastRequest.substring(lastRequest.indexOf(' ') + 1);
 
-                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
-                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice, crossbarIndex);
+                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType, crossbarIndex[0]);
                             captureDevice = getVCaptureDeviceToPoolCaptureDevice(vCaptureDevice, true);
                         }
 
@@ -620,8 +626,8 @@ public class SageTVRequestHandler implements Runnable {
                         String vCaptureDevice = tokens.nextToken();
                         if (tokens.countTokens() == 2) {
                             // V3 encoder
-                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice);
-                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType);
+                            SageTVDeviceCrossbar deviceType = SageTVDeviceCrossbar.getTypeForName(vCaptureDevice, crossbarIndex);
+                            vCaptureDevice = SageTVDeviceCrossbar.trimToName(vCaptureDevice, deviceType, crossbarIndex[0]);
                             captureDevice = getAndLockCaptureDevice(vCaptureDevice, true);
                         }
 

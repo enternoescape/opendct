@@ -6,4 +6,4 @@ sudo ufw allow 8271/udp
 sudo ufw allow 8300:8500/udp
 sudo ufw allow 8501/tcp
 sudo ufw allow 64998/udp
-sudo ufw allow 9090/tcp
+sudo ufw allow 9091/tcp

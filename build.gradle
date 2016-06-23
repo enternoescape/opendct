@@ -80,9 +80,7 @@ dependencies {
     testCompile 'org.testng:testng:6.1.1'
 
     compile fileTree(dir: 'lib', include: ['*.jar'])
-    compile 'org.seamless:seamless-http:1.1.0'
-	compile 'org.seamless:seamless-util:1.1.0'
-	compile 'org.seamless:seamless-xml:1.1.0'
+    compile 'org.fourthline.cling:cling-core:2.1.0'
 	compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
     compile "org.apache.logging.log4j:log4j-core:${log4jVersion}"
 	compile 'commons-cli:commons-cli:1.3'

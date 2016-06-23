@@ -1194,3 +1194,8 @@
 > *Added web server on port 9091 to support runtime configuration via
 > JSON calls. This will be utilized at a later date and is listed here
 > for those that notice that OpenDCT is now using port 9091.
+
+#### 0.5.8-Beta
+> *Changed custom Cling UPnP build for the version available on Maven.
+> The modifications are no longer needed since the library isn't used
+> for anything other than detecting the presence of capture devices. 

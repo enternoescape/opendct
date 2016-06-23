@@ -83,7 +83,6 @@ dependencies {
     compile 'org.fourthline.cling:cling-core:2.1.0'
 	compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
     compile "org.apache.logging.log4j:log4j-core:${log4jVersion}"
-    compile 'it.unimi.dsi:fastutil:7.0.12'
     compile "net.java.dev.jna:jna:${jnaVersion}"
 	compile "net.java.dev.jna:jna-platform:${jnaVersion}"
     compile 'org.nanohttpd:nanohttpd:2.3.0'

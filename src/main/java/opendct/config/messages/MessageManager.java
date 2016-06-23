@@ -16,13 +16,13 @@
 
 package opendct.config.messages;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.config.ConfigBag;
 import opendct.util.Util;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -41,7 +41,7 @@ public class MessageManager {
     static {
         messageLock = new ReentrantReadWriteLock();
         messageConfig = new ConfigBag("messages", false);
-        messages = new Int2ObjectOpenHashMap<>();
+        messages = new HashMap<>();
         dismissed = true;
         currentLevel = Level.INFO;
     }

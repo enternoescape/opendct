@@ -16,8 +16,6 @@
 
 package opendct.config;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.*;
@@ -51,7 +49,7 @@ public class Config {
     private static final Object getRTSPPort = new Object();
     private static Properties properties = new Properties();
     private static volatile boolean isShutdown = false;
-    private static final Map<Integer, String> rtspPortMap = new Int2ObjectOpenHashMap<>();
+    private static final Map<Integer, String> rtspPortMap = new HashMap<>();
 
     public static final OSVersion OS_VERSION = getOsVersion();
     public static final boolean IS_WINDOWS = (OS_VERSION == OSVersion.WINDOWS);
@@ -1262,7 +1260,7 @@ public class Config {
      * @return An array of all socket server ports.
      */
     public static int[] getAllSocketServerPorts() {
-        IntOpenHashSet ports = new IntOpenHashSet();
+        HashSet<Integer> ports = new HashSet<>();
 
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
             String key = (String)entry.getKey();

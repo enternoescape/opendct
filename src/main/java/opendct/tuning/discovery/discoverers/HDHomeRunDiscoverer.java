@@ -16,7 +16,6 @@
 
 package opendct.tuning.discovery.discoverers;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -31,6 +30,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -76,9 +76,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private final HDHomeRunDiscovery discovery = new HDHomeRunDiscovery(HDHomeRunDiscovery.getBroadcast());
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new HashMap<>();
+    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);

@@ -1201,3 +1201,5 @@
 > for anything other than detecting the presence of capture devices.
  
 > *Removed dependency on commons-cli-1.3.jar.
+
+> *Removed dependency on fastutil-7.0.12.jar.

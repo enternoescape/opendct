@@ -15,7 +15,6 @@
 
 package opendct.tuning.discovery.discoverers;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -30,6 +29,7 @@ import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -61,8 +61,8 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     DeviceLoader deviceLoader;
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final Map<Integer, GenericHttpDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, GenericHttpDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, GenericHttpDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final Map<Integer, GenericHttpDiscoveredDeviceParent> discoveredParents = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("generic.http.discoverer_enabled", true);

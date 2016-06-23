@@ -16,7 +16,6 @@
 
 package opendct.tuning.discovery.discoverers;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -66,8 +65,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     private DeviceLoader deviceLoader;
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final Map<Integer, UpnpDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, UpnpDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, UpnpDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final Map<Integer, UpnpDiscoveredDeviceParent> discoveredParents = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("upnp.discoverer_enabled", true);

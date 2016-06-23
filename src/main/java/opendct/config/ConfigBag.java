@@ -40,8 +40,8 @@ public class ConfigBag {
     public ConfigBag(String configName, boolean setOnGet) {
         CONFIG_NAME = configName;
         CONFIG_CATEGORY = "";
-        FILE_NAME = Config.getConfigDir() + Config.DIR_SEPARATOR + configName + ".properties";
-        DIR_NAME = Config.getConfigDir();
+        FILE_NAME = Config.CONFIG_DIR + Config.DIR_SEPARATOR + configName + ".properties";
+        DIR_NAME = Config.CONFIG_DIR;
         this.setOnGet = setOnGet;
         properties = new Properties();
     }
@@ -49,8 +49,8 @@ public class ConfigBag {
     public ConfigBag(String configName, boolean setOnGet, Properties properties) {
         CONFIG_NAME = configName;
         CONFIG_CATEGORY = "";
-        FILE_NAME = Config.getConfigDir() + Config.DIR_SEPARATOR + configName + ".properties";
-        DIR_NAME = Config.getConfigDir();
+        FILE_NAME = Config.CONFIG_DIR + Config.DIR_SEPARATOR + configName + ".properties";
+        DIR_NAME = Config.CONFIG_DIR;
         this.setOnGet = setOnGet;
         this.properties = properties;
     }
@@ -58,8 +58,8 @@ public class ConfigBag {
     public ConfigBag(String configName, String category, boolean setOnGet) {
         CONFIG_NAME = configName;
         CONFIG_CATEGORY = category;
-        DIR_NAME = Config.getConfigDir() + Config.DIR_SEPARATOR + category;
-        FILE_NAME = Config.getConfigDir() + Config.DIR_SEPARATOR + category +
+        DIR_NAME = Config.CONFIG_DIR + Config.DIR_SEPARATOR + category;
+        FILE_NAME = Config.CONFIG_DIR + Config.DIR_SEPARATOR + category +
                 Config.DIR_SEPARATOR + configName + ".properties";
 
 
@@ -70,8 +70,8 @@ public class ConfigBag {
     public ConfigBag(String configName, String category, boolean setOnGet, Properties properties) {
         CONFIG_NAME = configName;
         CONFIG_CATEGORY = category;
-        DIR_NAME = Config.getConfigDir() + Config.DIR_SEPARATOR + category;
-        FILE_NAME = Config.getConfigDir() + Config.DIR_SEPARATOR + category +
+        DIR_NAME = Config.CONFIG_DIR + Config.DIR_SEPARATOR + category;
+        FILE_NAME = Config.CONFIG_DIR + Config.DIR_SEPARATOR + category +
                 Config.DIR_SEPARATOR + configName + ".properties";
 
         this.setOnGet = setOnGet;
@@ -88,7 +88,7 @@ public class ConfigBag {
     public synchronized boolean loadConfig() {
         logger.entry();
 
-        if (Config.getConfigDir() == null) {
+        if (Config.CONFIG_DIR == null) {
             logger.fatal("The configuration directory must be defined before any properties can be loaded.");
             return logger.exit(false);
         } else if (!Util.createDirectory(DIR_NAME)) {
@@ -140,7 +140,7 @@ public class ConfigBag {
     public synchronized boolean saveConfig() {
         logger.entry();
 
-        if (Config.getConfigDir() == null) {
+        if (Config.CONFIG_DIR == null) {
             logger.fatal("The configuration directory must be defined before any properties can be saved.");
             return logger.exit(false);
         } else if (!Util.createDirectory(DIR_NAME)) {

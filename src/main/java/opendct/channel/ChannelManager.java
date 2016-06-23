@@ -403,7 +403,7 @@ public class ChannelManager implements PowerEventListener {
         offlineScanDevicesMap.remove(lineupName);
 
         if (delete) {
-            String lineupPath = Config.getConfigDir() + Config.DIR_SEPARATOR + "lineup" + Config.DIR_SEPARATOR + lineupName + ".properties";
+            String lineupPath = Config.CONFIG_DIR + Config.DIR_SEPARATOR + "lineup" + Config.DIR_SEPARATOR + lineupName + ".properties";
             File lineupFile = new File(lineupPath);
             if (lineupFile.exists()) {
                 return lineupFile.delete();
@@ -491,7 +491,7 @@ public class ChannelManager implements PowerEventListener {
      * Loads all available channel lineups.
      */
     public static void loadChannelLineups() {
-        String lineupPath = Config.getConfigDir() + Config.DIR_SEPARATOR + "lineup";
+        String lineupPath = Config.CONFIG_DIR + Config.DIR_SEPARATOR + "lineup";
 
         File directory = new File(lineupPath);
 
@@ -670,11 +670,7 @@ public class ChannelManager implements PowerEventListener {
                                 Thread.sleep(30000);
                                 updateChannelLineups(false);
 
-                                // We should not be starting this kind of lengthy process while we
-                                // are just configuring things.
-                                if (!Config.isConfigOnly()) {
-                                    startAllOfflineChannelScans(false);
-                                }
+                                startAllOfflineChannelScans(false);
                             }
                         } catch (InterruptedException e) {
                             logger.debug(

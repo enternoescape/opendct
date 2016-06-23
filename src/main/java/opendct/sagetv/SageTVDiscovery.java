@@ -47,12 +47,6 @@ public class SageTVDiscovery implements Runnable {
     public static void startDiscoveryBroadcast(int encoderPort) {
         logger.entry(encoderPort);
 
-        // We are only building the configuration file.
-        if (Config.isConfigOnly()) {
-            logger.exit();
-            return;
-        }
-
         if (running.getAndSet(true)) {
             logger.warn("Discovery broadcast is already running.");
             return;
@@ -71,12 +65,6 @@ public class SageTVDiscovery implements Runnable {
      */
     public static void stopDiscoveryBroadcast() {
         logger.entry();
-
-        // We are only building the configuration file.
-        if (Config.isConfigOnly()) {
-            logger.exit();
-            return;
-        }
 
         try {
             sageTVDiscoveryThread.interrupt();

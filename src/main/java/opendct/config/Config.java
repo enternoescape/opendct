@@ -28,6 +28,7 @@ import opendct.video.rtsp.DCTRTSPClientImpl;
 import opendct.video.rtsp.RTSPClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -49,7 +50,6 @@ public class Config {
     private static final Object getSocketServerPort = new Object();
     private static final Object getRTSPPort = new Object();
     private static Properties properties = new Properties();
-    private static volatile boolean isConfigOnly = false;
     private static volatile boolean isShutdown = false;
     private static final Map<Integer, String> rtspPortMap = new Int2ObjectOpenHashMap<>();
 
@@ -64,9 +64,28 @@ public class Config {
      *  This is if the JVM is 64-bit, not the OS.
      */
     public static final boolean IS_64BIT = System.getProperty("sun.arch.data.model").contains("64");
+    /**
+     * This is the project directory. In a deployment, this is the root directory of the deployment.
+     */
     public static final String PROJECT_DIR;
+    // This is the directory containing all binaries that are not contained in a jar file and not
+    // related to JSW. The binaries in this directory will always be correct for the detected
+    // architecture.
     public static final String BIN_DIR;
+    // This is the directory containing the CCI videos.
     public static final String VID_DIR;
+    // All configuration must go in this directory.
+    public static final String CONFIG_DIR;
+    // All logging must go in this directory.
+    public static final String LOG_DIR;
+    // Are we running as a service/daemon?
+    public static final boolean IS_DAEMON;
+    // When in developer mode, this will execute a suspend test when Enter is pressed.
+    public static final boolean SUSPEND_TEST;
+    // When false, this will disable logging to the console.
+    public static final boolean CONSOLE_LOG;
+    // This is the logging level used by UPNP. Default: severe
+    public static final String LOG_UPNP_LEVEL;
 
     // Disable MediaServer for releases until the SageTV side of things is ready to support this
     // feature.
@@ -79,8 +98,6 @@ public class Config {
     // We should be using this any time we are converting text to bytes.
     public static final Charset STD_BYTE = StandardCharsets.UTF_8;
 
-    private static String directory;
-
     static {
         String projectDir = System.getProperty("user.dir");
         boolean dev = true;
@@ -91,6 +108,33 @@ public class Config {
         }
 
         PROJECT_DIR = projectDir;
+        LOG_DIR = System.getProperty("opendct_log_root", PROJECT_DIR);
+
+        if (System.getProperty("opendct_log_root") == null) {
+            System.setProperty("opendct_log_root", LOG_DIR);
+
+            LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+            ctx.reconfigure();
+
+            logger.info("To avoid log4j2 warnings when OpenDCT starts, set the Java" +
+                    " property 'opendct_log_root' to the desired logging path.");
+        }
+
+        // Now that we have determined if we are a project or deployment and configured logging, any
+        // other configuration is done here.
+
+        if (dev) {
+            logger.info("Running in development mode.");
+        }
+
+        // If this path doesn't exist and can't be created, the program will exit.
+        CONFIG_DIR = System.getProperty("config_dir", PROJECT_DIR);
+        createConfigDirectory();
+
+        IS_DAEMON = System.getProperty("daemon_mode", "false").equalsIgnoreCase("true");
+        SUSPEND_TEST = System.getProperty("suspend_test", "false").equalsIgnoreCase("true");
+        CONSOLE_LOG = System.getProperty("log_to_console", "false").equalsIgnoreCase("true");
+        LOG_UPNP_LEVEL = System.getProperty("log_upnp_level", "severe");
 
         if (dev) {
             String binDir = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR;
@@ -118,52 +162,41 @@ public class Config {
         VID_DIR = PROJECT_DIR + DIR_SEPARATOR + "bin" + DIR_SEPARATOR + "video" + DIR_SEPARATOR;
     }
 
-    public static String getConfigDir() {
-        return Config.directory;
-    }
-
     public static String getDefaultConfigFilename() {
-        return Config.directory + File.separator + configFileName;
+        return Config.CONFIG_DIR + File.separator + configFileName;
     }
 
     /**
      * Set the directory used for configuration files.
      * <p/>
      * If this cannot be set correctly the configuration data will not be loaded correctly and the
-     * program should just exit.
-     *
-     * @param directory This is the directory to be used for configuration files.
-     * @return <i>true</i> if the directory exists or was able to be created.
+     * program will terminate.
      */
-    public static synchronized boolean setConfigDirectory(String directory) {
-        logger.entry(directory);
+    private static void createConfigDirectory() {
+        logger.entry();
 
-        File file = new File(directory);
+        File file = new File(CONFIG_DIR);
 
         boolean returnValue = file.exists();
 
-        if (returnValue) {
-            Config.directory = directory;
-        } else {
+        if (!returnValue) {
             try {
-                logger.info("The directory '{}' does not exist. Attempting to create it...", directory);
+                logger.info("The directory '{}' does not exist. Attempting to create it...", CONFIG_DIR);
                 returnValue = file.mkdirs();
-
-                if (returnValue) {
-                    Config.directory = directory;
-                }
             } catch (Exception e) {
                 logger.fatal("An exception was created while attempting to create the configuration directory => ", e);
             }
-        }
 
-        return logger.exit(returnValue);
+            if (!returnValue) {
+                ExitCode.CONFIG_DIRECTORY.terminateJVM("Ensure the path " + CONFIG_DIR + " is accessible.");
+            }
+        }
     }
 
     public static synchronized boolean loadConfig() {
         logger.entry();
 
-        if (Config.directory == null) {
+        if (Config.CONFIG_DIR == null) {
             logger.fatal("The configuration directory must be defined before any properties can be loaded.");
             return logger.exit(false);
         }
@@ -192,9 +225,6 @@ public class Config {
         } else {
             logger.info("'{}' was not found. A new configuration file will be created with that name on the next save.", filename);
         }
-
-        //If we are doing a config only run, set this variable since it will get queried a lot.
-        Config.isConfigOnly = CommandLine.isConfigOnly();
 
         if ("true".equals(properties.getProperty("version.first_run", "false"))) {
             properties.setProperty("version.first_run", "false");
@@ -342,7 +372,7 @@ public class Config {
 
     public static synchronized void versionBackup() {
         File configFilename = new File(getDefaultConfigFilename());
-        File newFileName = Util.getFileNotExist(Config.directory, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
+        File newFileName = Util.getFileNotExist(Config.CONFIG_DIR, "opendct.properties." + properties.getProperty("version.program", VERSION_PROGRAM) + "-", "");
 
         if (newFileName == null) {
             logger.error("Unable to make a copy of '{}' on upgrade.", configFilename);
@@ -362,7 +392,7 @@ public class Config {
     public static synchronized boolean saveConfig() {
         logger.entry();
 
-        if (Config.directory == null) {
+        if (Config.CONFIG_DIR == null) {
             logger.fatal("The configuration directory must be defined before any properties can be saved.");
             return logger.exit(false);
         }
@@ -404,11 +434,6 @@ public class Config {
         return logger.exit(true);
     }
 
-    public static boolean isConfigOnly() {
-        logger.entry();
-        return logger.exit(Config.isConfigOnly);
-    }
-
     public static void logCleanup() {
         long minFreeSpace = Config.getLong("log.min_free_space", 1073741824);
         long days = Config.getLong("log.remove_after_days", 30);
@@ -419,10 +444,10 @@ public class Config {
 
         long retainDays = days * 86400000;
 
-        File wrapperLog = new File(CommandLine.getLogDir() + DIR_SEPARATOR + "wrapper.log");
-        File wrapperLogOld = new File(CommandLine.getLogDir() + DIR_SEPARATOR + "wrapper.log.old");
+        File wrapperLog = new File(LOG_DIR + DIR_SEPARATOR + "wrapper.log");
+        File wrapperLogOld = new File(LOG_DIR + DIR_SEPARATOR + "wrapper.log.old");
 
-        File logDir = new File(CommandLine.getLogDir() + DIR_SEPARATOR + "archive");
+        File logDir = new File(LOG_DIR + DIR_SEPARATOR + "archive");
         File files[] = logDir.listFiles();
 
         if (wrapperLog.exists() && wrapperLog.length() > 8388608) {
@@ -509,10 +534,6 @@ public class Config {
                 }
             }
         }
-    }
-
-    public static String getLogDir() {
-        return CommandLine.getLogDir();
     }
 
     public static void setExitCode(int exitCode) {

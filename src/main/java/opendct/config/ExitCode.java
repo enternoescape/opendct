@@ -89,7 +89,7 @@ public enum ExitCode {
         // restart the program. When the program is started, right after the configuration folder is
         // set, the restart file is cleared.
         if (this == RESTART) {
-            File restartFile = new File(Config.getConfigDir() + Config.DIR_SEPARATOR + "restart");
+            File restartFile = new File(Config.CONFIG_DIR + Config.DIR_SEPARATOR + "restart");
             if (!restartFile.exists()) {
                 try {
                     if (restartFile.createNewFile()) {
@@ -114,16 +114,16 @@ public enum ExitCode {
 
         if (this != SUCCESS && this != RESTART) {
             try {
-                File source = new File(CommandLine.getLogDir() + Config.DIR_SEPARATOR + "opendct.log");
-                File destination = new File(CommandLine.getLogDir() + Config.DIR_SEPARATOR + "opendct-crash-0.log");
+                File source = new File(Config.LOG_DIR + Config.DIR_SEPARATOR + "opendct.log");
+                File destination = new File(Config.LOG_DIR + Config.DIR_SEPARATOR + "opendct-crash-0.log");
 
                 int increment = 1;
                 while (destination.exists()) {
-                    destination = new File(CommandLine.getLogDir() + Config.DIR_SEPARATOR + "opendct-crash-" + increment++ + ".log");
+                    destination = new File(Config.LOG_DIR + Config.DIR_SEPARATOR + "opendct-crash-" + increment++ + ".log");
 
                     // If we actually manage to reach the max positive integer number, this will ensure we don't loop endlessly.
                     if (increment < 0) {
-                        destination = new File(CommandLine.getLogDir() + Config.DIR_SEPARATOR + "opendct.crash.log");
+                        destination = new File(Config.LOG_DIR + Config.DIR_SEPARATOR + "opendct.crash.log");
                         break;
                     }
                 }

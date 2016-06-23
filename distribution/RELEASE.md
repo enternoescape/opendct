@@ -1196,6 +1196,8 @@
 > for those that notice that OpenDCT is now using port 9091.
 
 #### 0.5.8-Beta
-> *Changed custom Cling UPnP build for the version available on Maven.
+> *Changed custom Cling UPnP build to the version available on Maven.
 > The modifications are no longer needed since the library isn't used
-> for anything other than detecting the presence of capture devices. 
+> for anything other than detecting the presence of capture devices.
+ 
+> *Removed dependency on commons-cli-1.3.jar.

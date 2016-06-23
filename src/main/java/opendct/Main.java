@@ -17,7 +17,6 @@
 package opendct;
 
 import opendct.channel.ChannelManager;
-import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.nanohttpd.NanoHTTPDManager;
@@ -51,21 +50,7 @@ public class Main {
             }
         });
 
-        if (!CommandLine.parseCommandLineOptions(args)) {
-            // The method will automatically print out the valid parameters if there is a
-            // problem and then return false.
-            logger.exit();
-            ExitCode.PARAMETER_ISSUE.terminateJVM();
-            return;
-        }
-
-        if (!Config.setConfigDirectory(CommandLine.getConfigDir())) {
-            logger.exit();
-            ExitCode.CONFIG_DIRECTORY.terminateJVM();
-            return;
-        }
-
-        File restartFile = new File(Config.getConfigDir() + Config.DIR_SEPARATOR + "restart");
+        File restartFile = new File(Config.CONFIG_DIR + Config.DIR_SEPARATOR + "restart");
         if (restartFile.exists()) {
             if (!restartFile.delete()) {
                 logger.error("Unable to delete the file '{}'.", restartFile.getName());
@@ -90,7 +75,7 @@ public class Main {
 
         // Turn off console logging. With this turned off, all you will might see is that the
         // program started.
-        if (CommandLine.isLogToConsole()) {
+        if (Config.CONSOLE_LOG) {
             if (config.getConfigurationSource().getFile() != null) {
                 try {
                     System.out.close();
@@ -103,7 +88,7 @@ public class Main {
             }
         }
 
-        logger.info("OpenDCT logging to the directory '{}'.", CommandLine.getLogDir());
+        logger.info("OpenDCT logging to the directory '{}'.", Config.LOG_DIR);
 
         // This takes care of everything to do with logging from cling. The default configuration
         // only reports severe errors.
@@ -267,11 +252,7 @@ public class Main {
 
         Config.saveConfig();
 
-        if (CommandLine.isConfigOnly()) {
-            logger.info("Running in config only mode for '{}' seconds...", CommandLine.getRunSeconds());
-            Thread.sleep(CommandLine.getRunSeconds() * 1000);
-            Config.logCleanup();
-        } else if (CommandLine.isDaemon()) {
+        if (Config.IS_DAEMON) {
             logger.info("Running in daemon mode...");
 
             // Maybe we can do more with this thread than just wait for the program to terminate.
@@ -280,7 +261,7 @@ public class Main {
                 Config.logCleanup();
             }
         } else {
-            if (CommandLine.isSuspendTest()) {
+            if (Config.SUSPEND_TEST) {
                 logger.info("Press ENTER at any time to suspend...");
                 System.in.read();
                 PowerMessageManager.EVENTS.testSuspend();

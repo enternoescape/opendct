@@ -81,10 +81,10 @@ dependencies {
 
     compile fileTree(dir: 'lib', include: ['*.jar'])
     compile 'org.fourthline.cling:cling-core:2.1.0'
-	compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
+    compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
     compile "org.apache.logging.log4j:log4j-core:${log4jVersion}"
     compile "net.java.dev.jna:jna:${jnaVersion}"
-	compile "net.java.dev.jna:jna-platform:${jnaVersion}"
+    compile "net.java.dev.jna:jna-platform:${jnaVersion}"
     compile 'org.nanohttpd:nanohttpd:2.3.0'
     compile 'org.nanohttpd:nanohttpd-nanolets:2.3.0'
     compile 'com.google.code.gson:gson:2.6.2'
@@ -92,16 +92,16 @@ dependencies {
     compile ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}") { transitive = false }
 
     windows_x86 configurations.compile
-	windows_x86 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86") { transitive = false }
+    windows_x86 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86") { transitive = false }
 
     windows_x86_64 configurations.compile
-	windows_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64") { transitive = false }
+    windows_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64") { transitive = false }
 
     linux_x86 configurations.compile
     linux_x86 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86") { transitive = false }
 
     linux_x86_64 configurations.compile
-	linux_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64") { transitive = false }
+    linux_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64") { transitive = false }
 }
 
 test {

@@ -1201,7 +1201,7 @@
 > *Change a few other methods to use direct byte buffers.
 
 > *Removed the last of any uses of the backing array of a byte buffer
-> since the offset is sometimes incorrect. 
+> since the offset is sometimes incorrect.
 
 > *Changed custom Cling UPnP build to the version available on Maven.
 > The modifications are no longer needed since the library isn't used

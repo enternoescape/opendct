@@ -134,6 +134,13 @@ public class DynamicConsumerImpl implements SageTVConsumer {
         consumer.run();
     }
 
+    /**
+     * This is called to cause the static parts of this class to load.
+     */
+    public static void initialize() {
+
+    }
+
     public static SageTVConsumer getConsumer(String channel) {
         String consumerName;
 

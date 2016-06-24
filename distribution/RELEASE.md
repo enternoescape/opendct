@@ -1196,9 +1196,9 @@
 > for those that notice that OpenDCT is now using port 9091.
 
 #### 0.5.8-Beta
-> *Change HDHomeRun communication packets to direct byte buffers.
+> *Changed HDHomeRun communication packets to direct byte buffers.
 
-> *Change a few other methods to use direct byte buffers.
+> *Changed a few other methods to use direct byte buffers.
 
 > *Removed the last of any uses of the backing array of a byte buffer
 > since the offset is sometimes incorrect.
@@ -1210,6 +1210,8 @@
 > *Removed dependency on commons-cli-1.3.jar.
 
 > *Removed dependency on fastutil-7.0.12.jar.
+
+> *The dynamic consumer now loads in parallel with the linups.
 
 > *Lineups now load in parallel. This can speed up startup time
 > significantly if you have a variety of capture devices.

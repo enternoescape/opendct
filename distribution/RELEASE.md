@@ -1211,7 +1211,9 @@
 
 > *Removed dependency on fastutil-7.0.12.jar.
 
-> *The dynamic consumer now loads in parallel with the linups.
+> *The dynamic consumer now loads in separate thread.
 
 > *Lineups now load in parallel. This can speed up startup time
 > significantly if you have a variety of capture devices.
+
+> *Lineups with no name are no longer loaded.

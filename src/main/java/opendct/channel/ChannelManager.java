@@ -23,7 +23,6 @@ import opendct.channel.updater.http.HDHomeRunChannels;
 import opendct.channel.updater.http.InfiniTVChannels;
 import opendct.config.Config;
 import opendct.config.ConfigBag;
-import opendct.consumer.DynamicConsumerImpl;
 import opendct.power.PowerEventListener;
 import opendct.sagetv.SageTVManager;
 import opendct.util.Util;
@@ -527,9 +526,6 @@ public class ChannelManager implements PowerEventListener {
                 threads[i].setPriority(Thread.MAX_PRIORITY);
                 threads[i++].start();
             }
-
-            // This is a good spot to get this over with.
-            DynamicConsumerImpl.initialize();
 
             for (i = 0; i < threads.length; i++) {
                 try {

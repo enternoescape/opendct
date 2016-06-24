@@ -19,6 +19,7 @@ package opendct;
 import opendct.channel.ChannelManager;
 import opendct.config.Config;
 import opendct.config.ExitCode;
+import opendct.consumer.DynamicConsumerImpl;
 import opendct.nanohttpd.NanoHTTPDManager;
 import opendct.power.NetworkPowerEventManger;
 import opendct.power.PowerMessageManager;
@@ -158,6 +159,17 @@ public class Main {
                 SageTVManager.stopAndClearAllCaptureDevices();
             }
         });
+
+        Thread dynInit = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                DynamicConsumerImpl.initialize();
+            }
+        });
+
+        dynInit.setPriority(Thread.MAX_PRIORITY);
+        dynInit.setName("DynamicAsyncInit-" + ffmpegAsyncInit.getId());
+        dynInit.start();
 
         // This loads all of the currently saved channel lineups from the lineups folder.
         ChannelManager.loadChannelLineups();

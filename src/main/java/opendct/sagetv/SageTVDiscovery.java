@@ -80,7 +80,7 @@ public class SageTVDiscovery implements Runnable {
         logger.entry();
 
         DatagramChannel datagramChannel = null;
-        ByteBuffer datagramPacket = ByteBuffer.allocate(4096);
+        ByteBuffer datagramPacket = ByteBuffer.allocateDirect(4096);
 
         try {
             datagramChannel = DatagramChannel.open();

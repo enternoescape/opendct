@@ -367,6 +367,8 @@ public class ChannelManager implements PowerEventListener {
 
     /**
      * Add a new channel line up.
+     * <p/>
+     * The name of the channel lineup cannot be <i>null</i> or empty.
      *
      * @param channelLineup This is the the initialized channel lineup.
      * @param overwrite     If <i>true</i> and a channel lineup with the same name already exists, it
@@ -375,6 +377,10 @@ public class ChannelManager implements PowerEventListener {
      * overwrite is set to <i>false</i> and the lineup names conflict.
      */
     public static boolean addChannelLineup(ChannelLineup channelLineup, boolean overwrite) {
+        if (Util.isNullOrEmpty(channelLineup.LINEUP_NAME)) {
+            return false;
+        }
+
         if (overwrite) {
             channelLineupsMap.put(channelLineup.LINEUP_NAME, channelLineup);
             return true;
@@ -502,9 +508,34 @@ public class ChannelManager implements PowerEventListener {
                 }
             });
 
+            int i = 0;
+            Thread threads[] = new Thread[lineups.length];
+
             for (File lineup : lineups) {
-                String lineupName = lineup.getName().substring(0, lineup.getName().length() - ".properties".length());
-                loadChannelLineup(lineupName);
+                final String lineupName = lineup.getName().substring(0, lineup.getName().length() - ".properties".length());
+
+                threads[i] = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        loadChannelLineup(lineupName);
+                    }
+                });
+
+                threads[i].setName("LineupAsyncInit:" + lineupName + "-" + threads[i].getId());
+                threads[i].setPriority(Thread.MAX_PRIORITY);
+                threads[i++].start();
+            }
+
+            for (i = 0; i < threads.length; i++) {
+                try {
+                    // Nothing should be take a full minute to load on it's own. The average lineup
+                    // should load in under 5 seconds and at most take 15 seconds if it needs to
+                    // retrieve an update immediately.
+                    threads[i].join(60000);
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted while waiting for the thread {} to stop.", threads[i].getName());
+                    break;
+                }
             }
         }
     }
@@ -520,6 +551,10 @@ public class ChannelManager implements PowerEventListener {
      * @return <i>true</i> if the load was successful.
      */
     public static boolean loadChannelLineup(String lineupName) {
+        if (Util.isNullOrEmpty(lineupName)) {
+            return false;
+        }
+
         ConfigBag configBag = new ConfigBag(lineupName, "lineup", false);
 
         if (configBag.loadConfig()) {

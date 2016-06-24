@@ -792,7 +792,7 @@ public class ConfigBag {
      */
     public Map<String, String> getAllByRootKey(String rootKey) {
 
-        Map<String, String> returnValue = new HashMap<String, String>();
+        Map<String, String> returnValue = new HashMap<String, String>(100);
         Enumeration names = properties.propertyNames();
 
         while (names.hasMoreElements()) {
@@ -825,7 +825,7 @@ public class ConfigBag {
         Map<String, String>[] returnValues = new HashMap[rootKeys.length];
 
         for (int i = 0; i < returnValues.length; i++) {
-            returnValues[i] = new HashMap<>();
+            returnValues[i] = new HashMap<>(100);
         }
 
         Enumeration names = properties.propertyNames();
@@ -859,7 +859,7 @@ public class ConfigBag {
      */
     public Map<String, String> mergeAllByRootKeys(String... rootKeys) {
 
-        Map<String, String> returnValue = new HashMap<>();
+        Map<String, String> returnValue = new HashMap<>(100);
 
         for (String rootKey : rootKeys) {
             for (Map.Entry<Object, Object> name : properties.entrySet()) {
@@ -892,7 +892,7 @@ public class ConfigBag {
      */
     public void removeAllByRootKey(String rootKey) {
 
-        ArrayList<String> removes = new ArrayList<String>();
+        ArrayList<String> removes = new ArrayList<String>(100);
         Enumeration names = properties.propertyNames();
 
         while (names.hasMoreElements()) {

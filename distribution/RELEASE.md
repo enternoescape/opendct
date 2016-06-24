@@ -1196,6 +1196,13 @@
 > for those that notice that OpenDCT is now using port 9091.
 
 #### 0.5.8-Beta
+> *Change HDHomeRun communication packets to direct byte buffers.
+
+> *Change a few other methods to use direct byte buffers.
+
+> *Removed the last of any uses of the backing array of a byte buffer
+> since the offset is sometimes incorrect. 
+
 > *Changed custom Cling UPnP build to the version available on Maven.
 > The modifications are no longer needed since the library isn't used
 > for anything other than detecting the presence of capture devices.
@@ -1203,3 +1210,6 @@
 > *Removed dependency on commons-cli-1.3.jar.
 
 > *Removed dependency on fastutil-7.0.12.jar.
+
+> *Lineups now load in parallel. This can speed up startup time
+> significantly if you have a variety of capture devices.

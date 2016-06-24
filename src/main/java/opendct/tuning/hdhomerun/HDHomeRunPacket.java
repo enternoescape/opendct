@@ -44,13 +44,13 @@ public class HDHomeRunPacket {
     public final ByteBuffer BUFFER;
 
     HDHomeRunPacket() {
-        BUFFER = ByteBuffer.allocate(3074);
-
+        // We should never need more than 3074 bytes. This number like many of the numbers used for
+        // HDHomeRun communications were derived from the HDHomeRun Linux source code.
+        BUFFER = ByteBuffer.allocateDirect(3074);
     }
 
     HDHomeRunPacket(ByteBuffer buffer) {
         BUFFER = buffer;
-
     }
 
     /**
@@ -107,17 +107,13 @@ public class HDHomeRunPacket {
 
         checksum.reset();
 
-        if (buffer.hasArray()) {
-            checksum.update(buffer.array(), buffer.arrayOffset(), buffer.remaining());
-        } else {
-            buffer.mark();
+        buffer.mark();
 
-            while (buffer.hasRemaining()) {
-                checksum.update(buffer.get());
-            }
-
-            buffer.reset();
+        while (buffer.hasRemaining()) {
+            checksum.update(buffer.get());
         }
+
+        buffer.reset();
 
         int crc = (int) (checksum.getValue() & 0xffffffff);
 

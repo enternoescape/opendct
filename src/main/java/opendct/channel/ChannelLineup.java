@@ -86,12 +86,16 @@ public class ChannelLineup {
         this.updateInterval = updateInterval;
         this.offlineUpdateInterval = offlineUpdateInterval;
 
-        // Set these to the current size so they run on the first opportunity.
+        // Set these to the current time so they run on the first opportunity.
         nextUpdate = System.currentTimeMillis();
         nextOfflineUpdate = System.currentTimeMillis();
 
-        channelMap = new ConcurrentHashMap<String, TVChannel>();
-        remapMap = new ConcurrentHashMap<String, TVChannel>();
+        // Channels maps are usually fairly large and definitly larger than the default starting
+        // size of 16.
+        channelMap = new ConcurrentHashMap<String, TVChannel>(200);
+        // Not all channels will be remapped and not all lineups even have remaps. This value is a
+        // compromise based on that reality.
+        remapMap = new ConcurrentHashMap<String, TVChannel>(50);
 
         setAddress(address);
     }

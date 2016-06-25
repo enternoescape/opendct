@@ -1196,6 +1196,10 @@
 > for those that notice that OpenDCT is now using port 9091.
 
 #### 0.5.8-Beta
+> *Added option to force MPEG2-PS when using the Media Server. The
+> option is consumer.media_server.prefer_ps and is defaulted to true
+> because this is the recommended setting for the remuxer. 
+
 > *Changed HDHomeRun communication packets to direct byte buffers.
 
 > *Change HDHomeRun smart discovery broadcast so that it will not

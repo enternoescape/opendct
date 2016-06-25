@@ -16,6 +16,7 @@
 package opendct.consumer;
 
 import opendct.config.Config;
+import opendct.config.options.BooleanDeviceOption;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.IntegerDeviceOption;
@@ -39,6 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MediaServerConsumerImpl implements SageTVConsumer {
     private static final Logger logger = LogManager.getLogger(MediaServerConsumerImpl.class);
 
+    private final boolean preferPS = preferPSOpt.getBoolean();
     private final int minTransferSize = minTransferSizeOpt.getInteger();
     private final int maxTransferSize = maxTransferSizeOpt.getInteger();
     private final int bufferSize = bufferSizeOpt.getInteger();
@@ -127,7 +129,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                 logger.info("Setting up remuxing on MediaServer...");
                 try {
                     remuxStarted = mediaServer.setupRemux(
-                            currentRecordingFilename.endsWith(".mpg") ? "PS" : "TS",
+                            preferPS || currentRecordingFilename.endsWith(".mpg") ? "PS" : "TS",
                             true);
 
                 } catch (IOException e) {
@@ -430,6 +432,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
     private final static Map<String, DeviceOption> deviceOptions;
 
+    private static BooleanDeviceOption preferPSOpt;
     private static IntegerDeviceOption minTransferSizeOpt;
     private static IntegerDeviceOption maxTransferSizeOpt;
     private static IntegerDeviceOption bufferSizeOpt;
@@ -439,6 +442,16 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     private static void initDeviceOptions() {
         while (true) {
             try {
+                preferPSOpt = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.media_server.prefer_ps", true),
+                        false,
+                        "Prefer PS",
+                        "consumer.media_server.prefer_ps",
+                        "The SageTV remuxer generally works best when the output container is" +
+                                " MPEG2-PS format. This will override the implicit format based" +
+                                " on the extension of the filename provided."
+                );
+
                 minTransferSizeOpt = new IntegerDeviceOption(
                         Config.getInteger("consumer.media_server.min_transfer_size", 64672),
                         false,
@@ -506,6 +519,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid options. Reverting to defaults => ", e);
 
+                Config.setBoolean("consumer.media_server.prefer_ps", true);
                 Config.setInteger("consumer.media_server.min_transfer_size", 65536);
                 Config.setInteger("consumer.media_server.max_transfer_size", 1048476);
                 Config.setInteger("consumer.media_server.stream_buffer_size", 2097152);
@@ -519,6 +533,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
         Config.mapDeviceOptions(
                 deviceOptions,
+                preferPSOpt,
                 minTransferSizeOpt,
                 maxTransferSizeOpt,
                 bufferSizeOpt,
@@ -530,6 +545,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     @Override
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
+                preferPSOpt,
                 minTransferSizeOpt,
                 maxTransferSizeOpt,
                 bufferSizeOpt,

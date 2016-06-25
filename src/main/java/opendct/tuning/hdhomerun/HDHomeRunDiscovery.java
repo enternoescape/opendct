@@ -29,6 +29,8 @@ import java.net.*;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class HDHomeRunDiscovery implements Runnable {
     private static final Logger logger = LogManager.getLogger(HDHomeRunDiscovery.class);
@@ -265,6 +267,7 @@ public class HDHomeRunDiscovery implements Runnable {
 
     private class ReceiveThread implements Runnable {
         protected int listenIndex = -1;
+        protected Map<Integer, Integer> ignoreDevices = new HashMap<>();
 
         public void run() {
             logger.info("HDHomeRun discovery receive thread for {} broadcast started.", BROADCAST_SOCKET[listenIndex]);
@@ -393,11 +396,30 @@ public class HDHomeRunDiscovery implements Runnable {
                                     // 2 is a safe bet for most HDHomeRun capture devices.
                                     device.setTunerCount(2);
                                     try {
-                                        logger.warn("The capture device '{}' does not have any tuners. Assuming 2.",
+                                        logger.warn("The capture device '{}' did not respond with any tuners. Assuming 2.",
                                                 device.getUniqueDeviceName());
                                     } catch (Exception e) {
-                                        logger.warn("The capture device does not have any tuners. Assuming 2 => ",
-                                                e);
+                                        // This will clear a rebroadcast so we don't loop endlessly
+                                        // due to the error that just happened here.
+                                        HDHomeRunDiscoverer.needBroadcast();
+
+                                        Integer fails = ignoreDevices.get(device.getDeviceId());
+
+                                        if (fails == null) {
+                                            logger.warn("Ignoring non-capture device (0) => ", e);
+                                            ignoreDevices.put(device.getDeviceId(), 0);
+                                        } else {
+                                            fails += 1;
+                                            ignoreDevices.put(device.getDeviceId(), fails);
+
+                                            if (fails > 2) {
+                                                // We have tried to load this capture device too
+                                                // many times and failed. Stop trying.
+                                                continue;
+                                            } else {
+                                                logger.warn("Ignoring non-capture device ({}) => ", fails, e);
+                                            }
+                                        }
                                     }
                                     break;
                             }

@@ -41,6 +41,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     private static final Logger logger = LogManager.getLogger(MediaServerConsumerImpl.class);
 
     private final boolean preferPS = preferPSOpt.getBoolean();
+    private final boolean tuningPolling = tuningPollingOpt.getBoolean();
     private final int minTransferSize = minTransferSizeOpt.getInteger();
     private final int maxTransferSize = maxTransferSizeOpt.getInteger();
     private final int bufferSize = bufferSizeOpt.getInteger();
@@ -66,7 +67,6 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     private int desiredProgram = -1;
     private String tunedChannel = "";
 
-    private int switchAttempts = 50;
     private volatile boolean switchFile = false;
     private final Object switchMonitor = new Object();
 
@@ -194,12 +194,17 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
 
                 if (!currentInit) {
                     synchronized (streamingMonitor) {
-                        currentInit = mediaServer.isRemuxInitialized();
+                        if (tuningPolling) {
+                            currentInit = mediaServer.isRemuxInitialized();
 
-                        if (currentInit) {
-                            String format = mediaServer.getFormatString();
-                            logger.info("Format: {}", format);
+                            if (currentInit) {
+                                String format = mediaServer.getFormatString();
+                                logger.info("Format: {}", format);
 
+                                streamingMonitor.notifyAll();
+                            }
+                        } else {
+                            currentInit = true;
                             streamingMonitor.notifyAll();
                         }
                     }
@@ -433,6 +438,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     private final static Map<String, DeviceOption> deviceOptions;
 
     private static BooleanDeviceOption preferPSOpt;
+    private static BooleanDeviceOption tuningPollingOpt;
     private static IntegerDeviceOption minTransferSizeOpt;
     private static IntegerDeviceOption maxTransferSizeOpt;
     private static IntegerDeviceOption bufferSizeOpt;
@@ -450,6 +456,18 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                         "The SageTV remuxer generally works best when the output container is" +
                                 " MPEG2-PS format. This will override the implicit format based" +
                                 " on the extension of the filename provided."
+                );
+
+                tuningPollingOpt = new BooleanDeviceOption(
+                        Config.getBoolean("consumer.media_server.tuning_polling", false),
+                        false,
+                        "Tuning Polling",
+                        "consumer.media_server.tuning_polling",
+                        "Usually OK is not replied to the SageTV server until the video is" +
+                                " positively streaming. When this is disabled, the server is not" +
+                                " queried to see if it is streaming which results in a nearly" +
+                                " immediate reply to the server. The only down-side to this is" +
+                                " the apparent responsiveness when channel surfing."
                 );
 
                 minTransferSizeOpt = new IntegerDeviceOption(
@@ -520,6 +538,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
                 logger.warn("Invalid options. Reverting to defaults => ", e);
 
                 Config.setBoolean("consumer.media_server.prefer_ps", true);
+                Config.setBoolean("consumer.media_server.tuning_polling", false);
                 Config.setInteger("consumer.media_server.min_transfer_size", 65536);
                 Config.setInteger("consumer.media_server.max_transfer_size", 1048476);
                 Config.setInteger("consumer.media_server.stream_buffer_size", 2097152);
@@ -534,6 +553,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
         Config.mapDeviceOptions(
                 deviceOptions,
                 preferPSOpt,
+                tuningPollingOpt,
                 minTransferSizeOpt,
                 maxTransferSizeOpt,
                 bufferSizeOpt,
@@ -546,6 +566,7 @@ public class MediaServerConsumerImpl implements SageTVConsumer {
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
                 preferPSOpt,
+                tuningPollingOpt,
                 minTransferSizeOpt,
                 maxTransferSizeOpt,
                 bufferSizeOpt,

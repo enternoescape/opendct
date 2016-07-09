@@ -180,17 +180,22 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
+    public boolean stopOnStandby() {
+        return false;
+    }
+
+    @Override
     public synchronized void stopDetection() throws DiscoveryException {
         // There is nothing to stop.
         discoveredDevicesLock.writeLock().lock();
 
-        try {
+        /*try {
             GenericHttpDiscoverer.running = false;
             discoveredDevices.clear();
             discoveredParents.clear();
         } finally {
           discoveredDevicesLock.writeLock().unlock();
-        }
+        }*/
     }
 
     @Override

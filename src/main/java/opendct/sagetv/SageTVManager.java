@@ -804,7 +804,9 @@ public class SageTVManager implements PowerEventListener {
 
             // This only stops all of the socket servers. It does not remove them.
             stopAllSocketServers();
-            stopAndClearAllCaptureDevices();
+            // Most devices do not need to be unloaded on standby.
+            // This is now controlled by DiscoveryManager.
+            //stopAndClearAllCaptureDevices();
         }
     }
 

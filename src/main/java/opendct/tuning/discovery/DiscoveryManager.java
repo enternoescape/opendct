@@ -294,8 +294,22 @@ public class DiscoveryManager implements PowerEventListener {
 
         try {
             for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-                if (deviceDiscoverer.isRunning()) {
+                if (deviceDiscoverer.stopOnStandby()) {
                     try {
+                        // No other thread should be stopping and removing devices at this time, so
+                        // this is ok.
+                        DiscoveredDevice devices[] = deviceDiscoverer.getAllDeviceDetails();
+
+                        for (DiscoveredDevice device : devices)
+                        {
+                            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(device.getId());
+
+                            if (captureDevice != null) {
+                                captureDevice.stopDevice();
+                                SageTVManager.removeCaptureDevice(device.getId());
+                            }
+                        }
+
                         deviceDiscoverer.stopDetection();
                         logger.info("Stopping discovery for {}.", deviceDiscoverer.getName());
                     } catch (DiscoveryException e) {

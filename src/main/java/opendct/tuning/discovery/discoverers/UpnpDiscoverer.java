@@ -179,7 +179,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
 
         // This speeds up resume from standby. If the IP addresses changed while the computer was
         // sleeping, they will be updated during the next discovery.
-        if (discoveredParents.size() > 0) {
+        /*if (discoveredParents.size() > 0) {
             Map<UpnpDiscoveredDeviceParent, UpnpDiscoveredDevice[]> loadDevices = new HashMap<>(discoveredParents.size());
 
             discoveredDevicesLock.writeLock().lock();
@@ -215,12 +215,17 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
             for (Map.Entry<UpnpDiscoveredDeviceParent, UpnpDiscoveredDevice[]> device : loadDevices.entrySet()) {
                 addCaptureDevice(device.getKey(), device.getValue());
             }
-        }
+        }*/
 
         UpnpManager.startUpnpServices(
                 DCTDefaultUpnpServiceConfiguration.getDCTDefault(),
                 new DiscoveryRegistryListener(this));
 
+    }
+
+    @Override
+    public boolean stopOnStandby() {
+        return false;
     }
 
     @Override

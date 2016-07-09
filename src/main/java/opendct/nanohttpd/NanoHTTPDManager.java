@@ -64,6 +64,9 @@ public class NanoHTTPDManager implements PowerEventListener {
             nanoServlet.start();
             NanoHTTPDManager.port = port;
 
+            // If a previous webserver was already running, this will now stop it before we swap
+            // things out. This ensures we don't kill access to the webserver due to a port
+            // configuration issue/error.
             stopWebServer();
 
             currentServer = nanoServlet;

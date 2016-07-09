@@ -52,8 +52,9 @@ public class VersionJsonServlet {
             newObject.addProperty("versionConfig", Config.VERSION_CONFIG);
             newObject.addProperty("versionOS", Config.OS_VERSION.toString());
             newObject.addProperty("is64Bit", Config.IS_64BIT);
-            newObject.addProperty("configDir", Config.getConfigDir());
-            newObject.addProperty("logDir", Config.getLogDir());
+            newObject.addProperty("configDir", Config.CONFIG_DIR);
+            newObject.addProperty("logDir", Config.LOG_DIR);
+            newObject.addProperty("projectDir", Config.PROJECT_DIR);
             newObject.addProperty("versionJson", JSON_VERSION);
 
             return gson.toJson(newObject);

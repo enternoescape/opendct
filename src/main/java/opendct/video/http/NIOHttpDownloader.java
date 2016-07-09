@@ -63,7 +63,7 @@ public class NIOHttpDownloader {
         if (closed) {
             return;
         }
-        tempBuffer = ByteBuffer.allocate(1024);
+        tempBuffer = ByteBuffer.allocateDirect(1024);
 
         int port = address.getPort();
 

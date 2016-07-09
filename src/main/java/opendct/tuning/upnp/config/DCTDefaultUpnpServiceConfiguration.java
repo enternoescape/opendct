@@ -20,7 +20,7 @@ import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fourthline.cling.DefaultUpnpServiceConfiguration;
-import org.fourthline.cling.transport.impl.CDATAGENAEventProcessorImpl;
+import org.fourthline.cling.transport.impl.GENAEventProcessorImpl;
 import org.fourthline.cling.transport.impl.NetworkAddressFactoryImpl;
 import org.fourthline.cling.transport.impl.SOAPActionProcessorImpl;
 import org.fourthline.cling.transport.spi.GENAEventProcessor;
@@ -59,7 +59,9 @@ public class DCTDefaultUpnpServiceConfiguration {
             @Override
             public GENAEventProcessor getGenaEventProcessor() {
                 // Modified to return the CDATA returned in the XML of DCT subscription events.
-                return new CDATAGENAEventProcessorImpl();
+                // return new CDATAGENAEventProcessorImpl();
+
+                return new GENAEventProcessorImpl();
             }
 
             @Override

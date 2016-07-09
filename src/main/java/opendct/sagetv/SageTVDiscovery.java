@@ -47,12 +47,6 @@ public class SageTVDiscovery implements Runnable {
     public static void startDiscoveryBroadcast(int encoderPort) {
         logger.entry(encoderPort);
 
-        // We are only building the configuration file.
-        if (Config.isConfigOnly()) {
-            logger.exit();
-            return;
-        }
-
         if (running.getAndSet(true)) {
             logger.warn("Discovery broadcast is already running.");
             return;
@@ -72,12 +66,6 @@ public class SageTVDiscovery implements Runnable {
     public static void stopDiscoveryBroadcast() {
         logger.entry();
 
-        // We are only building the configuration file.
-        if (Config.isConfigOnly()) {
-            logger.exit();
-            return;
-        }
-
         try {
             sageTVDiscoveryThread.interrupt();
             sageTVDiscoveryThread.join();
@@ -92,7 +80,7 @@ public class SageTVDiscovery implements Runnable {
         logger.entry();
 
         DatagramChannel datagramChannel = null;
-        ByteBuffer datagramPacket = ByteBuffer.allocate(4096);
+        ByteBuffer datagramPacket = ByteBuffer.allocateDirect(4096);
 
         try {
             datagramChannel = DatagramChannel.open();

@@ -16,7 +16,6 @@
 
 package opendct.sagetv;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceInitException;
 import opendct.capture.CaptureDeviceType;
@@ -57,9 +56,9 @@ public class SageTVManager implements PowerEventListener {
     private static final ReentrantReadWriteLock fileToUploadIDLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock fileToSocketServerLock = new ReentrantReadWriteLock();
 
-    private static final Map<Integer, SageTVSocketServer> portToSocketServer = new Int2ObjectOpenHashMap<>();
+    private static final Map<Integer, SageTVSocketServer> portToSocketServer = new HashMap<>();
     private static final Map<String, CaptureDevice> captureDeviceNameToCaptureDevice = new HashMap<>();
-    private static final Map<Integer, CaptureDevice> captureDeviceIdToCaptureDevice = new Int2ObjectOpenHashMap<>();
+    private static final Map<Integer, CaptureDevice> captureDeviceIdToCaptureDevice = new HashMap<>();
     private static final Map<CaptureDevice, String> captureDeviceToFiles = new HashMap<>();
     private static final Map<String, Integer> fileToUploadID = new HashMap<>();
     private static final Map<String, SageTVSocketServer> fileToSocketServer = new HashMap<>();
@@ -133,17 +132,7 @@ public class SageTVManager implements PowerEventListener {
             // Count down the devices loaded timeout thread.
             devicesWaitingThread.deviceAdded();
 
-            if (Config.isConfigOnly()) {
-                buildTunerProperty(
-                        captureDevice.getEncoderName(),
-                        captureDevice.getEncoderUniqueHash(),
-                        "",
-                        0,
-                        captureDevice.canSwitch(),
-                        captureDevice.getSageTVDeviceCrossbars()
-                );
-
-            } else if (!SageTVDiscovery.isRunning()) {
+            if (!SageTVDiscovery.isRunning()) {
                 SageTVDiscovery.startDiscoveryBroadcast(newPort);
             }
         } catch (CaptureDeviceInitException e) {
@@ -161,10 +150,8 @@ public class SageTVManager implements PowerEventListener {
             // We can't kill the JVM within a lock because the lock will not be released.
             ExitCode.SAGETV_DUPLICATE.terminateJVM();
         } else if (!portInUse) {
-            if (!Config.isConfigOnly()) {
-                // This can kill the JVM, so we start listening outside of the lock.
-                socketServer.startListening();
-            }
+            // This can kill the JVM, so we start listening outside of the lock.
+            socketServer.startListening();
         }
 
         if (!Util.isNullOrEmpty(captureDevice.getPoolName()) &&
@@ -817,7 +804,9 @@ public class SageTVManager implements PowerEventListener {
 
             // This only stops all of the socket servers. It does not remove them.
             stopAllSocketServers();
-            stopAndClearAllCaptureDevices();
+            // Most devices do not need to be unloaded on standby.
+            // This is now controlled by DiscoveryManager.
+            //stopAndClearAllCaptureDevices();
         }
     }
 

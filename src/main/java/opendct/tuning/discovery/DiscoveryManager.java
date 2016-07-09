@@ -16,7 +16,6 @@
 
 package opendct.tuning.discovery;
 
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -29,6 +28,7 @@ import org.apache.logging.log4j.Logger;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -44,7 +44,7 @@ public class DiscoveryManager implements PowerEventListener {
     public static final DeviceLoader DEVICE_LOADER = new DeviceLoaderImpl();
     private static final AtomicBoolean running = new AtomicBoolean(false);
     private static final ArrayList<DeviceDiscoverer> deviceDiscoveries = new ArrayList<>();
-    private static final IntOpenHashSet permittedDevices = new IntOpenHashSet();
+    private static final HashSet<Integer> permittedDevices = new HashSet<>();
 
     static {
         // Add all saved permitted devices.
@@ -294,8 +294,22 @@ public class DiscoveryManager implements PowerEventListener {
 
         try {
             for (DeviceDiscoverer deviceDiscoverer : deviceDiscoveries) {
-                if (deviceDiscoverer.isRunning()) {
+                if (deviceDiscoverer.stopOnStandby()) {
                     try {
+                        // No other thread should be stopping and removing devices at this time, so
+                        // this is ok.
+                        DiscoveredDevice devices[] = deviceDiscoverer.getAllDeviceDetails();
+
+                        for (DiscoveredDevice device : devices)
+                        {
+                            CaptureDevice captureDevice = SageTVManager.getSageTVCaptureDevice(device.getId());
+
+                            if (captureDevice != null) {
+                                captureDevice.stopDevice();
+                                SageTVManager.removeCaptureDevice(device.getId());
+                            }
+                        }
+
                         deviceDiscoverer.stopDetection();
                         logger.info("Stopping discovery for {}.", deviceDiscoverer.getName());
                     } catch (DiscoveryException e) {

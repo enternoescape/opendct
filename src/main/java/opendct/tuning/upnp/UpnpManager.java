@@ -17,7 +17,6 @@
 package opendct.tuning.upnp;
 
 import opendct.Main;
-import opendct.config.CommandLine;
 import opendct.config.Config;
 import opendct.config.ExitCode;
 import opendct.sagetv.SageTVManager;
@@ -297,11 +296,9 @@ public class UpnpManager {
     }
 
     public static void configureUPnPLogging() {
-        String loggingUpnpLogLevel = CommandLine.getLogUpnpLogLevel();
-        String loggingUpnpFilename =
-                CommandLine.getLogDir() + File.separator + "opendct_cling.log";
-
-        boolean logUPnPToConsole = (CommandLine.isLogUpnpToConsole());
+        String loggingUpnpLogLevel = Config.LOG_UPNP_LEVEL;
+        String loggingUpnpFilename = Config.LOG_DIR + File.separator + "opendct_cling.log";
+        boolean logUPnPToConsole = Config.CONSOLE_LOG;
 
         // Remove all of the built in logging handlers so we can define our own.
         java.util.logging.Logger upnpLogger = java.util.logging.Logger.getLogger(Main.class.getName()).getParent();

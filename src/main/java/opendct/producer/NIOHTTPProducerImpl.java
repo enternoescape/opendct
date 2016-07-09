@@ -28,6 +28,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class NIOHTTPProducerImpl implements HTTPProducer {
     private final Logger logger = LogManager.getLogger(NIOHTTPProducerImpl.class);
@@ -50,8 +51,7 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
     private URL availableURL[] = new URL[0];
     private int selectedURL = 0;
 
-    private final Object receivedLock = new Object();
-    private volatile long bytesReceived = 0;
+    private AtomicLong bytesReceived = new AtomicLong(0);
 
     private SageTVConsumer sageTVConsumer = null;
     private ByteBuffer localBuffer = ByteBuffer.allocateDirect(262144);
@@ -147,9 +147,7 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
     }
 
     public long getPackets() {
-        synchronized (receivedLock) {
-            return bytesReceived;
-        }
+        return bytesReceived.get();
     }
 
     public void stopProducing() {
@@ -228,12 +226,9 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
                             readBytes = downloader.read(localBuffer);
                             localBuffer.flip();
 
-                            synchronized (receivedLock) {
-                                bytesReceived += readBytes;
-                            }
-
                             if (readBytes > 0) {
                                 sageTVConsumer.write(localBuffer);
+                                bytesReceived.addAndGet(readBytes);
                             } else {
                                 logger.info("We have reached the end of the stream. Stopping thread.");
                                 Thread.currentThread().interrupt();

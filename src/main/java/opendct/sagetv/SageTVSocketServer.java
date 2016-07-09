@@ -23,10 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.util.HashSet;
 
 public class SageTVSocketServer implements Runnable {
@@ -83,6 +80,7 @@ public class SageTVSocketServer implements Runnable {
             logger.info("Opening ServerSocket on port {}...", listenPort);
             try {
                 serverSocket = new ServerSocket(listenPort);
+                serverSocket.setSoTimeout(30000);
             } catch (IOException e) {
                 logger.error("Unable to open SocketServer on port {} => {}", listenPort, e);
                 error = true;
@@ -183,7 +181,6 @@ public class SageTVSocketServer implements Runnable {
                 requestThread.setName("SageTVRequestHandler-" + requestThread.getId() + ":Unknown-" + listenPort);
                 requestThread.start();
 
-
                 InetAddress remoteAddress = socket.getInetAddress();
 
                 // This will keep this task from being performed constantly on connection. It only
@@ -206,7 +203,22 @@ public class SageTVSocketServer implements Runnable {
 
                     registeredRemoteIps.add(socket.getInetAddress());
                 }
+            } catch (SocketTimeoutException e) {
+                if (listening) {
+                    try {
+                        serverSocket.close();
+                    } catch (IOException e1) {
 
+                    }
+
+                    try {
+                        serverSocket = new ServerSocket(listenPort);
+                        serverSocket.setSoTimeout(30000);
+                    } catch (IOException e0) {
+                        logger.error("Unable to open SocketServer on port {} => {}", listenPort, e0);
+                        ExitCode.SAGETV_SOCKET.terminateJVM();
+                    }
+                }
             } catch (IOException e) {
                 if (listening) {
                     logger.error("Unable to accept connections on port {} => {}", listenPort, e);
@@ -223,6 +235,7 @@ public class SageTVSocketServer implements Runnable {
 
                     try {
                         serverSocket = new ServerSocket(listenPort);
+                        serverSocket.setSoTimeout(30000);
                     } catch (IOException e0) {
                         logger.error("Unable to open SocketServer on port {} => {}", listenPort, e0);
                         ExitCode.SAGETV_SOCKET.terminateJVM();

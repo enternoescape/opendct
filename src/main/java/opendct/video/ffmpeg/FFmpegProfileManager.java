@@ -35,7 +35,7 @@ public class FFmpegProfileManager {
     private final static Map<String, FFmpegProfile> profiles = new HashMap<>();
 
     static {
-        File transcodeDir = new File(Config.getConfigDir() + Config.DIR_SEPARATOR + "transcode");
+        File transcodeDir = new File(Config.CONFIG_DIR + Config.DIR_SEPARATOR + "transcode");
         File profiles[] = transcodeDir.listFiles(new FilenameFilter() {
             @Override
             public boolean accept(File dir, String name) {

@@ -74,7 +74,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private volatile boolean switchFile = false;
     private final Object switchMonitor = new Object();
 
-    private ByteBuffer streamBuffer = ByteBuffer.allocate(maxTransferSize);
+    private ByteBuffer streamBuffer = ByteBuffer.allocateDirect(maxTransferSize);
     private SeekableCircularBufferNIO seekableBuffer = new SeekableCircularBufferNIO(bufferSize);
 
     private NIOSageTVMediaServer mediaServer = null;

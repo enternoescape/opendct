@@ -40,12 +40,12 @@ public class NIOSageTVMediaServer {
     private boolean stopLogging = false;
     private boolean remuxEnabled = false;
 
-    private ByteBuffer messageInBuffer = ByteBuffer.allocate(4096);
+    private ByteBuffer messageInBuffer = ByteBuffer.allocateDirect(4096);
     private StringBuilder messageInBuilder = new StringBuilder();
     private int messageInBytes = 0;
     private long messageInTimeout = 0;
 
-    private ByteBuffer messageOutBuffer = ByteBuffer.allocate(4096);
+    private ByteBuffer messageOutBuffer = ByteBuffer.allocateDirect(4096);
 
     /**
      * Performs all of the steps needed to start uploading to the SageTV server.

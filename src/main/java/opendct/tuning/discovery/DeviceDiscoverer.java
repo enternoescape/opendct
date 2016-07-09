@@ -69,6 +69,13 @@ public interface DeviceDiscoverer extends DeviceOptions {
     public void startDetection(DeviceLoader deviceLoader) throws DiscoveryException;
 
     /**
+     * Indicates if these detect devices actually need to be completely unloaded on standby.
+     *
+     * @return true if these capture devices need to be completely unloaded on standby.
+     */
+    public boolean stopOnStandby();
+
+    /**
      * Stops detection using this discovery method.
      * <p/>
      * If the discovery method stops on it's own before this is called and this is considered normal

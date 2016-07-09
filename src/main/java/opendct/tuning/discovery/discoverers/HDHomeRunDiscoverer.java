@@ -16,7 +16,6 @@
 
 package opendct.tuning.discovery.discoverers;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
@@ -31,7 +30,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -76,9 +75,9 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private final HDHomeRunDiscovery discovery = new HDHomeRunDiscovery(HDHomeRunDiscovery.getBroadcast());
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final Map<Integer, HDHomeRunDiscoveredDeviceParent> discoveredParents = new HashMap<>();
+    private final Map<Integer, HDHomeRunDevice> hdHomeRunDevices = new HashMap<>();
 
     static {
         enabled = Config.getBoolean("hdhr.discoverer_enabled", true);
@@ -334,7 +333,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         // This speeds up resume from standby. If the IP addresses changed while the computer was
         // sleeping, they will be updated during the next discovery.
-        if (hdHomeRunDevices.size() > 0) {
+        /*if (hdHomeRunDevices.size() > 0) {
             HashSet<HDHomeRunDevice> loadDevices = new HashSet<>(hdHomeRunDevices.size());
 
             discoveredDevicesLock.writeLock().lock();
@@ -362,13 +361,18 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             for (HDHomeRunDevice device : loadDevices) {
                 addCaptureDevice(device);
             }
-        }
+        }*/
 
         try {
             discovery.start(this);
         } catch (IOException e) {
             throw new DiscoveryException(e);
         }
+    }
+
+    @Override
+    public boolean stopOnStandby() {
+        return false;
     }
 
     @Override
@@ -379,7 +383,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         discovery.stop();
 
-        discoveredDevicesLock.writeLock().lock();
+        /*discoveredDevicesLock.writeLock().lock();
 
         try {
             discoveredDevices.clear();
@@ -389,7 +393,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                     " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.writeLock().unlock();
-        }
+        }*/
     }
 
     @Override
@@ -400,7 +404,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         discovery.waitForStop();
 
-        discoveredDevicesLock.writeLock().lock();
+        /*discoveredDevicesLock.writeLock().lock();
 
         try {
             discoveredDevices.clear();
@@ -410,7 +414,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                     " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.writeLock().unlock();
-        }
+        }*/
     }
 
     @Override

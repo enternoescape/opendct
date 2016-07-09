@@ -236,7 +236,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
 
     private void waitForNetworkInterfaces() {
         long timeout = System.currentTimeMillis() + resumeNetworkTimeout;
-        ArrayList<String> remainingNames = new ArrayList<String>();
+        List<String> remainingNames = new ArrayList<>();
 
         for (String monitoredInterfaceName : monitoredInterfaceNames) {
             remainingNames.add(monitoredInterfaceName);
@@ -244,7 +244,9 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
 
         logger.info("Waiting for network interfaces: {}", remainingNames);
 
-        while (remainingNames.size() > 0) {
+        boolean keepPolling = true;
+
+        while (keepPolling) {
             try {
                 Enumeration<NetworkInterface> interfaceEnumeration = NetworkInterface.getNetworkInterfaces();
 
@@ -252,12 +254,23 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                     NetworkInterface networkInterface = interfaceEnumeration.nextElement();
 
                     if (remainingNames.contains(networkInterface.getName().toLowerCase()) && !networkInterface.isLoopback() && networkInterface.isUp()) {
-                        List<InterfaceAddress> addresses = networkInterface.getInterfaceAddresses();
+                        List<InterfaceAddress> iAddresses = networkInterface.getInterfaceAddresses();
 
-                        for (InterfaceAddress interfaceAddr : addresses) {
-                            InetAddress addr = interfaceAddr.getAddress();
+                        for (InterfaceAddress iAddress : iAddresses) {
+                            InetAddress address = iAddress.getAddress();
 
-                            if (addr instanceof Inet4Address) {
+                            if (address instanceof Inet4Address) {
+                                String address4 = address.getHostAddress();
+
+                                if (address4.startsWith("169.254."))
+                                {
+                                    logger.info("Found network interface: {}. APIPA address detected: {}", networkInterface, address4);
+
+                                    // It will take longer than 250ms to DHCP to do it's thing and fix this problem.
+                                    Thread.sleep(2000);
+                                    continue;
+                                }
+
                                 remainingNames.remove(networkInterface.getName().toLowerCase());
                                 logger.info("Found network interface: {}. Remaining network interfaces to find: {}.", networkInterface, remainingNames);
                                 break;
@@ -266,6 +279,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                     }
                 }
             } catch (Throwable e) {
+                logger.warn("Error while waiting on network interfaces => ", e);
             }
 
             if (System.currentTimeMillis() > timeout && timeout != 0) {
@@ -273,7 +287,9 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 break;
             }
 
-            if (remainingNames.size() > 0) {
+            keepPolling = remainingNames.size() > 0;
+
+            if (keepPolling) {
                 try {
                     Thread.sleep(250);
                 } catch (InterruptedException e) {

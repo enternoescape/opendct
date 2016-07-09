@@ -1198,11 +1198,37 @@
 #### 0.5.8-Beta
 > *Added option to force MPEG2-PS when using the Media Server. The
 > option is consumer.media_server.prefer_ps and is defaulted to true
-> because this is the recommended setting for the remuxer. 
+> because this is the recommended setting for the remuxer.
+
+> *Added option for a discoverer to indicate that its capture devices
+> need to be fully unloaded on standby. Currently no capture devices
+> require this.
+
+> *Added timeout to socket server that listens for requests from
+> SageTV. This should keep the socket from becoming stale due to a
+> network interface going down, then back up.
+
+> *Added option to NIORTPProducerImpl to disable the use of a direct
+> byte buffer. The property is producer.rtp.nio.allocate_direct and
+> defaults to true.
+
+> *Added option to NIORTPProducerImpl to enable monitoring for when
+> packets are taking longer than 1ms to be inserted into the circular
+> buffer. If packets are taking over 5ms to be inserted,
+> double-buffering is enabled to reduce the number of times writes are
+> made to the circular buffer which should reduce the chances of long
+> waits at the cost of make one extra copy. The property is
+> producer.rtp.nio.log_timing_exp and defaults to true.
+
+> *Changed NIORTPProducerImpl to use non-blocking I/O for keeping
+> track of packets.
+
+> *Changed NIOHTTPProducerImpl to use non-blocking I/O for keeping
+> track of packets.
 
 > *Changed HDHomeRun communication packets to direct byte buffers.
 
-> *Change HDHomeRun smart discovery broadcast so that it will not
+> *Changed HDHomeRun smart discovery broadcast so that it will not
 > continuously trigger more broadcasts due to communication errors.
 
 > *Changed HDHomeRun discovery to stop trying to load a capture device
@@ -1213,13 +1239,20 @@
 > *Changed custom Cling UPnP build to the version available on Maven.
 > The modifications are no longer needed since the library isn't used
 > for anything other than detecting the presence of capture devices.
- 
+
+> *Changed resume behavior to wait for another IP address when a
+> required network interface has an APIPA address. This addresses a
+> problem with some internal InfiniTV cards.
+
 > *Removed the last of any uses of the backing array of a byte buffer
 > since the offset is sometimes incorrect.
 
 > *Removed dependency on commons-cli-1.3.jar.
 
 > *Removed dependency on fastutil-7.0.12.jar.
+
+> *Capture devices are no longer unloaded on standby since it's really
+> not actually required.
 
 > *The dynamic consumer now loads in separate thread.
 

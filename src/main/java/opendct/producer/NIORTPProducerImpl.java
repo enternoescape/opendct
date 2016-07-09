@@ -31,17 +31,19 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class NIORTPProducerImpl implements RTPProducer {
     private final Logger logger = LogManager.getLogger(NIORTPProducerImpl.class);
 
-    private final AtomicBoolean running = new AtomicBoolean(false);
+    private static final int RECEIVE_BUFFER_LIMIT = 5242880;
+
+    private AtomicBoolean running = new AtomicBoolean(false);
     private RTPPacketProcessor packetProcessor = new RTPPacketProcessor();
 
-    private int packetsBadReceived = 0;
-    private long packetsReceived = 0;
-    private long packetsLastReceived = 0;
-    private boolean stalled = false;
+    private AtomicInteger packetsBadReceived = new AtomicInteger(0);
+    private AtomicLong packetsReceived = new AtomicLong(0);
     private int localPort = 0;
 
     private final int nioRtpThreadPriority =
@@ -53,17 +55,20 @@ public class NIORTPProducerImpl implements RTPProducer {
                     Thread.MIN_PRIORITY
             );
 
-    private final int stalledTimeout =
-            Config.getInteger("producer.rtp.nio.stalled_timeout_s", 6);
-    private final int udpNativeReceiveBufferSize =
+    private final int nativeReceiveBufferSize =
             Config.getInteger("producer.rtp.nio.native_udp_receive_buffer", 5312000);
-    private int udpInternalReceiveBufferSize =
+    // A standard RTP transmitted datagram payload should not be larger than 1328 bytes,
+    // but the largest possible UDP packet size is 65535, so this value will be adjusted
+    // automatically if this value is found to be too small.
+    private int receiveBufferSize =
             Config.getInteger("producer.rtp.nio.internal_udp_receive_buffer", 1500);
-    private final int udpInternalReceiveBufferLimit = 5242880;
+    private boolean allocateDirect =
+            Config.getBoolean("producer.rtp.nio.allocate_direct", true);
+    private boolean logTiming =
+            Config.getBoolean("producer.rtp.nio.log_timing_exp", true);
     private InetAddress remoteIPAddress = null;
     private DatagramChannel datagramChannel = null;
-    private final AtomicBoolean stop = new AtomicBoolean(false);
-    private final Object receiveMonitor = new Object();
+    private AtomicBoolean stop = new AtomicBoolean(false);
 
     private SageTVConsumer sageTVConsumer = null;
 
@@ -76,11 +81,17 @@ public class NIORTPProducerImpl implements RTPProducer {
         this.localPort = streamLocalPort;
         this.remoteIPAddress = streamRemoteIP;
 
+        openStreamingSocket();
+
+        logger.exit();
+    }
+
+    public synchronized void openStreamingSocket() throws IOException {
         try {
             datagramChannel = DatagramChannel.open();
             datagramChannel.socket().bind(new InetSocketAddress(this.localPort));
             datagramChannel.socket().setBroadcast(false);
-            datagramChannel.socket().setReceiveBufferSize(udpNativeReceiveBufferSize);
+            datagramChannel.socket().setReceiveBufferSize(nativeReceiveBufferSize);
 
             // In case 0 was used and a port was automatically chosen.
             this.localPort = datagramChannel.socket().getLocalPort();
@@ -98,8 +109,6 @@ public class NIORTPProducerImpl implements RTPProducer {
 
             throw e;
         }
-
-        logger.exit();
     }
 
     public boolean getIsRunning() {
@@ -115,7 +124,7 @@ public class NIORTPProducerImpl implements RTPProducer {
     }
 
     public int getPacketsLost() {
-        return packetProcessor.getMissedRTPPackets() + packetsBadReceived;
+        return packetProcessor.getMissedRTPPackets() + packetsBadReceived.get();
     }
 
     public void stopProducing() {
@@ -144,85 +153,98 @@ public class NIORTPProducerImpl implements RTPProducer {
 
         logger.debug("Thread priority is {}.", Thread.currentThread().getPriority());
 
-        while (!stop.get() && !Thread.currentThread().isInterrupted()) {
-            synchronized (receiveMonitor) {
-                while(datagramChannel == null) {
-                    try {
-                        receiveMonitor.wait(1000);
-                    } catch (InterruptedException e) {
-                        logger.info("Producer was interrupted while waiting for a new datagram channel => ", e);
-                        break;
-                    }
+        // Buffer transfers should always be less than a millisecond.
+        int transferTolerance = 1;
+        long timer = 0;
+        int datagramSize;
 
-                    if (stop.get()) {
-                        break;
+        ByteBuffer datagramBuffer = allocateDirect ? ByteBuffer.allocateDirect(receiveBufferSize) : ByteBuffer.allocate(receiveBufferSize);
+        ByteBuffer doubleBuffer = null;
+
+        while (!stop.get()) {
+            while (datagramChannel == null && !stop.get()) {
+                try {
+                    openStreamingSocket();
+                } catch (IOException e) {
+                    logger.error("Error opening socket => ", e);
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e1) {
+                        logger.debug("Socket re-open sleep interrupted.");
                     }
                 }
             }
 
-            if (stop.get()) {
-                break;
-            }
-
             try {
-                int datagramSize = -1;
-
-                // A standard RTP transmitted datagram payload should not be larger than 1328 bytes,
-                // but the largest possible UDP packet size is 65535, so we'll double that to 131016.
-                ByteBuffer datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
-
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!stop.get()) {
                     datagramBuffer.clear();
 
-                    logger.trace("Waiting for datagram...");
+                    //logger.trace("Waiting for datagram...");
                     datagramChannel.receive(datagramBuffer);
                     datagramSize = datagramBuffer.position();
                     datagramBuffer.flip();
 
                     //Copying and queuing bad packets wastes resources.
                     if (datagramSize > 12) {
-                        // Keeps a counter updated with how many RTP packets we probably
-                        // lost and in the case of a byte buffers, it moves the index
-                        // position to 12.
+                        if (logTiming) timer = System.currentTimeMillis();
+
+                        // Keeps a counter updated with how many RTP packets we probably lost and in
+                        // the case of a byte buffers, it moves the position to 12.
                         packetProcessor.findMissingRTPPackets(datagramBuffer);
 
-                        sageTVConsumer.write(datagramBuffer);
+                        if (doubleBuffer != null) {
+                            if (doubleBuffer.remaining() < datagramSize) {
+                                doubleBuffer.flip();
+                                sageTVConsumer.write(doubleBuffer);
+                                doubleBuffer.clear();
+                            }
+                            doubleBuffer.put(datagramBuffer);
+                        } else {
+                            sageTVConsumer.write(datagramBuffer);
+                        }
 
-                        if (datagramSize >= udpInternalReceiveBufferSize) {
-                            if (udpInternalReceiveBufferSize < udpInternalReceiveBufferLimit) {
-                                if (udpInternalReceiveBufferSize < 32767) {
+                        if (logTiming) {
+                            timer = System.currentTimeMillis() - timer;
+                            if (timer > 5 && doubleBuffer == null) {
+                                logger.info("High transfer latency detected. Double buffer enabled. {}ms",  timer);
+                                doubleBuffer = ByteBuffer.allocateDirect(Math.max((receiveBufferSize * 2) + 1, 32768));
+                                doubleBuffer.clear();
+                                logTiming = false;
+                            }
+                        }
+
+                        if (datagramSize >= receiveBufferSize) {
+                            if (receiveBufferSize < RECEIVE_BUFFER_LIMIT) {
+                                if (receiveBufferSize < 32768) {
                                     // This will cover 99% of the required adjustments.
-                                    udpInternalReceiveBufferSize = 32767;
-                                    datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
+                                    receiveBufferSize = 32768;
                                 } else {
-                                    if (udpInternalReceiveBufferSize * 2 >= udpInternalReceiveBufferLimit) {
-                                        udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit;
-                                        datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
-                                    } else {
-                                        udpInternalReceiveBufferSize = udpInternalReceiveBufferLimit * 2;
-                                        datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferSize);
-                                    }
+                                    receiveBufferSize = Math.min(receiveBufferSize * 2, RECEIVE_BUFFER_LIMIT);
                                 }
 
-                                Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", udpInternalReceiveBufferSize);
+                                if (doubleBuffer != null) {
+                                    doubleBuffer.flip();
+                                    sageTVConsumer.write(doubleBuffer);
+                                    doubleBuffer = ByteBuffer.allocateDirect(doubleBuffer.capacity() * 2);
+                                    doubleBuffer.clear();
+                                }
+
+                                datagramBuffer = allocateDirect ? ByteBuffer.allocateDirect(receiveBufferSize) : ByteBuffer.allocate(receiveBufferSize);
+                                Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", receiveBufferSize);
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Increased buffer capacity to {} bytes.", datagramBuffer.limit());
                             } else {
-                                if (!(udpInternalReceiveBufferSize == udpInternalReceiveBufferLimit)) {
-                                    datagramBuffer = ByteBuffer.allocateDirect(udpInternalReceiveBufferLimit);
-                                    Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", udpInternalReceiveBufferSize);
+                                if (!(receiveBufferSize == RECEIVE_BUFFER_LIMIT)) {
+                                    datagramBuffer = ByteBuffer.allocateDirect(RECEIVE_BUFFER_LIMIT);
+                                    Config.setInteger("producer.rtp.nio.internal_udp_receive_buffer", receiveBufferSize);
                                 }
                                 logger.warn("The datagram buffer is at its limit. Data may have been lost. Buffer increase capacity limit reached at {} bytes.", datagramBuffer.limit());
                             }
                         }
                     } else {
-                        synchronized (receiveMonitor) {
-                            packetsBadReceived += 1;
-                        }
+                        packetsBadReceived.addAndGet(1);
                     }
 
-                    synchronized (receiveMonitor) {
-                        packetsReceived += 1;
-                    }
+                    packetsReceived.addAndGet(1);
                 }
             } catch (ClosedByInterruptException e) {
                 logger.debug("Producer was closed by an interrupt exception => {}", e.getMessage());
@@ -234,16 +256,16 @@ public class NIORTPProducerImpl implements RTPProducer {
                 logger.error("Producer created an unexpected exception => ", e);
             } finally {
                 logger.info("Producer thread has disconnected.");
-            }
-        }
 
-        if (datagramChannel != null) {
-            try {
-                datagramChannel.close();
-                // The datagram channel doesn't seem to close the socket every time.
-                datagramChannel.socket().close();
-            } catch (IOException e) {
-                logger.debug("Producer created an exception while closing the datagram channel => {}", e.getMessage());
+                if (datagramChannel != null) {
+                    try {
+                        datagramChannel.close();
+                        // The datagram channel doesn't seem to close the socket every time.
+                        datagramChannel.socket().close();
+                    } catch (Exception e) {
+                        logger.debug("Producer created an exception while closing the datagram channel => {}", e.getMessage());
+                    }
+                }
             }
         }
 
@@ -254,8 +276,6 @@ public class NIORTPProducerImpl implements RTPProducer {
     }
 
     public long getPackets() {
-        synchronized (receiveMonitor) {
-            return packetsReceived;
-        }
+        return packetsReceived.get();
     }
 }

@@ -350,9 +350,9 @@ public class Util {
     /**
      * Remove every element that matches a string from an array.
      *
-     * @param remove
-     * @param array
-     * @return A new array
+     * @param remove The element to be removed.
+     * @param array The String array to remove the element from.
+     * @return A new array.
      */
     public static String[] removeFromArray(String remove, String array[]) {
         ArrayList<String> returnValues = new ArrayList<>();
@@ -364,156 +364,6 @@ public class Util {
         }
 
         return returnValues.toArray(new String[returnValues.size()]);
-    }
-
-    /**
-     * Convert bytes to long MSB.
-     * <p/>
-     * If the provided position is less than 8 bytes from the end of the array, 0 will be returned.
-     * Always check the array values.
-     *
-     * @param data The array containing bytes to be converted into a long.
-     * @param position The offset to start create a long number from the next 8 bytes.
-     * @return The long value created by the provided byte array.
-     */
-    public static long getLongMSB(byte data[], int position) {
-        long returnValue = 0;
-
-        if (position + 8 > data.length) {
-            return returnValue;
-        }
-
-        for (int i = position; i < position + 8; i++)
-        {
-            returnValue = (returnValue << 8) + (data[i] & 0xff);
-        }
-
-        return returnValue;
-    }
-
-    /**
-     * Convert bytes to long LSB.
-     * <p/>
-     * If the provided position is less than 8 bytes from the end of the array, 0 will be returned.
-     * Always check the array values.
-     *
-     * @param data The array containing bytes to be converted into a long.
-     * @param position The offset to start create a long number from the next 8 bytes.
-     * @return The long value created by the provided byte array.
-     */
-    public static long getLongLSB(byte data[], int position) {
-        long returnValue = 0;
-
-        if (position + 8 > data.length) {
-            return returnValue;
-        }
-
-        for (int i = position; i < position + 8; i++)
-        {
-            returnValue += ((long) data[i] & 0xffL) << (8 * (i - position));
-        }
-
-        return returnValue;
-    }
-
-    /**
-     * Convert bytes to int MSB.
-     * <p/>
-     * If the provided position is less than 4 bytes from the end of the array, 0 will be returned.
-     * Always check the array values.
-     *
-     * @param data The array containing bytes to be converted into a int.
-     * @param position The offset to start create a int number from the next 4 bytes.
-     * @return The int value created by the provided byte array.
-     */
-    public static int getIntMSB(byte data[], int position) {
-        int returnValue = 0;
-
-        if (position + 4 > data.length) {
-            return returnValue;
-        }
-
-        for (int i = position; i < position + 4; i++)
-        {
-            returnValue = (returnValue << 8) + (data[i] & 0xff);
-        }
-
-        return returnValue;
-    }
-
-    /**
-     * Convert bytes to int LSB.
-     * <p/>
-     * If the provided position is less than 4 bytes from the end of the array, 0 will be returned.
-     * Always check the array values.
-     *
-     * @param data The array containing bytes to be converted into a int.
-     * @param position The offset to start create a int number from the next 4 bytes.
-     * @return The int value created by the provided byte array.
-     */
-    public static int getIntLSB(byte data[], int position) {
-        int returnValue = 0;
-
-        if (position + 4 > data.length) {
-            return returnValue;
-        }
-
-        for (int i = position; i < position + 4; i++)
-        {
-            returnValue += ((int) data[i] & 0xffL) << (8 * (i - position));
-        }
-
-        return returnValue;
-    }
-
-    /**
-     * Convert bytes to short MSB.
-     * <p/>
-     * If the provided position is less than 2 bytes from the end of the array, 0 will be returned.
-     * Always check the array values.
-     *
-     * @param data The array containing bytes to be converted into a short.
-     * @param position The offset to start create a short number from the next 2 bytes.
-     * @return The short value created by the provided byte array.
-     */
-    public static short getShortMSB(byte data[], int position) {
-        short returnValue = 0;
-
-        if (position + 2 > data.length) {
-            return returnValue;
-        }
-
-        for (int i = position; i < position + 2; i++)
-        {
-            returnValue = (short) ((returnValue << 8) + (data[i] & 0xff));
-        }
-
-        return returnValue;
-    }
-
-    /**
-     * Convert bytes to short MSB.
-     * <p/>
-     * If the provided position is less than 2 bytes from the end of the array, 0 will be returned.
-     * Always check the array values.
-     *
-     * @param data The array containing bytes to be converted into a short.
-     * @param position The offset to start create a short number from the next 2 bytes.
-     * @return The short value created by the provided byte array.
-     */
-    public static short getShortLSB(byte data[], int position) {
-        short returnValue = 0;
-
-        if (position + 2 > data.length) {
-            return returnValue;
-        }
-
-        for (int i = position; i < position + 2; i++)
-        {
-            returnValue += ((short) data[i] & 0xffL) << (8 * (i - position));
-        }
-
-        return returnValue;
     }
 
     /**

@@ -23,9 +23,9 @@ import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -340,12 +340,11 @@ public class InfiniTVTuning {
         httpURLConnection.setRequestProperty("charset", "utf-8");
         httpURLConnection.setRequestProperty("Content-Length", String.valueOf(postBytes.length));
 
-        DataOutputStream dataOutputStream = null;
+        OutputStream dataOutputStream = null;
         try {
             httpURLConnection.connect();
-            dataOutputStream = new DataOutputStream(httpURLConnection.getOutputStream());
+            dataOutputStream = httpURLConnection.getOutputStream();
             dataOutputStream.write(postBytes);
-            dataOutputStream.flush();
         } catch (IOException e) {
             logger.error("Unable to write POST bytes => {}", e);
             UpnpDiscoverer.requestBroadcast();

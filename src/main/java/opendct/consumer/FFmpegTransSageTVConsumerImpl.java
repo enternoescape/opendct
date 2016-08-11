@@ -111,7 +111,25 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
 
         if (circularBuffer == null) {
-            circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+            // So we don't keep allocating new buffers if for some reason we don't get one here.
+            if (buffers.size() != 0) {
+                buffers.clear();
+                // GC in case we really did allocate a lot of memory. Otherwise the next allocation
+                // might fail with OutOfMemoryError.
+                System.gc();
+            }
+
+            try
+            {
+                circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+            }
+            catch (Throwable e)
+            {
+                // Try to free up memory for one more attempt.
+                System.gc();
+                logger.warn("There was a problem allocating a new buffer. Ran GC => ", e);
+                circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
+            }
         } else {
             if (circularBuffer.getBufferMinSize() != FFmpegConfig.getCircularBufferSize()) {
                 circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());

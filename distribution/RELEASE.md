@@ -1220,6 +1220,8 @@
 > waits at the cost of make one extra copy. The property is
 > producer.rtp.nio.log_timing_exp and defaults to true.
 
+> *Added out of memory handling for FFmpegTransSageTVConsumerImpl.
+
 > *Changed NIORTPProducerImpl to use non-blocking I/O for keeping
 > track of packets.
 

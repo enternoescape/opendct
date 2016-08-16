@@ -37,7 +37,6 @@ public class NIOSageTVMediaServer {
     private AtomicBoolean uploadInProgress = new AtomicBoolean(false);
     private long autoOffset = 0;
 
-    private boolean stopLogging = false;
     private boolean remuxEnabled = false;
 
     private ByteBuffer messageInBuffer = ByteBuffer.allocateDirect(4096);
@@ -93,7 +92,7 @@ public class NIOSageTVMediaServer {
 
             // The expected responses are OK or NON_MEDIA.
             try {
-                response = waitForMessage();
+                response = waitForMessage(true);
 
                 if (response.equals("NON_MEDIA")) {
                     logger.error("SageTV replied NON_MEDIA!");
@@ -115,7 +114,7 @@ public class NIOSageTVMediaServer {
             String response;
 
             try {
-                response = waitForMessage();
+                response = waitForMessage(true);
             } catch (Exception e) {
                 response = e.getMessage();
             }
@@ -135,14 +134,12 @@ public class NIOSageTVMediaServer {
             String response;
 
             try {
-                response = waitForMessage();
+                response = waitForMessage(true);
             } catch (Exception e) {
                 response = e.getMessage();
             }
 
             returnValue = response != null && response.equals("TRUE");
-
-            stopLogging = returnValue;
         }
 
         return logger.exit(returnValue);
@@ -157,7 +154,7 @@ public class NIOSageTVMediaServer {
             String response;
 
             try {
-                response = waitForMessage();
+                response = waitForMessage(true);
             } catch (Exception e) {
                 response = e.getMessage();
             }
@@ -177,7 +174,7 @@ public class NIOSageTVMediaServer {
             String response = null;
 
             try {
-                response = waitForMessage();
+                response = waitForMessage(false);
                 response = response.substring(0, response.lastIndexOf(" "));
                 returnValue = Long.parseLong(response);
             } catch (Exception e) {
@@ -195,7 +192,7 @@ public class NIOSageTVMediaServer {
             sendMessage("REMUX_CONFIG FORMAT");
 
             try {
-                returnValue = waitForMessage();
+                returnValue = waitForMessage(true);
             } catch (Exception e) {
                 returnValue = e.getMessage();
             }
@@ -224,7 +221,6 @@ public class NIOSageTVMediaServer {
             }
         }
 
-        stopLogging = false;
         remuxEnabled = false;
         socketChannel = null;
         uploadFilename = null;
@@ -244,7 +240,6 @@ public class NIOSageTVMediaServer {
     public boolean switchRemux(String uploadFilename, int uploadID) throws IOException {
         logger.entry(uploadFilename, uploadID);
         boolean returnValue = false;
-        stopLogging = false;
 
         synchronized (uploadLock) {
             autoOffset = 0;
@@ -253,7 +248,7 @@ public class NIOSageTVMediaServer {
             String response;
 
             try {
-                response = waitForMessage();
+                response = waitForMessage(true);
             } catch (Exception e) {
                 response = e.getMessage();
             }
@@ -273,14 +268,12 @@ public class NIOSageTVMediaServer {
             String response;
 
             try {
-                response = waitForMessage();
+                response = waitForMessage(true);
             } catch (Exception e) {
                 response = e.getMessage();
             }
 
             returnValue = response != null && response.equals("TRUE");
-
-            stopLogging = returnValue;
         }
 
         return logger.exit(returnValue);
@@ -362,7 +355,6 @@ public class NIOSageTVMediaServer {
     public void endUpload() throws IOException {
         if (socketChannel != null) {
             String response = null;
-            stopLogging = false;
 
             Thread timeout = new Thread(new Runnable() {
                 @Override
@@ -386,7 +378,7 @@ public class NIOSageTVMediaServer {
                 sendMessage("CLOSE");
 
                 // The expected responses are OK or NON_MEDIA.
-                response = waitForMessage();
+                response = waitForMessage(true);
                 timeout.interrupt();
             }
 
@@ -409,7 +401,7 @@ public class NIOSageTVMediaServer {
         logger.entry(message);
 
         if (socketChannel != null && socketChannel.isConnected()) {
-            if (stopLogging || message.startsWith("WRITE ")) {
+            if (message.startsWith("WRITE ") || message.equals("SIZE")) {
                 logger.trace("Sending '{}' to SageTV server...", message);
             } else {
                 logger.info("Sending '{}' to SageTV server...", message);
@@ -431,7 +423,7 @@ public class NIOSageTVMediaServer {
         logger.exit();
     }
 
-    private String waitForMessage() throws IOException {
+    private String waitForMessage(boolean stopLogging) throws IOException {
         logger.entry();
 
         // Only one response should ever come when listening.

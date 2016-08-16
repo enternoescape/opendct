@@ -22,6 +22,8 @@ import opendct.tuning.hdhomerun.returns.HDHomeRunStreamInfo;
 import opendct.tuning.hdhomerun.returns.HDHomeRunVStatus;
 import opendct.tuning.hdhomerun.types.HDHomeRunChannelMap;
 import opendct.util.Util;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -29,6 +31,8 @@ import java.net.URI;
 import java.util.ArrayList;
 
 public class HDHomeRunTuner {
+    private final static Logger logger = LogManager.getLogger(HDHomeRunTuner.class);
+
     public final HDHomeRunDevice DEVICE;
     public final int TUNER_NUMBER;
     public final HDHomeRunControl CONTROL;
@@ -209,6 +213,8 @@ public class HDHomeRunTuner {
      */
     public HDHomeRunStreamInfo getStreamInfo() throws IOException, GetSetException {
         streamInfo = get("streaminfo");
+
+        logger.debug("streaminfo returned: {}", streamInfo);
 
         return (new HDHomeRunStreamInfo(streamInfo));
     }

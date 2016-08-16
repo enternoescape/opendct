@@ -1385,6 +1385,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
 
                 HDHomeRunStreamInfo streamInfo = null;
+                HDHomeRunProgram programs[] = null;
 
                 timeout = 12;
                 while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
@@ -1392,7 +1393,25 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         streamInfo = tuner.getStreamInfo();
 
                         if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
-                            break;
+                            programs = streamInfo.getProgramsParsed();
+                            boolean foundZero = false;
+
+                            // Sometimes the HDHomeRun says it has tuned in the channel and knows
+                            // there are programs in the stream, but doesn't know what they are
+                            // called are, so it returns xx.0 for the channel. This filters that
+                            // situation out so we don't return the wrong values to SageTV.
+                            for (HDHomeRunProgram program : programs) {
+                                // We only care about the value being 0
+                                // if the channel could be tunable.
+                                if (program.isTunable() && program.CHANNEL.endsWith(".0")) {
+                                    foundZero = true;
+                                    break;
+                                }
+                            }
+
+                            if (!foundZero) {
+                                break;
+                            }
                         }
                     } catch (IOException e) {
                         logger.error("Unable to get programs on HDHomeRun capture device" +
@@ -1409,8 +1428,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     }
                 }
 
-                if (streamInfo != null) {
-                    HDHomeRunProgram programs[] = streamInfo.getProgramsParsed();
+                if (streamInfo != null && programs != null) {
 
                     StringBuilder stringBuilder = new StringBuilder();
                     StringBuilder tuneChannel = new StringBuilder();

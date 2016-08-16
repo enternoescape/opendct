@@ -1397,13 +1397,13 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                             boolean foundZero = false;
 
                             // Sometimes the HDHomeRun says it has tuned in the channel and knows
-                            // there are programs in the stream, but doesn't know what the numbers
-                            // are, so it returns 0. This filters that situation out so we don't
-                            // return the wrong values to SageTV.
+                            // there are programs in the stream, but doesn't know what they are
+                            // called are, so it returns xx.0 for the channel. This filters that
+                            // situation out so we don't return the wrong values to SageTV.
                             for (HDHomeRunProgram program : programs) {
                                 // We only care about the value being 0
                                 // if the channel could be tunable.
-                                if (program.isTunable() && program.PROGRAM == 0) {
+                                if (program.isTunable() && program.CHANNEL.endsWith(".0")) {
                                     foundZero = true;
                                     break;
                                 }

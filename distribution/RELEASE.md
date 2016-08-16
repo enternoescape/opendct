@@ -1262,3 +1262,8 @@
 > significantly if you have a variety of capture devices.
 
 > *Lineups with no name are no longer loaded.
+
+#### 0.5.9-Beta
+> *Added logging for the returned String for scaninfo when querying the HDHomeRun.
+
+> *Fixed the SIZE response filter when using the SageTV media server (upload ID).

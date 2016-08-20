@@ -125,7 +125,6 @@ public class ChannelLineup {
 
         try {
             addressIP = InetAddress.getByName(address);
-            ;
         } catch (Exception e) {
             addressURL = null;
         }

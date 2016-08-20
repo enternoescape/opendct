@@ -134,11 +134,13 @@ public class HDHomeRunChannels {
         //HashSet<String> newChannelList = new HashSet<String>();
 
         try {
-            InetAddress ipAddress = channelLineup.getAddressIP();
+            InetAddress ipAddress = null;
+            String lookupAddress = channelLineup.getAddress();
 
-            if (ipAddress == null) {
+            if (lookupAddress.length() == 8 && !lookupAddress.contains("."))
+            {
                 try {
-                    int hex = Integer.parseInt(channelLineup.getAddress().toLowerCase(), 16);
+                    int hex = Integer.parseInt(lookupAddress.toLowerCase(), 16);
                     DeviceDiscoverer discoverer = DiscoveryManager.getDiscoverer("HDHomeRun");
 
                     if (discoverer instanceof HDHomeRunDiscoverer) {
@@ -158,6 +160,15 @@ public class HDHomeRunChannels {
                     return logger.exit(false);
                 }
             }
+            else
+            {
+                ipAddress = channelLineup.getAddressIP();
+
+                if (ipAddress == null) {
+                    return logger.exit(false);
+                }
+            }
+
 
             URL url = new URL("http://" + ipAddress.getHostAddress() + ":80/lineup.xml");
             logger.info("Connecting to Prime DCT using the URL '{}'", url);

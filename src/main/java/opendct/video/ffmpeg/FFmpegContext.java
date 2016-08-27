@@ -159,7 +159,7 @@ public class FFmpegContext {
 
         preferredVideo = -1;
         preferredAudio = -1;
-        detectionBytes = 512000;
+        detectionBytes = 256000;
         videoOutStream = null;
         videoOutStream2 = null;
         secondaryStream = false;

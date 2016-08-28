@@ -1276,4 +1276,4 @@
 > *Improved detection between when a literal IP address is provided for an HDHomeRun lineup or a
    device hex code.
    
-> *Improved channel scanning for HDHomeRun ATSC scanning. (thanks Fuzzy)
+> *Improved channel scanning returned to SageTV for HDHomeRun ATSC scanning. (thanks Fuzzy)

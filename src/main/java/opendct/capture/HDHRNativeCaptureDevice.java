@@ -1394,22 +1394,20 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                         if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
                             programs = streamInfo.getProgramsParsed();
-                            boolean foundZero = false;
+                            boolean incompleteInfo = false;
 
-                            // Sometimes the HDHomeRun says it has tuned in the channel and knows
-                            // there are programs in the stream, but doesn't know what they are
-                            // called are, so it returns xx.0 for the channel. This filters that
-                            // situation out so we don't return the wrong values to SageTV.
+                            // Sometimes, it takes longer for the HDHomeRun to detect the info
+                            // for the tuned channel (guide number and callsign), and sometimes,
+                            // even when it has this info, it hasn't detected the datastreams yet.
+                            // We will check for these conditions and get streaminfo again.
                             for (HDHomeRunProgram program : programs) {
-                                // We only care about the value being 0
-                                // if the channel could be tunable.
-                                if (program.isTunable() && program.CHANNEL.endsWith(".0")) {
-                                    foundZero = true;
+                                if (program.NO_DATA || program.CHANNEL.equals("0")) {
+                                	incompleteInfo = true;
                                     break;
                                 }
                             }
 
-                            if (!foundZero) {
+                            if (!incompleteInfo) {
                                 break;
                             }
                         }
@@ -1442,7 +1440,12 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         tuneChannel.append(scanChannelIndex)
                                 .append("-")
                                 .append(program.CHANNEL.replace(".", "-"));
-                        stringBuilder.append(tuneChannel).append(";");
+                        stringBuilder.append(tuneChannel)
+                        		.append("(")
+                        		.append(program.CALLSIGN)
+                        		.append(")")
+                        		.append("ATSC")
+                        		.append(";");
 
                         TVChannel tvChannel = new TVChannelImpl(tuneChannel.toString(), program.CHANNEL, true, program.CALLSIGN, "", "auto", lookupMap[scanChannelIndex].FREQUENCY, program.PROGRAM, 100, CopyProtection.NONE, false);
                         ChannelManager.addChannel(encoderLineup, tvChannel);

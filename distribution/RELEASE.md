@@ -1266,12 +1266,15 @@
 #### 0.5.9-Beta
 > *Added logging for the returned String for scaninfo when querying the HDHomeRun.
 
-> *Added code to only return a program as tunable for ATSC if the channel does not end with .0.
+> *Added code to only return a program as tunable for ATSC if the channel does not read (No Signal).
+   (thanks Fuzzy)
 
 > *Changed FFmpeg consumer so that it returns to SageTV much faster if there are a lot of bad
    packets in the stream.
+   
+> *Updated FFmpeg to version 3.1.2.
 
-> *Fixed the SIZE response filter when using the SageTV media server (upload ID).
+> *Fixed the SIZE response logging filter when using the SageTV media server (upload ID).
 
 > *Improved detection between when a literal IP address is provided for an HDHomeRun lineup or a
    device hex code.

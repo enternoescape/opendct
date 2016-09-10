@@ -48,7 +48,7 @@ ext {
     winWixSource = 'build/wix/source'
     winWixConfig = 'build/wix/config'
 
-    ffmpegVersion = '2.8.1-1.1'
+    ffmpegVersion = '3.1.2-1.2'
     log4jVersion = '2.5'
     jnaVersion = '4.2.1'
 
@@ -70,6 +70,8 @@ sourceCompatibility = javaVersion
 
 configurations {
     compile
+    windows_ide
+    linux_ide
     windows_x86
     windows_x86_64
     linux_x86
@@ -88,7 +90,7 @@ dependencies {
     compile 'org.nanohttpd:nanohttpd:2.3.0'
     compile 'org.nanohttpd:nanohttpd-nanolets:2.3.0'
     compile 'com.google.code.gson:gson:2.6.2'
-    compile 'org.bytedeco:javacpp:1.1'
+    compile 'org.bytedeco:javacpp:1.2'
     compile ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}") { transitive = false }
 
     windows_x86 configurations.compile
@@ -97,11 +99,17 @@ dependencies {
     windows_x86_64 configurations.compile
     windows_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64") { transitive = false }
 
+    windows_ide ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86") { transitive = false }
+    windows_ide ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:windows-x86_64") { transitive = false }
+
     linux_x86 configurations.compile
     linux_x86 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86") { transitive = false }
 
     linux_x86_64 configurations.compile
     linux_x86_64 ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64") { transitive = false }
+
+    linux_ide ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86") { transitive = false }
+    linux_ide ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64") { transitive = false }
 }
 
 test {
@@ -117,23 +125,18 @@ idea {
     }
 
     module {
+        jdkName = javaVersion
 
         // The binary will not conflict at runtime and if you're running a 64-bit OS, you could use
         // either one. There doesn't appear to be a good way to automatically detect this.
         if (OperatingSystem.current().isWindows()) {
-            scopes.RUNTIME.plus += [configurations.windows_x86]
-            scopes.RUNTIME.plus += [configurations.windows_x86_64]
+            // In some versions of IDEA 2016 these binaries will only load if they are set to PROVIDED.
+            scopes.PROVIDED.plus += [ configurations.windows_ide ]
+            scopes.RUNTIME.plus += [ configurations.windows_ide ]
         } else {
-            scopes.RUNTIME.plus += [configurations.linux_x86]
-            scopes.RUNTIME.plus += [configurations.linux_x86_64]
-        }
-
-        if (OperatingSystem.current().isWindows()) {
-            scopes.TEST.plus += [configurations.windows_x86]
-            scopes.TEST.plus += [configurations.windows_x86_64]
-        } else {
-            scopes.TEST.plus += [configurations.linux_x86]
-            scopes.TEST.plus += [configurations.linux_x86_64]
+            // In some versions of IDEA 2016 these binaries will only load if they are set to PROVIDED.
+            scopes.PROVIDED.plus += [ configurations.linux_ide ]
+            scopes.RUNTIME.plus += [ configurations.linux_ide ]
         }
 
         downloadJavadoc = true
@@ -144,11 +147,9 @@ idea {
 eclipse {
     classpath {
         if (OperatingSystem.current().isWindows()) {
-            plusConfigurations += [configurations.windows_x86]
-            plusConfigurations += [configurations.windows_x86_64]
+            plusConfigurations += [configurations.windows_ide]
         } else {
-            plusConfigurations += [configurations.linux_x86]
-            plusConfigurations += [configurations.linux_x86_64]
+            plusConfigurations += [configurations.linux_ide]
         }
 
         downloadJavadoc = true

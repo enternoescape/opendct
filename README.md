@@ -145,6 +145,9 @@ gradlew eclipse
 gradlew idea
 ```
 
+There is a bug in some versions of IDEA 2016. You may need to change the binary dependencies for
+ffmpeg:os-arch to Runtime in Project Structure to be able to debug.
+
 #### Compile the project and create packages for installation on Ubuntu 14.04, CentOS 7, Fedora 22, 23 and Windows 7+.
 *Note: Building the Windows installer is currently only supported on Windows. Preliminary Linux
  support has been added using WINE, but requires msi.dll from a Windows installation to build

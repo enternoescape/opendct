@@ -74,7 +74,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final boolean ccExtractorAllStreams = FFmpegConfig.getCcExtractorAllStreams();
     private boolean ccExtractorAvailable = false;
 
-    private long initBufferedData = 1048576;
+    private long initBufferedData = 65536;
 
     private String currentRecordingQuality;
     private boolean consumeToNull;

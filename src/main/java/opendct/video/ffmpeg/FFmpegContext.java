@@ -35,7 +35,7 @@ import static org.bytedeco.javacpp.avformat.*;
 import static org.bytedeco.javacpp.avutil.*;
 
 public class FFmpegContext {
-    private final Logger logger = LogManager.getLogger(FFmpegContext.class);
+    private final static Logger logger = LogManager.getLogger(FFmpegContext.class);
 
     private final static ReentrantReadWriteLock contextLock = new ReentrantReadWriteLock();
     private final static ReentrantReadWriteLock writeLock = new ReentrantReadWriteLock();
@@ -159,7 +159,7 @@ public class FFmpegContext {
 
         preferredVideo = -1;
         preferredAudio = -1;
-        detectionBytes = 256000;
+        detectionBytes = 65536;
         videoOutStream = null;
         videoOutStream2 = null;
         secondaryStream = false;
@@ -259,6 +259,10 @@ public class FFmpegContext {
                 FFmpegContext newContextMap[] = new FFmpegContext[contextMap.length * 2];
                 System.arraycopy(contextMap, 0, newContextMap, 0, contextMap.length);
                 contextMap = newContextMap;
+
+                if (newContextMap.length > 4096) {
+                    logger.warn("The FFmpeg context map is now {}.", newContextMap.length);
+                }
             }
         }
 

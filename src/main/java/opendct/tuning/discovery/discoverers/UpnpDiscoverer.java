@@ -57,8 +57,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     private static IntegerDeviceOption offlineDetectionMinBytes;
     private static LongDeviceOption streamingWait;
     private static BooleanDeviceOption smartBroadcast;
-    private static BooleanDeviceOption deviceOfflineDetection;
-    private static IntegerDeviceOption deviceOfflineTimeout;
+    private static BooleanDeviceOption devicePingDetection;
+    private static IntegerDeviceOption devicePingTimeout;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -120,11 +120,11 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                                 " broadcast run on demand."
                 );
 
-                deviceOfflineDetection = new BooleanDeviceOption(
-                        Config.getBoolean("upnp.device.offline_detection", false),
+                devicePingDetection = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.device.ping_detection", false),
                         false,
-                        "Offline Detection",
-                        "upnp.device.offline_detection",
+                        "Ping Detection",
+                        "upnp.device.ping_detection",
                         "This enables pinging the UPnP device before tuning to ensure that it is" +
                                 " currently accessible on the network. This when used in" +
                                 " conjunction with device pooling will enable the program to skip" +
@@ -132,11 +132,11 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                                 " selecting a capture device."
                 );
 
-                deviceOfflineTimeout = new IntegerDeviceOption(
-                        Config.getInteger("upnp.device.offline_timeout_ms", 15000),
+                devicePingTimeout = new IntegerDeviceOption(
+                        Config.getInteger("upnp.device.ping_timeout_ms", 15000),
                         false,
-                        "Offline Detection Timeout",
-                        "upnp.device.offline_timeout_ms",
+                        "Ping Detection Timeout",
+                        "upnp.device.ping_timeout_ms",
                         "This value is in milliseconds. This is the timeout used for Offline" +
                                 " Detection. If the device does not respond within this timeout," +
                                 " it will be considered offline."
@@ -148,8 +148,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                         offlineDetectionMinBytes,
                         streamingWait,
                         smartBroadcast,
-                        deviceOfflineDetection,
-                        deviceOfflineTimeout
+                        devicePingDetection,
+                        devicePingTimeout
                 );
 
             } catch (DeviceOptionException e) {
@@ -498,8 +498,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                 offlineDetectionMinBytes,
                 streamingWait,
                 smartBroadcast,
-                deviceOfflineDetection,
-                deviceOfflineTimeout
+                devicePingDetection,
+                devicePingTimeout
         };
     }
 
@@ -550,12 +550,12 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         return returnValue;
     }
 
-    public static int getDeviceOfflineTimeout() {
-        return deviceOfflineTimeout.getInteger();
+    public static int getDevicePingTimeout() {
+        return devicePingTimeout.getInteger();
     }
 
-    public static boolean getDeviceOfflineDetection() {
-        return deviceOfflineDetection.getBoolean();
+    public static boolean getDevicePingDetection() {
+        return devicePingDetection.getBoolean();
     }
 
 }

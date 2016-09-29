@@ -54,7 +54,7 @@ public class UpnpDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
      */
     public boolean isAvailable()
     {
-        if (!UpnpDiscoverer.getDeviceOfflineDetection())
+        if (!UpnpDiscoverer.getDevicePingDetection())
             return true;
 
         // We are not protected from the remote address suddenly changing.
@@ -63,7 +63,7 @@ public class UpnpDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
         {
             if (System.currentTimeMillis() > timeout) {
                 try {
-                    boolean returnValue = remoteAddress.isReachable(UpnpDiscoverer.getDeviceOfflineTimeout());
+                    boolean returnValue = remoteAddress.isReachable(UpnpDiscoverer.getDevicePingTimeout());
 
                     if (returnValue) {
                         return true;

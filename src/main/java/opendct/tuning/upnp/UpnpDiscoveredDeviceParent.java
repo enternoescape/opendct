@@ -17,6 +17,7 @@
 package opendct.tuning.upnp;
 
 import opendct.tuning.discovery.NetworkDiscoveredDeviceParent;
+import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -39,5 +40,49 @@ public class UpnpDiscoveredDeviceParent extends NetworkDiscoveredDeviceParent {
 
     public void setRemoteAddress(InetAddress remoteAddress) {
         this.remoteAddress = remoteAddress;
+    }
+
+    // The timeout only moves forward and only gets set if the destination is unreachable.
+    private volatile long timeout = 0;
+
+    /**
+     * Returns if the host is currently reachable.
+     * <p/>
+     * If the host is unreachable, this method will not try again for up to 30 seconds.
+     *
+     * @return If the host is reachable.
+     */
+    public boolean isAvailable()
+    {
+        if (!UpnpDiscoverer.getDeviceOfflineDetection())
+            return true;
+
+        // We are not protected from the remote address suddenly changing.
+        InetAddress remoteAddress = this.remoteAddress;
+        if (remoteAddress != null)
+        {
+            if (System.currentTimeMillis() > timeout) {
+                try {
+                    boolean returnValue = remoteAddress.isReachable(UpnpDiscoverer.getDeviceOfflineTimeout());
+
+                    if (returnValue) {
+                        return true;
+                    } else {
+                        logger.warn("Unable to ping the remote address {}.", remoteAddress.toString());
+                    }
+                } catch (Exception e) {
+                    logger.error("Unable to ping the remote address {} => ", remoteAddress.toString(), e);
+                }
+
+                // Set the timeout for 30 seconds from now. This way when multiple capture devices
+                // on one host are unavailable we don't waste time finding out what we already know
+                // for at least 30 more seconds which should be more than enough time to find a
+                // better capture device or come back to this one and try to use it anyway.
+                timeout = System.currentTimeMillis() + 30000;
+            }
+            return false;
+        }
+
+        return true;
     }
 }

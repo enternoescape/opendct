@@ -1264,19 +1264,32 @@
 > *Lineups with no name are no longer loaded.
 
 #### 0.5.9-Beta
-> *Added logging for the returned String for scaninfo when querying the HDHomeRun.
+> *Added logging for the returned String for scaninfo when querying the
+  HDHomeRun.
 
-> *Added code to only return a program as tunable for ATSC if the channel does not read (No Signal).
-   (thanks Fuzzy)
+> *Added code to only return a program as tunable for ATSC if the
+  channel does not read (No Signal). (thanks Fuzzy)
 
-> *Changed FFmpeg consumer so that it returns to SageTV much faster if there are a lot of bad
-   packets in the stream.
+> *Changed FFmpeg consumer so that it returns to SageTV much faster if
+  there are a lot of bad packets in the stream.
    
 > *Updated FFmpeg to version 3.1.2.
 
-> *Fixed the SIZE response logging filter when using the SageTV media server (upload ID).
+> *Fixed the SIZE response logging filter when using the SageTV media
+  server (upload ID).
 
-> *Improved detection between when a literal IP address is provided for an HDHomeRun lineup or a
-   device hex code.
+> *Improved detection between when a literal IP address is provided for
+  an HDHomeRun lineup or a device hex code.
    
-> *Improved channel scanning returned to SageTV for HDHomeRun ATSC scanning. (thanks Fuzzy)
+> *Improved channel scanning returned to SageTV for HDHomeRun ATSC
+  scanning. (thanks Fuzzy)
+
+#### 0.5.10-Beta
+> *Added capture device offline detection for UPnP devices. This
+  currently only applies to InfiniTV devices since they are the only
+  thing imported via UPnP. HDHomeRun devices have this support 
+  implicitly because of how their status is checked when pooling. This
+  option is disabled by default. Enable it by setting
+  upnp.device.ping_detection=false to true. You can also adjust the
+  timeout in milliseconds by changing the value of
+  upnp.device.ping_timeout_ms.

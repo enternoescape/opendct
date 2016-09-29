@@ -241,8 +241,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
     @Override
     public boolean setLocked(boolean locked) {
-        boolean messageLock = this.locked.get();
-
         // This means the lock was already set
         if (this.locked.getAndSet(locked) == locked) {
             logger.info("Capture device is was already {}.", (locked ? "locked" : "unlocked"));
@@ -250,7 +248,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         synchronized (exclusiveLock) {
-            this.locked.set(locked);
+            boolean messageLock = this.locked.getAndSet(locked);
 
             if (messageLock != locked) {
                 logger.info("Capture device is now {}.", (locked ? "locked" : "unlocked"));
@@ -265,7 +263,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     @Override
     public boolean isExternalLocked() {
         // There isn't a way to lock this device from an external perspective.
-        return true;
+        return false;
     }
 
     @Override

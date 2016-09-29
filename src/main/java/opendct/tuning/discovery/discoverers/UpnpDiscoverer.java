@@ -57,6 +57,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     private static IntegerDeviceOption offlineDetectionMinBytes;
     private static LongDeviceOption streamingWait;
     private static BooleanDeviceOption smartBroadcast;
+    private static BooleanDeviceOption devicePingDetection;
+    private static IntegerDeviceOption devicePingTimeout;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -118,12 +120,36 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                                 " broadcast run on demand."
                 );
 
+                devicePingDetection = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.device.ping_detection", false),
+                        false,
+                        "Ping Detection",
+                        "upnp.device.ping_detection",
+                        "This enables pinging the UPnP device before tuning to ensure that it is" +
+                                " currently accessible on the network. This when used in" +
+                                " conjunction with device pooling will enable the program to skip" +
+                                " capture devices that are not currently responsive when" +
+                                " selecting a capture device."
+                );
+
+                devicePingTimeout = new IntegerDeviceOption(
+                        Config.getInteger("upnp.device.ping_timeout_ms", 15000),
+                        false,
+                        "Ping Detection Timeout",
+                        "upnp.device.ping_timeout_ms",
+                        "This value is in milliseconds. This is the timeout used for Offline" +
+                                " Detection. If the device does not respond within this timeout," +
+                                " it will be considered offline."
+                );
+
                 Config.mapDeviceOptions(
                         deviceOptions,
                         offlineDetectionSeconds,
                         offlineDetectionMinBytes,
                         streamingWait,
-                        smartBroadcast
+                        smartBroadcast,
+                        devicePingDetection,
+                        devicePingTimeout
                 );
 
             } catch (DeviceOptionException e) {
@@ -176,46 +202,6 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         }
 
         this.deviceLoader = deviceLoader;
-
-        // This speeds up resume from standby. If the IP addresses changed while the computer was
-        // sleeping, they will be updated during the next discovery.
-        /*if (discoveredParents.size() > 0) {
-            Map<UpnpDiscoveredDeviceParent, UpnpDiscoveredDevice[]> loadDevices = new HashMap<>(discoveredParents.size());
-
-            discoveredDevicesLock.writeLock().lock();
-
-            try {
-                for (Map.Entry<Integer, UpnpDiscoveredDeviceParent> device : discoveredParents.entrySet()) {
-                    int childDevices[] = device.getValue().getChildDevices();
-                    UpnpDiscoveredDevice devices[] = new UpnpDiscoveredDevice[childDevices.length];
-
-                    for (int i = 0; i < childDevices.length; i++) {
-                        devices[i] = discoveredDevices.get(childDevices[i]);
-                    }
-
-                    loadDevices.put(device.getValue(), devices);
-                }
-            } catch (Exception e) {
-                logger.error("startDetection created an unexpected exception while using" +
-                        " discoveredDevicesLock => ", e);
-            } finally {
-                // There's no reason this could create an exception, but why chance that the lock
-                // could get stuck.
-                try {
-                    discoveredDevices.clear();
-                    discoveredParents.clear();
-                } catch (Exception e) {
-                    logger.error("startDetection created an unexpected exception while using" +
-                            " discoveredDevicesLock => ", e);
-                }
-
-                discoveredDevicesLock.writeLock().unlock();
-            }
-
-            for (Map.Entry<UpnpDiscoveredDeviceParent, UpnpDiscoveredDevice[]> device : loadDevices.entrySet()) {
-                addCaptureDevice(device.getKey(), device.getValue());
-            }
-        }*/
 
         UpnpManager.startUpnpServices(
                 DCTDefaultUpnpServiceConfiguration.getDCTDefault(),
@@ -511,7 +497,9 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                 offlineDetectionSeconds,
                 offlineDetectionMinBytes,
                 streamingWait,
-                smartBroadcast
+                smartBroadcast,
+                devicePingDetection,
+                devicePingTimeout
         };
     }
 
@@ -544,34 +532,6 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         return offlineDetectionMinBytes.getInteger();
     }
 
-    public static int getRetunePolling() {
-        return Config.getInteger("upnp.retune_poll_s", 1);
-    }
-
-    public static boolean getHttpTuning() {
-        return Config.getBoolean("upnp.dct.http_tuning", true);
-    }
-
-    public static boolean getHdhrTuning() {
-        return Config.getBoolean("upnp.dct.http_tuning", true);
-    }
-
-    public static boolean getAutoMapReference() {
-        return Config.getBoolean("upnp.qam.automap_reference_lookup", true);
-    }
-
-    public static boolean getAutoMapTuning() {
-        return Config.getBoolean("upnp.qam.automap_tuning_lookup", false);
-    }
-
-    public static boolean getFastTune() {
-        return Config.getBoolean("upnp.dct.fast_tuning", false);
-    }
-
-    public static boolean getHdhrLock() {
-        return Config.getBoolean("hdhr.locking", true);
-    }
-
     public static long getStreamingWait() {
         return streamingWait.getLong();
     }
@@ -589,4 +549,13 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         requestBroadcast = false;
         return returnValue;
     }
+
+    public static int getDevicePingTimeout() {
+        return devicePingTimeout.getInteger();
+    }
+
+    public static boolean getDevicePingDetection() {
+        return devicePingDetection.getBoolean();
+    }
+
 }

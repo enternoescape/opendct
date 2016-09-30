@@ -1265,33 +1265,46 @@
 
 #### 0.5.9-Beta
 > *Added logging for the returned String for scaninfo when querying the
-  HDHomeRun.
+> HDHomeRun.
 
 > *Added code to only return a program as tunable for ATSC if the
-  channel does not read (No Signal). (thanks Fuzzy)
+> channel does not read (No Signal). (thanks Fuzzy)
 
 > *Changed FFmpeg consumer so that it returns to SageTV much faster if
-  there are a lot of bad packets in the stream.
+> there are a lot of bad packets in the stream.
    
 > *Updated FFmpeg to version 3.1.2.
 
 > *Fixed the SIZE response logging filter when using the SageTV media
-  server (upload ID).
+> server (upload ID).
 
 > *Improved detection between when a literal IP address is provided for
-  an HDHomeRun lineup or a device hex code.
+> an HDHomeRun lineup or a device hex code.
    
 > *Improved channel scanning returned to SageTV for HDHomeRun ATSC
-  scanning. (thanks Fuzzy)
+> scanning. (thanks Fuzzy)
 
 #### 0.5.10-Beta
 > *Added capture device offline detection for UPnP devices. This
-  currently only applies to InfiniTV devices since they are the only
-  thing imported via UPnP. HDHomeRun devices have this support 
-  implicitly because of how their status is checked when pooling. This
-  option is disabled by default. Enable it by setting
-  upnp.device.ping_detection=false to true. You can also adjust the
-  timeout in milliseconds by changing the value of
-  upnp.device.ping_timeout_ms.
+> currently only applies to InfiniTV devices since they are the only
+> thing imported via UPnP. HDHomeRun devices have this support 
+> implicitly because of how their status is checked when pooling. This
+> option is disabled by default. Enable it by setting
+> upnp.device.ping_detection=false to true. You can also adjust the
+> timeout in milliseconds by changing the value of
+> upnp.device.ping_timeout_ms.
   
 > *Removed some debug logging being created by the newer FFmpeg version.
+
+#### 0.5.11-Beta
+> *Added longer timeouts for offline scanning when all of the capture
+> devices are being used.
+
+> *Added dynamic disabling of direct buffer allocation of the circular
+> buffer when it appears to be causing issues. Direct allocation can
+> also be turned off by changing the value of buffers.nio.direct=true to
+> false. 
+
+> *Fixed the possibility of FFmpeg returning a negative duration.
+
+> *Improved some of the FFmpeg logging rejection conditions.

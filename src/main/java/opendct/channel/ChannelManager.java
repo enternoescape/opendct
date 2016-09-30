@@ -161,6 +161,8 @@ public class ChannelManager implements PowerEventListener {
                 // If the scan is no longer running and the scan did not successfully complete, try
                 // again.
                 if (!startOfflineChannelScan(scanName)) {
+                    // Try again in an hour.
+                    channelLineup.setNextOfflineUpdate(System.currentTimeMillis() + 3600000);
                     continue;
                 }
             } else if (!now && channelLineup.getNextOfflineUpdate() > System.currentTimeMillis()) {
@@ -169,6 +171,8 @@ public class ChannelManager implements PowerEventListener {
             } else {
                 // We are scheduled to start.
                 if (!startOfflineChannelScan(scanName)) {
+                    // Try again in an hour.
+                    channelLineup.setNextOfflineUpdate(System.currentTimeMillis() + 3600000);
                     continue;
                 }
             }

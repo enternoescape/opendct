@@ -20,6 +20,7 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
+import opendct.consumer.buffers.SeekableCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.util.Util;
@@ -53,10 +54,10 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     // We must have at a minimum a 5 MB buffer plus 1MB to catch up. This ensures that if
     // someone changes this setting to a lower value, it will be overridden.
-    private final int circularBufferSize = FFmpegConfig.getCircularBufferSize();
+    //private final int circularBufferSize = FFmpegConfig.getCircularBufferSize();
 
     // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
-    private final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
+    //private final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
 
     // This value cannot go any lower than 65536. Lower values result in stream corruption when the
     // RTP packets are larger than the buffer size.
@@ -128,6 +129,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 // Try to free up memory for one more attempt.
                 System.gc();
                 logger.warn("There was a problem allocating a new buffer. Ran GC => ", e);
+                // It could be a contiguous memory issue. Try to allocate on heap instead.
+                SeekableCircularBufferNIO.disableDirectAllocation();
                 circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
             }
         } else {

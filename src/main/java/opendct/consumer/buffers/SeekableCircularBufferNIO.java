@@ -16,6 +16,7 @@
 
 package opendct.consumer.buffers;
 
+import opendct.config.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,6 +26,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SeekableCircularBufferNIO {
     private final Logger logger = LogManager.getLogger(SeekableCircularBufferNIO.class);
+    private static boolean allocateDirect = Config.getBoolean("buffers.nio.direct", true);
+
+    public static void disableDirectAllocation()
+    {
+        Config.setBoolean("buffers.nio.direct", false);
+        allocateDirect = false;
+    }
 
     private int maxOverflowBytes;
     protected int capacity;
@@ -62,7 +70,7 @@ public class SeekableCircularBufferNIO {
      * @param bufferSize This is the static size of the buffer.
      */
     public SeekableCircularBufferNIO(int bufferSize) {
-        buffer = ByteBuffer.allocateDirect(bufferSize);
+        buffer = allocateDirect ? ByteBuffer.allocateDirect(bufferSize) : ByteBuffer.allocate(bufferSize);
         readBuffer = buffer.duplicate();
         writeBuffer = buffer.duplicate();
         capacity = buffer.capacity();

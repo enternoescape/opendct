@@ -156,20 +156,17 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 // feature is still very much being developed and the examples are not yet updated
                 // on how to use this properly, I am not going to waste time updating the code.
                 message.endsWith("Using AVStream.codec to pass codec parameters to muxers is deprecated, use AVStream.codecpar instead.") ||
-                // This message is handled by increasing probe sizes based on the currently
-                // available data.
+                // These 3 messages message are handled by increasing probe sizes based on the
+                // currently available data.
                 message.endsWith("Invalid frame dimensions 0x0.") ||
-                // This message is handled by increasing probe sizes based on the currently
-                // available data.
                 message.endsWith("Consider increasing the value for the 'analyzeduration' and 'probesize' options" ) ||
-                // This message is handled by increasing probe sizes based on the currently
-                // available data.
                 message.endsWith("not enough frames to estimate rate; consider increasing probesize" ) ||
                 // This is the PAT packet and sometimes it doesn't get incremented which makes
                 // FFmpeg unhappy.
                 message.endsWith("Continuity check failed for pid 0 expected 1 got 0") ||
-                // This happens when the buffer gets really behind. The video output never appears
-                // to be affected by this notification, but it generates a lot of log entries.
+                // These 2 messages happen when the buffer gets really behind. The video output
+                // never appears to be affected by this notification, but it generates a lot of log
+                // entries.
                 message.endsWith(" > 10000000: forcing output") ||
                 message.endsWith("is not set in estimate_timings_from_pts") ||
                 // Seen in H.264 stream init. It means a key frame has not be processed yet. A
@@ -178,12 +175,17 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 // Seen in H.264 stream init. This is a resulting error from the non-existing
                 // reference above. These errors stop as soon as a key frame is received.
                 message.endsWith("decode_slice_header error") ||
+                // These are both debug messages we sometimes see on 1080i H.264 content.
+                message.endsWith(" ct_type:0 pic_struct:1") ||
+                message.endsWith(" ct_type:0 pic_struct:2") ||
+                // Seen in H.264 stream init. These errors are expected when the stream is first
+                // opened.
+                message.endsWith("non-existing SPS 0 referenced in buffering period") ||
+                message.endsWith("SPS unavailable in decode_picture_timing") ||
+                message.endsWith("no frame!") ||
                 // Seen when writing MPEG-PS. This basically means the file being created will
                 // potentially not play on a hardware DVD player which is not really a concern.
-                message.contains(" buffer underflow st=") ||
-                // These are both extra messages we sometimes see on 1080i H.264 content.
-                message.endsWith(" ct_type:0 pic_struct:1") ||
-                message.endsWith(" ct_type:0 pic_struct:2"))) {
+                message.contains(" buffer underflow st="))) {
 
             buffers.offer(loggerObject);
             return;

@@ -147,7 +147,7 @@ public class FFmpegStreamDetection {
             logger.info("After avformat_find_stream_info() pos={} bytes_read={} seek_count={}. probesize: {} analyzeduration: {}.",
                     ctx.avioCtxInput.pos(), ctx.avioCtxInput.bytes_read(), ctx.avioCtxInput.seek_count(), dynamicProbeSize, dynamicAnalyzeDuration);
 
-            long duration = ctx.avfCtxInput.duration();
+            long duration = Math.max(0, ctx.avfCtxInput.duration());
 
             if (duration == 0) {
                 dynamicAnalyzeDuration = (System.nanoTime() - startNanoTime) / 1000L;

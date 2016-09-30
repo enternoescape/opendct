@@ -1293,3 +1293,5 @@
   upnp.device.ping_detection=false to true. You can also adjust the
   timeout in milliseconds by changing the value of
   upnp.device.ping_timeout_ms.
+  
+> *Removed some debug logging being created by the newer FFmpeg version.

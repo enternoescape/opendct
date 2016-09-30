@@ -180,7 +180,10 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 message.endsWith("decode_slice_header error") ||
                 // Seen when writing MPEG-PS. This basically means the file being created will
                 // potentially not play on a hardware DVD player which is not really a concern.
-                message.contains(" buffer underflow st="))) {
+                message.contains(" buffer underflow st=") ||
+                // These are both extra messages we sometimes see on 1080i H.264 content.
+                message.endsWith(" ct_type:0 pic_struct:1") ||
+                message.endsWith(" ct_type:0 pic_struct:2"))) {
 
             buffers.offer(loggerObject);
             return;

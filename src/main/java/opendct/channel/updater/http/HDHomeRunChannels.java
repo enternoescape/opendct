@@ -101,9 +101,9 @@ public class HDHomeRunChannels {
             } catch (DeviceOptionException e) {
                 logger.error("Unable to configure device options for HDHomeRunChannels reverting to defaults => ", e);
 
-                Config.setStringArray("channels.infinitv.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
-                Config.setStringArray("channels.infinitv.ignore_channels_csv");
-                Config.setBoolean("channels.infinitv.remove_duplicate_channels", true);
+                Config.setStringArray("channels.prime.ignore_names_containing_csv", "Target Ads", "VZ_URL_SOURCE", "VZ_EPG_SOURCE");
+                Config.setStringArray("channels.prime.ignore_channels_csv");
+                Config.setBoolean("channels.prime.remove_duplicate_channels", true);
                 Config.setBoolean("channels.prime.enable_all_channels", true);
 
                 continue;
@@ -217,7 +217,7 @@ public class HDHomeRunChannels {
                     if (channel != null && name != null && channelUrl != null) {
 
                         if (channel.equals("5000")) {
-                            enableAllChannels = false;
+                            //enableAllChannels = false;
                             isQam = true;
                             logger.warn("The HDHomeRun Prime appears to be in ClearQAM mode. You" +
                                     " either need to use a channel lineup from a device with a" +
@@ -248,8 +248,6 @@ public class HDHomeRunChannels {
                                 break;
                             }
                         }
-
-                        //newChannelList.add(channel);
 
                         boolean isDuplicate = false;
 

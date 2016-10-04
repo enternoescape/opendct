@@ -1308,3 +1308,7 @@
 > *Fixed the possibility of FFmpeg returning a negative duration.
 
 > *Improved some of the FFmpeg logging rejection conditions.
+
+#### 0.5.12-Beta
+> *Removed assumption that the channel 5000 existing causes the lineup
+> provided by the HDHomeRun to be ignored.

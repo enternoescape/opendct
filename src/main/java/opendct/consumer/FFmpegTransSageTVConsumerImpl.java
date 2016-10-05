@@ -41,14 +41,11 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final static Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
-    private final static BlockingQueue<FFmpegCircularBufferNIO> buffers = new LinkedBlockingQueue<>();
+    //private final static BlockingQueue<FFmpegCircularBufferNIO> buffers = new LinkedBlockingQueue<>();
 
     private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
 
@@ -103,22 +100,22 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private FFmpegContext ctx;
 
     public FFmpegTransSageTVConsumerImpl() {
-        circularBuffer = null;
+        //circularBuffer = null;
 
-        try {
+        /*try {
             circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             logger.debug("Interrupted while recycling buffer => {}", e.toString());
-        }
+        }*/
 
         if (circularBuffer == null) {
             // So we don't keep allocating new buffers if for some reason we don't get one here.
-            if (buffers.size() != 0) {
+            /*if (buffers.size() != 0) {
                 buffers.clear();
                 // GC in case we really did allocate a lot of memory. Otherwise the next allocation
                 // might fail with OutOfMemoryError.
                 System.gc();
-            }
+            }*/
 
             try
             {
@@ -149,13 +146,13 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             return;
         }
 
-        if (circularBuffer == null) {
+        /*if (circularBuffer == null) {
             try {
                 circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 logger.debug("Interrupted while recycling buffer => {}", e.toString());
             }
-        }
+        }*/
 
         if (circularBuffer == null) {
             circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
@@ -221,8 +218,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             ctx.dispose();
 
             // This probably needs to be done differently if the class is to be reused.
-            buffers.offer(circularBuffer);
-            circularBuffer = null;
+            //buffers.offer(circularBuffer);
+            //circularBuffer = null;
 
             running.set(false);
             logger.info("FFmpeg Transcoder consumer thread stopped.");

@@ -24,6 +24,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -274,7 +275,7 @@ public class ChannelLineup {
      * @return <i>true</i> if there is a name with a different channel.
      */
     public boolean isDuplicate(String channel, String name) {
-        ArrayList<TVChannel> channels = new ArrayList<TVChannel>();
+        List<TVChannel> channels = new ArrayList<TVChannel>(1);
 
         for (Map.Entry<String, TVChannel> keyValue : channelMap.entrySet()) {
             TVChannel tvChannel = keyValue.getValue();
@@ -324,7 +325,7 @@ public class ChannelLineup {
      * @param originalChannel This is the original channel.
      */
     public void clearRemap(String originalChannel) {
-        ArrayList<String> removes = new ArrayList<String>();
+        List<String> removes = new ArrayList<String>();
 
         for (Map.Entry<String, TVChannel> remapPair : remapMap.entrySet()) {
             final String remapKey = remapPair.getKey();
@@ -419,7 +420,7 @@ public class ChannelLineup {
      * @return <i>true</i> if any channels were removed.
      */
     public boolean cleanChannels(HashSet<String> validChannels) {
-        ArrayList<TVChannel> tvChannels = getAllChannels(true, true);
+        List<TVChannel> tvChannels = getAllChannels(true, true);
 
         boolean returnValue = false;
 

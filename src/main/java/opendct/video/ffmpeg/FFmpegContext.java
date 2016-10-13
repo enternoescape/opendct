@@ -721,7 +721,6 @@ public class FFmpegContext {
     public void dumpOutputFormat2(String comment) {
         DUMP_BUFFER.setLength(0);
         FFmpegUtil.dumpFormat(DUMP_BUFFER, avfCtxOutput2, 0, comment, true, desiredProgram);
-
         logger.info("Secondary: {}", DUMP_BUFFER.toString());
     }
 
@@ -911,7 +910,7 @@ public class FFmpegContext {
     private AVIOContext allocIoContext(Pointer opaque, avformat.Read_packet_Pointer_BytePointer_int readCallback, avformat.Write_packet_Pointer_BytePointer_int writeCallback, avformat.Seek_Pointer_long_int seekCallback, int contextNumber) {
         Pointer ptr = av_mallocz(RW_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
 
-        if (ptr.isNull()) {
+        if (ptr == null || ptr.isNull()) {
             return null;
         }
 

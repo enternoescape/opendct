@@ -23,7 +23,7 @@ import opendct.channel.TVChannelImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class CopyChannels {
     private static final Logger logger = LogManager.getLogger(CopyChannels.class);
@@ -40,7 +40,7 @@ public class CopyChannels {
             return true;
         }
 
-        ArrayList<TVChannel> sourceChannels = sourceLineup.getAllChannels(true, true);
+        List<TVChannel> sourceChannels = sourceLineup.getAllChannels(true, true);
 
         if (sourceChannels == null) {
             logger.error("Lineup '{}' does not have any channels. Nothing to update '{}' lineup.",

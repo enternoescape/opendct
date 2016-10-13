@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -355,7 +356,7 @@ public class ChannelManager implements PowerEventListener {
             return new TVChannel[0];
         }
 
-        ArrayList<TVChannel> sourceChannels = channelLineup.getAllChannels(includeIgnored, includeNonTunable);
+        List<TVChannel> sourceChannels = channelLineup.getAllChannels(includeIgnored, includeNonTunable);
         TVChannel returnChannels[] = new TVChannel[sourceChannels.size()];
 
         for (int i = 0; i < returnChannels.length; i++) {

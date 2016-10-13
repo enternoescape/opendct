@@ -1316,3 +1316,8 @@
 > *Removed buffering optimizations from FFmpeg. They were creating
 > OutOfMemory issues for a few users and don't actually speed things up
 > at as much as expected.
+
+> *Channels are now sorted when a complete list is requested. This
+> results in the channels being checked in order when doing channel
+> scans and when the available and unavailable channels are written to
+> the lineup file.

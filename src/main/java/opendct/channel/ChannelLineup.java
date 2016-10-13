@@ -22,10 +22,7 @@ import org.apache.logging.log4j.Logger;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChannelLineup {
@@ -393,8 +390,8 @@ public class ChannelLineup {
      *
      * @return An array of all of the available channels in this lineup.
      */
-    public ArrayList<TVChannel> getAllChannels(boolean includeIgnored, boolean includeNonTunable) {
-        ArrayList<TVChannel> channels = new ArrayList<TVChannel>();
+    public List<TVChannel> getAllChannels(final boolean includeIgnored, boolean includeNonTunable) {
+        final List<TVChannel> channels = new ArrayList<TVChannel>();
 
         for (Map.Entry<String, TVChannel> channelMapPair : channelMap.entrySet()) {
             final TVChannel tvChannel = channelMapPair.getValue();
@@ -409,6 +406,60 @@ public class ChannelLineup {
                 }
             }
         }
+
+        Comparator<TVChannel> channelComparator = new Comparator<TVChannel>() {
+            @Override
+            public int compare(TVChannel o1, TVChannel o2) {
+                long n1 = createNumber(o1.getChannel());
+                long n2 = createNumber(o2.getChannel());
+
+                if (n1 == n2) {
+                    return 0;
+                }
+
+                return n1 > n2 ? 1 : -1;
+            }
+
+            private long createNumber(String channel)
+            {
+                int index = 0;
+                int lastIndex = 0;
+                // If we have a frequency, major and minor, we could have a number greater than the
+                // largest possible integer, so long it is.
+                long returnValue = 0;
+                while (index != -1) {
+                    index = channel.indexOf(".", lastIndex);
+                    if (index == -1) {
+                        index = channel.indexOf("-", lastIndex);
+                    }
+                    if (index != -1) {
+                        try {
+                            // Frequencies, Major and Minor numbers are never greater than 1000
+                            returnValue *= 1000;
+                            returnValue += Long.valueOf(channel.substring(lastIndex, index));
+                        } catch (NumberFormatException e) {
+                            // If this is happening, the channel is likely not formatted correctly
+                            // either, so we will treat this situation as zero.
+                        }
+                        lastIndex = index += 1;
+                    } else {
+                        try {
+                            returnValue *= 1000;
+                            returnValue += Long.valueOf(channel.substring(lastIndex));
+                        } catch (NumberFormatException e) {
+                            // If this is happening, the channel is likely not formatted correctly
+                            // either, so we will treat this situation as zero.
+                        }
+                        break;
+                    }
+                }
+
+                // In case we end up with a negative number due to a badly formatted channel.
+                return Math.abs(returnValue);
+            }
+        };
+
+        Collections.sort(channels, channelComparator);
 
         return channels;
     }

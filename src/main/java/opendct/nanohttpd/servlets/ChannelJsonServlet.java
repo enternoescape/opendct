@@ -67,7 +67,7 @@ public class ChannelJsonServlet {
                 return HttpUtil.returnException(channelLineup, "The lineup '" + channelLineup + "' does not exist.");
             }
 
-            ArrayList<TVChannel> channels = lineup.getAllChannels(true, true);
+            java.util.List<TVChannel> channels = lineup.getAllChannels(true, true);
             String returnValues[] = new String[channels.size()];
 
             for (int i = 0; i < returnValues.length; i++) {
@@ -109,7 +109,7 @@ public class ChannelJsonServlet {
             if (session.getParms().get("all") == null) {
                 channelLookups = channels.split("/");
             } else {
-                ArrayList<TVChannel> allChannels = lineup.getAllChannels(true, true);
+                java.util.List<TVChannel> allChannels = lineup.getAllChannels(true, true);
                 channelLookups = new String[allChannels.size()];
 
                 for (int i = 0; i < channelLookups.length; i++) {

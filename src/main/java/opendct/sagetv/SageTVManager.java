@@ -102,9 +102,7 @@ public class SageTVManager implements PowerEventListener {
 
         try {
             if (captureDeviceNameToCaptureDevice.get(captureDevice.getEncoderName()) != null) {
-                logger.error("A capture device with the name '{}' already exists.",
-                        captureDevice.getEncoderName());
-
+                logger.error("A capture device with the name '{}' already exists.", captureDevice.getEncoderName());
                 throw new CaptureDeviceInitException("Duplicate capture device.");
             }
 
@@ -118,6 +116,7 @@ public class SageTVManager implements PowerEventListener {
                 try {
                     // Get the first and likely only entry in the map.
                     newPort = portToSocketServer.entrySet().iterator().next().getKey();
+                    Config.setInteger("sagetv.new.device.socket_server_shared_port", newPort);
                     portInUse = true;
                     // Update the saved port.
                     Config.setInteger("sagetv.device." + String.valueOf(captureDevice.getEncoderUniqueHash()) + ".encoder_listen_port", newPort);

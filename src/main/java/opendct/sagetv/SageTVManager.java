@@ -29,6 +29,7 @@ import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.net.ServerSocket;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,15 +83,15 @@ public class SageTVManager implements PowerEventListener {
     public static void addCaptureDevice(CaptureDevice captureDevice) throws SocketException {
         logger.entry(captureDevice);
 
+        boolean isNewPort[] = new boolean[1];
         // Returns either the saved port for this capture device if it is already in properties or
         // an unused/shared port. This static method is thread-safe and designed to guarantee that
         // two socket servers will not unintentionally use the same port.
-        int newPort = Config.getSocketServerPort(
-                captureDevice.getEncoderUniqueHash());
+        int newPort = Config.getSocketServerPort(captureDevice.getEncoderUniqueHash(), isNewPort);
 
-        if (newPort == 0) {
+        /*if (newPort == 0) {
             throw new SocketException("There are no available ports within the provided range. The tuner cannot start.");
-        }
+        }*/
 
         boolean failure = false;
         SageTVSocketServer socketServer = null;
@@ -111,7 +112,61 @@ public class SageTVManager implements PowerEventListener {
             socketServer = portToSocketServer.get(newPort);
             portInUse = !(socketServer == null);
 
+            // This will prevent the ports from incrementing when we don't want that.
+            boolean newDeviceIncrement = Config.getBoolean("sagetv.new.device.increment_port", false);
+            if (portToSocketServer.size() > 0 && !newDeviceIncrement && !portInUse && isNewPort[0]) {
+                try {
+                    // Get the first and likely only entry in the map.
+                    newPort = portToSocketServer.entrySet().iterator().next().getKey();
+                    portInUse = true;
+                    // Update the saved port.
+                    Config.setInteger("sagetv.device." + String.valueOf(captureDevice.getEncoderUniqueHash()) + ".encoder_listen_port", newPort);
+                } catch (Exception e) {
+                    // This should never happen.
+                    logger.error("Unable to get shared port => ", e);
+                    portInUse = false;
+                }
+            }
+
             if (!portInUse) {
+                // Ensure the desired port is not actually in use by some other program.
+                while (true) {
+                    ServerSocket testSocket = null;
+                    try {
+                        testSocket = new ServerSocket(newPort);
+                        // This needs to be set or we might have problems re-opening the socket in a few milliseconds.
+                        testSocket.setReuseAddress(true);
+
+                        newPort = testSocket.getLocalPort();
+                        logger.debug("Port {} is available.", newPort);
+                        // Update the saved port in case it is not the port initially provided.
+                        Config.setInteger("sagetv.device." + String.valueOf(captureDevice.getEncoderUniqueHash()) + ".encoder_listen_port", newPort);
+                        break;
+                    } catch (Exception e) {
+                        // Increment port if this is the first time this capture device has been used.
+                        if (isNewPort[0]) {
+                            logger.warn("Port {} is unavailable for a new capture device, trying another port.", newPort++);
+                            // If the port exceeds the largest number possible, use any available port (0).
+                            if (newPort > 0xffff)
+                            {
+                                newPort = 0;
+                            }
+                        } else {
+                            // The previously saved port is not available. This will lead to the program terminating,
+                            // but will also prevent the program from messing up likely in use and saved in SageTV ports.
+                            break;
+                        }
+                    } finally {
+                        if (testSocket != null) {
+                            try {
+                                testSocket.close();
+                            } catch (Exception e) {
+
+                            }
+                        }
+                    }
+                }
+
                 socketServer = new SageTVSocketServer(newPort, captureDevice);
             }
 
@@ -643,9 +698,7 @@ public class SageTVManager implements PowerEventListener {
                 int listenPort = Config.getInteger(
                         "sagetv.device." + captureDevice.getEncoderUniqueHash() +
                                 ".encoder_listen_port",
-                        Config.getSocketServerPort(
-                                captureDevice.getEncoderUniqueHash()
-                        )
+                        Config.getSocketServerPort(captureDevice.getEncoderUniqueHash(), null)
                 );
 
                 StringBuilder tunerProperties = buildTunerProperty(

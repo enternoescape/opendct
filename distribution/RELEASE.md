@@ -1321,3 +1321,10 @@
 > results in the channels being checked in order when doing channel
 > scans and when the available and unavailable channels are written to
 > the lineup file.
+
+#### 0.5.13-Beta
+> *The SageTV communication port will automatically increment for newly
+> discovered capture devices if the default port is not available.
+
+> *Fixed support for any port if incremental port mode is enabled and no
+> more ports left within the range.

@@ -41,7 +41,7 @@ public class Config {
 
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 12;
+    public static final int VERSION_BUILD = 13;
     public static final String VERSION_PROGRAM =
             VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
@@ -1370,9 +1370,10 @@ public class Config {
      * The value of encoder_listen_port is generated.
      *
      * @param uniqueID This is the unique id of the capture device.
+     * @param isNew Is this a new port assignment or was it loaded from the configuration.
      * @return Returns an available socket server port.
      */
-    public static int getSocketServerPort(int uniqueID) {
+    public static int getSocketServerPort(int uniqueID, boolean isNew[]) {
         logger.entry(uniqueID);
 
         int returnValue;
@@ -1382,6 +1383,9 @@ public class Config {
             returnValue = getInteger("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port", 0);
 
             if (returnValue != 0) {
+                if (isNew != null && isNew.length > 0) {
+                    isNew[0] = false;
+                }
                 return logger.exit(returnValue);
             }
 
@@ -1398,6 +1402,9 @@ public class Config {
             if (newDeviceIncrement) {
                 returnValue = (((highRange - lowRange) / (Integer.MAX_VALUE - Math.abs(uniqueID))) * uniqueID) + lowRange;
             } else {
+                if (isNew != null && isNew.length > 0) {
+                    isNew[0] = getString("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port") == null;
+                }
                 setInteger("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port", sharedPort);
                 return logger.exit(sharedPort);
             }
@@ -1434,6 +1441,9 @@ public class Config {
                 }
             }
 
+            if (isNew != null && isNew.length > 0) {
+                isNew[0] = getString("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port") == null;
+            }
             setInteger("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port", returnValue);
         }
         return logger.exit(returnValue);

@@ -20,7 +20,6 @@ import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
-import opendct.consumer.buffers.SeekableCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.util.Util;
@@ -126,8 +125,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                 // Try to free up memory for one more attempt.
                 System.gc();
                 logger.warn("There was a problem allocating a new buffer. Ran GC => ", e);
-                // It could be a contiguous memory issue. Try to allocate on heap instead.
-                SeekableCircularBufferNIO.disableDirectAllocation();
                 circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
             }
         } else {

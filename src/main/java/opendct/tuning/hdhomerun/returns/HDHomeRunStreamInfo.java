@@ -33,7 +33,7 @@ public class HDHomeRunStreamInfo {
 
         if (streaminfo.contains("\n")) {
             String split[] = streaminfo.split("\n");
-            programs = new String[split.length - 1];
+            programs = new String[split.length];
             int i = 0;
 
             for (String line : split) {
@@ -42,6 +42,11 @@ public class HDHomeRunStreamInfo {
                 } else if (line.contains("tsid=")) {
                     tsid = line.substring(5);
                 }
+            }
+
+            if (i != programs.length)
+            {
+                programs = Arrays.copyOf(programs, i);
             }
         }
 

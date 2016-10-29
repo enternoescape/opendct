@@ -1328,3 +1328,11 @@
 
 > *Fixed support for any port if incremental port mode is enabled and no
 > more ports left within the range.
+
+> *Fixed parsing error in vstatus from HDHomeRun devices.
+
+> *Removed dynamic disabling of direct buffer allocation of the circular
+> buffer when it appears to be causing issues.
+
+> *Reduced the aggressiveness of FFmpeg when repeating the detection of
+> streams.

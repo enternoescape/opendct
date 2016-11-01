@@ -1326,6 +1326,11 @@
 > *The SageTV communication port will automatically increment for newly
 > discovered capture devices if the default port is not available.
 
+> *Increased timeout for HDHomeRun communications.
+
+> *Improved responsiveness to re-opening the TCP communications with
+> HDHomeRun devices.
+
 > *Fixed support for any port if incremental port mode is enabled and no
 > more ports left within the range.
 

@@ -26,13 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SeekableCircularBufferNIO {
     private final Logger logger = LogManager.getLogger(SeekableCircularBufferNIO.class);
-    private static boolean allocateDirect = Config.getBoolean("buffers.nio.direct", true);
-
-    public static void disableDirectAllocation()
-    {
-        Config.setBoolean("buffers.nio.direct", false);
-        allocateDirect = false;
-    }
+    private static boolean allocateDirect = Config.getBoolean("buffers.nio.direct2", true);
 
     private int maxOverflowBytes;
     protected int capacity;

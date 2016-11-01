@@ -1403,7 +1403,7 @@ public class Config {
                 returnValue = (((highRange - lowRange) / (Integer.MAX_VALUE - Math.abs(uniqueID))) * uniqueID) + lowRange;
             } else {
                 if (isNew != null && isNew.length > 0) {
-                    isNew[0] = getString("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port") == null;
+                    isNew[0] = true;
                 }
                 setInteger("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port", sharedPort);
                 return logger.exit(sharedPort);
@@ -1411,7 +1411,7 @@ public class Config {
 
             // Check the configuration file for other port configurations before assuming this one can be used.
             Enumeration keyNames = properties.propertyNames();
-            ArrayList<Integer> portArray = new ArrayList<>();
+            List<Integer> portArray = new ArrayList<>();
 
             while (keyNames.hasMoreElements()) {
                 String currentKey = (String) keyNames.nextElement();
@@ -1442,7 +1442,7 @@ public class Config {
             }
 
             if (isNew != null && isNew.length > 0) {
-                isNew[0] = getString("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port") == null;
+                isNew[0] = true;
             }
             setInteger("sagetv.device." + String.valueOf(uniqueID) + ".encoder_listen_port", returnValue);
         }

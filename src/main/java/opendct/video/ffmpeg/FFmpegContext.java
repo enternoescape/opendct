@@ -560,6 +560,7 @@ public class FFmpegContext {
         if (SEEK_BUFFER == null) return false;
         inputFileMode = FILE_MODE_MPEGTS;
 
+        int attempts = 0;
         String error[] = new String[1];
 
         while (!isInterrupted()) {
@@ -570,6 +571,20 @@ public class FFmpegContext {
 
                         // Clear the buffer in hopes the new data will work out better.
                         SEEK_BUFFER.clear();
+
+                        // If this is our 3rd attempt, wait 10 seconds before doing anything.
+                        if (attempts++ == 1) {
+                            int wait = 10;
+                            while (!isInterrupted() && wait-- > 0) {
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {
+                                    return false;
+                                }
+                            }
+                        } else if (attempts > 2) {
+                            return false;
+                        }
 
                         continue;
                     } else {

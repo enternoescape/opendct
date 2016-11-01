@@ -1326,5 +1326,18 @@
 > *The SageTV communication port will automatically increment for newly
 > discovered capture devices if the default port is not available.
 
+> *Increased timeout for HDHomeRun communications.
+
+> *Improved responsiveness to re-opening the TCP communications with
+> HDHomeRun devices.
+
 > *Fixed support for any port if incremental port mode is enabled and no
 > more ports left within the range.
+
+> *Fixed parsing error in vstatus from HDHomeRun devices.
+
+> *Removed dynamic disabling of direct buffer allocation of the circular
+> buffer when it appears to be causing issues.
+
+> *Reduced the aggressiveness of FFmpeg when repeating the detection of
+> streams.

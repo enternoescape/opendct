@@ -1343,4 +1343,18 @@
 > streams.
 
 #### 0.5.14-Beta
-> *Added basic http authentication support to generic HTTP producer.
+> *Added basic HTTP authentication support to generic HTTP producer.
+>
+> sagetv.device.\<unique_id\>.http_username=
+>
+> sagetv.device.\<unique_id\>.http_password=
+>
+> **http_username** This is the username to be used for basic HTTP
+> authentication. If this is and http_password are set to anything other
+> than blank, the set username and password will be used for basic HTTP
+> authentication.
+>
+> **http_password** This is the password to be used for basic HTTP
+> authentication. If http_username and this are set to anything other
+> than blank, the set username and password will be used for basic HTTP
+> authentication.

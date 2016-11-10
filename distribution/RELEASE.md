@@ -1341,3 +1341,6 @@
 
 > *Reduced the aggressiveness of FFmpeg when repeating the detection of
 > streams.
+
+#### 0.5.14-Beta
+> *Added basic http authentication support to generic HTTP producer.

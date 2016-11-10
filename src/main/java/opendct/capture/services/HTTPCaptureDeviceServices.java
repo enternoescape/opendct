@@ -17,6 +17,7 @@ package opendct.capture.services;
 
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
+import opendct.producer.Credentials;
 import opendct.producer.HTTPProducer;
 import opendct.producer.NIOHTTPProducerImpl;
 import opendct.producer.SageTVProducer;
@@ -25,15 +26,28 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class HTTPCaptureDeviceServices {
-    private final Logger logger = LogManager.getLogger(HTTPCaptureDeviceServices.class);
+    private final static Logger logger = LogManager.getLogger(HTTPCaptureDeviceServices.class);
+    private final static Map<URL, Credentials<URL>> credentials = new ConcurrentHashMap<>();
 
     private URL httpURL[];
     private HTTPProducer httpProducerRunnable = null;
     private Thread httpProducerThread = null;
     private final ReentrantReadWriteLock httpProducerLock = new ReentrantReadWriteLock(true);
+
+    public static void addCredentials(URL url, String username, String password)
+    {
+        credentials.put(url, new Credentials<URL>(url, username, password));
+    }
+
+    public static void getCredentials(URL url)
+    {
+        credentials.get(url);
+    }
 
     /**
      * Start receiving HTTP content from a single or list of URL's.
@@ -46,16 +60,17 @@ public class HTTPCaptureDeviceServices {
      * @param httpProducer   This is the producer to be used to receive the HTTP stream.
      * @param sageTVConsumer This is the consumer to be used to write the accumulated data from this
      *                       producer.
-     * @param httpURL        This is the URL sources of the stream. This must be a minimum of one
+     * @param httpURLs        This is the URL sources of the stream. This must be a minimum of one
      *                       URL. Additional URL's can be provided for failover.
      * @return <i>true</i> if the producer was able to start.
      */
     public boolean startProducing(String encoderName,
                                      HTTPProducer httpProducer,
                                      SageTVConsumer sageTVConsumer,
-                                     URL... httpURL) {
+                                     boolean enableAuth,
+                                     URL... httpURLs) {
 
-        logger.entry(httpProducer, sageTVConsumer, httpURL);
+        logger.entry(httpProducer, sageTVConsumer, httpURLs);
 
         boolean returnValue = false;
         
@@ -68,11 +83,19 @@ public class HTTPCaptureDeviceServices {
         httpProducerLock.writeLock().lock();
 
         try {
-            this.httpURL = httpURL;
+            this.httpURL = httpURLs;
 
             httpProducerRunnable = httpProducer;
             httpProducerRunnable.setConsumer(sageTVConsumer);
-            httpProducerRunnable.setSourceUrls(httpURL);
+            if (enableAuth && credentials.size() > 0) {
+                for (URL httpURL : httpURLs) {
+                    Credentials<URL> credential = credentials.get(httpURL);
+                    if (credential != null) {
+                        httpProducerRunnable.setAuthentication(httpURL, credential);
+                    }
+                }
+            }
+            httpProducerRunnable.setSourceUrls(httpURLs);
 
             httpProducerThread = new Thread(httpProducerRunnable);
             httpProducerThread.setName(httpProducerRunnable.getClass().getSimpleName() + "-" + httpProducerThread.getId() + ":" + encoderName);
@@ -80,7 +103,7 @@ public class HTTPCaptureDeviceServices {
 
             returnValue = true;
         } catch (IOException e) {
-            logger.error("Unable to open the URL '{}'. => ", httpURL, e);
+            logger.error("Unable to open the URL '{}'. => ", httpURLs, e);
             returnValue = false;
         } catch (Exception e) {
             logger.error("startProducing created an unexpected exception => ", e);

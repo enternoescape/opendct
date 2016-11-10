@@ -27,11 +27,13 @@ import java.net.SocketException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class NIOHTTPProducerImpl implements HTTPProducer {
-    private final Logger logger = LogManager.getLogger(NIOHTTPProducerImpl.class);
+    private final static Logger logger = LogManager.getLogger(NIOHTTPProducerImpl.class);
 
     private final int httpThreadPriority =
             Math.max(
@@ -50,18 +52,34 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
     private URL currentURL = null;
     private URL availableURL[] = new URL[0];
     private int selectedURL = 0;
+    private List<Credentials<URL>> credentials;
 
     private AtomicLong bytesReceived = new AtomicLong(0);
 
     private SageTVConsumer sageTVConsumer = null;
     private ByteBuffer localBuffer = ByteBuffer.allocateDirect(262144);
 
+    @Override
     public synchronized void setSourceUrls(URL... urls) throws IOException {
         if (urls.length == 0) {
             throw new IOException("The connection for HTTP producer cannot process and empty array.");
         }
 
         selectURL(urls, false);
+    }
+
+    @Override
+    public synchronized void setAuthentication(URL url, Credentials<URL> credential) {
+        // This is almost copy on write, but we don't make actual copies of the objects. We just
+        // create a new array and swap it out.
+        List<Credentials<URL>> newList;
+        if (credentials == null) {
+             newList = new ArrayList<>(1);
+        } else {
+            newList = new ArrayList<>(credentials);
+        }
+        newList.add(credential);
+        credentials = newList;
     }
 
     private void selectURL(URL urls[], boolean isThread) throws IOException {
@@ -123,7 +141,26 @@ public class NIOHTTPProducerImpl implements HTTPProducer {
         }
 
         downloader = new NIOHttpDownloader();
-        downloader.connect(url);
+        List<Credentials<URL>> localCopy = credentials;
+        if (localCopy != null) {
+            boolean authenticated = false;
+            for (Credentials<URL> credential : localCopy)
+            {
+                if (credential.getKey().equals(url))
+                {
+                    logger.info("Connecting with credentials.");
+                    downloader.connect(url, credential);
+                    authenticated = true;
+                    break;
+                }
+            }
+            if (!authenticated) {
+                logger.info("Connecting without credentials.");
+                downloader.connect(url);
+            }
+        } else {
+            downloader.connect(url);
+        }
 
         currentURL = url;
 

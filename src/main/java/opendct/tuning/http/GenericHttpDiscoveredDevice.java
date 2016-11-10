@@ -54,6 +54,8 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     private IntegerDeviceOption tuningDelay;
     private StringDeviceOption customChannels;
     private IntegerDeviceOption padChannel;
+    private StringDeviceOption httpUsername;
+    private StringDeviceOption httpPassword;
 
     GenericHttpDiscoveredDeviceParent parent;
 
@@ -169,6 +171,26 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                             " set to 3.)"
             );
 
+            httpUsername = new StringDeviceOption(
+                    Config.getString(propertiesDeviceRoot + "http_username", ""),
+                    false,
+                    "HTTP Username",
+                    propertiesDeviceRoot + "http_username",
+                    "If this property and HTTP Password are set, the provided username and" +
+                            " password will be used for basic HTTP authenticate with the provided" +
+                            " streaming URLs."
+            );
+
+            httpPassword = new StringDeviceOption(
+                    Config.getString(propertiesDeviceRoot + "http_password", ""),
+                    false,
+                    "HTTP Password",
+                    propertiesDeviceRoot + "http_password",
+                    "If HTTP Username and this property are set, the provided username and" +
+                            " password will be used for basic HTTP authenticate with the provided" +
+                            " streaming URLs."
+            );
+
             Config.mapDeviceOptions(
                     deviceOptions,
                     streamingUrl,
@@ -180,7 +202,9 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     stoppingExecutable,
                     stoppingDelay,
                     tuningDelay,
-                    padChannel
+                    padChannel,
+                    httpUsername,
+                    httpPassword
             );
 
             // This information is used to ensure that the interface that will be used to
@@ -221,7 +245,9 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                     stoppingExecutable,
                     stoppingDelay,
                     tuningDelay,
-                    padChannel
+                    padChannel,
+                    httpUsername,
+                    httpPassword
             };
         } catch (DeviceOptionException e) {
             logger.error("Unable to build options for device => ", e);
@@ -351,5 +377,13 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
 
     public String[] getAltStreamingChannels() {
         return ChannelRangesDeviceOption.parseRanges(altStreamingChannels.getValue());
+    }
+
+    public String getHttpUsername() {
+        return httpUsername.getValue();
+    }
+
+    public String getHttpPassword() {
+        return httpPassword.getValue();
     }
 }

@@ -395,7 +395,14 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         logger.info("Configuring and starting the new SageTV producer...");
 
         try {
-            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, device.getURL(channel))) {
+            URL connectURL = device.getURL(channel);
+            String username = device.getHttpUsername();
+            String password = device.getHttpPassword();
+            boolean enableAuth = username.length() > 0 && password.length() > 0;
+            if (enableAuth) {
+                HTTPCaptureDeviceServices.addCredentials(connectURL, username, password);
+            }
+            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, enableAuth, connectURL)) {
                 return false;
             }
 

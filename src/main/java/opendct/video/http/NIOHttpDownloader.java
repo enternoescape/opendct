@@ -17,6 +17,7 @@
 package opendct.video.http;
 
 import opendct.config.Config;
+import opendct.producer.Credentials;
 import opendct.producer.HTTPProducerImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,8 +39,9 @@ public class NIOHttpDownloader {
     private static final String CONNECTION =
             "Connection: keep-alive" + NEW_LINE +
             "Accept: video/mpeg" + NEW_LINE +
-            "User-Agent: OpenDCT" + NEW_LINE +
-                    NEW_LINE;
+            "User-Agent: OpenDCT" + NEW_LINE;
+    private static final String AUTH_CONNECTION =
+            "Authorization: Basic ";
 
     private boolean closed = false;
     private final SocketChannel socketChannel;
@@ -60,10 +62,22 @@ public class NIOHttpDownloader {
      *                     not exist.
      */
     public void connect(URL address) throws IOException {
+        connect(address, null);
+    }
+
+    /**
+     * Connect to the provided address with a username and password, then start content download.
+     *
+     * @param address The URL to download.
+     * @param credentials The credentials to be used.
+     * @throws IOException Thrown if the connection cannot be established or the requested file does
+     *                     not exist.
+     */
+    public void connect(URL address, Credentials<URL> credentials) throws IOException {
         if (closed) {
             return;
         }
-        tempBuffer = ByteBuffer.allocateDirect(1024);
+        tempBuffer = ByteBuffer.allocate(1024);
 
         int port = address.getPort();
 
@@ -74,11 +88,22 @@ public class NIOHttpDownloader {
         socketChannel.connect(new InetSocketAddress(address.getHost(), port));
 
         tempBuffer.clear();
-        tempBuffer.put((
-                GET_HEAD + address.getFile() + GET_TAIL +
-                        HOST_HEAD + address.getAuthority() + NEW_LINE +
-                        CONNECTION
-        ).getBytes(Config.STD_BYTE));
+        if (credentials == null) {
+            tempBuffer.put((
+                    GET_HEAD + address.getFile() + GET_TAIL +
+                    HOST_HEAD + address.getAuthority() + NEW_LINE +
+                    CONNECTION +
+                    NEW_LINE
+            ).getBytes(Config.STD_BYTE));
+        } else {
+            tempBuffer.put((
+                    GET_HEAD + address.getFile() + GET_TAIL +
+                    HOST_HEAD + address.getAuthority() + NEW_LINE +
+                    CONNECTION +
+                    AUTH_CONNECTION + credentials.getEncodedBase64() + NEW_LINE +
+                    NEW_LINE
+            ).getBytes(Config.STD_BYTE));
+        }
 
         tempBuffer.flip();
         while (tempBuffer.hasRemaining()) {

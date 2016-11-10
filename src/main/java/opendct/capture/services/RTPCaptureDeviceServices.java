@@ -36,7 +36,7 @@ This incorporates a lot of very basic functionality that might be
 otherwise duplicated between RTP capture devices.
  */
 public class RTPCaptureDeviceServices {
-    private final Logger logger = LogManager.getLogger(RTPCaptureDeviceServices.class);
+    private final static Logger logger = LogManager.getLogger(RTPCaptureDeviceServices.class);
 
     private int rtpLocalPort = -1;
     private RTPProducer rtpProducerRunnable = null;

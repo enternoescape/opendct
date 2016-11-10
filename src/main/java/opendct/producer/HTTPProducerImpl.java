@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.SocketException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HTTPProducerImpl implements HTTPProducer {
@@ -49,6 +51,7 @@ public class HTTPProducerImpl implements HTTPProducer {
     private URL currentURL = null;
     private URL availableURL[] = new URL[0];
     private int selectedURL = 0;
+    private List<Credentials<URL>> credentials;
 
     private final Object receivedLock = new Object();
     private volatile long bytesReceived = 0;
@@ -62,6 +65,20 @@ public class HTTPProducerImpl implements HTTPProducer {
         }
 
         selectURL(urls, false);
+    }
+
+    @Override
+    public void setAuthentication(URL url, Credentials<URL> credential) {
+        // This is almost copy on write, but we don't make actual copies of the objects. We just
+        // create a new array and swap it out.
+        List<Credentials<URL>> newList;
+        if (credentials == null) {
+            newList = new ArrayList<>(1);
+        } else {
+            newList = new ArrayList<>(credentials);
+        }
+        newList.add(credential);
+        credentials = newList;
     }
 
     private void selectURL(URL urls[], boolean isThread) throws IOException {
@@ -117,8 +134,25 @@ public class HTTPProducerImpl implements HTTPProducer {
 
         logger.info("Connecting to source using the URL '{}'", url);
 
+        List<Credentials<URL>> localCopy = credentials;
+        Credentials<URL> credentials = null;
+        if (localCopy != null) {
+            for (Credentials<URL> credential : localCopy)
+            {
+                if (credential.getKey().equals(url))
+                {
+                    logger.info("Connecting with credentials.");
+                    credentials = credential;
+                    break;
+                }
+            }
+        }
+
         httpURLConnection = (HttpURLConnection) url.openConnection();
         httpURLConnection.setRequestMethod("GET");
+        if (credentials != null) {
+            httpURLConnection.setRequestProperty("Authorization", "Basic " + credentials.getEncodedBase64());
+        }
         httpURLConnection.connect();
         inputStream = new BufferedInputStream(httpURLConnection.getInputStream());
 

@@ -254,6 +254,7 @@ public class HDHomeRunDiscovery implements Runnable {
         if (datagramChannels != null) {
             for (DatagramChannel datagramChannel : datagramChannels) {
                 try {
+                    datagramChannel.socket().setReuseAddress(true);
                     datagramChannel.close();
                     datagramChannel.socket().close();
                 } catch (IOException e) {

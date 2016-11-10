@@ -33,6 +33,17 @@ public interface HTTPProducer extends SageTVProducer {
     public void setSourceUrls(URL... url) throws IOException;
 
     /**
+     * Sets the username and password for a specific URL.
+     * <p/>
+     * Authentication must be set before using {@link #setSourceUrls(URL...)} since that method
+     * might try to connect to the provided addresses and will fail if credentials are needed.
+     *
+     * @param url The address to assign this username and password to.
+     * @param credential The credentials to assign this address.
+     */
+    public void setAuthentication(URL url, Credentials<URL> credential);
+
+    /**
      * Gets the URL currently being used.
      *
      * @return This is the current URL.

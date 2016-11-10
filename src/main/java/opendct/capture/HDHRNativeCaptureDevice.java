@@ -42,7 +42,7 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
-    private final Logger logger = LogManager.getLogger(HDHRNativeCaptureDevice.class);
+    private final static Logger logger = LogManager.getLogger(HDHRNativeCaptureDevice.class);
 
     private final HDHomeRunDiscoveredDeviceParent discoveredDeviceParent;
     private final HDHomeRunDiscoveredDevice discoveredDevice;
@@ -1201,7 +1201,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         }
 
         boolean returnValue =
-                httpServices.startProducing(encoderName, httpProducer, newConsumer, tuneUrl);
+                httpServices.startProducing(encoderName, httpProducer, newConsumer, false, tuneUrl);
 
         if (!returnValue) {
             try {

@@ -41,6 +41,7 @@ public class FFmpegConfig {
     private static IntegerDeviceOption uploadIdPort;
     private static BooleanDeviceOption fixStream;
     private static BooleanDeviceOption useCompatibilityTimebase;
+    private static IntegerDeviceOption noProgramTimeout;
     private static BooleanDeviceOption ccExtractor;
     private static BooleanDeviceOption ccExtractorAllStreams;
     private static StringDeviceOption ccExtractorCustomOptions;
@@ -63,6 +64,7 @@ public class FFmpegConfig {
                 uploadIdPort,
                 fixStream,
                 useCompatibilityTimebase,
+                noProgramTimeout,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
@@ -199,6 +201,24 @@ public class FFmpegConfig {
                                 " outside of SageTV."
                 );
 
+                noProgramTimeout = new IntegerDeviceOption(
+                        Config.getInteger("consumer.ffmpeg.no_program_timeout_ms", 10000),
+                        false,
+                        "No Program Timeout",
+                        "consumer.ffmpeg.no_program_timeout_ms",
+                        "This is the number of milliseconds to wait without successfully finding" +
+                                " a program in the stream until it is assumed that a program does" +
+                                " not exist. A program is used to ensure we have detected all" +
+                                " video and audio streams related to the program. After this" +
+                                " time as long as there is a video and an audio stream, remuxing" +
+                                " will start with what has been detected. Note that low values" +
+                                " will increase the likelihood that programs with more than one" +
+                                " audio stream will be incorrectly remuxed with only one audio" +
+                                " stream. This value cannot be less than 5000 and cannot exceed" +
+                                " 60000.",
+                        5000,
+                        60000);
+
                 ccExtractor = new BooleanDeviceOption(
                         Config.getBoolean("consumer.ffmpeg.ccextractor_enabled", false),
                         false,
@@ -244,7 +264,7 @@ public class FFmpegConfig {
                 Config.setInteger("consumer.ffmpeg.upload_id_port", 7818);
                 Config.setBoolean("consumer.ffmpeg.fix_stream", true);
                 Config.setBoolean("consumer.ffmpeg.use_codec_timebase", false);
-                Config.setBoolean("consumer.ffmpeg.use_mpegts_cbr", false);
+                Config.setInteger("consumer.ffmpeg.no_program_timeout_ms", 10000);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_enabled", false);
                 Config.setBoolean("consumer.ffmpeg.ccextractor_all_streams", true);
                 Config.setString("consumer.ffmpeg.ccextractor_custom_options", "");
@@ -269,6 +289,7 @@ public class FFmpegConfig {
                 uploadIdPort,
                 fixStream,
                 useCompatibilityTimebase,
+                noProgramTimeout,
                 ccExtractor,
                 ccExtractorAllStreams,
                 ccExtractorCustomOptions
@@ -363,5 +384,9 @@ public class FFmpegConfig {
 
     public static boolean getUseCompatiblityTimebase() {
         return useCompatibilityTimebase.getBoolean();
+    }
+
+    public static int getNoProgramTimeout() {
+        return noProgramTimeout.getInteger();
     }
 }

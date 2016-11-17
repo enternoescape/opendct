@@ -52,6 +52,7 @@ public class FFmpegStreamDetection {
     public static boolean detectStreams(FFmpegContext ctx, String nativeFilename, String error[]) throws FFmpegException {
 
         long startTime = System.currentTimeMillis();
+        boolean bypassProgram = false;
 
         // This is the smallest probe size allowed.
         final long minProbeSize = FFmpegConfig.getMinProbeSize();
@@ -164,7 +165,7 @@ public class FFmpegStreamDetection {
                 if (dynamicProbeSize == probeSizeLimit) {
                     return false;
                 }
-                logger.info(error[0] + " Trying again with more data.");
+                logger.info("{} Trying again with more data.", error[0]);
 
                 ctx.deallocInputContext();
                 continue;
@@ -176,11 +177,18 @@ public class FFmpegStreamDetection {
             }
 
             // While we haven't seen all streams for the desired program and we haven't exhausted our attempts, try again...
-            if (ctx.desiredProgram > 0 && dynamicProbeSize != probeSizeLimit && !FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram)) {
-                logger.info("Desired program set. Stream details unavailable for one or more streams. {}", TRYING_AGAIN);
+            if (ctx.desiredProgram > 0 && dynamicProbeSize != probeSizeLimit &&
+                    !FFmpegUtil.findAllStreamsForDesiredProgram(ctx.avfCtxInput, ctx.desiredProgram)) {
+                logger.info("Desired program set. Stream details unavailable for one or more streams.{}", TRYING_AGAIN);
 
                 ctx.deallocInputContext();
                 continue;
+            } else if (!bypassProgram && System.currentTimeMillis() - startTime > FFmpegConfig.getNoProgramTimeout()) {
+                // If we have not found a program and it has been over the configured timeout, stop
+                // trying to find a program and go with the best video stream and all present audio
+                // streams we can find.
+                bypassProgram = true;
+                logger.info("No programs have been found. Including all detectable streams.");
             }
 
             ctx.preferredVideo = av_find_best_stream(ctx.avfCtxInput, AVMEDIA_TYPE_VIDEO, NO_STREAM_IDX, NO_STREAM_IDX, (PointerPointer<avcodec.AVCodec>) null, 0);
@@ -210,7 +218,7 @@ public class FFmpegStreamDetection {
                 return false;
             }
 
-            if (ctx.desiredProgram <= 0) {
+            if (ctx.desiredProgram <= 0 && !bypassProgram) {
                 int programs = ctx.avfCtxInput.nb_programs();
 
                 for (int i = 0; i < programs; i++) {
@@ -286,23 +294,6 @@ public class FFmpegStreamDetection {
                 ctx.deallocInputContext();
                 continue;
             }
-
-            /*if (!finalCheck && dynamicProbeSize != probeSizeLimit) {
-                finalCheck = true;
-
-                AVStream videoStream = ctx.avfCtxInput.streams(ctx.preferredVideo);
-
-                int num = videoStream.codec().sample_aspect_ratio().num();
-                int den = videoStream.codec().sample_aspect_ratio().den();
-
-                // This should fix most situations whereby the returned aspect ratio might be off.
-                if (num <= 1 || den <= 1) {
-                    logger.info("SAR is {}/{}. This could be incorrect." +
-                            " Trying again one more time.", num, den);
-                    ctx.deallocInputContext();
-                    continue;
-                }
-            }*/
 
             break;
         }

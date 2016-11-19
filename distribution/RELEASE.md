@@ -1364,3 +1364,7 @@
 > milliseconds and defaults conservatively to 10000. The minimum value
 > is 5000 and the maximum value is 60000. If you are missing audio
 > streams in your recordings, you will want to increase this value.
+
+> *Added property to disable re-tuning. The property name is
+> enable_retune and defaults to true. Set this property to false to
+> disable retuning.

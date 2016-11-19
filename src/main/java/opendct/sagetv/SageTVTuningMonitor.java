@@ -18,6 +18,7 @@ package opendct.sagetv;
 
 import opendct.capture.CaptureDevice;
 import opendct.channel.CopyProtection;
+import opendct.config.Config;
 import opendct.util.Util;
 import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
@@ -31,6 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SageTVTuningMonitor {
     private final static Logger logger = LogManager.getLogger(SageTVTuningMonitor.class);
+    private final static boolean retuneEnabled = Config.getBoolean("enable_retune", true);
 
     private static final ReentrantReadWriteLock queueLock = new ReentrantReadWriteLock(true);
 
@@ -368,57 +370,22 @@ public class SageTVTuningMonitor {
                                 break;
                             }
 
-                            recording.retuneThread = new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    boolean tuned = false;
-                                    String localFilename = captureDevice.getRecordFilename();
+                            // If we have decided not to try to re-tune when there is a problem and
+                            // instead wait for SageTV to restart the stream if it thinks there's a
+                            // problem.
+                            if (retuneEnabled) {
+                                recording.retuneThread = new Thread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        boolean tuned = false;
+                                        String localFilename = captureDevice.getRecordFilename();
 
-                                    logger.info("Current copy protection {}.",
-                                            captureDevice.getCopyProtection());
+                                        logger.info("Current copy protection {}.",
+                                                captureDevice.getCopyProtection());
 
-                                    if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
-                                        logger.error(
-                                                "Unable to re-tune because there isn't a filename." +
-                                                        " Stopping device monitoring."
-                                        );
-
-                                        stopMonitorRecording(captureDevice);
-
-                                        return;
-                                    }
-
-                                    if (!Util.isNullOrEmpty(localFilename)) {
-                                        recording.filename = localFilename;
-                                    }
-
-                                    if (!consumerStuck) {
-                                        if (captureDevice.isInternalLocked()) {
-                                            tuned = captureDevice.startEncoding(
-                                                    channel, recording.filename,
-                                                    encodingQuality, bufferSize,
-                                                    deviceType, crossbarIndex,
-                                                    uploadID, remoteAddress);
-                                        } else {
-                                            logger.info("Re-tune was cancelled because the capture" +
-                                                    " device is no longer internally locked." +
-                                                    " Stopping device monitoring.");
-
-                                            stopMonitorRecording(captureDevice);
-
-                                            return;
-                                        }
-                                    }
-
-                                    // If the channel still won't tune in, start over.
-                                    if (!tuned) {
-                                        localFilename = captureDevice.getRecordFilename();
-
-                                        if (Util.isNullOrEmpty(localFilename) &&
-                                                recording.filename == null) {
-
+                                        if (Util.isNullOrEmpty(localFilename) && recording.filename == null) {
                                             logger.error(
-                                                    "Unable to tune because there isn't a filename." +
+                                                    "Unable to re-tune because there isn't a filename." +
                                                             " Stopping device monitoring."
                                             );
 
@@ -431,35 +398,75 @@ public class SageTVTuningMonitor {
                                             recording.filename = localFilename;
                                         }
 
-                                        captureDevice.stopEncoding();
+                                        if (!consumerStuck) {
+                                            if (captureDevice.isInternalLocked()) {
+                                                tuned = captureDevice.startEncoding(
+                                                        channel, recording.filename,
+                                                        encodingQuality, bufferSize,
+                                                        deviceType, crossbarIndex,
+                                                        uploadID, remoteAddress);
+                                            } else {
+                                                logger.info("Re-tune was cancelled because the capture" +
+                                                        " device is no longer internally locked." +
+                                                        " Stopping device monitoring.");
 
-                                        if (captureDevice.isInternalLocked()) {
-                                            captureDevice.startEncoding(
-                                                    channel, recording.filename,
-                                                    encodingQuality, bufferSize,
-                                                    deviceType, crossbarIndex,
-                                                    uploadID, remoteAddress);
+                                                stopMonitorRecording(captureDevice);
+
+                                                return;
+                                            }
+                                        }
+
+                                        // If the channel still won't tune in, start over.
+                                        if (!tuned) {
+                                            localFilename = captureDevice.getRecordFilename();
+
+                                            if (Util.isNullOrEmpty(localFilename) &&
+                                                    recording.filename == null) {
+
+                                                logger.error(
+                                                        "Unable to tune because there isn't a filename." +
+                                                                " Stopping device monitoring."
+                                                );
+
+                                                stopMonitorRecording(captureDevice);
+
+                                                return;
+                                            }
+
+                                            if (!Util.isNullOrEmpty(localFilename)) {
+                                                recording.filename = localFilename;
+                                            }
+
+                                            captureDevice.stopEncoding();
+
+                                            if (captureDevice.isInternalLocked()) {
+                                                captureDevice.startEncoding(
+                                                        channel, recording.filename,
+                                                        encodingQuality, bufferSize,
+                                                        deviceType, crossbarIndex,
+                                                        uploadID, remoteAddress);
+                                            }
                                         }
                                     }
+                                });
+
+                                recording.retuneThread.setName("Retune-" +
+                                        recording.retuneThread.getId() + ":" +
+                                        captureDevice.getEncoderName());
+
+                                // This keeps the monitoring from holding up new tuning request and
+                                // potentially re-tuning when a tuner is changing channels anyway.
+                                if (queueLock.hasQueuedThreads()) {
+                                    break;
                                 }
-                            });
 
-                            recording.retuneThread.setName("Retune-" +
-                                    recording.retuneThread.getId() + ":" +
-                                    captureDevice.getEncoderName());
+                                // Setting these to the current value will ensure that a log entry is
+                                // created if data starts streaming again.
+                                recording.lastProducedPackets = producedPackets;
+                                recording.lessThanRecordedBytes = recordedBytes;
 
-                            // This keeps the monitoring from holding up new tuning request and
-                            // potentially re-tuning when a tuner is changing channels anyway.
-                            if (queueLock.hasQueuedThreads()) {
-                                break;
+                                recording.retuneThread.start();
                             }
-
-                            // Setting these to the current value will ensure that a log entry is
-                            // created if data starts streaming again.
-                            recording.lastProducedPackets = producedPackets;
-                            recording.lessThanRecordedBytes = recordedBytes;
-
-                            recording.retuneThread.start();
                         }
 
                         if (recording.lastProducedPackets <= recording.lessThanProducedPackets &&

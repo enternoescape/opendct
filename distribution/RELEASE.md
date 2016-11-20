@@ -1366,5 +1366,5 @@
 > streams in your recordings, you will want to increase this value.
 
 > *Added property to disable re-tuning. The property name is
-> enable_retune and defaults to true. Set this property to false to
+> retune_enable and defaults to true. Set this property to false to
 > disable retuning.

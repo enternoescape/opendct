@@ -32,7 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SageTVTuningMonitor {
     private final static Logger logger = LogManager.getLogger(SageTVTuningMonitor.class);
-    private final static boolean retuneEnabled = Config.getBoolean("enable_retune", true);
+    private final static boolean retuneEnabled = Config.getBoolean("retune_enable", true);
 
     private static final ReentrantReadWriteLock queueLock = new ReentrantReadWriteLock(true);
 

@@ -266,7 +266,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                                 {
                                     logger.info("Found network interface: {}. APIPA address detected: {}", networkInterface, address4);
 
-                                    // It will take longer than 250ms to DHCP to do it's thing and fix this problem.
+                                    // It will take longer than 250ms for DHCP to do it's thing and fix this problem.
                                     Thread.sleep(2000);
                                     continue;
                                 }

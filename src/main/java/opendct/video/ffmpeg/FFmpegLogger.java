@@ -178,6 +178,8 @@ public final class FFmpegLogger extends Callback_Pointer_int_String_Pointer {
                 // These are both debug messages we sometimes see on 1080i H.264 content.
                 message.endsWith(" ct_type:0 pic_struct:1") ||
                 message.endsWith(" ct_type:0 pic_struct:2") ||
+                message.endsWith(" ct_type:0 pic_struct:3") ||
+                message.endsWith(" unknown SEI type 100") ||
                 // Seen in H.264 stream init. These errors are expected when the stream is first
                 // opened.
                 message.endsWith("non-existing SPS 0 referenced in buffering period") ||

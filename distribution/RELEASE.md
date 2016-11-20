@@ -1358,3 +1358,13 @@
 > authentication. If http_username and this are set to anything other
 > than blank, the set username and password will be used for basic HTTP
 > authentication.
+
+> *Added timeout for when a program cannot be detected. The property
+> name is consumer.ffmpeg.no_program_timeout_ms, the timeout is in
+> milliseconds and defaults conservatively to 10000. The minimum value
+> is 5000 and the maximum value is 60000. If you are missing audio
+> streams in your recordings, you will want to increase this value.
+
+> *Added property to disable re-tuning. The property name is
+> retune_enable and defaults to true. Set this property to false to
+> disable retuning.

@@ -1093,7 +1093,7 @@ public class Config {
      * @return An alreadying initialized SageTV consumer.
      */
     public static SageTVConsumer getSageTVConsumer(String key, String sageTVConsumer, String channel) {
-        logger.entry(key, sageTVConsumer);
+        logger.entry(key, sageTVConsumer, channel);
 
         SageTVConsumer returnValue;
 

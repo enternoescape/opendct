@@ -21,6 +21,7 @@ import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOptionException;
 import opendct.sagetv.SageTVDeviceCrossbar;
+import opendct.sagetv.SageTVRequestHandler;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -305,11 +306,11 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * <p/>
      * The provided TVChannel is tuned and then updated with current information about the channel
      * such as CCI and signal strength. If the capture device is locked for any reason, this will
-     * not attempt to tune the channel. This method should never be used by the
-     * SageTVRequestHandler. The execution of this method should be as brief as is possible and it
-     * should never actually do anything if <b>isLocked()</b> is <i>true</i> when the method is
-     * called. If the value of <b>isLocked()</b> becomes <i>true</i> in mid-progress, this method
-     * must return <i>false</i>.
+     * not attempt to tune the channel. This method will never be used by
+     * {@link SageTVRequestHandler}. The execution of this method should be as brief as is possible
+     * and it should never actually do anything if {@link #isInternalLocked()} is <i>true</i> when
+     * the method is called. If the value of {@link #isInternalLocked()} becomes <i>true</i> in
+     * mid-progress, this method must return <i>false</i>.
      *
      * @param tvChannel A TVChannel object with at the very least a defined channel. Otherwise there
      *                  is nothing to tune.
@@ -345,21 +346,24 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * This method must work correctly as a bare minimum for a capture device to be able to stream
      * anything to SageTV.
      *
-     * @param channel         A string representation of the channel to be tuned. Any needed translations
-     *                        must be implemented by the capture device.
+     * @param channel         A string representation of the channel to be tuned. Any needed
+     *                        translations must be implemented by the capture device.
      * @param filename        This is the full path and filename to be used for recording.
      * @param encodingQuality A string representation of the quality/codec to be used.
-     * @param bufferSize      The file size at which point we circle back to the beginning of the file
-     *                        again.
+     * @param bufferSize      The file size at which point we circle back to the beginning of the
+     *                        file again.
      * @param deviceType      This is the device type that SageTV requested. This is only needed if
      *                        the device has more than one way to capture video.
-     * @param crossbarIndex   The index of the crossbar if there is more than one of the same crossbar.
-     * @param uploadID        This is the uploadID provided by SageTV to permit you to record via the
-     *                        MediaServer.
+     * @param crossbarIndex   The index of the crossbar if there is more than one of the same
+     *                        crossbar.
+     * @param uploadID        This is the uploadID provided by SageTV to permit you to record via
+     *                        the MediaServer.
      * @param remoteAddress   This is the IP address of the SageTV server requesting the recording.
      * @return <i>true</i> if the the recording started was successfully.
      */
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress);
+    public boolean startEncoding(String channel, String filename, String encodingQuality,
+                                 long bufferSize, SageTVDeviceCrossbar deviceType,
+                                 int crossbarIndex, int uploadID, InetAddress remoteAddress);
 
     /**
      * Switch out the current recording and transition into a new recording.
@@ -383,21 +387,19 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *                      requires it.
      * @return Returns <i>true</i> if the transition was successful.
      */
-    public boolean switchEncoding(String channel, String filename, long bufferSize, int uploadID, InetAddress remoteAddress);
+    public boolean switchEncoding(String channel, String filename, long bufferSize,
+                                  int uploadID, InetAddress remoteAddress);
 
     /**
-     * This is used to determine if SWITCH works with the consumer implementation is use on this capture device.
+     * This is used to determine if SWITCH works with the consumer implementation is use on this
+     * capture device.
      * <p/>
-     * If this returns <i>true</i> that means that the methods <b>switchEncoding(String,String)</b> and
-     * <b>switchEncoding(String,String,int,InetAddress)</b> will work if called. The methods <b>canEncodeFilename</b>
-     * and <b>canEncodeUploadID</b> followed by the preference in properties if both are supported will determine which
-     * switch method is used.
+     * If this returns <i>true</i> that means that the method
+     * {@link #switchEncoding(String, String, long, int, InetAddress)} will work if called.
      *
-     * @return Returns <i>true</i> if this capture device is using a consumer implementation that supports the SWITCH
-     * command correctly.
+     * @return Returns <i>true</i> if this capture device is using a consumer implementation that
+     *         supports the SWITCH command correctly.
      */
-    // Either you support switching for both methods or you
-    // don't support it at all.
     public boolean canSwitch();
 
     /**
@@ -412,10 +414,11 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     /**
      * Gets the current number of bytes written to the directly to a file or via uploadID.
      * <p/>
-     * This must work correctly and accurately as it is critical for proper SageTV recording. If this value is not
-     * growing SageTV can appear to hang. Also if this cannot return a value quickly SageTV will also appear to hang. I
-     * recommend retrieving a value from an atomic type since it takes two cycles to update a 64 bit number on the 32
-     * bit JVM and the thread could potentially sleep at just the wrong time returning a strange value.
+     * This must work correctly and accurately as it is critical for proper SageTV recording. If
+     * this value is not growing SageTV can appear to hang. Also if this cannot return a value
+     * quickly SageTV will also appear to hang. I recommend retrieving a value from an atomic type
+     * since it takes two cycles to update a 64 bit number on the 32 bit JVM and the thread could
+     * potentially sleep at just the wrong time returning a strange value.
      *
      * @return Returns the total number of bytes written.
      */
@@ -424,19 +427,20 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     /**
      * Return a valid incremental channel number for the provided index.
      * <p/>
-     * Prior to this, SageTV will send the BUFFER command to the capture device, telling it to tune into the last
-     * channel. You can use this to aid in scanning or just leave it alone.
+     * Prior to this, SageTV will send the BUFFER command to the capture device, telling it to tune
+     * into the last channel. You can use this to aid in scanning or just leave it alone.
      * <p/>
-     * SageTV will send you an index number via AUTOINFOSCAN. You need to reply with a channel number. I'm not sure
-     * there are any limitations on naming here, but note that if it's not a number of a channel in the EPG it will not
-     * map to it automatically. The very first request will be 0. The response to that request is ignored. It is
-     * followed by another request of 0. The response to this one is added as a tunable channel It does not need to
-     * match the index number that SageTV sent you. When there are no more channels, return null and that will signal
-     * the request handler to send ERROR to SageTV to end the scan. The scan will only iterate over 159 channels and for
-     * some reason will send a request for 0 twice.
+     * SageTV will send you an index number via AUTOINFOSCAN. You need to reply with a channel
+     * number. I'm not sure there are any limitations on naming here, but note that if it's not a
+     * number of a channel in the EPG it will not map to it automatically. The very first request
+     * will be 0. The response to that request is ignored. It is followed by another request of 0.
+     * The response to this one is added as a tunable channel It does not need to match the index
+     * number that SageTV sent you. When there are no more channels, return null and that will
+     * signal the request handler to send ERROR to SageTV to end the scan. The scan will only
+     * iterate over 159 channels and for some reason will send a request for 0 twice.
      * <p/>
-     * If the index number is -1, it's just telling you to move your tunable channel index back to the beginning. You
-     * can reply anything to this request to acknowledge it.
+     * The index number -1 means that channel scan has ended. The index number -2 means the channel
+     * scan was canceled. You can reply anything to this request to acknowledge either request.
      * <p/>
      * After the scan is completed, SageTV will send the STOP command.
      *
@@ -517,16 +521,16 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * <p/>
      * The scale being assumed is 0-100. Anything above 100 should be considered 100.
      *
-     * @return Returns the signal strength of the currently tuned channel. You could just return 100 for a channel
-     * producing a stream and 0 for a channel isn't producing data.
+     * @return Returns the signal strength of the currently tuned channel. You could just return 100
+     * for a channel producing a stream and 0 for a channel isn't producing data.
      */
     public int getSignalStrength();
 
     /**
      * Returns the CCI protection flag value for the currently tuned channel.
      * <p/>
-     * If the device cannot be copy protected return NONE. Maybe we can playback the channel on another device in
-     * this situation and record the analog output.
+     * If the device cannot be copy protected return NONE. Maybe we can playback the channel on
+     * another device in this situation and record the analog output.
      *
      * @return The current level of copy protection on the currently tuned channel.
      */

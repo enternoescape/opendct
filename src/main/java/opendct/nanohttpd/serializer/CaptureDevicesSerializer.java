@@ -20,6 +20,7 @@ import opendct.capture.CaptureDevice;
 import opendct.channel.ChannelLineup;
 import opendct.channel.ChannelManager;
 import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 import opendct.nanohttpd.pojo.JsonException;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.sagetv.SageTVDeviceCrossbar;
@@ -180,6 +181,12 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
             case COPY_PROTECTION:
                 object.addProperty(COPY_PROTECTION, captureDevice.getCopyProtection().toString());
                 break;
+            case CONSUMER:
+                object.addProperty(CONSUMER, captureDevice.getConsumerName());
+                break;
+            case TRANSCODE_PROFILE:
+                object.addProperty(TRANSCODE_PROFILE, captureDevice.getTranscodeProfile());
+                break;
             case DEVICE_TYPE:
                 object.addProperty(DEVICE_TYPE, captureDevice.getEncoderDeviceType().toString());
                 break;
@@ -243,6 +250,18 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                 }
 
                 break;
+            case CONSUMER:
+                try {
+                    captureDevice.setConsumerName(newValue);
+                } catch (DeviceOptionException e) {
+                    return new JsonException(CONSUMER, e.getMessage());
+                }
+            case TRANSCODE_PROFILE:
+                try {
+                    captureDevice.setTranscodeProfile(newValue);
+                } catch (DeviceOptionException e) {
+                    return new JsonException(TRANSCODE_PROFILE, e.getMessage());
+                }
         }
 
         return null;

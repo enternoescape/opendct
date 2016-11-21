@@ -13,11 +13,15 @@
 
 #### 0.3.8-Beta
 > *Added firewall configurations to the install packages.
+>
 > **Windows will install firewall exceptions for you if you are using
 > the Windows Firewall.
+>
 > **CentOS 7 and Fedora 22 will provide a firewalld service that can be
 > enabled.
+>
 > **Ubuntu 14.04 will provide a script to enable rules via ufw.
+>
 > **Changed default RTP receiving port change to 8300-8500 since the
 > previous default could conflict with the SageTV discovery port.
 
@@ -1368,3 +1372,7 @@
 > *Added property to disable re-tuning. The property name is
 > retune_enable and defaults to true. Set this property to false to
 > disable retuning.
+
+> *Added a channel lineup update to be automatically triggered when a
+> channel scan is initiated. This ensures that the latest information
+> from the capture device if it provides any is used for the scan.

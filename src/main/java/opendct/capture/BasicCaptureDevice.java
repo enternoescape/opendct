@@ -515,11 +515,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      * @return The next channel that is tunable or ERROR if we are at the end of the list.
      */
     public String scanChannelInfo(String channel, boolean combine) {
-        if (scanChannels == null) {
-            scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
-        }
-
-        if (channel.equals("-1")) {
+        if (scanChannels == null || channel.equals("-1")) {
+            // Always update the channels with the latest from the device.
+            ChannelManager.updateChannelLineup(ChannelManager.getChannelLineup(getChannelLineup()));
             scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
             scanChannelIndex = 0;
             channelScanFirstZero = true;
@@ -582,7 +580,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return The name of the channel lineup in use on this encoder.
      */
-    public String getChannelLineup() {
+    public final String getChannelLineup() {
         return encoderLineup;
     }
 
@@ -591,7 +589,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @param lineup The name of the channel Lineup.
      */
-    public void setChannelLineup(String lineup) {
+    public final void setChannelLineup(String lineup) {
         encoderLineup = lineup.toLowerCase();
         Config.setString(propertiesDeviceParent + "lineup", encoderLineup);
     }

@@ -81,19 +81,21 @@ public class DiscoveryManager implements PowerEventListener {
     }
 
     /**
-     * Add a device to the permitted devices list.
+     * Add a device or devices to the permitted devices list.
      * <p/>
      * Note that this does not load the device if it is not already loaded. These changes are
      * immediately saved.
      *
-     * @param deviceId This is the device ID to add.
+     * @param deviceIds This is the device ID or IDs to add.
      */
-    public static void permitDevice(int deviceId) {
+    public static void permitDevices(int... deviceIds) {
 
         permitLock.writeLock().lock();
 
         try {
-            permittedDevices.add(deviceId);
+            for (int deviceId : deviceIds) {
+                permittedDevices.add(deviceId);
+            }
             Integer newList[] = permittedDevices.toArray(new Integer[permittedDevices.size()]);
             Config.setIntegerArray("discovery.devices.permitted", newList);
             Config.saveConfig();
@@ -106,19 +108,21 @@ public class DiscoveryManager implements PowerEventListener {
     }
 
     /**
-     * Remove a device from the permitted devices list.
+     * Remove a device or devices from the permitted devices list.
      * <p/>
      * Note that this does not unload the device if it has already been loaded. These changes are
      * immediately saved.
      *
-     * @param deviceId This is the device ID to remove.
+     * @param deviceIds This is the device ID or IDs to remove.
      */
-    public static void revokeDevice(int deviceId) {
+    public static void revokeDevice(int... deviceIds) {
 
         permitLock.writeLock().lock();
 
         try {
-            permittedDevices.remove(deviceId);
+            for (int deviceId: deviceIds) {
+                permittedDevices.remove(deviceId);
+            }
             Integer newList[] = permittedDevices.toArray(new Integer[permittedDevices.size()]);
             Config.setIntegerArray("discovery.devices.permitted", newList);
             Config.saveConfig();
@@ -466,7 +470,7 @@ public class DiscoveryManager implements PowerEventListener {
                 if (deviceDetails != null) {
                     captureDevice = discovery.loadCaptureDevice(deviceId);
                     SageTVManager.addCaptureDevice(captureDevice);
-                    permitDevice(deviceId);
+                    permitDevices(deviceId);
                     break;
                 }
             }

@@ -91,7 +91,7 @@ public class JsonTest {
         assert (jsonOption.getType().equals("STRING"));
         assert (jsonOption.getValidValues().length == 0);
         assert (jsonOption.getValue().equals("HDHomeRun HDHR4-2US Tuner FFFFFFFF-0"));
-        assert (jsonOption.getValues() == null);
+        assert (jsonOption.getValues().length == 0);
     }
 
     @Test(groups = { "json", "parseClientCaptureDeviceSingle" })

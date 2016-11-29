@@ -110,6 +110,10 @@ public class NanoHTTPDManager implements PowerEventListener {
         return false;
     }
 
+    public synchronized static int getPort() {
+        return port;
+    }
+
     @Override
     public void onSuspendEvent() {
         stopWebServer();

@@ -19,6 +19,7 @@ package opendct;
 import opendct.channel.ChannelManager;
 import opendct.config.Config;
 import opendct.config.ExitCode;
+import opendct.config.StaticConfig;
 import opendct.consumer.DynamicConsumerImpl;
 import opendct.nanohttpd.NanoHTTPDManager;
 import opendct.power.NetworkPowerEventManger;
@@ -42,7 +43,7 @@ public class Main {
     private static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) throws Exception {
-        logger.info("Starting OpenDCT {}...", Config.VERSION_PROGRAM);
+        logger.info("Starting OpenDCT {}...", StaticConfig.VERSION_PROGRAM);
 
         Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
             @Override

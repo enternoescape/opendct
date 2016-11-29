@@ -27,37 +27,46 @@ public class HttpUtil {
     private static final Gson gson = new Gson();
 
     public static String getPostContent(NanoHTTPD.IHTTPSession session) {
-        InputStream inputStream = session.getInputStream();
-        int contentLength;
-
+        InputStream inputStream = null;
         try {
-            contentLength = Integer.parseInt(session.getHeaders().get("content-length"));
-        } catch (NumberFormatException e) {
+            inputStream = session.getInputStream();
+            int contentLength;
+
             try {
-                contentLength = inputStream.available();
-            } catch (IOException e1) {
+                contentLength = Integer.parseInt(session.getHeaders().get("content-length"));
+            } catch (NumberFormatException e) {
+                try {
+                    contentLength = inputStream.available();
+                } catch (IOException e1) {
+                    return "";
+                }
+            }
+
+            if (contentLength == 0) {
                 return "";
             }
-        }
 
-        if (contentLength == 0) {
-            return "";
-        }
+            int index = 0;
+            byte response[] = new byte[contentLength];
 
-        int index = 0;
-        byte response[] = new byte[contentLength];
-
-        while (contentLength > index) {
-            int readBytes = 0;
-            try {
-                readBytes = inputStream.read(response, index, contentLength - index);
-            } catch (IOException e) {
-                break;
+            while (contentLength > index) {
+                int readBytes;
+                try {
+                    readBytes = inputStream.read(response, index, contentLength - index);
+                } catch (IOException e) {
+                    break;
+                }
+                index += readBytes;
             }
-            index += readBytes;
-        }
 
-        return new String(response).trim();
+            return new String(response, 0, index).trim();
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {}
+            }
+        }
     }
 
     public static NanoHTTPD.Response returnException(DeviceOptionException e) {

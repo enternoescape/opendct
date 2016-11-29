@@ -52,7 +52,7 @@ ext {
     log4jVersion = '2.5'
     jnaVersion = '4.2.1'
 
-    versionText = new File('src/main/java/opendct/config/Config.java').text
+    versionText = new File('src/main/java/opendct/config/StaticConfig.java').text
     majorVersion = (versionText =~ /VERSION_MAJOR = ([0-9]+)/)[0][1]
     minorVersion = (versionText =~ /VERSION_MINOR = ([0-9]+)/)[0][1]
     buildVersion = (versionText =~ /VERSION_BUILD = ([0-9]+)/)[0][1]
@@ -76,20 +76,21 @@ configurations {
     windows_x86_64
     linux_x86
     linux_x86_64
+    json_client
 }
 
 dependencies {
     testCompile 'org.testng:testng:6.1.1'
 
     compile fileTree(dir: 'lib', include: ['*.jar'])
-    compile 'org.fourthline.cling:cling-core:2.1.0'
+    compile 'org.fourthline.cling:cling-core:2.1.1'
     compile "org.apache.logging.log4j:log4j-api:${log4jVersion}"
     compile "org.apache.logging.log4j:log4j-core:${log4jVersion}"
     compile "net.java.dev.jna:jna:${jnaVersion}"
     compile "net.java.dev.jna:jna-platform:${jnaVersion}"
     compile 'org.nanohttpd:nanohttpd:2.3.0'
     compile 'org.nanohttpd:nanohttpd-nanolets:2.3.0'
-    compile 'com.google.code.gson:gson:2.6.2'
+    compile 'com.google.code.gson:gson:2.8.0'
     compile 'org.bytedeco:javacpp:1.2'
     compile ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}") { transitive = false }
 
@@ -110,6 +111,44 @@ dependencies {
 
     linux_ide ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86") { transitive = false }
     linux_ide ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}:linux-x86_64") { transitive = false }
+
+    json_client 'com.google.code.gson:gson:2.8.0'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = [
+                'src/main/java'
+            ]
+            excludes = [
+                // JSON client. Nothing outside of this package should be using anything inside
+                // of this package. We still include the POJOs since some of them are used by the
+                // client and the server which is not a problem.
+                'opendct/nanohttpd/client/**'
+            ]
+        }
+    }
+    jsonClient {
+        java {
+            srcDirs = [
+                'src/main/java'
+            ]
+            includes = [
+                // Basic versioning information.
+                'opendct/config/StaticConfig.java',
+                // Convenience for exception to JSON conversions.
+                'opendct/config/options/DeviceOptionException.java',
+                'opendct/config/options/DeviceOption.java',
+                'opendct/config/options/DeviceOptionType.java',
+                // JSON client.
+                'opendct/nanohttpd/client/**',
+                // POJO's used by the SageTV plugin.
+                'opendct/nanohttpd/pojo/**'
+            ]
+        }
+        compileClasspath += configurations.json_client
+    }
 }
 
 test {
@@ -249,6 +288,21 @@ ospackage {
     }
 }
 
+task jsonClientJar(type: Jar) {
+    description = 'Build opendct-json-client.jar'
+    archiveName = "opendct-json-client.jar"
+    destinationDir = file("build/distributions/json-client")
+
+    from files(sourceSets.jsonClient.output)
+}
+
+task packageJsonClient(dependsOn: jsonClientJar) << {
+    copy {
+        from configurations.json_client
+        into "build/distributions/json-client"
+    }
+}
+
 task buildWin32(dependsOn: build) << {
 	println "Built native binary for Windows 32-bit..."
 
@@ -379,8 +433,8 @@ def sourceWin() {
 
 def packageWin(String arch) {
     if (!OperatingSystem.current().isWindows()) {
-        // When building with wine, you need to get a native msi.dll or you will not create a valid installer. It is
-        // recommended to build the installers in Windows if possible.
+        // When building with wine, you need to get a native msi.dll or you will not create a valid
+        // installer. This is experimental and actual releases should only be built in Windows.
         exec {
             workingDir 'scripts/wix'
             commandLine './wine-build', arch, version

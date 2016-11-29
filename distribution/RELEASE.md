@@ -1376,3 +1376,13 @@
 > *Added a channel lineup update to be automatically triggered when a
 > channel scan is initiated. This ensures that the latest information
 > from the capture device if it provides any is used for the scan.
+
+> *Upgraded GSON library to 2.8.0.
+
+> *Upgraded Cling to 2.1.1.
+
+> *Internal: Added plugin example code and a new gradle task:
+> jsonClientJar. This task creates opendct-json-client.jar under
+> build/distributions/json-client. It can be used for Java client-side
+> communication with the server. It has a dependency on GSON which is
+> also present in the same folder. 

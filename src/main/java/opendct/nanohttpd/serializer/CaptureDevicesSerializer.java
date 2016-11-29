@@ -59,6 +59,9 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
     public static final String SAGETV_DEVICE_CROSSBAR = "sagetvCrossbars";
     public static final String OPTIONS = "options";
 
+    // Enable or disable devices.
+    public static final String ENABLE_DEVICE = "enableDevice";
+    public static final String DISABLE_DEVICE = "disableDevice";
 
     private final static DeviceOptionSerializer deviceOptionSerializer = new DeviceOptionSerializer();
     private final static SageTVDeviceTypesSerializer deviceTypesSerializer = new SageTVDeviceTypesSerializer();
@@ -237,11 +240,11 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
 
                 break;
             case OFFLINE_CHANNEL_SCAN_ENABLED:
-                if (!newValue.toLowerCase().equals("false") && !newValue.toLowerCase().equals("true")) {
+                if (!"false".equalsIgnoreCase(newValue) && !"true".equalsIgnoreCase(newValue)) {
                     return new JsonException(OFFLINE_CHANNEL_SCAN_ENABLED, "'" + newValue + "' is not boolean.");
                 }
 
-                boolean channelScan = newValue.toLowerCase().equals("true");
+                boolean channelScan = "true".equalsIgnoreCase(newValue);
 
                 if (channelScan) {
                     ChannelManager.addDeviceToOfflineScan(captureDevice.getChannelLineup(), captureDevice.getEncoderName());
@@ -256,12 +259,23 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                 } catch (DeviceOptionException e) {
                     return new JsonException(CONSUMER, e.getMessage());
                 }
+
+                break;
             case TRANSCODE_PROFILE:
                 try {
                     captureDevice.setTranscodeProfile(newValue);
                 } catch (DeviceOptionException e) {
                     return new JsonException(TRANSCODE_PROFILE, e.getMessage());
                 }
+
+                break;
+            case DISABLE_DEVICE:
+                if (!"true".equalsIgnoreCase(newValue)) {
+                    break;
+                }
+
+                DiscoveryManager.disableCaptureDevice(captureDevice.getEncoderUniqueHash());
+                break;
         }
 
         return null;

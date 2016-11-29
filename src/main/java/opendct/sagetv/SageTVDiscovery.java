@@ -18,6 +18,7 @@ package opendct.sagetv;
 
 import opendct.config.Config;
 import opendct.config.ExitCode;
+import opendct.nanohttpd.NanoHTTPDManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,8 +30,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static opendct.config.StaticConfig.*;
+
 public class SageTVDiscovery implements Runnable {
     private static final Logger logger = LogManager.getLogger(SageTVDiscovery.class);
+
     private static AtomicBoolean running = new AtomicBoolean(false);
     private static int broadcastPort = Config.getInteger("sagetv.encoder_discovery_port", 8271);
     private boolean useLoopback = Config.getBoolean("sagetv.use_automatic_loopback", true);
@@ -112,23 +116,37 @@ public class SageTVDiscovery implements Runnable {
                     lastResponse.put(lastServer, lastServerResponse);
                 }
 
-                if (datagramPacket.get() != (char) 'S') continue;
-                if (datagramPacket.get() != (char) 'T') continue;
-                if (datagramPacket.get() != (char) 'N') continue;
-                if (datagramPacket.get() < (byte) 4) continue;
-                if (datagramPacket.get() < (byte) 1) continue;
-                if (datagramPacket.get() < (byte) 0) continue;
+                char receive = (char) datagramPacket.get();
+                boolean webDiscovery = (receive == 'W');
+
+                // S = Normal encoder discovery. W = Web address discovery
+                if (receive != 'S' && receive != 'W') continue;
+                if (datagramPacket.get() != 'T') continue;
+                if (datagramPacket.get() != 'N') continue;
+                if (datagramPacket.get() < ENCODER_COMPATIBLE_MAJOR_VERSION) continue;
+                if (datagramPacket.get() < ENCODER_COMPATIBLE_MINOR_VERSION) continue;
+                if (datagramPacket.get() < ENCODER_COMPATIBLE_MICRO_VERSION) continue;
 
                 logger.debug("Validated discovery datagram from SageTV server '{}' and preparing response...", datagramSocketAddress.toString());
 
                 datagramPacket.clear();
-                datagramPacket.put("STN".getBytes(Config.STD_BYTE));
-                datagramPacket.put((byte) 4);
-                datagramPacket.put((byte) 1);
-                datagramPacket.put((byte) 0);
 
-                datagramPacket.put((byte) ((SageTVDiscovery.encoderPort >> 8) & 0xff));
-                datagramPacket.put((byte) (SageTVDiscovery.encoderPort & 0xff));
+                if (webDiscovery) {
+                    int webPort = NanoHTTPDManager.getPort();
+                    datagramPacket.put("WTN".getBytes(Config.STD_BYTE));
+                    datagramPacket.put(ENCODER_COMPATIBLE_MAJOR_VERSION);
+                    datagramPacket.put(ENCODER_COMPATIBLE_MINOR_VERSION);
+                    datagramPacket.put(ENCODER_COMPATIBLE_MICRO_VERSION);
+                    datagramPacket.put((byte) ((webPort >> 8) & 0xff));
+                    datagramPacket.put((byte) (webPort & 0xff));
+                } else {
+                    datagramPacket.put("STN".getBytes(Config.STD_BYTE));
+                    datagramPacket.put(ENCODER_COMPATIBLE_MAJOR_VERSION);
+                    datagramPacket.put(ENCODER_COMPATIBLE_MINOR_VERSION);
+                    datagramPacket.put(ENCODER_COMPATIBLE_MICRO_VERSION);
+                    datagramPacket.put((byte) ((encoderPort >> 8) & 0xff));
+                    datagramPacket.put((byte) (encoderPort & 0xff));
+                }
 
                 byte hostnameBytes[];
                 if (useLoopback && datagramSocketAddress.toString().contains(datagramChannel.socket().getLocalAddress().getHostAddress())) {

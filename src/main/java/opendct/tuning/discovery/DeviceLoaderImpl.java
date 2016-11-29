@@ -27,13 +27,47 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.List;
 
 public class DeviceLoaderImpl implements DeviceLoader {
-    private final Logger logger = LogManager.getLogger(DeviceLoaderImpl.class);
+    private static final Logger logger = LogManager.getLogger(DeviceLoaderImpl.class);
 
     // Once the web interface becomes the new way to load specific devices, this value will be
     // changed to discovery.devices.always_enable=false.
-    private final boolean alwaysEnable = Config.getBoolean("discovery.devices.exp_always_enable", true);
+    private static boolean alwaysEnable = Config.getBoolean("discovery.devices.exp_always_enable", true);
+
+    public static void disableAlwaysEnable() {
+        if (!alwaysEnable || Config.getBoolean("discovery.devices.always_enable", false)) {
+            return;
+        }
+        // Stop enabling devices by default.
+        Config.setBoolean("discovery.devices.exp_always_enable", false);
+
+        logger.info("Device availability has been manipulated via the JSON web interface. Saving" +
+                " all currently loaded capture devices as enabled. All new capture devices will" +
+                " be DISABLED by default.");
+        List<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+        int deviceIDs[] = new int[captureDevices.size()];
+        for (int i = 0; i < deviceIDs.length; i++) {
+            deviceIDs[i] = captureDevices.get(i).getEncoderUniqueHash();
+        }
+        DiscoveryManager.permitDevices(deviceIDs);
+
+        // Clear out the legacy way to prevent capture devices from loading so that it doesn't
+        // interfere if we try to load a previously disabled device.
+        Config.setString("sagetv.device.global.ignore_devices_csv", "");
+        Config.setString("sagetv.device.global.only_devices_csv", "");
+        logger.info("Cleared sagetv.device.global.ignore_devices_csv" +
+                " and sagetv.device.global.only_devices_csv properties.");
+
+        alwaysEnable = false;
+    }
+
+    public static void enableAlwaysEnable() {
+        // Start enabling devices by default.
+        Config.setBoolean("discovery.devices.exp_always_enable", true);
+        alwaysEnable = true;
+    }
 
     @Override
     public synchronized void advertiseDevice(DiscoveredDevice details, DeviceDiscoverer discovery) {

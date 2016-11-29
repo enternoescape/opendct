@@ -18,7 +18,6 @@ package opendct.nanohttpd.pojo;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import opendct.sagetv.SageTVDeviceCrossbar;
 
 public class PojoUtil {
 
@@ -28,7 +27,7 @@ public class PojoUtil {
      * @param jsonSageTVCrossbar A populated JsonSageTVCrossbar instance.
      * @return The resolved crossbar enum or UNKNOWN if one could not be resolved.
      */
-    public static SageTVDeviceCrossbar resolveEnum(JsonSageTVCrossbar jsonSageTVCrossbar) {
+    /*public static SageTVDeviceCrossbar resolveEnum(JsonSageTVCrossbar jsonSageTVCrossbar) {
         try {
             return SageTVDeviceCrossbar.valueOf(jsonSageTVCrossbar.getName());
         } catch (IllegalArgumentException e) {
@@ -42,7 +41,7 @@ public class PojoUtil {
 
             return SageTVDeviceCrossbar.UNKNOWN;
         }
-    }
+    }*/
 
     /**
      * Create a JSON element to be posted to set an option that accepts an array.

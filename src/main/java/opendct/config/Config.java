@@ -34,16 +34,11 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static opendct.config.StaticConfig.VERSION_CONFIG;
+import static opendct.config.StaticConfig.VERSION_PROGRAM;
+
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
-
-    public static final int VERSION_CONFIG = 4;
-
-    public static final int VERSION_MAJOR = 0;
-    public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 14;
-    public static final String VERSION_PROGRAM =
-            VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
     private static final Object getRTSPPort = new Object();

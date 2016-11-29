@@ -30,6 +30,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class HDHomeRunDiscovery implements Runnable {
@@ -445,7 +446,7 @@ public class HDHomeRunDiscovery implements Runnable {
 
     public static InetAddress[] getBroadcast() {
         NetworkInterface[] networkInterfaces = NetworkPowerEventManger.getInterfaces();
-        ArrayList<InetAddress> addresses = new ArrayList<>();
+        List<InetAddress> addresses = new ArrayList<>();
 
         for (NetworkInterface networkInterface : networkInterfaces) {
             for (InterfaceAddress interfaceAddress : networkInterface.getInterfaceAddresses()) {

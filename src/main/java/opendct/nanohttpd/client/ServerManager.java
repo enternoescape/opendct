@@ -190,6 +190,16 @@ public class ServerManager {
         return servers.keySet().toArray(new String[0]);
     }
 
+    /**
+     * Get a specific server's properties by name.
+     * <p/>
+     * This method will also attempt to detect the server if the provided name does not match
+     * currently know servers. If it cannot detect the server, it will attempt to create the server
+     * using the default port 9091 if the name actually resolves to a network accessible device.
+     *
+     * @param serverName The server name.
+     * @return The server properties if the server exists.
+     */
     public ServerProperties getServer(String serverName) {
         ServerProperties server = servers.get(serverName);
         // Try to discover the server. This is better than just forcing the entry in case the server
@@ -197,7 +207,7 @@ public class ServerManager {
         if (server == null) {
             discoverServers(Plugin.DISCOVERY_PORT);
             server = servers.get(serverName);
-            // Try to create the server properties if the server does not exist.
+            // Try to create the assumed server properties if the server does not exist.
             if (server == null) {
                 addServer(serverName, 9091);
                 server = servers.get(serverName);
@@ -206,6 +216,16 @@ public class ServerManager {
         return server;
     }
 
+    /**
+     * Returns the requested JSON object deserialized from the reply to the requested file.
+     *
+     * @param serverName The server to connect to.
+     * @param returnObject The class to be returned with the deserialized JSON object.
+     * @param file The file path to be used on the server.
+     * @param <T> The type of object desired.
+     * @return The requested object type or <code>null</code> if there was a problem with the
+     *         connection or deserializing.
+     */
     public <T> T getJson(String serverName, Class<T> returnObject, String file) {
         ServerProperties server = servers.get(serverName);
         if (server == null) {
@@ -220,7 +240,8 @@ public class ServerManager {
             connection.setRequestMethod("GET");
             connection.setReadTimeout(CONNECTION_TIMEOUT);
             connection.setConnectTimeout(CONNECTION_TIMEOUT);
-            connection.connect();
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            connection.setRequestProperty("Accept", "application/json");
             return  gson.fromJson(new InputStreamReader(new BufferedInputStream(connection.getInputStream())), returnObject);
         } catch (IOException e) {
             System.out.println("OpenDCT - ERROR: HTTP GET exception for server " + server + " => " + e.getMessage());
@@ -229,6 +250,17 @@ public class ServerManager {
         return null;
     }
 
+    /**
+     * Returns the requested JSON object deserialized from the reply to the requested file.
+     *
+     * @param serverName The server to connect to.
+     * @param returnObject The class to be returned with the deserialized JSON object.
+     * @param file The file path to be used on the server.
+     * @param post The JSON element to be posted.
+     * @param <T> The type of object desired.
+     * @return The requested object type or <code>null</code> if there was a problem with the
+     *         connection or deserializing.
+     */
     public <T> T postJson(String serverName, Class<T> returnObject, String file, JsonElement post) {
         ServerProperties server = servers.get(serverName);
         if (server == null) {
@@ -257,7 +289,6 @@ public class ServerManager {
             // POST must have a length or we will not get a reply.
             connection.setRequestProperty("Content-Length", Integer.toString(transmit.length));
 
-            connection.connect();
             outputStream = connection.getOutputStream();
             outputStream.write(transmit, 0, transmit.length);
             inputStream = new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8);
@@ -280,6 +311,17 @@ public class ServerManager {
         return null;
     }
 
+    /**
+     * Returns the requested JSON object deserialized from the reply to the requested file.
+     *
+     * @param serverName The server to connect to.
+     * @param returnObject The class to be returned with the deserialized JSON object.
+     * @param file The file path to be used on the server.
+     * @param put The JSON element to be put.
+     * @param <T> The type of object desired.
+     * @return The requested object type or <code>null</code> if there was a problem with the
+     *         connection or deserializing.
+     */
     public <T> T putJson(String serverName, Class<T> returnObject, String file, JsonElement put) {
         ServerProperties server = servers.get(serverName);
         if (server == null) {
@@ -308,7 +350,6 @@ public class ServerManager {
             // PUT must have a length or we will not get a reply.
             connection.setRequestProperty("Content-Length", Integer.toString(transmit.length));
 
-            connection.connect();
             outputStream = connection.getOutputStream();
             outputStream.write(transmit, 0, transmit.length);
             inputStream = new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8);
@@ -331,6 +372,17 @@ public class ServerManager {
         return null;
     }
 
+    /**
+     * Returns the requested JSON object deserialized from the reply to the requested file.
+     *
+     * @param serverName The server to connect to.
+     * @param returnObject The class to be returned with the deserialized JSON object.
+     * @param file The file path to be used on the server.
+     * @param delete The JSON element to be deleted.
+     * @param <T> The type of object desired.
+     * @return The requested object type or <code>null</code> if there was a problem with the
+     *         connection or deserializing.
+     */
     public <T> T deleteJson(String serverName, Class<T> returnObject, String file, JsonElement delete) {
         ServerProperties server = servers.get(serverName);
         if (server == null) {
@@ -359,7 +411,6 @@ public class ServerManager {
             // DELETE must have a length or we will not get a reply.
             connection.setRequestProperty("Content-Length", Integer.toString(transmit.length));
 
-            connection.connect();
             outputStream = connection.getOutputStream();
             outputStream.write(transmit, 0, transmit.length);
             inputStream = new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8);

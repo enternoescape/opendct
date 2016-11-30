@@ -47,6 +47,14 @@ public class Devices {
             " its pool. Higher numbers mean higher priority.";
     public static final String POOL_MERIT_LABEL = "Change Capture Device Pool Merit";
 
+    public static final String CONSUMER_PROP = "opendct/device_consumer";
+    public static final String CONSUMER_HELP = "Change the stream consumer for this capture" +
+            " device. FFmpeg uses the FFmpeg libraries to remux the existing video and audio or" +
+            " transcode to new a new video codec. Media Server uses the SageTV media server to" +
+            " remux the existing video and audio. Raw copies the stream without any changes." +
+            " Dynamic selects the desired consumer based on the currently requested channel.";
+    public static final String CONSUMER_LABEL = "Change Capture Device Stream Consumer";
+
     public static final String DEVICES = "/devices";
 
     // Since we can't correctly map the device ID to the name because we can only provide the device
@@ -197,6 +205,7 @@ public class Devices {
         OptionsHandler cachedOptions = getOptions(server, cachedDevice);
         if (cachedDevice!= null && cachedOptions != null) {
             optionsList.add(DEVICE_SELECT_PROP);
+            optionsList.add(CONSUMER_PROP);
 
             // This variable will be null if pooling is not enabled. If this feature is not enabled
             // for this specific device, it will be an empty string, but never null.
@@ -228,6 +237,10 @@ public class Devices {
                     } else {
                         return selectedDevice;
                     }
+                }
+            case CONSUMER_PROP:
+                if (cachedDevice != null) {
+                    return cachedDevice.getConsumer();
                 }
             case POOL_NAME_PROP:
                 if (cachedDevice != null) {
@@ -264,6 +277,8 @@ public class Devices {
         switch (setting) {
             case DEVICE_SELECT_PROP:
                 return Plugin.CONFIG_CHOICE;
+            case CONSUMER_PROP:
+                return Plugin.CONFIG_CHOICE;
             case POOL_NAME_PROP:
                 return Plugin.CONFIG_TEXT;
             case POOL_MERIT_PROP:
@@ -280,7 +295,7 @@ public class Devices {
 
     public static void setConfigValue(String server, String setting, String value) {
         JsonElement element;
-        JsonCaptureDevice cachedDevice = getCaptureDevice(server);
+        String property;
         switch (setting) {
             case DEVICE_SELECT_PROP:
                 String newSelectedDevice = deviceMap.get(value);
@@ -288,25 +303,28 @@ public class Devices {
                     selectedDevice = newSelectedDevice;
                     refreshOptions();
                 }
+                return;
+            case CONSUMER_PROP:
+                property = "consumer";
                 break;
             case POOL_NAME_PROP:
-                if (cachedDevice != null) {
-                    element = PojoUtil.setOption("poolName", value);
-                    ServerManager.getInstance().postJson(server, JsonException.class, DEVICES + "/" + String.valueOf(cachedDevice.getId()), element);
-                }
+                property = "poolName";
                 break;
             case POOL_MERIT_PROP:
-                if (cachedDevice != null) {
-                    element = PojoUtil.setOption("poolMerit", value);
-                    ServerManager.getInstance().postJson(server, JsonException.class, DEVICES + "/" + String.valueOf(cachedDevice.getId()), element);
-                }
+                property = "poolMerit";
                 break;
             default:
-                OptionsHandler cachedOptions = getOptions(server, cachedDevice);
+                OptionsHandler cachedOptions = getOptions(server, getCaptureDevice(server));
                 if (cachedOptions != null) {
                     cachedOptions.setConfigValue(setting, value);
                     refreshOptions();
                 }
+                return;
+        }
+        JsonCaptureDevice cachedDevice = getCaptureDevice(server);
+        if (cachedDevice != null) {
+            element = PojoUtil.setOption(property, value);
+            ServerManager.getInstance().postJson(server, JsonException.class, DEVICES + "/" + String.valueOf(cachedDevice.getId()), element);
         }
     }
 
@@ -326,6 +344,8 @@ public class Devices {
         switch (setting) {
             case DEVICE_SELECT_PROP:
                 return getAllCaptureDeviceNames(server);
+            case CONSUMER_PROP:
+                return ServerManager.getInstance().getJson(server, String[].class, Consumers.CONSUMERS);
             default:
                 JsonCaptureDevice cachedDevice = getCaptureDevice(server);
                 OptionsHandler cachedOptions = getOptions(server, cachedDevice);
@@ -340,6 +360,8 @@ public class Devices {
         switch (setting) {
             case DEVICE_SELECT_PROP:
                 return DEVICE_SELECT_HELP;
+            case CONSUMER_PROP:
+                return CONSUMER_HELP;
             case POOL_NAME_PROP:
                 return POOL_NAME_HELP;
             case POOL_MERIT_PROP:
@@ -358,6 +380,8 @@ public class Devices {
         switch (setting) {
             case DEVICE_SELECT_PROP:
                 return DEVICE_SELECT_LABEL;
+            case CONSUMER_PROP:
+                return CONSUMER_LABEL;
             case POOL_NAME_PROP:
                 return POOL_NAME_LABEL;
             case POOL_MERIT_PROP:

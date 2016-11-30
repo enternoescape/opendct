@@ -42,6 +42,7 @@ public class DeviceLoaderImpl implements DeviceLoader {
         }
         // Stop enabling devices by default.
         Config.setBoolean("discovery.devices.exp_always_enable", false);
+        alwaysEnable = false;
 
         logger.info("Device availability has been manipulated via the JSON web interface. Saving" +
                 " all currently loaded capture devices as enabled. All new capture devices will" +
@@ -54,19 +55,41 @@ public class DeviceLoaderImpl implements DeviceLoader {
         DiscoveryManager.permitDevices(deviceIDs);
 
         // Clear out the legacy way to prevent capture devices from loading so that it doesn't
-        // interfere if we try to load a previously disabled device.
+        // interfere if we try to load a previously disabled device. Also back up the old values so
+        // we can restore them if the user changes their mind.
+        Config.setString("sagetv.device.global.ignore_devices_csv_old", Config.getString("sagetv.device.global.ignore_devices_csv", ""));
         Config.setString("sagetv.device.global.ignore_devices_csv", "");
+        Config.setString("sagetv.device.global.only_devices_csv_old", Config.getString("sagetv.device.global.only_devices_csv", ""));
         Config.setString("sagetv.device.global.only_devices_csv", "");
         logger.info("Cleared sagetv.device.global.ignore_devices_csv" +
                 " and sagetv.device.global.only_devices_csv properties.");
-
-        alwaysEnable = false;
     }
 
     public static void enableAlwaysEnable() {
         // Start enabling devices by default.
         Config.setBoolean("discovery.devices.exp_always_enable", true);
         alwaysEnable = true;
+
+        // Restore the legacy configuration based on the current configuration.
+        /*StringBuilder builder = new StringBuilder();
+        List<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+        for (CaptureDevice device : captureDevices) {
+            builder.append(device.getEncoderName()).append(',');
+        }
+        if (builder.length() > 0) {
+            builder.setLength(builder.length() - 1);
+        }
+        Config.setString("sagetv.device.global.only_devices_csv", builder.toString());*/
+
+        // Restore legacy configuration.
+        String ignore = Config.getString("sagetv.device.global.ignore_devices_csv_old", "");
+        String only = Config.getString("sagetv.device.global.only_devices_csv_old", "");
+        if (ignore.length() > 0) {
+            Config.setString("sagetv.device.global.ignore_devices_csv", ignore);
+        }
+        if (only.length() > 0) {
+            Config.setString("sagetv.device.global.only_devices_csv", only);
+        }
     }
 
     @Override

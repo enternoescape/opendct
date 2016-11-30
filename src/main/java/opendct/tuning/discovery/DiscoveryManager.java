@@ -155,6 +155,7 @@ public class DiscoveryManager implements PowerEventListener {
         for (OSVersion osVersion : newDiscoverer.getSupportedOS()) {
             if (osVersion == Config.OS_VERSION) {
                 supportedOS = true;
+                break;
             }
         }
 

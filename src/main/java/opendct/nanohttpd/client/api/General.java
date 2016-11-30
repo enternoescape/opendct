@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class General {
-
     public static final String GENERAL = "/general";
 
     private static final Object serverOptions = new Object();

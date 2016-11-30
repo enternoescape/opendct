@@ -41,7 +41,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
 
     private static final ReentrantReadWriteLock dynamicMapsLock;
     private static final Map<String, String> dynamicMaps;
-    private static StringDeviceOption defaultConsumer;
+    private static ConsumerDeviceOption defaultConsumer;
     private static ChannelRangesDeviceOption ffmpegTransConsumer;
     private static ChannelRangesDeviceOption mediaServerConsumer;
     private static ChannelRangesDeviceOption rawConsumer;
@@ -69,14 +69,14 @@ public class DynamicConsumerImpl implements SageTVConsumer {
         dynamicMapsLock.writeLock().lock();
 
         try {
-            if (defaultConsumer.getValue().endsWith(DynamicConsumerImpl.class.getSimpleName())) {
+            if (defaultConsumer.getCanonicalValue().endsWith(DynamicConsumerImpl.class.getSimpleName())) {
                 logger.error("Dynamic consumer cannot be the default consumer. Changing to '{}'",
                         FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
 
                 defaultConsumer.setValue(FFmpegTransSageTVConsumerImpl.class.getCanonicalName());
             }
 
-            logger.info("Dynamic consumer default set to use {}", defaultConsumer.getValue());
+            logger.info("Dynamic consumer default set to use {}", defaultConsumer.getCanonicalValue());
 
             channels = ChannelRangesDeviceOption.parseRanges(ffmpegTransConsumer.getValue());
             for (String channel : channels) {
@@ -146,18 +146,18 @@ public class DynamicConsumerImpl implements SageTVConsumer {
 
         if (channel == null) {
             logger.warn("Unable to determine what consumer is needed because a " +
-                    "channel was not provided. Using default '{}'", defaultConsumer.getValue());
+                    "channel was not provided. Using default '{}'", defaultConsumer.getCanonicalValue());
 
-            consumerName = defaultConsumer.getValue();
+            consumerName = defaultConsumer.getCanonicalValue();
         } else {
             consumerName = dynamicMaps.get(channel);
         }
 
         if (consumerName == null) {
             logger.debug("Using default consumer '{}' for channel '{}'",
-                    defaultConsumer.getValue(), channel);
+                    defaultConsumer.getCanonicalValue(), channel);
 
-            consumerName = defaultConsumer.getValue();
+            consumerName = defaultConsumer.getCanonicalValue();
         } else {
             logger.debug("Using defined consumer '{}' for channel '{}'",
                     consumerName, channel);
@@ -390,7 +390,7 @@ public class DynamicConsumerImpl implements SageTVConsumer {
     private static void initDeviceOptions() {
         while (true) {
             try {
-                defaultConsumer = new StringDeviceOption(
+                defaultConsumer = new ConsumerDeviceOption(
                         Config.getString("consumer.dynamic.default",
                                 FFmpegTransSageTVConsumerImpl.class.getCanonicalName()),
                         false,
@@ -406,8 +406,9 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                         false,
                         "FFmpeg Transcoder Consumer Channels",
                         "consumer.dynamic.channels.ffmpeg",
-                        "These are the channel ranges that will always use" +
-                                " FFmpegTransSageTVConsumerImpl."
+                        "These are the channel ranges that will always use " +
+                                Config.getConsumerFriendlyForCanonical(
+                                        FFmpegTransSageTVConsumerImpl.class.getCanonicalName()) + "."
                 );
 
                 if (Config.MEDIA_SERVER_ENABLED) {
@@ -416,8 +417,9 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                             false,
                             "Raw Consumer Channels",
                             "consumer.dynamic.channels.media_server",
-                            "These are the channel ranges that will always use" +
-                                    " MediaServerConsumerImpl."
+                            "These are the channel ranges that will always use " +
+                                    Config.getConsumerFriendlyForCanonical(
+                                            MediaServerConsumerImpl.class.getCanonicalName()) + "."
                     );
                 }
 
@@ -426,8 +428,9 @@ public class DynamicConsumerImpl implements SageTVConsumer {
                         false,
                         "Raw Consumer Channels",
                         "consumer.dynamic.channels.raw",
-                        "These are the channel ranges that will always use" +
-                                " RawSageTVConsumerImpl."
+                        "These are the channel ranges that will always use " +
+                                Config.getConsumerFriendlyForCanonical(
+                                        RawSageTVConsumerImpl.class.getCanonicalName()) + "."
                 );
 
 
@@ -514,5 +517,40 @@ public class DynamicConsumerImpl implements SageTVConsumer {
         updateDynamicMap();
 
         Config.saveConfig();
+    }
+
+    private static class ConsumerDeviceOption extends StringDeviceOption {
+        public String validValues[];
+
+        public ConsumerDeviceOption(String value, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
+            super(value, readonly, name, property, description, validValues);
+            for (int i = 0; i < validValues.length; i++) {
+                validValues[i] = Config.getConsumerFriendlyForCanonical(validValues[i]);
+            }
+            this.validValues = validValues;
+        }
+
+        @Override
+        public void setValue(String... newValues) throws DeviceOptionException {
+            if (newValues == null || newValues.length == 0)
+                return;
+            String newValue = Config.getConsumerCanonicalForFriendly(newValues[0]);
+            super.setValue(newValue != null ? newValue : newValues[0]);
+        }
+
+        @Override
+        public String getValue() {
+            String newValue = Config.getConsumerFriendlyForCanonical(super.getValue());
+            return newValue != null ? newValue : super.getValue();
+        }
+
+        public String getCanonicalValue() {
+            return super.getValue();
+        }
+
+        @Override
+        public String[] getValidValues() {
+            return validValues;
+        }
     }
 }

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 
-public interface SageTVConsumer extends Runnable, DeviceOptions {
 /**
  * The consumer thread is responsible for processing data and transferring it to SageTV via direct
  * file writing, uploadID or both. The consumer provides its own buffer. This allows the consumer to
@@ -30,6 +29,7 @@ public interface SageTVConsumer extends Runnable, DeviceOptions {
  * data format to be placed in the consumer buffer. The producer should ensure that this is the
  * format of the data provided to the consumer.
  */
+public interface SageTVConsumer extends Runnable, DeviceOptions {
 
     /**
      * Copy as many bytes as possible from the producer into a provided byte array.

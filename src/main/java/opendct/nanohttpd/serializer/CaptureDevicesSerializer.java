@@ -19,6 +19,7 @@ import com.google.gson.*;
 import opendct.capture.CaptureDevice;
 import opendct.channel.ChannelLineup;
 import opendct.channel.ChannelManager;
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.nanohttpd.pojo.JsonException;
@@ -54,6 +55,7 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
     public static final String BROADCAST_STANDARD = "broadcastStandard";
     public static final String COPY_PROTECTION = "copyProtection";
     public static final String CONSUMER = "consumer";
+    public static final String CONSUMER_CANONICAL = "consumerCanonical";
     public static final String TRANSCODE_PROFILE = "transcodeProfile";
     public static final String DEVICE_TYPE = "deviceType";
     public static final String SAGETV_DEVICE_CROSSBAR = "sagetvCrossbars";
@@ -103,7 +105,8 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                 object.addProperty(SIGNAL_STRENGTH, captureDevice.getSignalStrength());
                 object.addProperty(BROADCAST_STANDARD, captureDevice.getBroadcastStandard().toString());
                 object.addProperty(COPY_PROTECTION, captureDevice.getCopyProtection().toString());
-                object.addProperty(CONSUMER, captureDevice.getConsumerName());
+                object.addProperty(CONSUMER, Config.getConsumerFriendlyForCanonical(captureDevice.getConsumerName()));
+                object.addProperty(CONSUMER_CANONICAL, captureDevice.getConsumerName());
                 object.addProperty(TRANSCODE_PROFILE, captureDevice.getTranscodeProfile());
                 object.addProperty(DEVICE_TYPE, captureDevice.getEncoderDeviceType().toString());
                 object.add(SAGETV_DEVICE_CROSSBAR, deviceTypesSerializer.serialize(captureDevice.getSageTVDeviceCrossbars(), SageTVDeviceCrossbar.class, context));
@@ -255,6 +258,10 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                 break;
             case CONSUMER:
                 try {
+                    String value = Config.getConsumerCanonicalForFriendly(newValue);
+                    if (value != null) {
+                        newValue = value;
+                    }
                     captureDevice.setConsumerName(newValue);
                 } catch (DeviceOptionException e) {
                     return new JsonException(CONSUMER, e.getMessage());

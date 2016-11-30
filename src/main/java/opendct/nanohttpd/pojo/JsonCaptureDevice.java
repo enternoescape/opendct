@@ -39,6 +39,7 @@ public class JsonCaptureDevice {
     private String copyProtection;
     private String deviceType;
     private String consumer;
+    private String consumerCanonical;
     private String transcodeProfile;
     private JsonSageTVCrossbar[] sagetvCrossbars;
     private JsonOption[] options;
@@ -225,6 +226,14 @@ public class JsonCaptureDevice {
 
     public void setConsumer(String consumer) {
         this.consumer = consumer;
+    }
+
+    public String getConsumerCanonical() {
+        return consumerCanonical;
+    }
+
+    public void setConsumerCanonical(String consumerCanonical) {
+        this.consumerCanonical = consumerCanonical;
     }
 
     public String getTranscodeProfile() {

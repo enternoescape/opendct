@@ -70,7 +70,7 @@ public class LongDeviceOption extends BaseDeviceOption {
      * @throws DeviceOptionException Thrown if the provided <i>value</i> doesn't meet the specified
      *                               requirements for this option.
      */
-    public LongDeviceOption(long[] values, DeviceOptionType optionType, boolean allowEmpty, boolean readonly, String name, String property, String description, int minValue, int maxValue) throws DeviceOptionException {
+    public LongDeviceOption(long[] values, boolean allowEmpty, boolean readonly, String name, String property, String description, int minValue, int maxValue) throws DeviceOptionException {
         super(DeviceOptionType.LONG, allowEmpty, readonly, name, property, description);
 
         this.minValue = minValue;
@@ -111,7 +111,7 @@ public class LongDeviceOption extends BaseDeviceOption {
      * @throws DeviceOptionException Thrown if the provided <i>value</i> doesn't meet the specified
      *                               requirements for this option.
      */
-    public LongDeviceOption(long[] values, DeviceOptionType optionType, boolean allowEmpty, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
+    public LongDeviceOption(long[] values, boolean allowEmpty, boolean readonly, String name, String property, String description, String... validValues) throws DeviceOptionException {
         super(DeviceOptionType.LONG, allowEmpty, readonly, name, property, description, validValues);
 
         this.minValue = Long.MIN_VALUE;

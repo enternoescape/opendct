@@ -31,7 +31,7 @@ import java.util.List;
  * as the actual plugin by just extending this class, implementing the SageTVPlugin interface and
  * adding a constructor that accepts sage.SageTVPluginRegistry as a parameter.
  *
- * Ex. public class RealPlugin extends Plugin implements SageTVPlugin
+ * Ex. public class RealPlugin extends opendct.nanohttpd.client.Plugin implements sage.SageTVPlugin
  */
 public class Plugin {
     public static final int DISCOVERY_PORT = 8271;
@@ -108,7 +108,7 @@ public class Plugin {
 
     // Returns the names of the settings for this plugin
     public String[] getConfigSettings() {
-        List<String> settings = new ArrayList<>(4);
+        List<String> settings = new ArrayList<>();
         settings.add(SELECTED_SERVER_PROP);
         ServerProperties server = ServerManager.getInstance().getServer(selectedServer);
         if (server != null) {

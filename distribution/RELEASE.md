@@ -1363,6 +1363,8 @@
 > than blank, the set username and password will be used for basic HTTP
 > authentication.
 
+> *Added redirect support for HTTP producers.
+
 > *Added timeout for when a program cannot be detected. The property
 > name is consumer.ffmpeg.no_program_timeout_ms, the timeout is in
 > milliseconds and defaults conservatively to 10000. The minimum value
@@ -1385,4 +1387,4 @@
 > jsonClientJar. This task creates opendct-json-client.jar under
 > build/distributions/json-client. It can be used for Java client-side
 > communication with the server. It has a dependency on GSON which is
-> also present in the same folder. 
+> also present in the same folder.

@@ -42,6 +42,7 @@ public class NIOHttpDownloader {
             "User-Agent: OpenDCT" + NEW_LINE;
     private static final String AUTH_CONNECTION =
             "Authorization: Basic ";
+    private static final String HTTP_11_HEADER = "HTTP/1.1 ";
 
     private boolean closed = false;
     private final SocketChannel socketChannel;
@@ -113,6 +114,8 @@ public class NIOHttpDownloader {
         StringBuilder stringBuffer = new StringBuilder(1024);
         StringBuilder logBuilder = new StringBuilder(1024);
 
+        boolean redirect = true;
+        String redirectUrl = null;
         boolean success = false;
         boolean startStreaming = false;
         char currentByte;
@@ -134,13 +137,16 @@ public class NIOHttpDownloader {
                     String line = stringBuffer.toString();
                     logBuilder.append("'").append(stringBuffer).append("', ");
 
-                    if (!success && line.startsWith("HTTP/1.1")) {
-                        if (!line.endsWith(" 200 OK")) {
-                            logger.error("HTTP Error: {}", logBuilder);
-                            throw new IOException("Server responded " + line);
-                        } else {
-                            success = true;
+                    if (!success && line.startsWith(HTTP_11_HEADER)) {
+                        if (line.length() > HTTP_11_HEADER.length() && !line.startsWith("2", HTTP_11_HEADER.length())) {
+                            if (line.startsWith("3", HTTP_11_HEADER.length())) {
+                                redirect = true;
+                            } else {
+                                logger.error("HTTP Error: {}", logBuilder);
+                                throw new IOException("Server responded " + line);
+                            }
                         }
+                        success = true;
                     } else if (line.startsWith("Content-Type: ")) {
                         mimeType = line.substring("Content-Type: ".length());
                     } else if (line.startsWith("Content-Length: ")) {
@@ -149,8 +155,10 @@ public class NIOHttpDownloader {
                                     line.substring("Content-Length: ".length()));
                         } catch (NumberFormatException e) {
                             logger.warn("Unable to parse content length from '{}' => ",
-                                    line, e.getMessage());
+                                    line, e);
                         }
+                    } else if (line.startsWith("Location: ")) {
+                        redirectUrl = line.substring("Location: ".length());
                     }
 
                     stringBuffer.setLength(0);
@@ -163,7 +171,15 @@ public class NIOHttpDownloader {
             }
         }
 
-        logger.debug("HTTP Response: {}", logBuilder);
+        logger.debug("HTTP response: {}", logBuilder);
+        if (redirect) {
+            if (redirectUrl == null) {
+                throw new IOException("Redirect was requested, without a redirect URL.");
+            }
+            logger.info("HTTP redirect: {}", redirectUrl);
+            connect(new URL(redirectUrl), credentials);
+            return;
+        }
     }
 
     /**

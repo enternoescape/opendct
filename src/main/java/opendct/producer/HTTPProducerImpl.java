@@ -154,6 +154,17 @@ public class HTTPProducerImpl implements HTTPProducer {
             httpURLConnection.setRequestProperty("Authorization", "Basic " + credentials.getEncodedBase64());
         }
         httpURLConnection.connect();
+
+        if (httpURLConnection.getResponseCode() / 100 == 3) {
+            String redirectUrl = httpURLConnection.getHeaderField("Location:");
+            if (redirectUrl == null) {
+                throw new IOException("Redirect was requested, without a redirect URL.");
+            }
+            logger.info("HTTP redirect: {}", redirectUrl);
+            setSourceUrl(new URL(redirectUrl), isThread);
+            return;
+        }
+
         inputStream = new BufferedInputStream(httpURLConnection.getInputStream());
 
         currentURL = url;

@@ -1379,6 +1379,9 @@
 > channel scan is initiated. This ensures that the latest information
 > from the capture device if it provides any is used for the scan.
 
+> *Reverted back to FFmpeg 2.8.1 until the deprecated functionality
+> features can be managed.
+
 > *Upgraded GSON library to 2.8.0.
 
 > *Upgraded Cling to 2.1.1.

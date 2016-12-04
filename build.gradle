@@ -48,7 +48,7 @@ ext {
     winWixSource = 'build/wix/source'
     winWixConfig = 'build/wix/config'
 
-    ffmpegVersion = '3.1.2-1.2'
+    ffmpegVersion = '2.8.1-1.1'
     log4jVersion = '2.5'
     jnaVersion = '4.2.1'
 
@@ -91,7 +91,7 @@ dependencies {
     compile 'org.nanohttpd:nanohttpd:2.3.0'
     compile 'org.nanohttpd:nanohttpd-nanolets:2.3.0'
     compile 'com.google.code.gson:gson:2.8.0'
-    compile 'org.bytedeco:javacpp:1.2'
+    compile 'org.bytedeco:javacpp:1.1'
     compile ("org.bytedeco.javacpp-presets:ffmpeg:${ffmpegVersion}") { transitive = false }
 
     windows_x86 configurations.compile

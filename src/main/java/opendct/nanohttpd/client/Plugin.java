@@ -17,6 +17,7 @@ package opendct.nanohttpd.client;
 
 import com.google.gson.JsonElement;
 import opendct.nanohttpd.client.api.Devices;
+import opendct.nanohttpd.client.api.Discovery;
 import opendct.nanohttpd.client.api.General;
 import opendct.nanohttpd.pojo.JsonException;
 import opendct.nanohttpd.pojo.PojoUtil;
@@ -127,6 +128,7 @@ public class Plugin {
 
         String serverOptions[] = settings.toArray(new String[settings.size()]);
         String generalOptions[] = General.getConfigSettings(selectedServer);
+        String discoveryOptions[] = Discovery.getConfigSettings(selectedServer);
         String deviceOptions[] = Devices.getConfigSettings(selectedServer);
 
         for (String generalOption : generalOptions) {
@@ -140,10 +142,11 @@ public class Plugin {
             }
         }
 
-        String returnValue[] = new String[serverOptions.length + generalOptions.length + deviceOptions.length];
+        String returnValue[] = new String[serverOptions.length + generalOptions.length + discoveryOptions.length + deviceOptions.length];
         System.arraycopy(serverOptions, 0, returnValue, 0, serverOptions.length);
         System.arraycopy(generalOptions, 0, returnValue, serverOptions.length, generalOptions.length);
-        System.arraycopy(deviceOptions, 0, returnValue, serverOptions.length + generalOptions.length, deviceOptions.length);
+        System.arraycopy(discoveryOptions, 0, returnValue, serverOptions.length + generalOptions.length, discoveryOptions.length);
+        System.arraycopy(deviceOptions, 0, returnValue, serverOptions.length + generalOptions.length + discoveryOptions.length, deviceOptions.length);
         return returnValue;
     }
 
@@ -162,6 +165,8 @@ public class Plugin {
                 String returnValue;
                 if ((returnValue = General.getConfigValue(selectedServer, setting)) != null) {
                     return returnValue;
+                } else if ((returnValue = Discovery.getConfigValue(selectedServer, setting)) != null) {
+                    return returnValue;
                 } else if ((returnValue = Devices.getConfigValue(selectedServer, setting)) != null) {
                     return returnValue;
                 }
@@ -177,6 +182,8 @@ public class Plugin {
             default:
                 String returnValue[];
                 if ((returnValue = General.getConfigValues(selectedServer, setting)) != null) {
+                    return returnValue;
+                } else if ((returnValue = Discovery.getConfigValues(selectedServer, setting)) != null) {
                     return returnValue;
                 } else if ((returnValue = Devices.getConfigValues(selectedServer, setting)) != null) {
                     return returnValue;
@@ -213,6 +220,8 @@ public class Plugin {
                 int type;
                 if ((type = General.getConfigType(selectedServer, setting)) != 0) {
                     return type;
+                } else if ((type = Discovery.getConfigType(selectedServer, setting)) != 0) {
+                    return type;
                 } else if ((type = Devices.getConfigType(selectedServer, setting)) != 0) {
                     return type;
                 }
@@ -244,6 +253,8 @@ public class Plugin {
             default:
                 if (General.getConfigValue(selectedServer, setting) != null) {
                     General.setConfigValue(selectedServer, setting, value);
+                } else if (Discovery.getConfigValue(selectedServer, setting) != null) {
+                    Discovery.setConfigValue(selectedServer, setting, value);
                 } else if (Devices.getConfigValue(selectedServer, setting) != null) {
                     Devices.setConfigValue(selectedServer, setting, value);
                 }
@@ -259,6 +270,8 @@ public class Plugin {
             default:
                 if (General.getConfigValues(selectedServer, setting) != null) {
                     General.setConfigValues(selectedServer, setting, values);
+                } else if (Discovery.getConfigValues(selectedServer, setting) != null) {
+                    Discovery.setConfigValues(selectedServer, setting, values);
                 } else if (Devices.getConfigValues(selectedServer, setting) != null) {
                     Devices.setConfigValues(selectedServer, setting, values);
                 }
@@ -281,6 +294,8 @@ public class Plugin {
             default:
                 String returnValue[];
                 if ((returnValue = General.getConfigOptions(selectedServer, setting)) != null) {
+                    return returnValue;
+                } else if ((returnValue = Discovery.getConfigOptions(selectedServer, setting)) != null) {
                     return returnValue;
                 } else if ((returnValue = Devices.getConfigOptions(selectedServer, setting)) != null) {
                     return returnValue;
@@ -306,6 +321,8 @@ public class Plugin {
                 String returnValue;
                 if ((returnValue = General.getConfigHelpText(selectedServer, setting)) != null) {
                     return returnValue;
+                } else if ((returnValue = Discovery.getConfigHelpText(selectedServer, setting)) != null) {
+                    return returnValue;
                 } else if ((returnValue = Devices.getConfigHelpText(selectedServer, setting)) != null) {
                     return returnValue;
                 }
@@ -330,6 +347,8 @@ public class Plugin {
                 String returnValue;
                 if ((returnValue = General.getConfigLabel(selectedServer, setting)) != null) {
                     return returnValue;
+                } else if ((returnValue = Discovery.getConfigLabel(selectedServer, setting)) != null) {
+                    return returnValue;
                 } else if ((returnValue = Devices.getConfigLabel(selectedServer, setting)) != null) {
                     return returnValue;
                 }
@@ -340,6 +359,9 @@ public class Plugin {
     // Resets the configuration of this plugin
     public void resetConfig() {
         autoSelectServer();
+        General.newServer();
+        Discovery.newServer();
+        Devices.newServer();
     }
 
     private void autoSelectServer() {
@@ -383,6 +405,9 @@ public class Plugin {
         selectedServer = lastServerName;
     }
 
+    /**
+     * Returns the currently selected server or <code>null</code> if one does not exist.
+     */
     public ServerProperties getSelectedServer() {
         return ServerManager.getInstance().getServer(selectedServer);
     }

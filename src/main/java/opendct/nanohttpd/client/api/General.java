@@ -25,24 +25,20 @@ import java.util.List;
 public class General {
     public static final String GENERAL = "/general";
 
-    private static final Object serverOptions = new Object();
-    private static String currentServer;
     private static OptionsHandler currentOptions;
 
+    public static void newServer() {
+        refreshOptions();
+    }
+
     private static void refreshOptions() {
-        synchronized (serverOptions) {
-            currentOptions = null;
-        }
+        currentOptions = null;
     }
 
     private static OptionsHandler getOptions(String server) {
-        OptionsHandler cachedOptions;
-        synchronized (serverOptions) {
-            cachedOptions = currentOptions;
-            if (server.equalsIgnoreCase(General.currentServer) && cachedOptions != null) {
-                return cachedOptions;
-            }
-        }
+        OptionsHandler cachedOptions = currentOptions;
+        if (cachedOptions != null)
+            return cachedOptions;
 
         JsonGeneral localGeneralOptions[] = ServerManager.getInstance().getJson(server, JsonGeneral[].class, GENERAL);
         if (localGeneralOptions == null) {
@@ -58,12 +54,8 @@ public class General {
                 localOptions.add(option);
             }
         }
-        JsonOption newOptions[] = localOptions.toArray(new JsonOption[localOptions.size()]);
-        cachedOptions = new OptionsHandler(server, GENERAL, newOptions);
-        synchronized (serverOptions) {
-            currentServer = server;
-            currentOptions = cachedOptions;
-        }
+        cachedOptions = new OptionsHandler(server, GENERAL, localOptions.toArray(new JsonOption[localOptions.size()]));
+        currentOptions = cachedOptions;
         return cachedOptions;
     }
 

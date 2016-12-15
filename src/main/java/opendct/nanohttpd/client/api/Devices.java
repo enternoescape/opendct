@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Devices {
+    public static final String DEVICES = "/devices";
+
     public static final String DEVICE_SELECT_NONE = "None";
     public static final String DEVICE_SELECT_PROP = "opendct/selected_device";
     public static final String DEVICE_SELECT_HELP = "Select a capture device to view/modify its" +
@@ -48,22 +50,30 @@ public class Devices {
     public static final String POOL_MERIT_LABEL = "Change Capture Device Pool Merit";
 
     public static final String CONSUMER_PROP = "opendct/device_consumer";
-    public static final String CONSUMER_HELP = "Change the stream consumer for this capture" +
-            " device. FFmpeg uses the FFmpeg libraries to remux the existing video and audio or" +
-            " transcode to new a new video codec. Media Server uses the SageTV media server to" +
-            " remux the existing video and audio. Raw copies the stream without any changes." +
-            " Dynamic selects the desired consumer based on the currently requested channel.";
-    public static final String CONSUMER_LABEL = "Change Capture Device Stream Consumer";
-
-    public static final String DEVICES = "/devices";
+    public static final String CONSUMER_HELP = "Select the stream consumer for this capture" +
+            " device. 'FFmpeg' uses the FFmpeg libraries to remux the existing video and audio or" +
+            " transcode to new a new video codec. 'Media Server' uses the SageTV media server to" +
+            " remux the existing video and audio. 'Raw' copies the stream without any changes or" +
+            " filtering. 'Dynamic' selects the desired consumer based on the currently requested" +
+            " channel.";
+    public static final String CONSUMER_LABEL = "Select Capture Device Stream Consumer";
 
     // Since we can't correctly map the device ID to the name because we can only provide the device
     // name as it will be displayed, this map allows us to change the selected option back to the
-    // ID we actually use to manipulate the capture device.
+    // ID we actually use to manipulate the capture device. It is important that the JSON server
+    // uses IDs instead of the actual device names because capture devices can be renamed and we
+    // need to be able to ensure the intended capture device can be identified regardless of its
+    // current name.
     private static final Map<String, String> deviceMap = new ConcurrentHashMap<>();
     private static JsonCaptureDevice captureDevice;
     private static OptionsHandler deviceOptions;
     private static String selectedDevice;
+
+    public static void newServer() {
+        deviceMap.clear();
+        selectedDevice = null;
+        refreshOptions();
+    }
 
     private static void refreshOptions() {
         deviceOptions = null;
@@ -114,10 +124,8 @@ public class Devices {
         JsonCaptureDevice captureDevices[] = getAllDevices(server);
 
         if (deviceNames != null && deviceNames.length > 0) {
-            StringBuilder enableDevices = new StringBuilder();
-            StringBuilder disableDevices = new StringBuilder();
-            enableDevices.append(DEVICES);
-            disableDevices.append(DEVICES);
+            StringBuilder enable = new StringBuilder(DEVICES);
+            StringBuilder disable = new StringBuilder(DEVICES);
             for (String deviceName : deviceNames) {
                 String deviceString = deviceMap.get(deviceName);
                 if (deviceString == null) {
@@ -139,7 +147,7 @@ public class Devices {
                         // Only enable capture devices that actually show they are not currently
                         // enabled.
                         if (!captureDevices[i].isEnabled()) {
-                            enableDevices.append('/').append(deviceString);
+                            enable.append('/').append(deviceString);
                         }
                         // When we find a capture device is on the enabled list, make it null so
                         // that we can make sure everything that is not intended to be enabled gets
@@ -150,19 +158,19 @@ public class Devices {
                 }
             }
             for (JsonCaptureDevice device : captureDevices) {
-                if (device != null) {
-                    disableDevices.append('/').append(device.getId());
+                if (device != null && device.isEnabled()) {
+                    disable.append('/').append(device.getId());
                 }
             }
             // Disable first in the rare occurrence that loading these new capture devices creates a
             // big spike in memory usage that could cause problems.
-            if (disableDevices.length() > DEVICES.length()) {
+            if (disable.length() > DEVICES.length()) {
                 JsonElement element = PojoUtil.setOption("disableDevice", "true");
-                ServerManager.getInstance().postJson(server, JsonException.class, enableDevices.toString(), element);
+                ServerManager.getInstance().postJson(server, JsonException.class, enable.toString(), element);
             }
-            if (enableDevices.length() > DEVICES.length()) {
+            if (enable.length() > DEVICES.length()) {
                 JsonElement element = PojoUtil.setOption("enableDevice", "true");
-                ServerManager.getInstance().postJson(server, JsonException.class, enableDevices.toString(), element);
+                ServerManager.getInstance().postJson(server, JsonException.class, enable.toString(), element);
             }
         }
         refreshOptions();
@@ -242,6 +250,7 @@ public class Devices {
                 if (cachedDevice != null) {
                     return cachedDevice.getConsumer();
                 }
+                break;
             case POOL_NAME_PROP:
                 if (cachedDevice != null) {
                     return cachedDevice.getPoolName();

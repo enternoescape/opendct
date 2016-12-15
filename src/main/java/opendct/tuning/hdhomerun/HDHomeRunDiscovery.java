@@ -47,7 +47,6 @@ public class HDHomeRunDiscovery implements Runnable {
     private HDHomeRunPacket rxPackets[];
 
     HDHomeRunDiscoverer discoverer;
-    private final Object devicesLock = new Object();
 
     public HDHomeRunDiscovery(InetAddress... broadcastAddress) {
         BROADCAST_ADDRESS = broadcastAddress;
@@ -121,6 +120,25 @@ public class HDHomeRunDiscovery implements Runnable {
         }
     }
 
+    public void setTunerCount(HDHomeRunDevice device) {
+        logger.info("Tuner count was not provided. Detecting up to 8 tuners.");
+        // Set the tuner count high since there is logic to return null if the tuner is out the
+        // defined range.
+        device.setTunerCount(8);
+        for (int i = 0; i < 8; i++) {
+            try {
+                device.getTuner(i).getDebug();
+            } catch (GetSetException e) {
+                device.setTunerCount(i + 1);
+                break;
+            } catch (Exception e) {
+                logger.error("Unable to get a tuner count => ", e);
+                device.setTunerCount(0);
+                break;
+            }
+        }
+    }
+
     public void stop() {
         sendThread.interrupt();
 
@@ -188,6 +206,7 @@ public class HDHomeRunDiscovery implements Runnable {
                 boolean logDiscovery = HDHomeRunDiscoverer.getSmartBroadcast() || discoverer.isWaitingForDevices();
 
                 boolean requested = HDHomeRunDiscoverer.needBroadcast();
+
                 if (retry == 1 &&
                         !discoverer.isWaitingForDevices() &&
                         !requested &&
@@ -203,10 +222,49 @@ public class HDHomeRunDiscovery implements Runnable {
                 boolean failed = false;
 
                 for (int i = 0; i < datagramChannels.length; i++) {
+
+                    // First do all of the statically defined IP addresses. We are already listening
+                    // on all interfaces, so we don't need to create any new receivers.
+                    //
+                    // This will also give them a minimum of 330ms to respond. If your remote device
+                    // takes more than 330ms to respond, this is probably not a good idea anyway.
+                    //
+                    // We do this on every interface available because we don't have a great way to
+                    // tell which one has a gateway that will get us to the device on another
+                    // subnet. Also, some configurations are multi-homed and it's also possible that
+                    // Java could fail to identify an interface that has a gateway defined.
+                    String staticAddresses[] = HDHomeRunDiscoverer.getStaticAddresses();
+                    for (String staticAddress : staticAddresses) {
+                        try {
+                            SocketAddress staticTarget = new InetSocketAddress(staticAddress, BROADCAST_PORT);
+                            if (logDiscovery) {
+                                logger.info("Transmitting HDHomeRun discovery packets to {}... ({})",
+                                        staticTarget, requested ? "requested" : "startup");
+                            }
+
+                            // Send 3 packets per static address since this might be going to a very
+                            // remote subnet and that could mean greater than usual packet loss.
+                            for (int j = 0; j < 3; j++) {
+                                while (txPacket.BUFFER.hasRemaining()) {
+                                    datagramChannels[i].send(txPacket.BUFFER, staticTarget);
+                                }
+                                txPacket.BUFFER.reset();
+                                Thread.sleep(10);
+                            }
+
+                            // Sleep a little between static discoveries. This should increase the
+                            // likelihood that distant devices will actually be discovered.
+                            Thread.sleep(100);
+                        } catch (Exception e) {
+                            logger.error("Unable to use the static address {} => ", staticAddress, e);
+                        }
+                    }
+
                     while (txPacket.BUFFER.hasRemaining()) {
                         try {
                             if (logDiscovery) {
-                                logger.info("Broadcasting HDHomeRun discovery packet to {}... ({})", BROADCAST_SOCKET[i], requested ? "requested" : "startup");
+                                logger.info("Broadcasting HDHomeRun discovery packet to {}... ({})",
+                                        BROADCAST_SOCKET[i], requested ? "requested" : "startup");
                             }
 
                             datagramChannels[i].send(txPacket.BUFFER, BROADCAST_SOCKET[i]);
@@ -307,13 +365,12 @@ public class HDHomeRunDiscovery implements Runnable {
 
                             if (tag == null) {
                                 // Silicondust says to just ignore these.
-                                logger.debug("HDHomerun device returned an unknown tag with the length {}", length);
+                                logger.debug("HDHomerun device returned an unknown tag with the length {}. This can be ignored.", length);
                                 rxPacket.BUFFER.position(rxPacket.BUFFER.position() + length);
                                 continue;
                             }
 
                             switch (tag) {
-
                                 case HDHOMERUN_TAG_DEVICE_TYPE:
                                     if (length != 4) {
                                         break;
@@ -395,11 +452,16 @@ public class HDHomeRunDiscovery implements Runnable {
                                     break;
 
                                 default:
+                                    setTunerCount(device);
                                     // 2 is a safe bet for most HDHomeRun capture devices.
-                                    device.setTunerCount(2);
+                                    if (device.getTunerCount() == 0) {
+                                        device.setTunerCount(2);
+                                    }
                                     try {
-                                        logger.warn("The capture device '{}' did not respond with any tuners. Assuming 2.",
-                                                device.getUniqueDeviceName());
+                                        logger.warn("The capture device '{}' did not respond" +
+                                                        " with any tuners. Detected {}.",
+                                                device.getUniqueDeviceName(),
+                                                device.getTunerCount());
                                     } catch (Exception e) {
                                         // This will clear a rebroadcast so we don't loop endlessly
                                         // due to the error that just happened here.
@@ -408,7 +470,6 @@ public class HDHomeRunDiscovery implements Runnable {
                                         Integer fails = ignoreDevices.get(device.getDeviceId());
 
                                         if (fails == null) {
-                                            logger.warn("Ignoring non-capture device (0) => ", e);
                                             ignoreDevices.put(device.getDeviceId(), 0);
                                         } else {
                                             fails += 1;
@@ -419,7 +480,9 @@ public class HDHomeRunDiscovery implements Runnable {
                                                 // many times and failed. Stop trying.
                                                 continue;
                                             } else {
-                                                logger.warn("Ignoring non-capture device ({}) => ", fails, e);
+                                                logger.warn("Ignoring non-capture device after" +
+                                                        " attempting to use it {} times => ",
+                                                        fails, e);
                                             }
                                         }
                                     }

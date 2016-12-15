@@ -58,11 +58,13 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
     private static BooleanDeviceOption smartBroadcast;
     private static StringDeviceOption ignoreModels;
     private static StringDeviceOption ignoreDeviceIds;
+    private static StringDeviceOption staticAddresses;
     private static BooleanDeviceOption alwaysTuneLegacy;
     private static BooleanDeviceOption allowHttpTuning;
     private static StringDeviceOption transcodeProfile;
     private static BooleanDeviceOption qamHttpTuningHack;
     private static BooleanDeviceOption qamRemap;
+    private static BooleanDeviceOption qamAlwaysRemapLookup;
     private static IntegerDeviceOption offlineDetectionSeconds;
     private static IntegerDeviceOption offlineDetectionMinBytes;
 
@@ -159,6 +161,17 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                                 " broadcast run on demand."
                 );
 
+                staticAddresses = new StringDeviceOption(
+                        Config.getStringArray("hdhr.static_addresses_csv"),
+                        true,
+                        false,
+                        "Ignore Models",
+                        "hdhr.static_addresses_csv",
+                        "Provide a list of static IP addresses to always attempt to load during" +
+                                " detection. This enables detection of devices that do not exist" +
+                                " on the same subnet as any network adapters currently available."
+                );
+
                 ignoreModels = new StringDeviceOption(
                         Config.getStringArray("hdhr.ignore_models"),
                         true,
@@ -233,6 +246,17 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                                 " mappings might be different between devices."
                 );
 
+                qamAlwaysRemapLookup = new BooleanDeviceOption(
+                        Config.getBoolean("hdhr.always_remap_lookup", false),
+                        false,
+                        "Always QAM Channel Remap Lookup",
+                        "hdhr.always_remap_lookup",
+                        "This will always look up ClearQAM channels based on an available" +
+                                " CableCARD tuner. The only exception is if no CableCARD tuner is" +
+                                " currently available and a previous mapping is known, then the" +
+                                " previous mapping will be used."
+                );
+
                 offlineDetectionSeconds = new IntegerDeviceOption(
                         Config.getInteger("hdhr.wait_for_offline_detection_s", 8),
                         false,
@@ -260,6 +284,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         broadcastInterval,
                         broadcastPort,
                         smartBroadcast,
+                        staticAddresses,
                         ignoreModels,
                         ignoreDeviceIds,
                         alwaysTuneLegacy,
@@ -267,6 +292,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         transcodeProfile,
                         qamRemap,
                         qamHttpTuningHack,
+                        qamAlwaysRemapLookup,
                         offlineDetectionSeconds,
                         offlineDetectionMinBytes
                 );
@@ -275,18 +301,20 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         " Reverting to defaults. => ", e);
 
                 Config.setInteger("hdhr.wait_for_streaming", 15000);
-                Config.getBoolean("hdhr.smart_broadcast", true);
+                Config.setBoolean("hdhr.smart_broadcast", true);
                 Config.setBoolean("hdhr.locking", true);
                 Config.setInteger("hdhr.retry_count", 2);
                 Config.setInteger("hdhr.broadcast_s", 58);
                 Config.setInteger("hdhr.broadcast_port", 64998);
                 Config.setStringArray("hdhr.ignore_models");
                 Config.setStringArray("hdhr.ignore_device_ids");
+                Config.setStringArray("hdhr.static_addresses_csv");
                 Config.setBoolean("hdhr.always_tune_legacy", false);
                 Config.setBoolean("hdhr.allow_http_tuning", true);
                 Config.setString("hdhr.extend_transcode_profile", "");
                 Config.setBoolean("hdhr.allow_qam_http_tuning", false);
                 Config.setBoolean("hdhr.allow_qam_remapping", true);
+                Config.setBoolean("hdhr.always_remap_lookup", false);
                 Config.setInteger("hdhr.wait_for_offline_detection_s", 8);
                 Config.setInteger("hdhr.offline_detection_min_bytes", 10528);
 
@@ -331,38 +359,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
         this.deviceLoader = deviceLoader;
 
-        // This speeds up resume from standby. If the IP addresses changed while the computer was
-        // sleeping, they will be updated during the next discovery.
-        /*if (hdHomeRunDevices.size() > 0) {
-            HashSet<HDHomeRunDevice> loadDevices = new HashSet<>(hdHomeRunDevices.size());
-
-            discoveredDevicesLock.writeLock().lock();
-
-            try {
-                for (Map.Entry<Integer, HDHomeRunDevice> device : hdHomeRunDevices.entrySet()) {
-                    loadDevices.add(device.getValue());
-                }
-            } catch (Exception e) {
-                logger.error("startDetection created an unexpected exception while using" +
-                        " discoveredDevicesLock => ", e);
-            } finally {
-                // There's no reason this could create an exception, but why chance that the lock
-                // could get stuck.
-                try {
-                    hdHomeRunDevices.clear();
-                } catch (Exception e) {
-                    logger.error("startDetection created an unexpected exception while using" +
-                            " discoveredDevicesLock => ", e);
-                }
-
-                discoveredDevicesLock.writeLock().unlock();
-            }
-
-            for (HDHomeRunDevice device : loadDevices) {
-                addCaptureDevice(device);
-            }
-        }*/
-
         try {
             discovery.start(this);
         } catch (IOException e) {
@@ -382,18 +378,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         }
 
         discovery.stop();
-
-        /*discoveredDevicesLock.writeLock().lock();
-
-        try {
-            discoveredDevices.clear();
-            discoveredParents.clear();
-        } catch (Exception e) {
-            logger.error("stopDetection created an unexpected exception while using" +
-                    " discoveredDevicesLock => ", e);
-        } finally {
-            discoveredDevicesLock.writeLock().unlock();
-        }*/
     }
 
     @Override
@@ -403,18 +387,6 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         }
 
         discovery.waitForStop();
-
-        /*discoveredDevicesLock.writeLock().lock();
-
-        try {
-            discoveredDevices.clear();
-            discoveredParents.clear();
-        } catch (Exception e) {
-            logger.error("waitForStopDetection created an unexpected exception while using" +
-                    " discoveredDevicesLock => ", e);
-        } finally {
-            discoveredDevicesLock.writeLock().unlock();
-        }*/
     }
 
     @Override
@@ -696,6 +668,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 broadcastInterval,
                 broadcastPort,
                 smartBroadcast,
+                staticAddresses,
                 ignoreModels,
                 ignoreDeviceIds,
                 alwaysTuneLegacy,
@@ -703,6 +676,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                 transcodeProfile,
                 qamHttpTuningHack,
                 qamRemap,
+                qamAlwaysRemapLookup,
                 offlineDetectionSeconds,
                 offlineDetectionMinBytes
         };
@@ -719,6 +693,12 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
             if (optionReference.isArray()) {
                 optionReference.setValue(option.getValues());
+
+                // If the static addresses are updated, check if there are any newly discoverable
+                // capture devices.
+                if (optionReference.getProperty().equals(staticAddresses.getProperty())) {
+                    requestBroadcast();
+                }
             } else {
                 optionReference.setValue(option.getValue());
             }
@@ -810,5 +790,13 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
 
     public static boolean getQamRemap() {
         return qamRemap.getBoolean();
+    }
+
+    public static boolean getQamAlwaysRemapLookup() {
+        return qamAlwaysRemapLookup.getBoolean();
+    }
+
+    public static String[] getStaticAddresses() {
+        return staticAddresses.getArrayValue();
     }
 }

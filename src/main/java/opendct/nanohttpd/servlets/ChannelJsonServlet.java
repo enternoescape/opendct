@@ -35,7 +35,6 @@ import opendct.sagetv.SageTVManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.Map;
 
 public class ChannelJsonServlet {
@@ -226,7 +225,7 @@ public class ChannelJsonServlet {
                     return HttpUtil.returnException(channelLineupLookup, "The lineup '" + channelLineupLookup + "' does not exist.");
                 }
 
-                ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+                java.util.List<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
 
                 StringBuilder responseBuilder = null;
                 for (CaptureDevice captureDevice : captureDevices) {

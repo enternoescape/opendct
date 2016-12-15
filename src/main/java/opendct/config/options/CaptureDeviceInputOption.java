@@ -20,6 +20,7 @@ import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.sagetv.SageTVManager;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class CaptureDeviceInputOption extends BaseDeviceOption {
 
@@ -31,8 +32,8 @@ public class CaptureDeviceInputOption extends BaseDeviceOption {
     // We don't actually validate on these, but this will ensure a current list is provided.
     @Override
     public String[] getValidValues() {
-        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
-        ArrayList<String> returnValue = new ArrayList<>(captureDevices.size() * 2);
+        List<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+        List<String> returnValue = new ArrayList<>(captureDevices.size() * 2);
 
 
         for (CaptureDevice captureDevice : captureDevices) {

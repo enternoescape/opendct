@@ -31,10 +31,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.net.ServerSocket;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -373,7 +370,7 @@ public class SageTVManager implements PowerEventListener {
 
         // This only needs a read lock. Since it uses captureDeviceToSocketServerLock and we can't
         // upgrade to a write lock, that create a problem.
-        ArrayList<CaptureDevice> captureDevices = getAllSageTVCaptureDevices();
+        List<CaptureDevice> captureDevices = getAllSageTVCaptureDevices();
 
         // This will prevent the SageTV Socket Server from looking up capture devices until we are
         // done. That basically means the SageTV Socket Server will not be able to locate any
@@ -617,7 +614,7 @@ public class SageTVManager implements PowerEventListener {
      *
      * @return All currently available capture devices.
      */
-    public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices() {
+    public static List<CaptureDevice> getAllSageTVCaptureDevices() {
         return getAllSageTVCaptureDevices(new CaptureDeviceType[0]);
     }
 
@@ -630,11 +627,11 @@ public class SageTVManager implements PowerEventListener {
      * @param captureDeviceTypes The device type or types to filter by.
      * @return A filtered array of all currently available capture devices.
      */
-    public static ArrayList<CaptureDevice> getAllSageTVCaptureDevices(CaptureDeviceType... captureDeviceTypes) {
+    public static List<CaptureDevice> getAllSageTVCaptureDevices(CaptureDeviceType... captureDeviceTypes) {
         logger.entry();
 
         captureDeviceNameToCaptureDeviceLock.readLock().lock();
-        ArrayList<CaptureDevice> captureDevices = new ArrayList<CaptureDevice>();
+        List<CaptureDevice> captureDevices = new ArrayList<CaptureDevice>();
 
         try {
             for (Map.Entry<String, CaptureDevice> captureDeviceMap : captureDeviceNameToCaptureDevice.entrySet()) {

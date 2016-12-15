@@ -1400,8 +1400,8 @@
 > would attempt to discover devices at the IP addresses 10.1.1.2,
 > 172.17.3.5 and 192.168.11.1. 
 
-> *Reverted back to FFmpeg 2.8.1 until the deprecated functionality
-> features can be managed.
+> *Reverted back to FFmpeg 2.8.1 until the deprecated features can be
+> managed.
 
 > *Upgraded GSON library to 2.8.0.
 

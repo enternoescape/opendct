@@ -114,7 +114,7 @@ public class NIOHttpDownloader {
         StringBuilder stringBuffer = new StringBuilder(1024);
         StringBuilder logBuilder = new StringBuilder(1024);
 
-        boolean redirect = true;
+        boolean redirect = false;
         String redirectUrl = null;
         boolean success = false;
         boolean startStreaming = false;
@@ -132,6 +132,7 @@ public class NIOHttpDownloader {
                 if (currentByte == '\n') {
                     if (stringBuffer.length() == 0) {
                         startStreaming = true;
+                        break;
                     }
 
                     String line = stringBuffer.toString();

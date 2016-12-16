@@ -319,6 +319,9 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
             newUrl = channelMap.get(channel);
 
             if (newUrl != null) {
+                if (newUrl.toExternalForm().contains("%c%")) {
+                    return new URL(newUrl.toExternalForm().replace("%c%", channel));
+                }
                 return newUrl;
             }
         }
@@ -326,10 +329,22 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
         String loadUrl = getStreamingUrl();
 
         try {
-            newUrl = new URL(loadUrl);
-            sourceUrl = newUrl;
+            if (loadUrl.contains("%c%")) {
+                if (channel == null) {
+                    channel = "";
+                }
+                return new URL(loadUrl.replace("%c%", channel));
+            } else {
+                newUrl = new URL(loadUrl);
+                sourceUrl = newUrl;
+            }
         } catch (MalformedURLException e) {
-            if (sourceUrl == null) {
+            if (sourceUrl == null && !loadUrl.contains("%c%")) {
+                if (channel == null) {
+                    channel = "";
+                }
+                loadUrl = loadUrl.replace("%c%", channel);
+
                 throw new MalformedURLException(
                         "Unable to start capture device because '" +
                                 loadUrl + "' is not a valid URL.");

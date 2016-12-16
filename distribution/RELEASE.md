@@ -1400,6 +1400,10 @@
 > would attempt to discover devices at the IP addresses 10.1.1.2,
 > 172.17.3.5 and 192.168.11.1. 
 
+> *Added support for %c% variable (channel string) for the properties
+> sagetv.device.\<unique_id\>.streaming_url= and
+> sagetv.device.\<unique_id\>.streaming_url2=. 
+
 > *Fixed InfiniTV ClearQAM program selection confirmation always
 > timing out.
 

@@ -1403,6 +1403,9 @@
 > *Fixed InfiniTV ClearQAM program selection confirmation always
 > timing out.
 
+> *Fixed media server (upload id) disconnecting too soon under some
+> circumstances resulting in missing a few last seconds of a stream.
+
 > *Reverted back to FFmpeg 2.8.1 until the deprecated features can be
 > managed.
 

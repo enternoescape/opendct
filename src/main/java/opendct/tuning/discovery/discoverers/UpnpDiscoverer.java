@@ -59,6 +59,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
     private static BooleanDeviceOption smartBroadcast;
     private static BooleanDeviceOption devicePingDetection;
     private static IntegerDeviceOption devicePingTimeout;
+    private static BooleanDeviceOption qamAlwaysRemapLookup;
 
     // Detection configuration and state
     private static boolean enabled;
@@ -142,6 +143,17 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                                 " it will be considered offline."
                 );
 
+                qamAlwaysRemapLookup = new BooleanDeviceOption(
+                        Config.getBoolean("upnp.always_remap_lookup", false),
+                        false,
+                        "Always QAM Channel Remap Lookup",
+                        "upnp.always_remap_lookup",
+                        "This will always look up ClearQAM channels based on an available" +
+                                " CableCARD tuner. The only exception is if no CableCARD tuner is" +
+                                " currently available and a previous mapping is known, then the" +
+                                " previous mapping will be used."
+                );
+
                 Config.mapDeviceOptions(
                         deviceOptions,
                         offlineDetectionSeconds,
@@ -149,7 +161,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                         streamingWait,
                         smartBroadcast,
                         devicePingDetection,
-                        devicePingTimeout
+                        devicePingTimeout,
+                        qamAlwaysRemapLookup
                 );
 
             } catch (DeviceOptionException e) {
@@ -160,6 +173,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                 Config.setInteger("upnp.device.wait_for_offline_detection_s", 18);
                 Config.setInteger("upnp.device.offline_detection_min_bytes", 18800);
                 Config.setBoolean("upnp.smart_broadcast", true);
+                Config.setBoolean("upnp.always_remap_lookup", false);
 
                 continue;
             }
@@ -499,7 +513,8 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
                 streamingWait,
                 smartBroadcast,
                 devicePingDetection,
-                devicePingTimeout
+                devicePingTimeout,
+                qamAlwaysRemapLookup
         };
     }
 
@@ -558,4 +573,7 @@ public class UpnpDiscoverer implements DeviceDiscoverer {
         return devicePingDetection.getBoolean();
     }
 
+    public static boolean getQamAlwaysRemapLookup() {
+        return qamAlwaysRemapLookup.getBoolean();
+    }
 }

@@ -21,6 +21,7 @@ import com.google.gson.JsonObject;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.router.RouterNanoHTTPD;
 import opendct.config.Config;
+import opendct.config.StaticConfig;
 import opendct.consumer.SageTVConsumer;
 import opendct.nanohttpd.serializer.ConsumerSerializer;
 import org.apache.logging.log4j.LogManager;
@@ -28,8 +29,11 @@ import org.apache.logging.log4j.Logger;
 
 public class VersionJsonServlet {
     private static final Logger logger = LogManager.getLogger(VersionJsonServlet.class);
-    // Increment this value whenever any breaking changes are made. Do not increment if a feature was added, but all previous functility is still working.
-    public final static int JSON_VERSION = 1;
+    /**
+     * Increment this value whenever any breaking changes are made. Do not increment if a feature
+     * was added, but all previous functionality has not changed.
+     */
+    public final static int JSON_VERSION = 2;
 
     private static final GsonBuilder gsonBuilder = new GsonBuilder();
     private static final Gson gson;
@@ -45,11 +49,11 @@ public class VersionJsonServlet {
         public String getText() {
             JsonObject newObject = new JsonObject();
 
-            newObject.addProperty("versionProgram", Config.VERSION_PROGRAM);
-            newObject.addProperty("versionMajor", Config.VERSION_MAJOR);
-            newObject.addProperty("versionMinor", Config.VERSION_MINOR);
-            newObject.addProperty("versionBuild", Config.VERSION_BUILD);
-            newObject.addProperty("versionConfig", Config.VERSION_CONFIG);
+            newObject.addProperty("versionProgram", StaticConfig.VERSION_PROGRAM);
+            newObject.addProperty("versionMajor", StaticConfig.VERSION_MAJOR);
+            newObject.addProperty("versionMinor", StaticConfig.VERSION_MINOR);
+            newObject.addProperty("versionBuild", StaticConfig.VERSION_BUILD);
+            newObject.addProperty("versionConfig", StaticConfig.VERSION_CONFIG);
             newObject.addProperty("versionOS", Config.OS_VERSION.toString());
             newObject.addProperty("is64Bit", Config.IS_64BIT);
             newObject.addProperty("configDir", Config.CONFIG_DIR);

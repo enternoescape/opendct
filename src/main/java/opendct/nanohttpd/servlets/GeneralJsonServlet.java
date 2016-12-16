@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.router.RouterNanoHTTPD;
 import opendct.config.Config;
+import opendct.config.ExitCode;
 import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.config.options.DeviceOptionType;
@@ -29,6 +30,7 @@ import opendct.nanohttpd.HttpUtil;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.nanohttpd.serializer.DeviceOptionSerializer;
 import opendct.power.NetworkPowerEventManger;
+import opendct.tuning.discovery.DeviceLoaderImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -94,6 +96,18 @@ public class GeneralJsonServlet {
             " will automatically change to the loopback address for communications. A program" +
             " restart is required for this setting to take effect.";
 
+    public static final String CAPTURE_DEVICE_LOADING = "Capture Device Loading";
+    public static final String ALWAYS_ENABLE_PROP = "discovery.devices.exp_always_enable";
+    public static final String ALWAYS_ENABLE_NAME = "Always Enable All Detected Capture Devices";
+    public static final String ALWAYS_ENABLE_DESC = "Enable this option to always enable all" +
+            " discovered capture devices. Disabling this option will display a new option that" +
+            " allows you to select from the detected capture devices. Re-enabling this option" +
+            " will not re-load any unloaded capture devices until OpenDCT is restarted.";
+
+
+    public static final String RESTART_SERVICE_PROP = "restart_service";
+    public static final String RESTART_PASSPHRASE = "true";
+
     public static class GetPost extends RouterNanoHTTPD.DefaultHandler {
 
         @Override
@@ -150,7 +164,7 @@ public class GeneralJsonServlet {
             newObject.add(OPTIONS, gson.toJsonTree(jsonOptions));
             jsonArray.add(newObject);
 
-            // Early Port Assignment Properties
+            // SageTV Server Related Properties
             newObject = new JsonObject();
             newObject.addProperty(NAME, SAGETV);
             jsonOptions = new JsonOption[3];
@@ -185,6 +199,23 @@ public class GeneralJsonServlet {
             newObject.add(OPTIONS, gson.toJsonTree(jsonOptions));
             jsonArray.add(newObject);
 
+            // Capture Device Loading Behavior
+            newObject = new JsonObject();
+            newObject.addProperty(NAME, CAPTURE_DEVICE_LOADING);
+            jsonOptions = new JsonOption[1];
+
+            jsonOptions[0] = new JsonOption(
+                    ALWAYS_ENABLE_PROP,
+                    ALWAYS_ENABLE_NAME,
+                    ALWAYS_ENABLE_DESC,
+                    false,
+                    DeviceOptionType.BOOLEAN,
+                    new String[0],
+                    Config.getString(ALWAYS_ENABLE_PROP));
+
+            newObject.add(OPTIONS, gson.toJsonTree(jsonOptions));
+            jsonArray.add(newObject);
+
             return NanoHTTPD.newFixedLengthResponse(gson.toJson(jsonArray));
         }
 
@@ -208,9 +239,10 @@ public class GeneralJsonServlet {
                 return HttpUtil.returnException(e);
             }
 
-            // All of these options are not runtime configuration. If they configured incorrectly,
-            // they will be corrected on restart. This is also a filter to ensure you can't change
-            // the properties for anything other than what you should be able to from here.
+            // All of these options are not runtime configuration. If they are configured
+            // incorrectly, they will be corrected on restart. This is also a filter to ensure you
+            // can't change the properties for anything other than what you should be able to from
+            // here.
             for (JsonOption jsonOption : jsonOptions) {
                 switch (jsonOption.getProperty()) {
                     case POWER_MANAGEMENT_ENABLED_PROP:
@@ -228,6 +260,20 @@ public class GeneralJsonServlet {
                     case SAGETV_AUTO_LOOPBACK_PROP:
                         Config.setString(SAGETV_AUTO_LOOPBACK_PROP, jsonOption.getValue());
                         break;
+                    case RESTART_SERVICE_PROP:
+                        // This is not intended to be secure so much as prevent accidents.
+                        if (RESTART_PASSPHRASE.equals(jsonOption.getValue())) {
+                            ExitCode.RESTART.terminateJVM();
+                        } else {
+                            logger.info("Restart passphrase is incorrect.");
+                        }
+                        break;
+                    case ALWAYS_ENABLE_PROP:
+                        if ("true".equalsIgnoreCase(jsonOption.getValue())) {
+                            DeviceLoaderImpl.enableAlwaysEnable();
+                        } else {
+                            DeviceLoaderImpl.disableAlwaysEnable();
+                        }
                 }
             }
 

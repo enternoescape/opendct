@@ -647,9 +647,16 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 }
                 break;
             case QAM_HDHOMERUN:
-                if (tvChannel == null) {
-                    tvChannel = ChannelManager.autoDctToQamMap(
-                            this, encoderLineup, new TVChannelImpl(channel, channel));
+                if (tvChannel == null || HDHomeRunDiscoverer.getQamAlwaysRemapLookup()) {
+                    TVChannel qamTvChannel = ChannelManager.autoDctToQamMap(
+                            this,
+                            encoderLineup,
+                            new TVChannelImpl(channel, channel),
+                            tvChannel == null);
+
+                    if (qamTvChannel != null) {
+                        tvChannel = qamTvChannel;
+                    }
 
                     if (tvChannel == null) {
                         logger.error("Unable to tune channel because no references" +
@@ -728,11 +735,12 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                                 tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
-                                if (tvChannel == null) {
+                                if (tvChannel == null || HDHomeRunDiscoverer.getQamAlwaysRemapLookup()) {
                                     tvChannel = ChannelManager.autoDctToQamMap(
                                             this,
                                             encoderLineup,
-                                            new TVChannelImpl(channel, channel));
+                                            new TVChannelImpl(channel, channel),
+                                            tvChannel == null);
                                 }
 
                                 if (tvChannel == null) {

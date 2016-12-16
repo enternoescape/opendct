@@ -18,6 +18,10 @@ package opendct.config.options;
 
 import opendct.nanohttpd.pojo.JsonOption;
 
+/**
+ * This interface is to be implemented by anything that should be able to have setting retrieved and
+ * possibly set by the web interface.
+ */
 public interface DeviceOptions {
 
     /**

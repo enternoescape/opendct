@@ -19,6 +19,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
 import opendct.consumer.SageTVConsumer;
 
@@ -28,13 +29,16 @@ public class ConsumerSerializer implements JsonSerializer<SageTVConsumer> {
     private static final DeviceOptionSerializer deviceOptionSerializer = new DeviceOptionSerializer();
 
     public static final String NAME = "name";
+    public static final String NAME_CANONICAL = "nameCanonical";
     public static final String OPTIONS = "options";
 
     @Override
     public JsonElement serialize(SageTVConsumer src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject object = new JsonObject();
 
-        object.addProperty("name", src.getClass().getCanonicalName());
+        String canonical = src.getClass().getCanonicalName();
+        object.addProperty(NAME, Config.getConsumerFriendlyForCanonical(canonical));
+        object.addProperty(NAME_CANONICAL, canonical);
 
         DeviceOption options[] = src.getOptions();
 

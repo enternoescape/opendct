@@ -18,7 +18,7 @@ package opendct.config.options;
 import opendct.capture.CaptureDevice;
 import opendct.sagetv.SageTVManager;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class CaptureDeviceOption extends BaseDeviceOption {
 
@@ -30,7 +30,7 @@ public class CaptureDeviceOption extends BaseDeviceOption {
     // We don't actually validate on these, but this will ensure a current list is provided.
     @Override
     public String[] getValidValues() {
-        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+        List<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
         String returnValue[] = new String[captureDevices.size()];
 
         for (int i = 0; i < captureDevices.size(); i++) {

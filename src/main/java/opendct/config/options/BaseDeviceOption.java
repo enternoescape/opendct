@@ -101,8 +101,8 @@ public abstract class BaseDeviceOption implements DeviceOption {
         }
 
         if (validValues.length > 0 && newValues.length > 0) {
-            // This way we can gather all of the errors instead of the just showing one issue at a
-            // time.
+            // This way we can gather all of the incorrect settings instead of the just showing one
+            // at a time.
             StringBuilder stringBuilder = null;
 
             for (String newValue : newValues) {
@@ -110,7 +110,7 @@ public abstract class BaseDeviceOption implements DeviceOption {
 
                 switch (optionType) {
                     case BOOLEAN:
-                        if (!newValue.toLowerCase().equals("true") && !newValue.toLowerCase().equals("false")) {
+                        if (!newValue.equalsIgnoreCase("true") && !newValue.equalsIgnoreCase("false")) {
                             if (stringBuilder == null) {
                                 stringBuilder = new StringBuilder("The value '" + newValue + "' is not equal to 'true' or 'false'.");
                             } else {

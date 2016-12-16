@@ -24,7 +24,7 @@ import opendct.config.messages.MessageTitle;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public class SageTVDevicesLoaded extends Thread {
@@ -64,7 +64,7 @@ public class SageTVDevicesLoaded extends Thread {
             logger.trace("SageTVDevicesLoaded was interrupted => ", e);
         }
 
-        ArrayList<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
+        List<CaptureDevice> captureDevices = SageTVManager.getAllSageTVCaptureDevices();
         int devicesLoaded = captureDevices.size();
 
         if (devicesLoaded < requiredDevices) {

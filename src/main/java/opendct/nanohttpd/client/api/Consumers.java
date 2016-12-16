@@ -13,27 +13,10 @@
  * limitations under the License.
  */
 
-package opendct.nanohttpd.pojo;
+package opendct.nanohttpd.client.api;
 
-public class JsonGeneral {
-    private String name;
-    private JsonOption options[];
+public class Consumers {
+    public final static String CONSUMERS = "/consumers";
 
-    public String getName() {
-        return name;
-    }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public JsonOption[] getOptions() {
-        if (options == null)
-            return new JsonOption[0];
-        return options;
-    }
-
-    public void setOptions(JsonOption[] options) {
-        this.options = options;
-    }
 }

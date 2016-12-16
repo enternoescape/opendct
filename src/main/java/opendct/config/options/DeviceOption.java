@@ -16,13 +16,12 @@
 
 package opendct.config.options;
 
-public interface DeviceOption {
-/*
-The primary focus of a device option is website portability of options. Because of this and since
-strings are naturally the end result of all web queries, the only way to set a value is as a String
-and the only way to get a value is as a String.
+/**
+ The primary focus of a device option is website portability of options. Because of this and since
+ strings are naturally the end result of all web queries, the only way to set a value is as a String
+ and the only way to get a value is as a String.
  */
-
+public interface DeviceOption {
 
     /**
      * This is the internal name of the option.

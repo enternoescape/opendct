@@ -23,24 +23,26 @@ import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.router.RouterNanoHTTPD.DefaultHandler;
 import fi.iki.elonen.router.RouterNanoHTTPD.UriResource;
 import opendct.capture.CaptureDevice;
+import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.options.DeviceOptionException;
 import opendct.nanohttpd.HttpUtil;
 import opendct.nanohttpd.pojo.JsonException;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.nanohttpd.serializer.CaptureDevicesSerializer;
-import opendct.nanohttpd.serializer.DeviceOptionSerializer;
 import opendct.sagetv.SageTVManager;
+import opendct.tuning.discovery.CaptureDeviceLoadException;
+import opendct.tuning.discovery.DeviceLoaderImpl;
 import opendct.tuning.discovery.DiscoveredDevice;
 import opendct.tuning.discovery.DiscoveryManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.net.SocketException;
 import java.util.Map;
 
 public class CaptureDevicesJsonServlet {
     private static final Logger logger = LogManager.getLogger(CaptureDevicesJsonServlet.class);
 
-    private static final DeviceOptionSerializer deviceOptionSerializer = new DeviceOptionSerializer();
     private static final GsonBuilder gsonBuilder = new GsonBuilder();
     private static final Gson gson;
 
@@ -167,14 +169,45 @@ public class CaptureDevicesJsonServlet {
                     return HttpUtil.returnException("","Capture device id '" + captureDeviceLookup + "' does not exist.");
                 }
 
-                CaptureDevice loadedCaptureDevice = SageTVManager.getSageTVCaptureDevice(device.getId());
-
                 try {
                     device.setOptions(jsonOptions);
+
+                    for (JsonOption jsonOption : jsonOptions) {
+                        // When a device is to be enabled, it will not exist in the SageTVManager,
+                        // so we can only enable it here. This is not exactly optimal, but this is
+                        // more global than individual discoverer settings, so it doesn't really
+                        // belong there either.
+                        if (CaptureDevicesSerializer.ENABLE_DEVICE.equals(jsonOption.getProperty()) &&
+                                "true".equalsIgnoreCase(jsonOption.getValue())) {
+                            try {
+                                DiscoveryManager.enableCaptureDevice(device.getId());
+                                DeviceLoaderImpl.disableAlwaysEnable();
+                            } catch (CaptureDeviceIgnoredException e) {
+                                // This is usually the result of the legacy way to prevent a capture
+                                // device from loading, so we try to disable that functionality and
+                                // try again.
+                                DeviceLoaderImpl.disableAlwaysEnable();
+                                try {
+                                    DiscoveryManager.enableCaptureDevice(device.getId());
+                                } catch (CaptureDeviceIgnoredException | CaptureDeviceLoadException e1) {
+                                    HttpUtil.returnException(new JsonException(CaptureDevicesSerializer.ENABLE_DEVICE, e1.getMessage()));
+                                } catch (SocketException e1) {
+                                    HttpUtil.returnException(new JsonException(CaptureDevicesSerializer.ENABLE_DEVICE,
+                                            "Unable to open a socket for the requested capture device."));
+                                }
+                            } catch (CaptureDeviceLoadException e) {
+                                HttpUtil.returnException(new JsonException(CaptureDevicesSerializer.ENABLE_DEVICE, e.getMessage()));
+                            } catch (SocketException e) {
+                                HttpUtil.returnException(new JsonException(CaptureDevicesSerializer.ENABLE_DEVICE,
+                                        "Unable to open a socket for the requested capture device."));
+                            }
+                        }
+                    }
                 } catch (DeviceOptionException e) {
                     return HttpUtil.returnException(e);
                 }
 
+                CaptureDevice loadedCaptureDevice = SageTVManager.getSageTVCaptureDevice(device.getId());
                 if (loadedCaptureDevice != null) {
                     for (JsonOption jsonOption : jsonOptions) {
                         JsonException jsonException =

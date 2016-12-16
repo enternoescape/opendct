@@ -13,11 +13,15 @@
 
 #### 0.3.8-Beta
 > *Added firewall configurations to the install packages.
+>
 > **Windows will install firewall exceptions for you if you are using
 > the Windows Firewall.
+>
 > **CentOS 7 and Fedora 22 will provide a firewalld service that can be
 > enabled.
+>
 > **Ubuntu 14.04 will provide a script to enable rules via ufw.
+>
 > **Changed default RTP receiving port change to 8300-8500 since the
 > previous default could conflict with the SageTV discovery port.
 
@@ -959,7 +963,7 @@
 > any non-SSL URL that is actually a stream when downloaded. To create
 > entries for these devices, create names for them under the property
 > generic.http.device_names_csv in opendct.properties separated by
-> commas. (Ex. generic.http.device_names_csv=Encoder 1,Encoder 2) Start
+> commas. (e.g. generic.http.device_names_csv=Encoder 1,Encoder 2) Start
 > the OpenDCT service, let it run for a few seconds, then stop it. You
 > should now see entries in opendct.properties that have the property
 > sagetv.device.\<unique_id\>.device_name matching the name of the
@@ -987,7 +991,7 @@
 >
 > **channel_padding** is the minimum length to be passed for the %c%
 > variable. Values shorter than this length will have zeros (0) appended
-> to the left of the channel to make up the difference. (Ex. 8 becomes
+> to the left of the channel to make up the difference. (e.g. 8 becomes
 > 008 if this is set to 3.)
 >
 > **custom_channels** is an optional **semicolon** delimited list of
@@ -1028,7 +1032,7 @@
 > but this property is defined, the channel number will be appended as
 > a final parameter. Don't forget to escape backslashes (\ needs to be
 > \\).
-> Ex. /full/path/tune 0 %c% or C:\\Full\\Path\\tune.exe 0 %c%
+> e.g. /full/path/tune 0 %c% or C:\\Full\\Path\\tune.exe 0 %c%
 
 > *Added 59 second videos that will be streamed in place of an actual
 > recording if the channel is detected to be Copy Once or Copy Never.
@@ -1342,7 +1346,7 @@
 > *Reduced the aggressiveness of FFmpeg when repeating the detection of
 > streams.
 
-#### 0.5.14-Beta
+#### 0.5.15-Beta
 > *Added basic HTTP authentication support to generic HTTP producer.
 >
 > sagetv.device.\<unique_id\>.http_username=
@@ -1350,7 +1354,7 @@
 > sagetv.device.\<unique_id\>.http_password=
 >
 > **http_username** This is the username to be used for basic HTTP
-> authentication. If this is and http_password are set to anything other
+> authentication. If this and http_password are set to anything other
 > than blank, the set username and password will be used for basic HTTP
 > authentication.
 >
@@ -1358,6 +1362,8 @@
 > authentication. If http_username and this are set to anything other
 > than blank, the set username and password will be used for basic HTTP
 > authentication.
+
+> *Added redirect support for HTTP producers.
 
 > *Added timeout for when a program cannot be detected. The property
 > name is consumer.ffmpeg.no_program_timeout_ms, the timeout is in
@@ -1368,3 +1374,47 @@
 > *Added property to disable re-tuning. The property name is
 > retune_enable and defaults to true. Set this property to false to
 > disable retuning.
+
+> *Added a channel lineup update to be automatically triggered when a
+> channel scan is initiated. This ensures that the latest information
+> from the capture device if it provides any is used for the scan.
+
+> *Added property to force ClearQAM lookups to happen whenever
+> possible. If the lookup is not able to be performed likely due to
+> no CableCARD capture devices being available, it will use the last
+> known value. If there isn't a last known value, the tuning will
+> fail which is the same as the old behavior. The property for
+> InfiniTV devices is upnp.always_remap_lookup=false. The property
+> for HDHomeRun devices is hdhr.always_remap_lookup=false. Change the
+> value from false to true to enable this feature. 
+
+> *Added property to allow HDHomeRun devices to be statically defined
+> by IP address. This is useful if you have an HDHomeRun device on
+> another subnet that would not be detectable any other way. The
+> property name is hdhr.static_addresses_csv=. If it is populated
+> with comma delimited values, the program will attempt to convert
+> those values to IP addresses and will send a discovery packet
+> directly to the that IP address.
+>
+> **e.g.** hdhr.static_addresses_csv=10.1.1.2,172.17.3.5,192.168.11.1
+> would attempt to discover devices at the IP addresses 10.1.1.2,
+> 172.17.3.5 and 192.168.11.1. 
+
+> *Fixed InfiniTV ClearQAM program selection confirmation always
+> timing out.
+
+> *Fixed media server (upload id) disconnecting too soon under some
+> circumstances resulting in missing a few last seconds of a stream.
+
+> *Reverted back to FFmpeg 2.8.1 until the deprecated features can be
+> managed.
+
+> *Upgraded GSON library to 2.8.0.
+
+> *Upgraded Cling to 2.1.1.
+
+> *Internal: Added plugin example code and a new gradle task:
+> jsonClientJar. This task creates opendct-json-client.jar under
+> build/distributions/json-client. It can be used for Java client-side
+> communication with the server. It has a dependency on GSON which is
+> also present in the same folder.

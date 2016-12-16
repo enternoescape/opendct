@@ -13,27 +13,18 @@
  * limitations under the License.
  */
 
-package opendct.nanohttpd.pojo;
+package opendct.config;
 
-public class JsonGeneral {
-    private String name;
-    private JsonOption options[];
+public class StaticConfig {
+    public static final int VERSION_CONFIG = 4;
 
-    public String getName() {
-        return name;
-    }
+    public static final int VERSION_MAJOR = 0;
+    public static final int VERSION_MINOR = 5;
+    public static final int VERSION_BUILD = 15;
+    public static final String VERSION_PROGRAM =
+            VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public JsonOption[] getOptions() {
-        if (options == null)
-            return new JsonOption[0];
-        return options;
-    }
-
-    public void setOptions(JsonOption[] options) {
-        this.options = options;
-    }
+    public static final byte ENCODER_COMPATIBLE_MAJOR_VERSION = 4;
+    public static final byte ENCODER_COMPATIBLE_MINOR_VERSION = 1;
+    public static final byte ENCODER_COMPATIBLE_MICRO_VERSION = 0;
 }

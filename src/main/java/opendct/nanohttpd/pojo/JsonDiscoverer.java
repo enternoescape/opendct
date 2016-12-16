@@ -19,6 +19,8 @@ public class JsonDiscoverer {
     private String name;
     private String description;
     private String errorMessage;
+    // This must be able to be null because if it is not populated, we should not assume the
+    // discovery method is disabled.
     private Boolean enabled = null;
     private String running;
     private String supportedOS[];
@@ -48,7 +50,7 @@ public class JsonDiscoverer {
         this.errorMessage = errorMessage;
     }
 
-    public Boolean getEnabled() {
+    public Boolean isEnabled() {
         return enabled;
     }
 

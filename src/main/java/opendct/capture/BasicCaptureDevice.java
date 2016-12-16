@@ -503,7 +503,6 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     private int scanChannelIndex = 0;
     private int scanIncrement = 20;
     private TVChannel scanChannels[];
-    private boolean channelScanFirstZero = true;
 
     /**
      * This pulls from the last offline channel scan data. If an offline scan has never happened,
@@ -511,28 +510,25 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @param channel The index of the tunable channel being requested.
      * @param combine This will return all of the tunable channels across 79 large semi-colon
-     *                delimited string. SageTV will accept the data in this format in one request.
+     *                delimited strings. SageTV will accept the data in this format in one request.
      * @return The next channel that is tunable or ERROR if we are at the end of the list.
      */
     public String scanChannelInfo(String channel, boolean combine) {
-        if (scanChannels == null) {
-            scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
-        }
-
-        if (channel.equals("-1")) {
+        if (scanChannels == null ||
+                channel.equals("0") || channel.equals("-1") || channel.equals("-2")) {
+            // Always update the channels with the latest from the capture device when starting a
+            // new channel scan.
+            if (channel.equals("0")) {
+                ChannelManager.updateChannelLineup(ChannelManager.getChannelLineup(getChannelLineup()));
+            }
             scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
             scanChannelIndex = 0;
-            channelScanFirstZero = true;
 
             if (scanChannels.length > 0) {
-                scanIncrement = scanChannels.length / 79;
+                // Ensure the number is at least 1.
+                scanIncrement = scanChannels.length / 79 + 1;
             }
 
-            return "OK";
-        }
-
-        if (channelScanFirstZero) {
-            channelScanFirstZero = false;
             return "OK";
         }
 
@@ -582,7 +578,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @return The name of the channel lineup in use on this encoder.
      */
-    public String getChannelLineup() {
+    public final String getChannelLineup() {
         return encoderLineup;
     }
 
@@ -591,7 +587,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *
      * @param lineup The name of the channel Lineup.
      */
-    public void setChannelLineup(String lineup) {
+    public final void setChannelLineup(String lineup) {
         encoderLineup = lineup.toLowerCase();
         Config.setString(propertiesDeviceParent + "lineup", encoderLineup);
     }
@@ -729,11 +725,12 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         return Config.getSageTVConsumer(
                 propertiesDeviceRoot + "channel_scan_consumer",
                 Config.getString("sagetv.new.default_channel_scan_consumer_impl",
-                        FFmpegTransSageTVConsumerImpl.class.getName()), "");
+                        DynamicConsumerImpl.class.getName()), "");
     }
 
     @Override
     public void setTranscodeProfile(String transcodeProfile) throws DeviceOptionException {
+        // There isn't any good validation we can do here, so we just set the value.
         Config.setString(propertiesDeviceRoot + "transcode_profile", transcodeProfile);
     }
 
@@ -746,8 +743,14 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public void setConsumerName(String consumerName) throws DeviceOptionException {
+    public synchronized void setConsumerName(String consumerName) throws DeviceOptionException {
+        String oldValue = getConsumerName();
         Config.setString(propertiesDeviceRoot + "consumer", consumerName);
+        if (!getConsumer().getClass().getName().endsWith(consumerName))
+        {
+            Config.setString(propertiesDeviceRoot + "consumer", oldValue);
+            throw new DeviceOptionException(consumerName + " is not a valid consumer.", "consumer");
+        }
     }
 
     @Override

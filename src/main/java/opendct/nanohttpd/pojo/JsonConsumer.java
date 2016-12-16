@@ -17,6 +17,7 @@ package opendct.nanohttpd.pojo;
 
 public class JsonConsumer {
     private String name;
+    private String nameCanonical;
     private JsonOption options[];
 
     public String getName() {
@@ -25,6 +26,14 @@ public class JsonConsumer {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getNameCanonical() {
+        return nameCanonical;
+    }
+
+    public void setNameCanonical(String nameCanonical) {
+        this.nameCanonical = nameCanonical;
     }
 
     public JsonOption[] getOptions() {

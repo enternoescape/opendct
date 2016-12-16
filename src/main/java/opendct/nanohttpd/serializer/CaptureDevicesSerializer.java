@@ -19,7 +19,9 @@ import com.google.gson.*;
 import opendct.capture.CaptureDevice;
 import opendct.channel.ChannelLineup;
 import opendct.channel.ChannelManager;
+import opendct.config.Config;
 import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
 import opendct.nanohttpd.pojo.JsonException;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.sagetv.SageTVDeviceCrossbar;
@@ -53,11 +55,15 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
     public static final String BROADCAST_STANDARD = "broadcastStandard";
     public static final String COPY_PROTECTION = "copyProtection";
     public static final String CONSUMER = "consumer";
+    public static final String CONSUMER_CANONICAL = "consumerCanonical";
     public static final String TRANSCODE_PROFILE = "transcodeProfile";
     public static final String DEVICE_TYPE = "deviceType";
     public static final String SAGETV_DEVICE_CROSSBAR = "sagetvCrossbars";
     public static final String OPTIONS = "options";
 
+    // Enable or disable devices.
+    public static final String ENABLE_DEVICE = "enableDevice";
+    public static final String DISABLE_DEVICE = "disableDevice";
 
     private final static DeviceOptionSerializer deviceOptionSerializer = new DeviceOptionSerializer();
     private final static SageTVDeviceTypesSerializer deviceTypesSerializer = new SageTVDeviceTypesSerializer();
@@ -99,7 +105,8 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                 object.addProperty(SIGNAL_STRENGTH, captureDevice.getSignalStrength());
                 object.addProperty(BROADCAST_STANDARD, captureDevice.getBroadcastStandard().toString());
                 object.addProperty(COPY_PROTECTION, captureDevice.getCopyProtection().toString());
-                object.addProperty(CONSUMER, captureDevice.getConsumerName());
+                object.addProperty(CONSUMER, Config.getConsumerFriendlyForCanonical(captureDevice.getConsumerName()));
+                object.addProperty(CONSUMER_CANONICAL, captureDevice.getConsumerName());
                 object.addProperty(TRANSCODE_PROFILE, captureDevice.getTranscodeProfile());
                 object.addProperty(DEVICE_TYPE, captureDevice.getEncoderDeviceType().toString());
                 object.add(SAGETV_DEVICE_CROSSBAR, deviceTypesSerializer.serialize(captureDevice.getSageTVDeviceCrossbars(), SageTVDeviceCrossbar.class, context));
@@ -180,6 +187,12 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
             case COPY_PROTECTION:
                 object.addProperty(COPY_PROTECTION, captureDevice.getCopyProtection().toString());
                 break;
+            case CONSUMER:
+                object.addProperty(CONSUMER, captureDevice.getConsumerName());
+                break;
+            case TRANSCODE_PROFILE:
+                object.addProperty(TRANSCODE_PROFILE, captureDevice.getTranscodeProfile());
+                break;
             case DEVICE_TYPE:
                 object.addProperty(DEVICE_TYPE, captureDevice.getEncoderDeviceType().toString());
                 break;
@@ -230,11 +243,11 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
 
                 break;
             case OFFLINE_CHANNEL_SCAN_ENABLED:
-                if (!newValue.toLowerCase().equals("false") && !newValue.toLowerCase().equals("true")) {
+                if (!"false".equalsIgnoreCase(newValue) && !"true".equalsIgnoreCase(newValue)) {
                     return new JsonException(OFFLINE_CHANNEL_SCAN_ENABLED, "'" + newValue + "' is not boolean.");
                 }
 
-                boolean channelScan = newValue.toLowerCase().equals("true");
+                boolean channelScan = "true".equalsIgnoreCase(newValue);
 
                 if (channelScan) {
                     ChannelManager.addDeviceToOfflineScan(captureDevice.getChannelLineup(), captureDevice.getEncoderName());
@@ -242,6 +255,33 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                     ChannelManager.removeDeviceFromOfflineScan(captureDevice.getChannelLineup(), captureDevice.getEncoderName());
                 }
 
+                break;
+            case CONSUMER:
+                try {
+                    String value = Config.getConsumerCanonicalForFriendly(newValue);
+                    if (value != null) {
+                        newValue = value;
+                    }
+                    captureDevice.setConsumerName(newValue);
+                } catch (DeviceOptionException e) {
+                    return new JsonException(CONSUMER, e.getMessage());
+                }
+
+                break;
+            case TRANSCODE_PROFILE:
+                try {
+                    captureDevice.setTranscodeProfile(newValue);
+                } catch (DeviceOptionException e) {
+                    return new JsonException(TRANSCODE_PROFILE, e.getMessage());
+                }
+
+                break;
+            case DISABLE_DEVICE:
+                if (!"true".equalsIgnoreCase(newValue)) {
+                    break;
+                }
+
+                DiscoveryManager.disableCaptureDevice(captureDevice.getEncoderUniqueHash());
                 break;
         }
 

@@ -367,12 +367,15 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         if(encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
             tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
-            if (tvChannel == null) {
-                tvChannel = new TVChannelImpl(channel, "Unknown");
+            boolean includeQam = tvChannel == null || tvChannel.getFrequency() <= 0 || tvChannel.getProgram() <= 0;
+
+            if (includeQam || UpnpDiscoverer.getQamAlwaysRemapLookup()) {
+                tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, new TVChannelImpl(channel, "Unknown"), includeQam);
             }
 
-            if (tvChannel.getFrequency() <= 0 || tvChannel.getProgram() <= 0) {
-                tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, tvChannel);
+            // We have a previously known mapping, so use that in the case.
+            if (tvChannel == null && !includeQam) {
+                tvChannel = ChannelManager.getChannel(encoderLineup, channel);
             }
 
             if (tvChannel == null) {

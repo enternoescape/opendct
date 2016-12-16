@@ -38,16 +38,16 @@ public interface DeviceDiscoverer extends DeviceOptions {
     public String getDescription();
 
     /**
-     * Should this discovery method be started.
+     * Should this discovery method be started?
      *
-     * @return <i>false</i> to ensure this discovery method is not started.
+     * @return <code>false</code> to ensure this discovery method is not started.
      */
     public boolean isEnabled();
 
     /**
      * Enable or disable the use of this discovery method.
      *
-     * @param enabled Set <i>true</i> to enable this discovery method.
+     * @param enabled Set <code>true</code> to enable this discovery method.
      */
     public void setEnabled(boolean enabled);
 
@@ -101,17 +101,20 @@ public interface DeviceDiscoverer extends DeviceOptions {
 
     /**
      * Is this detection method currently running?
+     * <p/>
+     * This should not return <code>true</code> just because the the detection method is enabled.
      *
-     * @return <i>true</i> if detection is running.
+     * @return <code>true</code> if detection is running.
      */
     public boolean isRunning();
 
     /**
      * Error message.
      * <p/>
-     * This must return <i>null</i> if the discovery method does not currently have any issues.
+     * This must return <code>null</code> if the discovery method does not currently have any
+     * issues.
      *
-     * @return <i>null</i> or a message pertaining to the current error conditions.
+     * @return <code>null</code> or a message pertaining to the current error conditions.
      */
     public String getErrorMessage();
 

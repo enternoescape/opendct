@@ -34,16 +34,11 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static opendct.config.StaticConfig.VERSION_CONFIG;
+import static opendct.config.StaticConfig.VERSION_PROGRAM;
+
 public class Config {
     private static final Logger logger = LogManager.getLogger(Config.class);
-
-    public static final int VERSION_CONFIG = 4;
-
-    public static final int VERSION_MAJOR = 0;
-    public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 14;
-    public static final String VERSION_PROGRAM =
-            VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
 
     private static final Object getSocketServerPort = new Object();
     private static final Object getRTSPPort = new Object();
@@ -1081,6 +1076,57 @@ public class Config {
         return returnValues;
     }
 
+    private static final String FFMPEG_CONSUMER = "FFmpeg";
+    private static final String MEDIA_SERVER_CONSUMER = "Media Server";
+    private static final String RAW_CONSUMER = "Raw";
+    private static final String DYNAMIC_CONSUMER = "Dynamic";
+
+    /**
+     * Get a friendly name for a canonically named consumer for UI display or JSON.
+     * <p/>
+     * This is done this way so that we don't need to initialize every consumer just to get a single
+     * value when listing the available consumers.
+     *
+     * @param canonical The canonical name of the consumer.
+     * @return The friendly name of the consumer or <code>null</code> if the consumer does not
+     *         exist.
+     */
+    public static String getConsumerFriendlyForCanonical(String canonical) {
+        if (canonical.endsWith(FFmpegTransSageTVConsumerImpl.class.getSimpleName())) {
+            return FFMPEG_CONSUMER;
+        } else if (canonical.endsWith(MediaServerConsumerImpl.class.getSimpleName())) {
+            return MEDIA_SERVER_CONSUMER;
+        } else if (canonical.endsWith(RawSageTVConsumerImpl.class.getSimpleName())) {
+            return RAW_CONSUMER;
+        } else if (canonical.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
+            return DYNAMIC_CONSUMER;
+        }
+        return null;
+    }
+
+    /**
+     * Get a canonically named consumer from a friendly name.
+     * <p/>
+     * This is done this way so that we don't need to initialize every consumer just to get a single
+     * value when listing the available consumers.
+     *
+     * @param friendlyName The friendly name of the consumer.
+     * @return The canonical name of the consumer or <code>null</code> if a consumer by the provided
+     *         friendly name does not exist.
+     */
+    public static String getConsumerCanonicalForFriendly(String friendlyName) {
+        if (FFMPEG_CONSUMER.equalsIgnoreCase(friendlyName)) {
+            return FFmpegTransSageTVConsumerImpl.class.getCanonicalName();
+        } else if (MEDIA_SERVER_CONSUMER.equalsIgnoreCase(friendlyName)) {
+            return MediaServerConsumerImpl.class.getCanonicalName();
+        } else if (RAW_CONSUMER.equalsIgnoreCase(friendlyName)) {
+            return RawSageTVConsumerImpl.class.getCanonicalName();
+        } else if (DYNAMIC_CONSUMER.equalsIgnoreCase(friendlyName)) {
+            return DynamicConsumerImpl.class.getCanonicalName();
+        }
+        return null;
+    }
+
     /**
      * Get a new SageTV consumer.
      *
@@ -1093,7 +1139,7 @@ public class Config {
      * @return An alreadying initialized SageTV consumer.
      */
     public static SageTVConsumer getSageTVConsumer(String key, String sageTVConsumer, String channel) {
-        logger.entry(key, sageTVConsumer);
+        logger.entry(key, sageTVConsumer, channel);
 
         SageTVConsumer returnValue;
 

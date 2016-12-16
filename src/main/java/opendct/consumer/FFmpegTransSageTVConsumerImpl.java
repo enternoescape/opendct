@@ -267,14 +267,14 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         }
         circularBuffer.close();
 
-        if (currentWriter instanceof FFmpegUploadIDWriter &&
+        /*if (currentWriter instanceof FFmpegUploadIDWriter &&
                 ((FFmpegUploadIDWriter) currentWriter).mediaServer != null) {
             try {
                 ((FFmpegUploadIDWriter)currentWriter).mediaServer.endUpload();
             } catch (IOException e) {
                 logger.debug("There was a problem while disconnecting from Media Server => ", e);
             }
-        }
+        }*/
     }
 
     @Override

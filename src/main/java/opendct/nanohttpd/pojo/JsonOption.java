@@ -96,6 +96,8 @@ public class JsonOption {
     }
 
     public String[] getValidValues() {
+        if (validValues == null)
+            return new String[0];
         return validValues;
     }
 
@@ -112,6 +114,8 @@ public class JsonOption {
     }
 
     public String[] getValues() {
+        if (values == null)
+            return new String[0];
         return values;
     }
 

@@ -47,7 +47,11 @@ public class ConsumerJsonServlet {
     public static class List extends RouterNanoHTTPD.DefaultHandler {
         @Override
         public String getText() {
-            return gson.toJson(Config.getSageTVConsumers());
+            String returnValues[] = Config.getSageTVConsumers();
+            for (int i = 0; i < returnValues.length; i++) {
+                returnValues[i] = Config.getConsumerFriendlyForCanonical(returnValues[i]);
+            }
+            return gson.toJson(returnValues);
         }
 
         @Override
@@ -75,6 +79,10 @@ public class ConsumerJsonServlet {
             JsonArray jsonArray = new JsonArray();
 
             for (String consumer : consumers) {
+                String newConsumer = Config.getConsumerCanonicalForFriendly(consumer);
+                if (newConsumer != null) {
+                    consumer = newConsumer;
+                }
                 SageTVConsumer sageTVConsumer;
 
                 if (consumer.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
@@ -103,6 +111,10 @@ public class ConsumerJsonServlet {
             }
 
             for (String consumer : consumers) {
+                String newConsumer = Config.getConsumerCanonicalForFriendly(consumer);
+                if (newConsumer != null) {
+                    consumer = newConsumer;
+                }
                 SageTVConsumer sageTVConsumer;
 
                 if (consumer.endsWith(DynamicConsumerImpl.class.getSimpleName())) {

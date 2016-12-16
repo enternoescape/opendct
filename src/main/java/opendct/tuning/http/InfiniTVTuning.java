@@ -62,11 +62,13 @@ public class InfiniTVTuning {
             boolean frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
             int attempts = 20;
 
+            String desiredFrequency = String.valueOf(tvChannel.getFrequency());
             while (!frequencyTuned) {
                 tuneFrequency(tvChannel, deviceAddress, tunerNumber, retry);
 
+                // InfiniTV provides the frequency in kHz, so we need 3 more zeros.
                 currentFrequency = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "tuner", "Frequency") + "000";
-                frequencyTuned = currentFrequency.equals(String.valueOf(tvChannel.getFrequency()));
+                frequencyTuned = currentFrequency.equals(desiredFrequency);
 
                 if (attempts-- == 0 && !frequencyTuned) {
                     logger.error("The requested frequency cannot be tuned.");
@@ -89,6 +91,7 @@ public class InfiniTVTuning {
 
             Thread.sleep(250);
 
+            String desiredProgram = String.valueOf(tvChannel.getProgram());
             while (!programSelected) {
                 // If we are not already on the correct frequency, it takes the tuner a moment
                 // to detect the available programs. If you try to set a program before the list
@@ -97,7 +100,7 @@ public class InfiniTVTuning {
 
                 tuneProgram(tvChannel, deviceAddress, tunerNumber, retry);
 
-                programSelected = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "mux", "ProgramNumber").equals(tvChannel.getProgram());
+                programSelected = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "mux", "ProgramNumber").equals(desiredProgram);
                 if (attempts-- == 0 && !programSelected) {
                     logger.error("The requested program cannot be selected.");
                     return logger.exit(false);

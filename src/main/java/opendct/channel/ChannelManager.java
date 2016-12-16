@@ -815,16 +815,20 @@ public class ChannelManager implements PowerEventListener {
      *                      the request.
      * @param encoderLineup This is the lineup to update with the new program and frequency.
      * @param tvChannel The channel to get the frequency and program for  automatically.
+     * @param includeQam Include other QAM lineups in the mapping.
      * @return The new channel with the program and frequency already mapped or <i>null</i> if no
      *         mapping was possible.
      */
-    public static TVChannel autoDctToQamMap(CaptureDevice captureDevice, String encoderLineup, TVChannel tvChannel) {
+    public static TVChannel autoDctToQamMap(CaptureDevice captureDevice, String encoderLineup, TVChannel tvChannel, boolean includeQam) {
         logger.entry(tvChannel);
 
         // First check if the value is already from an alternative lineup.
-        ArrayList<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
+        List<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
-        devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_HDHOMERUN));
+        if (includeQam) {
+            devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_INFINITV));
+            devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.QAM_HDHOMERUN));
+        }
 
         if (autoMapQamReference) {
             for (CaptureDevice device : devices) {
@@ -909,7 +913,7 @@ public class ChannelManager implements PowerEventListener {
      *         was found.
      */
     public static String autoFrequencyProgramToCableChannel(CaptureDevice captureDevice, int frequency, int program) {
-        ArrayList<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
+        List<CaptureDevice> devices = SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_INFINITV);
         devices.addAll(SageTVManager.getAllSageTVCaptureDevices(CaptureDeviceType.DCT_HDHOMERUN));
 
         for (CaptureDevice device : devices) {

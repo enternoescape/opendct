@@ -18,7 +18,7 @@ package opendct.nanohttpd.pojo;
 import opendct.config.options.DeviceOptionException;
 
 public class JsonException {
-    private boolean exception = true;
+    private boolean exception;
     private String object;
     private String message;
 
@@ -42,5 +42,9 @@ public class JsonException {
 
     public String getMessage() {
         return message;
+    }
+
+    public boolean isException() {
+        return object  != null && message != null;
     }
 }

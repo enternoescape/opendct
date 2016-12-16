@@ -172,7 +172,7 @@ public class HDHomeRunDevice {
      * available tuners.
      */
     public HDHomeRunTuner getTuner(int tuner) {
-        if (tuner > tunerCount) {
+        if (tuner > tunerCount || tuner < 0) {
             return null;
         }
 
@@ -314,6 +314,19 @@ public class HDHomeRunDevice {
         cardStatus = CONTROL.getVariable(ipAddress, "/card/status");
 
         return cardStatus;
+    }
+
+    /**
+     * Get the status of the most recent lineup scan.
+     * e.g. state=failed progress=100% found=39
+     *
+     * @return Returns a String representation of the most recent lineup scan.
+     * @throws IOException Thrown if communication with the device was incomplete or is not possible
+     *                     at this time.
+     * @throws GetSetException Thrown if the device returns an error instead of a value.
+     */
+    public String getLinupScan() throws IOException, GetSetException {
+        return CONTROL.getVariable(ipAddress, "/lineup/scan");
     }
 
     /**

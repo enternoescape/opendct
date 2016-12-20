@@ -1616,34 +1616,6 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public BroadcastStandard getBroadcastStandard() {
-        //TODO: Get the actual broadcast standard in use.
-
-        try {
-            String lockStr = tuner.getStatus().LOCK_STR;
-            logger.debug("getBroadcastStandard: {}", lockStr);
-        } catch (IOException e) {
-            logger.error("Unable to get broadcast standard from HDHomeRun" +
-                    " because it cannot be reached => ", e);
-        } catch (GetSetException e) {
-            logger.error("Unable to get broadcast standard from HDHomeRun" +
-                    " because the command did not work => ", e);
-        }
-
-        switch (encoderDeviceType) {
-            case DCT_HDHOMERUN:
-            case QAM_HDHOMERUN:
-            case DVBC_HDHOMERUN:
-                return BroadcastStandard.QAM256;
-            case ATSC_HDHOMERUN:
-            case DVBT_HDHOMERUN:
-                return BroadcastStandard.ATSC;
-        }
-
-        return BroadcastStandard.UNKNOWN;
-    }
-
-    @Override
     public int getSignalStrength() {
         int signal = 0;
 

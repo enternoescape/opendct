@@ -357,7 +357,26 @@ public class HDHomeRunDiscovery implements Runnable {
                         int packetLength = rxPacket.getPacketLength();
                         rxPacket.BUFFER.limit(packetLength + 4);
 
-                        HDHomeRunDevice device = new HDHomeRunDevice(socketAddress.getAddress());
+                        InetAddress address = socketAddress.getAddress();
+                        if (address == null) {
+                            try {
+                                String hostString = socketAddress.getHostString();
+                                logger.info("Resolving address: {}", hostString);
+                                address = InetAddress.getByName(hostString);
+                            } catch (UnknownHostException e) {
+                                logger.warn("Unable to resolve source IP address => ", e);
+                                try {
+                                    String hostname = socketAddress.getHostName();
+                                    logger.info("Resolving address: {}", hostname);
+                                    address = InetAddress.getByName(hostname);
+                                } catch (UnknownHostException e1) {
+                                    logger.error("Unable to resolve source IP address => ", e1);
+                                    continue;
+                                }
+                            }
+                        }
+
+                        HDHomeRunDevice device = new HDHomeRunDevice(address);
 
                         while (rxPacket.BUFFER.remaining() > 4) {
                             HDHomeRunPacketTag tag = rxPacket.getTag();
@@ -452,6 +471,7 @@ public class HDHomeRunDiscovery implements Runnable {
                                     break;
 
                                 default:
+                                    // Attempt to auto-detect the tuner count.
                                     setTunerCount(device);
                                     // 2 is a safe bet for most HDHomeRun capture devices.
                                     if (device.getTunerCount() == 0) {
@@ -491,7 +511,7 @@ public class HDHomeRunDiscovery implements Runnable {
                         }
 
                         try {
-                            discoverer.addCaptureDevice(device);
+                            discoverer.addCaptureDevice(device, BROADCAST_SOCKET[listenIndex].getAddress());
                         } catch (Exception e) {
                             logger.error("Unable to add new HDHomeRun capture device => ", e);
                         }

@@ -106,8 +106,8 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
     }
 
-    StringBuilder stdOutBuilder = new StringBuilder();
-    StringBuilder errOutBuilder = new StringBuilder();
+    private StringBuilder stdOutBuilder = new StringBuilder();
+    private StringBuilder errOutBuilder = new StringBuilder();
     private int executeCommand(String execute) throws InterruptedException {
         if (Util.isNullOrEmpty(execute)) {
             return 0;
@@ -137,102 +137,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
         return -1;
     }
-
-    private static final String hdmiRoot[] = { "status", "hdmi" };
-    private static final String hdmiVideoSize[] = { "video", "size" };
-    private static final String chnVideoSizeWidth[] = { "chn_stat", "width" };
-    private static final String chnVideoSizeHeight[] = { "chn_stat", "height" };
-
-    /*/**
-     * Check if the currently detected resolution matches the encoded resolution.
-     *
-     * @param getStatus The URL to check.
-     * @param username The username to use for authentication.
-     * @param password The password to use for authentication.
-     * @param match If this is not <i>null</i>, it will be checked against the detected resolution
-     *              instead of using the encoded resolution.
-     * @return The matching resolution if they match or the device cannot be reached. Empty string
-     *         if URL is unreachable/parsable. <i>null</i> if they do not match.
-     */
-    /*private static String getVideoMatches(URL getStatus, String username, String password, String match) {
-        Document document = null;
-        try {
-            document = Util.getUrlXml(getStatus, username, password, 5000);
-        } catch (IOException e) {
-            logger.error("Unable to download/parse the XML from the URL '{}' => ", getStatus, e);
-
-            // If the URL can't be opened/parsed, return that it's a match since it is likely that
-            // the device doesn't support the way we are trying to access it.
-            return "";
-        }
-
-        if (document != null) {
-            Node hdmiRootNode = Util.getDeepNode(hdmiRoot, document.getChildNodes());
-
-            if (hdmiRootNode != null) {
-                Node videoSizeNode = Util.getDeepNode(hdmiVideoSize, hdmiRootNode.getChildNodes());
-
-                if (match == null) {
-                    Node chnWidthNode = Util.getDeepNode(chnVideoSizeWidth, hdmiRootNode.getChildNodes());
-                    Node chnHeightNode = Util.getDeepNode(chnVideoSizeHeight, hdmiRootNode.getChildNodes());
-
-                    if (chnWidthNode != null && chnHeightNode != null) {
-                        String chnWidth = chnWidthNode.getTextContent();
-                        String chnHeight = chnHeightNode.getTextContent();
-                        match = chnWidth + "*" + chnHeight;
-                    }
-                }
-
-                if (videoSizeNode != null && match != null) {
-                    String videoSize = videoSizeNode.getTextContent();
-
-                    if (videoSize.startsWith(match)) {
-                        return videoSize;
-                    }
-                }
-            }
-        }
-
-        return null;
-    }*/
-
-    /*private void waitForResolutionChange(String channel) {
-        try {
-            String username = device.getResolutionChangeUsername();
-            String password = device.getResolutionChangePassword();
-
-            URL getStatus = new URL("http", getURL(channel).getHost(), 80, "get_status");
-            String expectedResolution = resolutionMap.get(channel);
-
-            // If we have a known value for this channel, this can speed things up.
-            if (expectedResolution != null) {
-                if (getVideoMatches(getStatus, username, password, expectedResolution) != null) {
-                    return;
-                }
-            }
-
-            Thread.sleep(5000);
-
-            int retry = 20;
-            while (retry-- > 0) {
-                String returnedValue = getVideoMatches(getStatus, username, password, expectedResolution);
-                if (returnedValue != null) {
-                    if (returnedValue.length() > 0) {
-                        resolutionMap.put(channel, returnedValue);
-                        return;
-                    }
-                }
-
-                Thread.sleep(1000);
-            }
-
-
-        } catch (InterruptedException e) {
-            logger.debug("Interrupted while waiting for resolution to change.");
-        } catch (MalformedURLException e) {
-            logger.error("Unable to create a valid URL to get the current status of the device.");
-        }
-    }*/
 
     @Override
     public boolean isInternalLocked() {
@@ -287,7 +191,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
                 return logger.exit(false);
             }
 
-            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.DIGITAL_TV_TUNER, 0, 0, null)) {
+            if (!startEncoding(tvChannel.getChannel(), null, "", 0, SageTVDeviceCrossbar.HDMI, 0, 0, null)) {
                 return logger.exit(false);
             }
 
@@ -480,16 +384,12 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
         if (firstPass) {
             returnChannels = device.getCustomChannels();
-
-            if (!Util.isNullOrEmpty(returnChannels)) {
-                customChannels = true;
-            }
-
+            customChannels = !Util.isNullOrEmpty(returnChannels);
             firstPass = false;
             return "OK";
         }
 
-        if (channel.equals("-1")) {
+        if (channel.equals("-1") || channel.equals("-2")) {
             firstPass = true;
             return "OK";
         }
@@ -524,11 +424,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
             return httpProducer.getPackets();
         }
-    }
-
-    @Override
-    public BroadcastStandard getBroadcastStandard() {
-        return BroadcastStandard.H264;
     }
 
     @Override

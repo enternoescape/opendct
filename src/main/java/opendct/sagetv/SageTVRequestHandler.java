@@ -372,6 +372,7 @@ public class SageTVRequestHandler implements Runnable {
                                 logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
                                 success = captureDevice.switchEncoding(
                                         channel, filename, bufferSize,
+                                        deviceType, crossbarIndex[0],
                                         uploadID, socket.getInetAddress());
                             } catch (Exception e) {
                                 success = false;
@@ -435,6 +436,7 @@ public class SageTVRequestHandler implements Runnable {
 
                                 logger.debug("Switching network encoder via upload ID '{}' to file name '{}'.", uploadID, filename);
                                 success = captureDevice.switchEncoding(channel, filename, 0,
+                                        deviceType, crossbarIndex[0],
                                         uploadID, socket.getInetAddress());
                             } catch (Exception e) {
                                 success = false;

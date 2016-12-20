@@ -19,7 +19,10 @@ import opendct.capture.CaptureDevice;
 import opendct.capture.CaptureDeviceIgnoredException;
 import opendct.config.Config;
 import opendct.config.OSVersion;
-import opendct.config.options.*;
+import opendct.config.options.DeviceOption;
+import opendct.config.options.DeviceOptionException;
+import opendct.config.options.LongDeviceOption;
+import opendct.config.options.StringDeviceOption;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.*;
 import opendct.tuning.http.GenericHttpDiscoveredDevice;
@@ -49,8 +52,6 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
 
     // Global generic HTTP device settings.
     private final static Map<String, DeviceOption> deviceOptions;
-    private static IntegerDeviceOption offlineDetectionSeconds;
-    private static IntegerDeviceOption offlineDetectionMinBytes;
     private static StringDeviceOption deviceNames;
     private static LongDeviceOption streamingWait;
 
@@ -58,7 +59,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     private static boolean enabled;
     private static boolean running;
     private static String errorMessage;
-    DeviceLoader deviceLoader;
+    private DeviceLoader deviceLoader;
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
     private final Map<Integer, GenericHttpDiscoveredDevice> discoveredDevices = new HashMap<>();
@@ -93,41 +94,17 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
                                 " SageTV regardless of if the requested channel is actually streaming."
                 );
 
-                offlineDetectionSeconds = new IntegerDeviceOption(
-                        Config.getInteger("generic.http.wait_for_offline_detection_s", 8),
-                        false,
-                        "Offline Channel Detection Seconds",
-                        "generic.http.wait_for_offline_detection_s",
-                        "This is the value in seconds to wait after tuning a channel before" +
-                                " making a final determination on if it is tunable or not." +
-                                " This applies only to offline scanning."
-                );
-
-                offlineDetectionMinBytes = new IntegerDeviceOption(
-                        Config.getInteger("generic.http.offline_detection_min_bytes", 10528),
-                        false,
-                        "Offline Channel Detection Bytes",
-                        "generic.http.offline_detection_min_bytes",
-                        "This is the value in bytes that must be consumed before a channel is" +
-                                " considered tunable."
-                );
-
                 Config.mapDeviceOptions(
                         deviceOptions,
                         deviceNames,
-                        streamingWait,
-                        offlineDetectionSeconds,
-                        offlineDetectionMinBytes
+                        streamingWait
                 );
             } catch (DeviceOptionException e) {
                 logger.error("Unable to configure device options for GenericHttpDiscoverer." +
                         " Reverting to defaults. => ", e);
 
-                Config.setInteger("generic.http.wait_for_offline_detection_s", 8);
-                Config.setInteger("generic.http.offline_detection_min_bytes", 10528);
                 Config.setString("generic.http.device_names_csv", "");
                 Config.setLong("generic.http.wait_for_streaming", 15000);
-
                 continue;
             }
 
@@ -185,17 +162,8 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     }
 
     @Override
-    public synchronized void stopDetection() throws DiscoveryException {
+    public void stopDetection() throws DiscoveryException {
         // There is nothing to stop.
-        discoveredDevicesLock.writeLock().lock();
-
-        /*try {
-            GenericHttpDiscoverer.running = false;
-            discoveredDevices.clear();
-            discoveredParents.clear();
-        } finally {
-          discoveredDevicesLock.writeLock().unlock();
-        }*/
     }
 
     @Override
@@ -391,9 +359,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     public DeviceOption[] getOptions() {
         return new DeviceOption[] {
                 deviceNames,
-                streamingWait,
-                offlineDetectionSeconds,
-                offlineDetectionMinBytes
+                streamingWait
         };
     }
 
@@ -415,7 +381,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             Config.setDeviceOption(optionReference);
 
             // If any new devices have been added at runtime, this will make sure they get added.
-            if (optionReference.getProperty().equals("generic.http.device_names_csv")) {
+            if (optionReference.getProperty().equals(deviceNames.getProperty())) {
                 new GenericHttpLoader(deviceNames.getArrayValue(), this).run();
             }
         }
@@ -425,14 +391,6 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
 
     public static long getStreamingWait() {
         return streamingWait.getLong();
-    }
-
-    public static int getOfflineDetectionSeconds() {
-        return offlineDetectionSeconds.getInteger();
-    }
-
-    public static int getOfflineDetectionMinBytes() {
-        return offlineDetectionMinBytes.getInteger();
     }
 
     public static String[] getDeviceNames() {

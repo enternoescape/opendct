@@ -221,7 +221,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
             updateChannelMap();
 
         } catch (DeviceOptionException e) {
-            logger.error("Unable to load the options for the generic capture device '{}'",
+            logger.error("Unable to load the options for the generic HTTP capture device '{}'",
                     parent.getFriendlyName());
         }
     }

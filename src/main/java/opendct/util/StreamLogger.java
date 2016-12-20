@@ -58,6 +58,10 @@ public class StreamLogger implements Runnable {
             }
         } catch (IOException e) {
             logger.error("Stream logger terminated in an unexpected way => ", e);
+        } finally {
+            try {
+                stream.close();
+            } catch (Exception e) {}
         }
     }
 }

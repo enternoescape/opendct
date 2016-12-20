@@ -16,7 +16,6 @@
 
 package opendct.capture;
 
-import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
 import opendct.config.options.DeviceOptionException;
@@ -381,6 +380,10 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *                      it.
      * @param bufferSize    The file size at which point we circle back to the beginning of the file
      *                      again.
+     * @param deviceType    The crossbar being requested from this capture device. It is assumed
+     *                      that only one crossbar can be used at a time.
+     * @param crossbarIndex The index of the crossbar being requested. If more than one crossbar of
+     *                      the same type exists, this index will indicate which one is to be used.
      * @param uploadID      This is the new uploadID to be used.
      * @param remoteAddress This is the IP address of the server that made the request. This should
      *                      not change either, but it is here in case we find a situation that
@@ -388,6 +391,7 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @return Returns <i>true</i> if the transition was successful.
      */
     public boolean switchEncoding(String channel, String filename, long bufferSize,
+                                  SageTVDeviceCrossbar deviceType, int crossbarIndex,
                                   int uploadID, InetAddress remoteAddress);
 
     /**
@@ -395,7 +399,8 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * capture device.
      * <p/>
      * If this returns <i>true</i> that means that the method
-     * {@link #switchEncoding(String, String, long, int, InetAddress)} will work if called.
+     * {@link #switchEncoding(String, String, long, SageTVDeviceCrossbar, int, int, InetAddress)}
+     * will work if called.
      *
      * @return Returns <i>true</i> if this capture device is using a consumer implementation that
      *         supports the SWITCH command correctly.
@@ -493,9 +498,9 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
     public String getRecordFilename();
 
     /**
-     * Get the current uploadID in use.
+     * Get the current media server upload ID in use.
      *
-     * @return A number or 0 if there is no uploadID.
+     * @return A number or 0 if there is no upload ID.
      */
     public int getRecordUploadID();
 
@@ -505,16 +510,6 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      * @return The name of the quality in use.
      */
     public String getRecordQuality();
-
-    /**
-     * Returns the broadcast standard for this capture device.
-     * <p/>
-     * If there isn't a standard or there isn't a consistent way to determine it (Ex. a web feed or
-     * analog encoder), return the encoding type.
-     *
-     * @return Returns the determined broadcast standard in use for this capture device.
-     */
-    public BroadcastStandard getBroadcastStandard();
 
     /**
      * Get the signal strength for a channel.

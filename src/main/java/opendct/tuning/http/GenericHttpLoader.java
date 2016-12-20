@@ -18,8 +18,8 @@ package opendct.tuning.http;
 import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
 
 public class GenericHttpLoader implements Runnable {
-    String devices[];
-    GenericHttpDiscoverer discoverer;
+    private String devices[];
+    private GenericHttpDiscoverer discoverer;
 
     public GenericHttpLoader(String devices[], GenericHttpDiscoverer discoverer) {
         this.devices = devices;

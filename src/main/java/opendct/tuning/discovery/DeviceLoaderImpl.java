@@ -120,15 +120,25 @@ public class DeviceLoaderImpl implements DeviceLoader {
                         logger.warn("The capture device parent '{}' reports that it is a network" +
                                 " device, but does not have a remote address.",
                                 parent.getName());
-
                     } else {
                         if (!parent.getRemoteAddress().equals(InetAddress.getLoopbackAddress())) {
                             try {
                                 NetworkPowerEventManger.POWER_EVENT_LISTENER
                                         .addDependentInterface(parent.getRemoteAddress());
-                            }catch(IOException e){
-                                logger.warn("Unable to register dependent interface '{}' => ",
-                                        parent.getRemoteAddress(), e);
+                            } catch (IOException e) {
+                                logger.warn("Unable to register dependent interface using the" +
+                                                " remote IP address '{}'," +
+                                                " trying local IP address '{}' => ",
+                                        parent.getRemoteAddress(), parent.getLocalAddress(), e.getMessage());
+                                try {
+                                    NetworkPowerEventManger.POWER_EVENT_LISTENER
+                                            .addDependentInterface(parent.getLocalAddress());
+                                } catch (IOException e1) {
+                                    logger.warn("Unable to register dependent interface using the" +
+                                                    " local IP address '{}'," +
+                                                    " this may effect recovery from standby => ",
+                                            parent.getLocalAddress(), e1);
+                                }
                             }
                         }
                     }

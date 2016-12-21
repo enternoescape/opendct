@@ -103,7 +103,6 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                 object.addProperty(OFFLINE_CHANNEL_SCAN_ENABLED, captureDevice.isOfflineChannelScan());
                 object.addProperty(UPLOAD_ID, captureDevice.getRecordUploadID());
                 object.addProperty(SIGNAL_STRENGTH, captureDevice.getSignalStrength());
-                object.addProperty(BROADCAST_STANDARD, captureDevice.getBroadcastStandard().toString());
                 object.addProperty(COPY_PROTECTION, captureDevice.getCopyProtection().toString());
                 object.addProperty(CONSUMER, Config.getConsumerFriendlyForCanonical(captureDevice.getConsumerName()));
                 object.addProperty(CONSUMER_CANONICAL, captureDevice.getConsumerName());
@@ -180,9 +179,6 @@ public class CaptureDevicesSerializer implements JsonSerializer<DiscoveredDevice
                 break;
             case SIGNAL_STRENGTH:
                 object.addProperty(SIGNAL_STRENGTH, captureDevice.getSignalStrength());
-                break;
-            case BROADCAST_STANDARD:
-                object.addProperty(BROADCAST_STANDARD, captureDevice.getBroadcastStandard().toString());
                 break;
             case COPY_PROTECTION:
                 object.addProperty(COPY_PROTECTION, captureDevice.getCopyProtection().toString());

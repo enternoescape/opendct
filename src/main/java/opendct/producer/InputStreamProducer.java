@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-package opendct.config;
+package opendct.producer;
 
-public class StaticConfig {
-    public static final int VERSION_CONFIG = 4;
+import java.io.InputStream;
 
-    public static final int VERSION_MAJOR = 0;
-    public static final int VERSION_MINOR = 5;
-    public static final int VERSION_BUILD = 16;
-    public static final String VERSION_PROGRAM =
-            VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_BUILD;
+public interface InputStreamProducer extends SageTVProducer {
 
-    public static final byte ENCODER_COMPATIBLE_MAJOR_VERSION = 4;
-    public static final byte ENCODER_COMPATIBLE_MINOR_VERSION = 1;
-    public static final byte ENCODER_COMPATIBLE_MICRO_VERSION = 0;
+    /**
+     * Set the InputStream to be used for this producer.
+     * <p/>
+     * If a <code>null</code> value is provided or no value is ever set, the producer will be unable
+     * to start.
+     *
+     * @param stream The InputStream to be used for this producer.
+     */
+    public void setInputStream(InputStream stream);
 }

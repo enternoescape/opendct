@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-package opendct.tuning.http;
+package opendct.tuning.pipe;
 
-import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
+import opendct.tuning.discovery.discoverers.GenericPipeDiscoverer;
 
-public class GenericHttpLoader implements Runnable {
+public class GenericPipeLoader implements Runnable {
     private String devices[];
-    private GenericHttpDiscoverer discoverer;
+    private GenericPipeDiscoverer discoverer;
 
-    public GenericHttpLoader(String devices[], GenericHttpDiscoverer discoverer) {
+    public GenericPipeLoader(String devices[], GenericPipeDiscoverer discoverer) {
         this.devices = devices;
         this.discoverer = discoverer;
     }
@@ -29,8 +29,8 @@ public class GenericHttpLoader implements Runnable {
     @Override
     public void run() {
         for (String device : devices) {
-            GenericHttpDiscoveredDeviceParent loadParent = new GenericHttpDiscoveredDeviceParent(device, device.hashCode());
-            GenericHttpDiscoveredDevice loadDevice = new GenericHttpDiscoveredDevice(device, device.hashCode(), device.hashCode(), loadParent);
+            GenericPipeDiscoveredDeviceParent loadParent = new GenericPipeDiscoveredDeviceParent(device, device.hashCode());
+            GenericPipeDiscoveredDevice loadDevice = new GenericPipeDiscoveredDevice(device, device.hashCode(), device.hashCode(), loadParent);
 
             discoverer.addCaptureDevice(loadDevice, loadParent);
         }

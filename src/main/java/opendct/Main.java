@@ -27,6 +27,7 @@ import opendct.power.PowerMessageManager;
 import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.DiscoveryManager;
 import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
+import opendct.tuning.discovery.discoverers.GenericPipeDiscoverer;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
 import opendct.tuning.upnp.UpnpManager;
@@ -220,6 +221,7 @@ public class Main {
             DiscoveryManager.addDiscoverer(new UpnpDiscoverer());
             DiscoveryManager.addDiscoverer(new HDHomeRunDiscoverer());
             DiscoveryManager.addDiscoverer(new GenericHttpDiscoverer());
+            DiscoveryManager.addDiscoverer(new GenericPipeDiscoverer());
             DiscoveryManager.startDeviceDiscovery();
 
             PowerMessageManager.EVENTS.addListener(DiscoveryManager.POWER_EVENT_LISTENER);

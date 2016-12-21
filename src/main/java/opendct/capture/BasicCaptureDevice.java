@@ -601,13 +601,19 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
      *                 uploadID, but it is here in case we find a situation that requires it.
      * @param recordBufferSize Buffer sizes greater than 0 will create a circular file-based buffer
      *                         of the requested length.
+     * @param deviceType    The crossbar being requested from this capture device. It is assumed
+     *                      that only one crossbar can be used at a time.
+     * @param crossbarIndex The index of the crossbar being requested. If more than one crossbar of
+     *                      the same type exists, this index will indicate which one is to be used.
      * @param uploadID      This is the new uploadID to be used.
      * @param remoteAddress This is the IP address of the server that made the request. This should
      *                      not change either, but it is here in case we find a situation that
      *                      requires it.
      * @return <i>true</i> if the switch was successful.
      */
-    public boolean switchEncoding(String channel, String filename, long recordBufferSize, int uploadID, InetAddress remoteAddress) {
+    public boolean switchEncoding(String channel, String filename, long recordBufferSize,
+                                  SageTVDeviceCrossbar deviceType, int crossbarIndex,
+                                  int uploadID, InetAddress remoteAddress) {
         logger.entry();
         if (!canSwitch) {
             logger.error("'{}' was requested to switch, but the consumer thread" +

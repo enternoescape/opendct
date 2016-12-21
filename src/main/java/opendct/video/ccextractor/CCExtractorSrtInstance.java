@@ -193,55 +193,57 @@ public class CCExtractorSrtInstance {
             StringBuilder builder = new StringBuilder(2048);
             int readLen;
 
-            while (!closed) {
-                try {
-                    readLen = reader.read(buffer, 0, buffer.length);
-                } catch (IOException e) {
-                    logger.error("Error while reading from CCExtractor {} stream => ", streamType, e);
-                    break;
-                }
+            try {
+                while (!closed) {
+                    try {
+                        readLen = reader.read(buffer, 0, buffer.length);
+                    } catch (IOException e) {
+                        logger.error("Error while reading from CCExtractor {} stream => ", streamType, e);
+                        break;
+                    }
 
-                if (readLen == -1) {
-                    break;
-                } else if (readLen == 0) {
-                    continue;
-                }
+                    if (readLen == -1) {
+                        break;
+                    } else if (readLen == 0) {
+                        continue;
+                    }
 
-                for (int i = 0; i < readLen; i++) {
-                    if (buffer[i] == '\n') {
-                        if (builder.length() == 0) {
-                            continue;
-                        }
+                    for (int i = 0; i < readLen; i++) {
+                        if (buffer[i] == '\n') {
+                            if (builder.length() == 0) {
+                                continue;
+                            }
 
-                        String logOut = builder.toString();
+                            String logOut = builder.toString();
 
-                        if (logOut.equals("  XDS: ")) {
+                            if (logOut.equals("  XDS: ")) {
+                                builder.setLength(0);
+                                continue;
+                            } else if (debug) {
+                                logger.debug("{}: {}", streamType, builder.toString());
+                            } else {
+                                logger.info("{}: {}", streamType, builder.toString());
+                            }
+
                             builder.setLength(0);
                             continue;
-                        } else if (debug) {
-                            logger.debug("{}: {}", streamType, builder.toString());
-                        } else {
-                            logger.info("{}: {}", streamType, builder.toString());
                         }
 
-                        builder.setLength(0);
-                        continue;
-                    }
+                        if (buffer[i] == '\r') {
+                            continue;
+                        }
 
-                    if (buffer[i] == '\r') {
-                        continue;
+                        builder.append(buffer[i]);
                     }
-
-                    builder.append(buffer[i]);
                 }
-            }
+            } finally {
+                logger.debug("CCExtractor {} thread stopped.", streamType);
 
-            logger.debug("CCExtractor {} thread stopped.", streamType);
-
-            // Ensure the process gets terminated even if somehow it doesn't happen until the
-            // program is stopped.
-            if (ccExtractor != null) {
-                ccExtractor.destroy();
+                // Ensure the process gets terminated even if somehow it doesn't happen until the
+                // program is stopped.
+                if (ccExtractor != null) {
+                    ccExtractor.destroy();
+                }
             }
         }
     }

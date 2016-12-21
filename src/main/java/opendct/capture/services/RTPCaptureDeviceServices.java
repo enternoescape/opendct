@@ -152,7 +152,7 @@ public class RTPCaptureDeviceServices {
     }
 
     // It is entirely possible for the object to become null from the start thread.
-    public Boolean isProducing() {
+    public boolean isProducing() {
         logger.entry();
 
         boolean returnValue = false;

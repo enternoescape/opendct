@@ -582,20 +582,6 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public BroadcastStandard getBroadcastStandard() {
-        BroadcastStandard returnValue = BroadcastStandard.QAM256;
-
-        try {
-            returnValue = InfiniTVStatus.getModulation(
-                    parent.getRemoteAddress().getHostAddress(), encoderNumber);
-        } catch (IOException e) {
-            logger.debug("Unable to get broadcast standard from capture device.");
-        }
-
-        return returnValue;
-    }
-
-    @Override
     public int getSignalStrength() {
         logger.entry();
 

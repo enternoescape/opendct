@@ -25,9 +25,9 @@ import opendct.config.options.LongDeviceOption;
 import opendct.config.options.StringDeviceOption;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.tuning.discovery.*;
-import opendct.tuning.http.GenericHttpDiscoveredDevice;
-import opendct.tuning.http.GenericHttpDiscoveredDeviceParent;
-import opendct.tuning.http.GenericHttpLoader;
+import opendct.tuning.pipe.GenericPipeDiscoveredDevice;
+import opendct.tuning.pipe.GenericPipeDiscoveredDeviceParent;
+import opendct.tuning.pipe.GenericPipeLoader;
 import opendct.tuning.upnp.UpnpDiscoveredDeviceParent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,13 +37,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class GenericHttpDiscoverer implements DeviceDiscoverer {
-    private static final Logger logger = LogManager.getLogger(GenericHttpDiscoverer.class);
+public class GenericPipeDiscoverer implements DeviceDiscoverer {
+    private static final Logger logger = LogManager.getLogger(GenericPipeDiscoverer.class);
 
     // Static information about this discovery method.
-    private final static String name = "Generic HTTP";
+    private final static String name = "Generic Pipe";
     private final static String description = "Discovers predefined capture devices available via" +
-            " the combination of a static HTTP URL and tuning method.";
+            " the combination of the piped standard output of a tuning script.";
 
     private final static OSVersion[] supportedOS = new OSVersion[] {
             OSVersion.WINDOWS,
@@ -62,11 +62,11 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     private DeviceLoader deviceLoader;
 
     private final ReentrantReadWriteLock discoveredDevicesLock = new ReentrantReadWriteLock();
-    private final Map<Integer, GenericHttpDiscoveredDevice> discoveredDevices = new HashMap<>();
-    private final Map<Integer, GenericHttpDiscoveredDeviceParent> discoveredParents = new HashMap<>();
+    private final Map<Integer, GenericPipeDiscoveredDevice> discoveredDevices = new HashMap<>();
+    private final Map<Integer, GenericPipeDiscoveredDeviceParent> discoveredParents = new HashMap<>();
 
     static {
-        enabled = Config.getBoolean("generic.http.discoverer_enabled", true);
+        enabled = Config.getBoolean("generic.pipe.discoverer_enabled", true);
         running = false;
 
         errorMessage = null;
@@ -75,21 +75,21 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
         while (true) {
             try {
                 deviceNames = new StringDeviceOption(
-                        Config.getStringArray("generic.http.device_names_csv"),
+                        Config.getStringArray("generic.pipe.device_names_csv"),
                         true,
                         false,
                         "Device Names",
-                        "generic.http.device_names_csv",
+                        "generic.pipe.device_names_csv",
                         "This is a comma separated list of the names to be used for each device." +
                                 " Each name in this list will create all of the required" +
                                 " properties to create a functional capture device."
                 );
 
                 streamingWait = new LongDeviceOption(
-                        Config.getLong("generic.http.wait_for_streaming", 15000),
+                        Config.getLong("generic.pipe.wait_for_streaming", 15000),
                         false,
                         "Return to SageTV",
-                        "generic.http.wait_for_streaming",
+                        "generic.pipe.wait_for_streaming",
                         "This is the maximum number of milliseconds to wait before returning to" +
                                 " SageTV regardless of if the requested channel is actually streaming."
                 );
@@ -100,11 +100,11 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
                         streamingWait
                 );
             } catch (DeviceOptionException e) {
-                logger.error("Unable to configure device options for GenericHttpDiscoverer." +
+                logger.error("Unable to configure device options for GenericPipeDiscoverer." +
                         " Reverting to defaults. => ", e);
 
-                Config.setString("generic.http.device_names_csv", "");
-                Config.setLong("generic.http.wait_for_streaming", 15000);
+                Config.setString("generic.pipe.device_names_csv", "");
+                Config.setLong("generic.pipe.wait_for_streaming", 15000);
                 continue;
             }
 
@@ -129,8 +129,8 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
 
     @Override
     public synchronized void setEnabled(boolean enabled) {
-        GenericHttpDiscoverer.enabled = enabled;
-        Config.setBoolean("generic.http.discoverer_enabled", enabled);
+        GenericPipeDiscoverer.enabled = enabled;
+        Config.setBoolean("generic.pipe.discoverer_enabled", enabled);
     }
 
     @Override
@@ -143,12 +143,12 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
         discoveredDevicesLock.writeLock().lock();
 
         try {
-            GenericHttpDiscoverer.running = true;
+            GenericPipeDiscoverer.running = true;
 
             this.deviceLoader = deviceLoader;
 
-            Thread loadDevices = new Thread(new GenericHttpLoader(deviceNames.getArrayValue(), this));
-            loadDevices.setName("GenericHttpLoader-" + loadDevices.getId());
+            Thread loadDevices = new Thread(new GenericPipeLoader(deviceNames.getArrayValue(), this));
+            loadDevices.setName("GenericPipeLoader-" + loadDevices.getId());
             loadDevices.setDaemon(true);
             loadDevices.start();
         } finally {
@@ -181,23 +181,19 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
         return errorMessage;
     }
 
-    public void addCaptureDevice(GenericHttpDiscoveredDevice device, GenericHttpDiscoveredDeviceParent parent) {
+    public void addCaptureDevice(GenericPipeDiscoveredDevice device, GenericPipeDiscoveredDeviceParent parent) {
 
         discoveredDevicesLock.writeLock().lock();
 
         try {
-            if (!GenericHttpDiscoverer.running) {
+            if (!GenericPipeDiscoverer.running) {
                 return;
             }
 
-            GenericHttpDiscoveredDeviceParent lastParentDevice =
+            GenericPipeDiscoveredDeviceParent lastParentDevice =
                     discoveredParents.get(device.getParentId());
 
             if (lastParentDevice != null) {
-                if (!lastParentDevice.getRemoteAddress().equals(parent.getRemoteAddress())) {
-                    lastParentDevice.setRemoteAddress(parent.getRemoteAddress());;
-                }
-
                 return;
             }
 
@@ -235,7 +231,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             returnValues = new DiscoveredDevice[discoveredDevices.size()];
 
             int i = 0;
-            for (Map.Entry<Integer, GenericHttpDiscoveredDevice> discoveredDevice : discoveredDevices.entrySet()) {
+            for (Map.Entry<Integer, GenericPipeDiscoveredDevice> discoveredDevice : discoveredDevices.entrySet()) {
                 returnValues[i++] = discoveredDevice.getValue();
             }
 
@@ -281,7 +277,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             returnValues = new UpnpDiscoveredDeviceParent[discoveredParents.size()];
 
             int i = 0;
-            for (Map.Entry<Integer, GenericHttpDiscoveredDeviceParent> discoveredParent : discoveredParents.entrySet()) {
+            for (Map.Entry<Integer, GenericPipeDiscoveredDeviceParent> discoveredParent : discoveredParents.entrySet()) {
                 returnValues[i++] = discoveredParent.getValue();
             }
 
@@ -322,8 +318,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
 
         CaptureDevice returnValue = null;
-        GenericHttpDiscoveredDevice discoveredDevice;
-        CaptureDeviceLoadException loadException = null;
+        GenericPipeDiscoveredDevice discoveredDevice;
 
         discoveredDevicesLock.readLock().lock();
 
@@ -333,12 +328,10 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
             if (discoveredDevice != null) {
                 returnValue = discoveredDevice.loadCaptureDevice();
             } else {
-                loadException = new CaptureDeviceLoadException("Unable to create capture device" +
+                throw new CaptureDeviceLoadException("Unable to create capture device" +
                         " because it was never detected.");
             }
 
-        } catch (CaptureDeviceLoadException e) {
-            loadException = e;
         } catch (CaptureDeviceIgnoredException e) {
             logger.warn("Capture device will not be loaded => {}", e.getMessage());
         } catch (Exception e) {
@@ -346,10 +339,6 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
                     " discoveredDevicesLock => ", e);
         } finally {
             discoveredDevicesLock.readLock().unlock();
-        }
-
-        if (loadException != null) {
-            throw loadException;
         }
 
         return returnValue;
@@ -366,7 +355,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
     @Override
     public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
         for (JsonOption option : deviceOptions) {
-            DeviceOption optionReference = GenericHttpDiscoverer.deviceOptions.get(option.getProperty());
+            DeviceOption optionReference = GenericPipeDiscoverer.deviceOptions.get(option.getProperty());
 
             if (optionReference == null) {
                 continue;
@@ -382,7 +371,7 @@ public class GenericHttpDiscoverer implements DeviceDiscoverer {
 
             // If any new devices have been added at runtime, this will make sure they get added.
             if (optionReference.getProperty().equals(deviceNames.getProperty())) {
-                new GenericHttpLoader(deviceNames.getArrayValue(), this).run();
+                new GenericPipeLoader(deviceNames.getArrayValue(), this).run();
             }
         }
 

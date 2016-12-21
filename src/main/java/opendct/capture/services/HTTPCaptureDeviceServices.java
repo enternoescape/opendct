@@ -70,9 +70,9 @@ public class HTTPCaptureDeviceServices {
                                      boolean enableAuth,
                                      URL... httpURLs) {
 
-        logger.entry(httpProducer, sageTVConsumer, httpURLs);
+        logger.entry(encoderName, httpProducer, sageTVConsumer, enableAuth, httpURLs);
 
-        boolean returnValue = false;
+        boolean returnValue;
         
         //In case we left the last producer running.
         if (!stopProducing(true)) {
@@ -121,7 +121,7 @@ public class HTTPCaptureDeviceServices {
      * @return A new HTTP producer.
      */
     public HTTPProducer getNewHTTPProducer(String propertiesDeviceParent) {
-        return Config.getHTTProducer(
+        return Config.getHttpProducer(
                 propertiesDeviceParent + "http.producer",
                 Config.getString("http.new.default_producer",
                         NIOHTTPProducerImpl.class.getName()));
@@ -132,7 +132,7 @@ public class HTTPCaptureDeviceServices {
      *
      * @return <i>true</i> if the producer is still running.
      */
-    public Boolean isProducing() {
+    public boolean isProducing() {
         logger.entry();
 
         boolean returnValue = false;

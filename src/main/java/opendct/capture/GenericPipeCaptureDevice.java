@@ -1,11 +1,10 @@
 /*
  * Copyright 2015-2016 The OpenDCT Authors. All Rights Reserved
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,66 +15,59 @@
 
 package opendct.capture;
 
-import opendct.capture.services.HTTPCaptureDeviceServices;
+import opendct.capture.services.InputStreamCaptureDeviceServices;
 import opendct.channel.*;
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
-import opendct.producer.HTTPProducer;
+import opendct.producer.InputStreamProducer;
 import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
-import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
-import opendct.tuning.http.GenericHttpDiscoveredDevice;
-import opendct.tuning.http.GenericHttpDiscoveredDeviceParent;
+import opendct.tuning.discovery.discoverers.GenericPipeDiscoverer;
+import opendct.tuning.pipe.GenericPipeDiscoveredDevice;
+import opendct.tuning.pipe.GenericPipeDiscoveredDeviceParent;
 import opendct.util.StreamLogger;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class GenericHttpCaptureDevice extends BasicCaptureDevice {
-    private final static Logger logger = LogManager.getLogger(GenericHttpCaptureDevice.class);
+public class GenericPipeCaptureDevice extends BasicCaptureDevice {
+    private final static Logger logger = LogManager.getLogger(GenericPipeCaptureDevice.class);
+
+    private final int STOP_LIMIT = 15000;
 
     private final AtomicBoolean locked = new AtomicBoolean(false);
     private final Object exclusiveLock = new Object();
-    private final GenericHttpDiscoveredDeviceParent parent;
-    private final GenericHttpDiscoveredDevice device;
+    private final GenericPipeDiscoveredDeviceParent parent;
+    private final GenericPipeDiscoveredDevice device;
 
     private final static Runtime runtime = Runtime.getRuntime();
-    private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
-    private URL sourceUrl;
+    private final InputStreamCaptureDeviceServices inputStreamServices =
+            new InputStreamCaptureDeviceServices();
     long lastTuneTime = System.currentTimeMillis();
 
-    private Thread stoppingThread;
+    private InputStreamProducer inputStreamProducer;
+    private Process currentProcess;
 
-    private HTTPProducer httpProducer;
-
-    public GenericHttpCaptureDevice(GenericHttpDiscoveredDeviceParent loadParent, GenericHttpDiscoveredDevice loadDevice) throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
+    public GenericPipeCaptureDevice(GenericPipeDiscoveredDeviceParent loadParent, GenericPipeDiscoveredDevice loadDevice) throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
         super(loadParent.getFriendlyName(), loadDevice.getFriendlyName(), loadParent.getParentId(), loadDevice.getId());
 
         parent = loadParent;
         device = loadDevice;
 
-        try {
-            device.getURL(null);
-        } catch (MalformedURLException e) {
-            throw new CaptureDeviceLoadException(e);
-        }
+        encoderDeviceType = CaptureDeviceType.INPUT_STREAM;
 
-        encoderDeviceType = CaptureDeviceType.LIVE_STREAM;
-
-        super.setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", "generic_http"));
+        super.setChannelLineup(Config.getString(propertiesDeviceParent + "lineup", "generic_pipe"));
 
         if (ChannelManager.getChannelLineup(encoderLineup) == null) {
             ChannelManager.addChannelLineup(new ChannelLineup(encoderLineup, encoderName, ChannelSourceType.STATIC, ""), false);
         }
 
-        super.setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "generic_http"));
+        super.setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "generic_pipe"));
     }
 
     @Override
@@ -83,32 +75,9 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.HDMI };
     }
 
-    private String getExecutionString(String execute, String channel, boolean appendChannel) {
-        if (Util.isNullOrEmpty(execute)) {
-            return "";
-        }
-
-        int minLength = device.getPadChannel();
-
-        if (channel.length() < minLength) {
-            minLength = minLength - channel.length();
-
-            // With all of the appending, I'm not sure if this is any better than a for loop on
-            // small numbers. Also we can't assume the channel is a number, so we loose a little
-            // efficiency there too.
-            channel = String.format(Locale.ENGLISH, "%0" + minLength + "d", 0) + channel;
-        }
-
-        if (!execute.contains("%c%") && appendChannel) {
-            return execute + " " + channel;
-        } else {
-            return execute.replace("%c%", channel);
-        }
-    }
-
     private StringBuilder stdOutBuilder = new StringBuilder();
     private StringBuilder errOutBuilder = new StringBuilder();
-    private int executeCommand(String execute) throws InterruptedException {
+    private int executeStopCommand(String execute) throws InterruptedException {
         if (Util.isNullOrEmpty(execute)) {
             return 0;
         }
@@ -117,17 +86,26 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             logger.debug("Executing: '{}'", execute);
             Process tunerProcess = runtime.exec(execute);
 
-            Runnable stdRunnable =
-                    new StreamLogger("std", tunerProcess.getInputStream(), logger, stdOutBuilder);
+            Thread stdThread = new Thread(
+                    new StreamLogger("std", tunerProcess.getInputStream(), logger, stdOutBuilder));
             Thread errThread = new Thread(
                     new StreamLogger("err", tunerProcess.getErrorStream(), logger, errOutBuilder));
 
             errThread.setName("StreamLogger-" + errThread.getId());
             errThread.start();
-            stdRunnable.run();
+            stdThread.setName("StreamLogger-" + stdThread.getId());
+            stdThread.start();
+
+            long timeLimit = System.currentTimeMillis() + STOP_LIMIT;
+            while (stdThread.isAlive() || errThread.isAlive()) {
+                Thread.sleep(1000);
+                if (timeLimit > System.currentTimeMillis()) {
+                    tunerProcess.destroy();
+                    break;
+                }
+            }
 
             tunerProcess.waitFor();
-
             int returnValue = tunerProcess.exitValue();
             logger.debug("Exit code: {}", returnValue);
 
@@ -147,10 +125,43 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
             return returnValue;
         } catch (IOException e) {
-            logger.error("Unable to run tuning executable '{}' => ", execute, e);
+            logger.error("Unable to run stop executable '{}' => ", execute, e);
         }
 
         return -1;
+    }
+
+    private StringBuilder errStreamOutBuilder = new StringBuilder();
+    private InputStream executeStreamCommand(String execute) throws InterruptedException {
+        if (Util.isNullOrEmpty(execute)) {
+            return null;
+        }
+
+        try {
+            logger.debug("Executing: '{}'", execute);
+            Process tunerProcess = runtime.exec(execute);
+
+            // Ensure we don't retain anything crazy.
+            if (errStreamOutBuilder.capacity() > 1024) {
+                if (errStreamOutBuilder.length() > 1024) {
+                    errStreamOutBuilder.setLength(1024);
+                }
+                errStreamOutBuilder.trimToSize();
+            }
+
+            Thread errThread = new Thread(
+                    new StreamLogger("err", tunerProcess.getErrorStream(), logger, errStreamOutBuilder));
+
+            errThread.setName("StreamLogger-" + errThread.getId());
+            errThread.start();
+
+            currentProcess = tunerProcess;
+            return tunerProcess.getInputStream();
+        } catch (IOException e) {
+            logger.error("Unable to run streaming executable '{}' => ", execute, e);
+        }
+
+        return null;
     }
 
     @Override
@@ -239,9 +250,17 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
                                       long bufferSize, int uploadID, InetAddress remoteAddress,
                                       TVChannel tvChannel) {
 
-        if (stoppingThread != null) {
-            stoppingThread.interrupt();
-            stoppingThread = null;
+        if (currentProcess != null) {
+            try {
+                String stopCommand = device.getStoppingExecutable();
+                if (!Util.isNullOrEmpty(stopCommand)) {
+                    executeStopCommand(stopCommand);
+                }
+                currentProcess.destroy();
+                currentProcess = null;
+            } catch (Exception e) {
+                logger.warn("There was an exception stopping the last execution => ", e);
+            }
         }
 
         boolean retune = false;
@@ -262,7 +281,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             }
         }
 
-        httpServices.stopProducing(false);
+        inputStreamServices.stopProducing(false);
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
         if (!retune) {
@@ -270,7 +289,8 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         // Get a new producer and consumer.
-        HTTPProducer newHTTPProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
+        InputStreamProducer newInputStreamProducer =
+                inputStreamServices.getNewInputStreamProducer(propertiesDeviceParent);
         SageTVConsumer newConsumer;
 
         // If we are trying to restart the stream, we don't need to get a new consumer.
@@ -300,61 +320,21 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             ChannelManager.addChannel(encoderLineup, tvChannel);
         }
 
-        String execute = getExecutionString(device.getPretuneExecutable(), channel, false);
+        InputStream stream;
         try {
-            if (executeCommand(execute) == -1) {
-                logger.error("Failed to run pre-tune executable.");
+            stream = executeStreamCommand(device.getStreamingExecutable() + " " + channel);
+            if (stream == null) {
+                logger.error("Failed to run streaming executable.");
                 return false;
             }
         } catch (InterruptedException e) {
-            logger.debug("Pre-tune was interrupted => {}", e.getMessage());
+            logger.debug("Streaming start was interrupted => {}", e.getMessage());
             return false;
         }
 
         logger.info("Configuring and starting the new SageTV producer...");
-
-        try {
-            URL connectURL = device.getURL(channel);
-            String username = device.getHttpUsername();
-            String password = device.getHttpPassword();
-            boolean enableAuth = username.length() > 0 && password.length() > 0;
-            if (enableAuth) {
-                HTTPCaptureDeviceServices.addCredentials(connectURL, username, password);
-            }
-            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, enableAuth, connectURL)) {
-                return false;
-            }
-
-            httpProducer = newHTTPProducer;
-        } catch (MalformedURLException e) {
-            logger.error("Unable to start streaming because the URL is invalid.");
+        if (!inputStreamServices.startProducing(encoderName, newInputStreamProducer, newConsumer, stream)) {
             return false;
-        }
-
-        int returnCode;
-        execute = getExecutionString(device.getTuningExecutable(), channel, true);
-        try {
-            if ((returnCode = executeCommand(execute)) == -1) {
-                logger.error("Failed to run tuning executable.");
-                return false;
-            }
-        } catch (InterruptedException e) {
-            logger.debug("Tuning was interrupted => {}", e.getMessage());
-            return false;
-        }
-
-        /*if (device.getResolutionChangeDelay()) {
-            waitForResolutionChange(channel);
-        }*/
-
-        if (returnCode == 12000) {
-            logger.debug("Clearing buffer.");
-            newConsumer.clearBuffer();
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                logger.debug("Interrupted while emptying buffer.");
-            }
         }
 
         try {
@@ -382,7 +362,7 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             logger.info("Consumer is already running; this is a re-tune and it does not need to restart.");
         }
 
-        sageTVConsumerRunnable.isStreaming(GenericHttpDiscoverer.getStreamingWait());
+        sageTVConsumerRunnable.isStreaming(GenericPipeDiscoverer.getStreamingWait());
 
         lastTuneTime = System.currentTimeMillis();
 
@@ -429,15 +409,15 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     @Override
     public long getProducedPackets() {
         synchronized (exclusiveLock) {
-            if (httpProducer == null) {
-                httpProducer = httpServices.getHttpProducerRunnable();
+            if (inputStreamProducer == null) {
+                inputStreamProducer = inputStreamServices.getInputStreamProducerRunnable();
 
-                if (httpProducer == null) {
+                if (inputStreamProducer == null) {
                     return 0;
                 }
             }
 
-            return httpProducer.getPackets();
+            return inputStreamProducer.getPackets();
         }
     }
 
@@ -453,71 +433,30 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
     @Override
     public void stopEncoding() {
-        stopEncoding(device.getStoppingDelay() == 0);
-    }
-
-    public void stopEncoding(boolean immediateStop) {
 
         logger.debug("Stopping encoding...");
 
         synchronized (exclusiveLock) {
-            httpServices.stopProducing(false);
-            httpProducer = null;
+            inputStreamServices.stopProducing(false);
+            inputStreamProducer = null;
 
             super.stopEncoding();
-
-            final Runnable delayedRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    String execute = getExecutionString(device.getStoppingExecutable(), lastChannel, false);
-                    try {
-                        if (executeCommand(execute) == -1) {
-                            logger.error("Failed to run stop executable.");
-                            return;
-                        }
-                    } catch (InterruptedException e) {
-                        logger.debug("Stop was interrupted => {}", e.getMessage());
-                        return;
-                    }
+            String stopCommand = device.getStoppingExecutable();
+            if (!Util.isNullOrEmpty(stopCommand)) {
+                try {
+                    executeStopCommand(stopCommand);
+                } catch (InterruptedException e) {
+                    logger.debug("Stop was interrupted => ", e);
                 }
-            };
-
-            if (immediateStop) {
-                delayedRunnable.run();
-            } else {
-                stoppingThread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            int stoppingDelay = device.getStoppingDelay();
-
-                            logger.debug("Stopping executable will be run in {} milliseconds.", stoppingDelay);
-                            Thread.sleep(stoppingDelay);
-
-                            synchronized (exclusiveLock) {
-                                if (stoppingThread != Thread.currentThread() ||
-                                        Thread.currentThread().isInterrupted()) {
-
-                                    return;
-                                }
-
-                                delayedRunnable.run();
-                            }
-                        } catch (InterruptedException e) {
-                            logger.debug("Stopping executable was cancelled.");
-                        }
-                    }
-                });
-                stoppingThread.setName("StoppingThread-" + stoppingThread.getId());
-                stoppingThread.start();
             }
+            currentProcess.destroy();
+            currentProcess = null;
         }
     }
 
     @Override
     public void stopDevice() {
         logger.debug("Stopping device...");
-
-        stopEncoding(true);
+        stopEncoding();
     }
 }

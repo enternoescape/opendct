@@ -29,7 +29,8 @@ public enum CaptureDeviceType {
     PI_HDPVR,      // HD-PVR connected to a Raspberry Pi
     PI_TUNER,      // any USB tuner connected to a Raspberry Pi
     SCREENGRABBER, // any source that is actually just recording content via screen capture.
-    LIVE_STREAM,   // any Internet sourced live feed.
+    LIVE_STREAM,   // any HTTP sourced live feed.
+    INPUT_STREAM,  // any standard input stream that cannot be better classified.
     AUDIO_ONLY,    // any source that's just audio. The consumer may need to add blank video for playback to work.
     HYBRID,        // any capture device that uses child capture devices. the child devices need to have a type other than HYBRID.
     NATIVE,        // any encoder that requires native binary to function and supports both Windows and Linux.

@@ -55,7 +55,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
 
     static {
         // This will print out the current interfaces when the program first starts.
-        getNetworkInterfaces(true);
+        getNetworkInterfaces(true, true);
 
         int timeout = startNetworkTimeout;
 
@@ -65,7 +65,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                         " remaining. Checking again in 1 second...",
                         timeout, timeout == 1 ? "attempt" : "attempts");
                 Thread.sleep(1000);
-                getNetworkInterfaces(true);
+                getNetworkInterfaces(true, timeout > 1);
             } catch (InterruptedException e) {
                 logger.debug("");
             }
@@ -125,7 +125,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     }
 
     public static synchronized NetworkInterface[] getInterfaces() {
-        getNetworkInterfaces(false);
+        getNetworkInterfaces(false, false);
 
         NetworkInterface returnValues[] = new NetworkInterface[currentInterfaceNames.size()];
 
@@ -152,7 +152,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         if (!currentInterfaceNames.contains(interfaceLower)) {
             // Try updating the devices just in case we missed something when we first started the
             // program.
-            getNetworkInterfaces(false);
+            getNetworkInterfaces(false, false);
 
             if (!currentInterfaceNames.contains(interfaceLower)) {
                 throw new IOException("The interface '" + interfaceLower + "' does not exist on this computer.");
@@ -200,7 +200,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         waitForNetworkInterfaces();
     }
 
-    private static void getNetworkInterfaces(boolean printOutput) {
+    private static void getNetworkInterfaces(boolean printOutput, boolean failApipa) {
         currentInterfaceNames.clear();
 
         StringBuilder msg = new StringBuilder("Network interfaces which are up and have an IP4 address are: ");
@@ -215,11 +215,22 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                     List<InterfaceAddress> addresses = networkInterface.getInterfaceAddresses();
 
                     for (InterfaceAddress interfaceAddr : addresses) {
-                        InetAddress addr = interfaceAddr.getAddress();
+                        InetAddress address = interfaceAddr.getAddress();
 
-                        if (addr instanceof Inet4Address) {
+                        if (address instanceof Inet4Address) {
+                            if (failApipa && address.getHostAddress().startsWith("169.254."))
+                            {
+                                logger.info("Extending wait for interface {}, APIPA address detected: {}",
+                                        networkInterface, address.getHostAddress());
+
+                                // It will take longer than 250ms for DHCP to do it's thing and fix this problem.
+                                Thread.sleep(2000);
+                                currentInterfaceNames.clear();
+                                return;
+                            }
+
                             currentInterfaceNames.add(networkInterface.getName().toLowerCase());
-                            msg.append(Config.NEW_LINE).append(networkInterface).append(" ").append(addr.getHostAddress());
+                            msg.append(Config.NEW_LINE).append(networkInterface).append(" ").append(address.getHostAddress());
                             break;
                         }
                     }

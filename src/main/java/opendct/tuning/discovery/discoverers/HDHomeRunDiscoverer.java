@@ -30,6 +30,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -418,7 +419,7 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
         return returnValue;
     }
 
-    public void addCaptureDevice(HDHomeRunDevice discoveredDevice) {
+    public void addCaptureDevice(HDHomeRunDevice discoveredDevice, InetAddress broadcastAddress) {
 
         discoveredDevicesLock.writeLock().lock();
 
@@ -429,13 +430,13 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             }
 
             for (String ignoreModel : getIgnoreModels()) {
-                if (discoveredDevice.getSysHwModel().toUpperCase().equals(ignoreModel.toUpperCase())) {
+                if (discoveredDevice.getSysHwModel().equalsIgnoreCase(ignoreModel)) {
                     return;
                 }
             }
 
             for (String ignoreDeviceId : getIgnoreDeviceIds()) {
-                if (Integer.toHexString(discoveredDevice.getDeviceId()).toUpperCase().equals(ignoreDeviceId.toUpperCase())) {
+                if (Integer.toHexString(discoveredDevice.getDeviceId()).equalsIgnoreCase(ignoreDeviceId)) {
                     return;
                 }
             }
@@ -463,10 +464,15 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
             logger.info("Discovered a new HDHomeRun device '{}' with {} tuners.",
                     uniqueParentName, discoveredDevice.getTunerCount());
 
+            InetAddress localAddress = Util.getLocalIPForRemoteIP(discoveredDevice.getIpAddress());
+            if (localAddress == null) {
+                localAddress = Util.getLocalIPForRemoteIP(broadcastAddress);
+            }
+
             HDHomeRunDiscoveredDeviceParent parentDevice = new HDHomeRunDiscoveredDeviceParent(
                     uniqueParentName,
                     uniqueParentName.hashCode(),
-                    Util.getLocalIPForRemoteIP(discoveredDevice.getIpAddress()),
+                    localAddress,
                     discoveredDevice
             );
 

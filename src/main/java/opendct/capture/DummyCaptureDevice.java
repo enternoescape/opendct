@@ -16,10 +16,8 @@
 
 package opendct.capture;
 
-import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
 import opendct.channel.TVChannel;
-import opendct.config.options.DeviceOption;
 import opendct.config.options.DeviceOptionException;
 import opendct.sagetv.SageTVDeviceCrossbar;
 
@@ -47,10 +45,12 @@ public class DummyCaptureDevice implements CaptureDevice {
         merit = 0;
     }
 
+    @Override
     public CaptureDevice[] getChildCaptureDevices() {
         return new CaptureDevice[0];
     }
 
+    @Override
     public CaptureDeviceType getEncoderDeviceType() {
         return CaptureDeviceType.UNKNOWN;
     }
@@ -60,28 +60,34 @@ public class DummyCaptureDevice implements CaptureDevice {
         return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.DIGITAL_TV_TUNER };
     }
 
+    @Override
     public String getEncoderParentName() {
         return parentName;
     }
 
+    @Override
     public int getEncoderParentUniqueHash() {
         return parentName.hashCode();
     }
 
+    @Override
     public String getEncoderName() {
         return encoderName;
     }
 
+    @Override
     public int getEncoderUniqueHash() {
         return encoderName.hashCode();
     }
 
     private AtomicBoolean locked = new AtomicBoolean(false);
 
+    @Override
     public boolean isInternalLocked() {
         return locked.get();
     }
 
+    @Override
     public boolean setLocked(boolean locked) {
         if (this.locked.getAndSet(locked) == locked) {
             return false;
@@ -90,10 +96,12 @@ public class DummyCaptureDevice implements CaptureDevice {
         return true;
     }
 
+    @Override
     public int getPoolMerit() {
         return merit;
     }
 
+    @Override
     public void setPoolMerit(int merit) {
         this.merit = merit;
     }
@@ -108,62 +116,77 @@ public class DummyCaptureDevice implements CaptureDevice {
         this.offlineChannelScan = offlineChannelScan;
     }
 
+    @Override
     public String getPoolName() {
         return poolName;
     }
 
+    @Override
     public void setPoolName(String poolName) {
         this.poolName = poolName;
     }
 
+    @Override
     public boolean isExternalLocked() {
         return false;
     }
 
+    @Override
     public boolean setExternalLock(boolean locked) {
         return true;
     }
 
+    @Override
     public boolean getChannelInfoOffline(TVChannel tvChannel, boolean skipCCI) {
         return false;
     }
 
+    @Override
     public void stopDevice() {
 
     }
 
+    @Override
     public void stopEncoding() {
 
     }
 
+    @Override
     public String getLastChannel() {
         return "-1";
     }
 
+    @Override
     public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress) {
         return false;
     }
 
-    public boolean switchEncoding(String channel, String filename, long bufferSize, int uploadID, InetAddress remoteAddress) {
+    @Override
+    public boolean switchEncoding(String channel, String filename, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress) {
         return false;
     }
 
+    @Override
     public boolean canSwitch() {
         return false;
     }
 
+    @Override
     public long getRecordStart() {
         return System.currentTimeMillis();
     }
 
+    @Override
     public long getRecordedBytes() {
         return 0;
     }
 
+    @Override
     public String scanChannelInfo(String channel) {
         return channel;
     }
 
+    @Override
     public boolean isReady() {
         return false;
     }
@@ -173,44 +196,39 @@ public class DummyCaptureDevice implements CaptureDevice {
         return 0;
     }
 
+    @Override
     public String getChannelLineup() {
         return lineup;
     }
 
+    @Override
     public void setChannelLineup(String lineup) {
         this.lineup = lineup;
     }
 
+    @Override
     public String getRecordFilename() {
         return null;
     }
 
+    @Override
     public int getRecordUploadID() {
         return 0;
     }
 
+    @Override
     public String getRecordQuality() {
         return null;
     }
 
-    public BroadcastStandard getBroadcastStandard() {
-        return BroadcastStandard.UNKNOWN;
-    }
-
+    @Override
     public int getSignalStrength() {
         return 100;
     }
 
+    @Override
     public CopyProtection getCopyProtection() {
         return CopyProtection.UNKNOWN;
-    }
-
-    public DeviceOption[] getOptions() {
-        return new DeviceOption[0];
-    }
-
-    public void setOptions(DeviceOption... deviceOptions) throws DeviceOptionException {
-
     }
 
     @Override

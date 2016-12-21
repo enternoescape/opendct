@@ -130,6 +130,21 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
             int returnValue = tunerProcess.exitValue();
             logger.debug("Exit code: {}", returnValue);
+
+            // Ensure we don't retain anything crazy.
+            if (stdOutBuilder.capacity() > 1024) {
+                if (stdOutBuilder.length() > 1024) {
+                    stdOutBuilder.setLength(1024);
+                }
+                stdOutBuilder.trimToSize();
+            }
+            if (errOutBuilder.capacity() > 1024) {
+                if (errOutBuilder.length() > 1024) {
+                    errOutBuilder.setLength(1024);
+                }
+                errOutBuilder.trimToSize();
+            }
+
             return returnValue;
         } catch (IOException e) {
             logger.error("Unable to run tuning executable '{}' => ", execute, e);

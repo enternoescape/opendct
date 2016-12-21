@@ -87,19 +87,42 @@ public class GenericPipeCaptureDevice extends BasicCaptureDevice {
             Process tunerProcess = runtime.exec(execute);
 
             Thread stdThread = new Thread(
-                    new StreamLogger("std", tunerProcess.getInputStream(), logger, stdOutBuilder,
-                            tunerProcess, System.currentTimeMillis() + STOP_LIMIT));
+                    new StreamLogger("std", tunerProcess.getInputStream(), logger, stdOutBuilder));
             Thread errThread = new Thread(
                     new StreamLogger("err", tunerProcess.getErrorStream(), logger, errOutBuilder));
 
             errThread.setName("StreamLogger-" + errThread.getId());
             errThread.start();
-            stdThread.setName("StreamLogger-" + errThread.getId());
+            stdThread.setName("StreamLogger-" + stdThread.getId());
             stdThread.start();
+
+            long timeLimit = System.currentTimeMillis() + STOP_LIMIT;
+            while (stdThread.isAlive() || errThread.isAlive()) {
+                Thread.sleep(1000);
+                if (timeLimit > System.currentTimeMillis()) {
+                    tunerProcess.destroy();
+                    break;
+                }
+            }
 
             tunerProcess.waitFor();
             int returnValue = tunerProcess.exitValue();
             logger.debug("Exit code: {}", returnValue);
+
+            // Ensure we don't retain anything crazy.
+            if (stdOutBuilder.capacity() > 1024) {
+                if (stdOutBuilder.length() > 1024) {
+                    stdOutBuilder.setLength(1024);
+                }
+                stdOutBuilder.trimToSize();
+            }
+            if (errOutBuilder.capacity() > 1024) {
+                if (errOutBuilder.length() > 1024) {
+                    errOutBuilder.setLength(1024);
+                }
+                errOutBuilder.trimToSize();
+            }
+
             return returnValue;
         } catch (IOException e) {
             logger.error("Unable to run stop executable '{}' => ", execute, e);
@@ -117,6 +140,14 @@ public class GenericPipeCaptureDevice extends BasicCaptureDevice {
         try {
             logger.debug("Executing: '{}'", execute);
             Process tunerProcess = runtime.exec(execute);
+
+            // Ensure we don't retain anything crazy.
+            if (errStreamOutBuilder.capacity() > 1024) {
+                if (errStreamOutBuilder.length() > 1024) {
+                    errStreamOutBuilder.setLength(1024);
+                }
+                errStreamOutBuilder.trimToSize();
+            }
 
             Thread errThread = new Thread(
                     new StreamLogger("err", tunerProcess.getErrorStream(), logger, errStreamOutBuilder));

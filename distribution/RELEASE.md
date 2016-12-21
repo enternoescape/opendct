@@ -1348,6 +1348,7 @@
 
 #### 0.5.15-Beta
 > *Added basic HTTP authentication support to generic HTTP producer.
+> The new properties are:
 >
 > sagetv.device.\<unique_id\>.http_username=
 >
@@ -1364,6 +1365,42 @@
 > authentication.
 
 > *Added redirect support for HTTP producers.
+
+> *Added experimental Generic Pipe capture device. The creation of pipe
+> capture devices is similar to Generic HTTP capture device except the
+> stream is captured from the standard output of a custom script.
+>
+> To create generic pipe capture devices, you need to specify their
+> names in the property generic.pipe.device_names_csv= and the names
+> must be comma delimited. Then start the OpenDCT service, wait a
+> minute, then stop the OpenDCT service. You will now have some new
+> properties in opendct.properties.
+>
+> sagetv.device.\<unique_id\>.streaming_executable=
+>
+> sagetv.device.\<unique_id\>.stopping_executable=
+>
+> sagetv.device.\<unique_id\>.custom_channels=
+>
+> **streaming_executable** is the script/binary to be executed to tune
+> the requested channel and start streaming to standard output. Error
+> output will be redirected to the OpenDCT log and may be used for
+> debugging. The channel number will always be appended as the last
+> parameter.
+>
+> **stopping_executable** is the optional script/binary to be executed
+> to stop the streaming executable gracefully. This executable has up
+> to 15 seconds to gracefully stop the streaming executable. If this
+> executable does not successfully stop the streaming executable or
+> this executable is not provided, the streaming executable will be
+> forcefully terminated to stop it.
+>
+> **custom_channels** is an optional **semicolon** delimited list of
+> channels you want to appear in SageTV for this device. This is a
+> shortcut around creating an actual OpenDCT lineup. If there are any
+> values in the field, they will override the lineup assigned to this
+> capture device on a channel scan. This provides an easy way to add
+> channels if you are not actually going to use guide data.
 
 > *Added timeout for when a program cannot be detected. The property
 > name is consumer.ffmpeg.no_program_timeout_ms, the timeout is in
@@ -1404,11 +1441,20 @@
 > sagetv.device.\<unique_id\>.streaming_url= and
 > sagetv.device.\<unique_id\>.streaming_url2=. 
 
+> *Added check and timeout for APIPA addresses on any network
+> adapters on startup. If any interfaces have an APIPA address, it is
+> as good as not having any interfaces available for up to 2 minutes.
+
+> *Added better re-used StringBuffer size management.
+
 > *Fixed InfiniTV ClearQAM program selection confirmation always
 > timing out.
 
 > *Fixed media server (upload id) disconnecting too soon under some
 > circumstances resulting in missing a few last seconds of a stream.
+
+> *Fixed potential write deadlock in termination of generic http
+> discoverer.
 
 > *Reverted back to FFmpeg 2.8.1 until the deprecated features can be
 > managed.
@@ -1422,3 +1468,7 @@
 > build/distributions/json-client. It can be used for Java client-side
 > communication with the server. It has a dependency on GSON which is
 > also present in the same folder.
+
+> *Removed broadcast standard from capture devices since it is really
+> an internal property and there is no good way to standardize it for
+> non-broadcast capture devices.

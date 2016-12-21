@@ -21,7 +21,7 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 
-public class CCExtractor {
+public class CCExtractorTest {
 
     @Test(groups = { "ccextractor", "nativeExecute" })
     public void executeCCExtractor() throws IOException, InterruptedException {

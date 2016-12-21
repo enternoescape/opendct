@@ -1346,7 +1346,7 @@
 > *Reduced the aggressiveness of FFmpeg when repeating the detection of
 > streams.
 
-#### 0.5.16-Beta
+#### 0.5.17-Beta
 > *Added basic HTTP authentication support to generic HTTP producer.
 > The new properties are:
 >
@@ -1446,6 +1446,9 @@
 > as good as not having any interfaces available for up to 2 minutes.
 
 > *Added better re-used StringBuffer size management.
+
+> *Added better handling when a local interface cannot be determined
+> by a remote IP address.
 
 > *Fixed InfiniTV ClearQAM program selection confirmation always
 > timing out.

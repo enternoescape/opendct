@@ -45,7 +45,7 @@ public class NIOHttpDownloader {
     private static final String HTTP_11_HEADER = "HTTP/1.1 ";
 
     private boolean closed = false;
-    private final SocketChannel socketChannel;
+    private SocketChannel socketChannel;
     private URL address;
     private ByteBuffer tempBuffer;
 
@@ -178,6 +178,11 @@ public class NIOHttpDownloader {
                 throw new IOException("Redirect was requested, without a redirect URL.");
             }
             logger.info("HTTP redirect: {}", redirectUrl);
+            try {
+                socketChannel.close();
+                socketChannel.socket().close();
+            } catch (Exception e) {}
+            socketChannel = SocketChannel.open();
             connect(new URL(redirectUrl), credentials);
             return;
         }

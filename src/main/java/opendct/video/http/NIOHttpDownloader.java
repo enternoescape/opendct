@@ -18,7 +18,6 @@ package opendct.video.http;
 
 import opendct.config.Config;
 import opendct.producer.Credentials;
-import opendct.producer.HTTPProducerImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class NIOHttpDownloader {
-    private final static Logger logger = LogManager.getLogger(HTTPProducerImpl.class);
+    private final static Logger logger = LogManager.getLogger(NIOHttpDownloader.class);
 
     // Carriage return and line feed are required regardless of the OS.
     private static final String NEW_LINE = "\r\n";
@@ -111,7 +110,7 @@ public class NIOHttpDownloader {
             socketChannel.write(tempBuffer);
         }
 
-        StringBuilder stringBuffer = new StringBuilder(1024);
+        StringBuilder stringBuilder = new StringBuilder(1024);
         StringBuilder logBuilder = new StringBuilder(1024);
 
         boolean redirect = false;
@@ -130,13 +129,13 @@ public class NIOHttpDownloader {
                 currentByte = (char) tempBuffer.get();
 
                 if (currentByte == '\n') {
-                    if (stringBuffer.length() == 0) {
+                    if (stringBuilder.length() == 0) {
                         startStreaming = true;
                         break;
                     }
 
-                    String line = stringBuffer.toString();
-                    logBuilder.append("'").append(stringBuffer).append("', ");
+                    String line = stringBuilder.toString();
+                    logBuilder.append("'").append(stringBuilder).append("', ");
 
                     if (!success && line.startsWith(HTTP_11_HEADER)) {
                         if (line.length() > HTTP_11_HEADER.length() && !line.startsWith("2", HTTP_11_HEADER.length())) {
@@ -162,13 +161,13 @@ public class NIOHttpDownloader {
                         redirectUrl = line.substring("Location: ".length());
                     }
 
-                    stringBuffer.setLength(0);
+                    stringBuilder.setLength(0);
                     continue;
                 } else if (currentByte == '\r') {
                     continue;
                 }
 
-                stringBuffer.append(currentByte);
+                stringBuilder.append(currentByte);
             }
         }
 

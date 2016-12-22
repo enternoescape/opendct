@@ -100,7 +100,7 @@ public class HDHomeRunDevice {
         return ipAddress;
     }
 
-    protected void setIpAddress(InetAddress ipAddress) {
+    private void setIpAddress(InetAddress ipAddress) {
         this.ipAddress = ipAddress;
     }
 
@@ -128,7 +128,7 @@ public class HDHomeRunDevice {
         return tunerCount;
     }
 
-    protected void setTunerCount(int tunerCount) {
+    void setTunerCount(int tunerCount) {
         this.tunerCount = tunerCount;
 
         tuners = new HDHomeRunTuner[tunerCount];
@@ -142,7 +142,7 @@ public class HDHomeRunDevice {
         return isLegacy;
     }
 
-    protected void setLegacy(boolean legacy) {
+    void setLegacy(boolean legacy) {
         isLegacy = legacy;
     }
 
@@ -150,7 +150,7 @@ public class HDHomeRunDevice {
         return deviceAuth;
     }
 
-    protected void setDeviceAuth(String deviceAuth) {
+    void setDeviceAuth(String deviceAuth) {
         this.deviceAuth = deviceAuth;
     }
 
@@ -158,7 +158,7 @@ public class HDHomeRunDevice {
         return baseUrl;
     }
 
-    protected void setBaseUrl(URL baseUrl) {
+    void setBaseUrl(URL baseUrl) {
         this.baseUrl = baseUrl;
     }
 
@@ -318,6 +318,7 @@ public class HDHomeRunDevice {
 
     /**
      * Get the status of the most recent lineup scan.
+     * <p/>
      * e.g. state=failed progress=100% found=39
      *
      * @return Returns a String representation of the most recent lineup scan.

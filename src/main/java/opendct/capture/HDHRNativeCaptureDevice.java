@@ -242,7 +242,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 " RTP Port: {}",
                 "Silicondust",
                 tuner.TUNER_NUMBER,
-                device.getIpAddress(),
+                device.getIpAddress().getHostAddress(),
                 discoveredDeviceParent.getLocalAddress().getHostAddress(),
                 cableCardPresent,
                 encoderLineup,

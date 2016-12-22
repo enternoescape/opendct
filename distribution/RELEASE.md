@@ -1475,3 +1475,7 @@
 > *Removed broadcast standard from capture devices since it is really
 > an internal property and there is no good way to standardize it for
 > non-broadcast capture devices.
+
+#### 0.5.18-Beta
+> *Fixed redirect not reliably re-opening the socket when connecting
+> to the new address.

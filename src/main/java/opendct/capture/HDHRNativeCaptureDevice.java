@@ -1428,15 +1428,23 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 }
 
                 tuneChannel.setLength(0);
-                tuneChannel.append(scanChannelIndex)
-                        .append('-')
-                        .append(program.CHANNEL.replace(".", "-"));
-                stringBuilder.append(tuneChannel)
-                        .append('(')
-                        .append(program.CALLSIGN)
-                        .append(')')
-                        .append(format)
-                        .append(';');
+                if (program.CHANNEL != null) {
+                    tuneChannel.append(scanChannelIndex)
+                            .append('-')
+                            .append(program.CHANNEL.replace(".", "-"));
+                } else {
+                    tuneChannel.append(scanChannelIndex)
+                            .append('-')
+                            .append(program.PROGRAM);
+                }
+                stringBuilder.append(tuneChannel);
+                if (program.CALLSIGN != null) {
+                    stringBuilder.append('(')
+                            .append(program.CALLSIGN)
+                            .append(')')
+                            .append(format)
+                            .append(';');
+                }
 
                 TVChannel tvChannel = new TVChannelImpl(
                         tuneChannel.toString(), program.CHANNEL, true, program.CALLSIGN,

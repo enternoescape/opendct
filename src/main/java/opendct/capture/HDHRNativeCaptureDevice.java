@@ -1341,6 +1341,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         }
 
         try {
+            setExternalLock(true);
             tuner.setChannel(
                     "auto",
                     lookupMap[scanChannelIndex].FREQUENCY,

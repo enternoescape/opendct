@@ -98,7 +98,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         "Return to SageTV",
                         "hdhr.wait_for_streaming",
                         "This is the maximum number of milliseconds to wait before returning to" +
-                                " SageTV regardless of if the requested channel is actually streaming."
+                                " SageTV regardless of if the requested channel is actually" +
+                                " streaming."
                 );
 
                 hdhrLock = new BooleanDeviceOption(
@@ -117,8 +118,8 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         false,
                         "Communication Retry Count",
                         "hdhr.retry_count",
-                        "This is the number of times the program will attempt to communicate with the" +
-                                " HDHomeRun device before returning a IO error.",
+                        "This is the number of times the program will attempt to communicate with" +
+                                " the HDHomeRun device before returning a IO error.",
                         0,
                         Integer.MAX_VALUE
                 );
@@ -196,10 +197,12 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         false,
                         "Always Tune in Legacy Mode",
                         "hdhr.always_tune_legacy",
-                        "This tells the program to only tune HDHomeRun devices in legacy mode. The" +
-                                " only devices that will always ignore this request are Digital Cable" +
-                                " Tuners that have a CableCARD inserted since it would turn them into" +
-                                " a ClearQAM device."
+                        "This tells the program to only tune HDHomeRun devices in legacy mode." +
+                                " The only devices that will always ignore this request are" +
+                                " Digital Cable Tuners that have a CableCARD inserted since it" +
+                                " would turn them into a ClearQAM device. This will also make" +
+                                " channel scans for all devices except devices with a CableCARD" +
+                                " inserted perform their channel scans in legacy mode."
                 );
 
                 allowHttpTuning = new BooleanDeviceOption(
@@ -207,11 +210,12 @@ public class HDHomeRunDiscoverer implements DeviceDiscoverer {
                         false,
                         "Allow HTTP Tuning",
                         "hdhr.allow_http_tuning",
-                        "This will allow the HTTP URL to be used instead of RTP if a URL is available" +
-                                " for the requested channel. This will allow for hardware transcoding" +
-                                " on models that support it and higher reliability of the transport" +
-                                " stream. Depending on how SageTV has channels mapped, sometimes a" +
-                                " URL will not be located and RTP will be used instead."
+                        "This will allow the HTTP URL to be used instead of RTP if a URL is" +
+                                " available for the requested channel. This will allow for" +
+                                " hardware transcoding on models that support it and higher" +
+                                " reliability of the transport stream. Depending on how SageTV" +
+                                " has channels mapped, sometimes a URL will not be located and" +
+                                " RTP will be used instead."
                 );
 
                 transcodeProfile = new StringDeviceOption(

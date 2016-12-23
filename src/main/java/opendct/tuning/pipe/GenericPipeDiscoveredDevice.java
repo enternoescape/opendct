@@ -86,8 +86,8 @@ public class GenericPipeDiscoveredDevice extends BasicDiscoveredDevice {
                     false,
                     "Tuning Delay",
                     propertiesDeviceRoot + "tuning_delay_ms",
-                    "This is the amount of time in milliseconds to wait after tuning a channel" +
-                            " before starting to stream anything."
+                    "This is the amount of time in milliseconds to wait after executing the" +
+                            " streaming executable before starting to stream anything."
             );
 
             customChannels = new StringDeviceOption(

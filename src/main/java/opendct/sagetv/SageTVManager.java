@@ -40,6 +40,7 @@ public class SageTVManager implements PowerEventListener {
     public static final PowerEventListener POWER_EVENT_LISTENER = new SageTVManager();
     private AtomicBoolean suspend = new AtomicBoolean(false);
 
+    private static AtomicBoolean cableCardAvailable = new AtomicBoolean(false);
     private static AtomicBoolean broadcasting = new AtomicBoolean(false);
     private static SageTVDevicesLoaded devicesWaitingThread = null;
 
@@ -61,8 +62,18 @@ public class SageTVManager implements PowerEventListener {
     private static final Map<String, Integer> fileToUploadID = new HashMap<>();
     private static final Map<String, SageTVSocketServer> fileToSocketServer = new HashMap<>();
 
+    /**
+     * Get if the program is currently listening to broadcasts from SageTV.
+     */
     public static boolean isBroadcasting() {
         return broadcasting.get();
+    }
+
+    /**
+     * Get if any CableCARD capture device has been loaded.
+     */
+    public static boolean getCableCardAvailable() {
+        return cableCardAvailable.get();
     }
 
     /**
@@ -176,6 +187,11 @@ public class SageTVManager implements PowerEventListener {
                 SageTVPoolManager.addPoolCaptureDevice(
                         captureDevice.getPoolName(),
                         captureDevice.getEncoderName());
+            }
+
+            if (captureDevice.getEncoderDeviceType() == CaptureDeviceType.DCT_HDHOMERUN ||
+                    captureDevice.getEncoderDeviceType() == CaptureDeviceType.DCT_INFINITV) {
+                cableCardAvailable.set(true);
             }
 
             logger.info("The capture device '{}' is ready.", captureDevice.getEncoderName());

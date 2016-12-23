@@ -319,8 +319,9 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
             newUrl = channelMap.get(channel);
 
             if (newUrl != null) {
-                if (newUrl.toExternalForm().contains("%c%")) {
-                    return new URL(newUrl.toExternalForm().replace("%c%", channel));
+                String externalForm = newUrl.toExternalForm();
+                if (externalForm.contains("%c%")) {
+                    return new URL(externalForm.replace("%c%", channel));
                 }
                 return newUrl;
             }

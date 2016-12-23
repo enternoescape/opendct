@@ -1444,6 +1444,9 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                             .append(program.CALLSIGN)
                             .append(')')
                             .append(format);
+                } else {
+                    stringBuilder.append("()")
+                            .append(format);
                 }
                 stringBuilder.append(';');
 

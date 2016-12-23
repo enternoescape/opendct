@@ -1479,3 +1479,13 @@
 #### 0.5.18-Beta
 > *Fixed redirect not reliably re-opening the socket when connecting
 > to the new address.
+
+#### 0.5.19-RC1
+> *Added a slight performance improvement when replacing %c% with the
+> desired channel.
+
+> *The property hdhr.always_tune_legacy=false when set to true now
+> also forces HDHomeRun legacy channel scanning with the exception of
+> the HDHomeRun Prime when it has a CableCARD inserted.
+
+> *Improved HDHomeRun QAM and DVB scanning in legacy mode.

@@ -25,6 +25,7 @@ import opendct.producer.HTTPProducer;
 import opendct.producer.RTPProducer;
 import opendct.producer.SageTVProducer;
 import opendct.sagetv.SageTVDeviceCrossbar;
+import opendct.sagetv.SageTVManager;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.HDHomeRunDiscoverer;
 import opendct.tuning.hdhomerun.*;
@@ -1290,7 +1291,170 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     }
 
     private int scanChannelIndex = 2;
-    private boolean channelScanFirstZero = true;
+
+    private String getNonLegacyChannel(String channel) {
+        String nextChannel = super.scanChannelInfo(channel, false);
+
+        int firstDash = nextChannel.indexOf("-");
+        int secondDash = nextChannel.lastIndexOf("-");
+
+        if (firstDash > -1 && firstDash == secondDash) {
+            try {
+                tuner.setVirtualChannel(nextChannel.replace("-", "."));
+            } catch (IOException e) {
+                logger.error("Unable to set virtual channel on HDHomeRun capture" +
+                        " device because it cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to set virtual channel on HDHomeRun capture" +
+                        " device because the command did not work => ", e);
+            }
+
+            TVChannel tvChannel = updateChannelMapping(
+                    ChannelManager.getChannel(encoderLineup, nextChannel));
+
+            if (tvChannel != null) {
+                nextChannel = tvChannel.getChannelRemap();
+            }
+
+            try {
+                tuner.clearVirtualChannel();
+            } catch (IOException e) {
+                logger.error("Unable to clear virtual channel on HDHomeRun capture" +
+                        " device because it cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to clear virtual channel on HDHomeRun capture" +
+                        " device because the command did not work => ", e);
+            }
+        }
+
+        return nextChannel;
+    }
+
+    private String getLegacyScan(String channel, String format) {
+        if (channel.equals("0") || channel.equals("-1") || channel.equals("-2")) {
+            scanChannelIndex = 2;
+            return "OK";
+        }
+
+        if (scanChannelIndex++ >= lookupMap.length) {
+            return "ERROR";
+        }
+
+        try {
+            tuner.setChannel(
+                    "auto",
+                    lookupMap[scanChannelIndex].FREQUENCY,
+                    false);
+
+        } catch (IOException e) {
+            logger.error("Unable to set virtual channel on HDHomeRun capture device" +
+                    " because it cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to set virtual channel on HDHomeRun capture device" +
+                    " because the command did not work => ", e);
+        }
+
+        int retry = 12;
+        // Wait for the HDHomeRun to report that it has a signal before we wait to see what it can
+        // find on this frequency.
+        while (retry-- > 0 && !Thread.currentThread().isInterrupted()) {
+            try {
+                Thread.sleep(250);
+            } catch (InterruptedException e) {
+                return "ERROR";
+            }
+
+            try {
+                if (tuner.getStatus().SIGNAL_PRESENT) {
+                    break;
+                }
+            } catch (IOException e) {
+                logger.error("Unable to get signal present on HDHomeRun capture device" +
+                        " because it cannot be reached => ", e);
+            } catch (GetSetException e) {
+                logger.error("Unable to get signal present on HDHomeRun capture device" +
+                        " because the command did not work => ", e);
+            }
+        }
+
+        HDHomeRunStreamInfo streamInfo = null;
+        HDHomeRunProgram programs[] = null;
+
+        // Give the HDHomeRun some time to read the programs on the tuned frequency.
+        try {
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            return "ERROR";
+        }
+
+        try {
+            streamInfo = tuner.getStreamInfo();
+
+            if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
+                programs = streamInfo.getProgramsParsed();
+                //boolean incompleteInfo = false;
+
+                // Sometimes, it takes longer for the HDHomeRun to detect the info
+                // for the tuned channel (guide number and callsign), and sometimes,
+                // even when it has this info, it hasn't detected the datastreams yet.
+                // We will check for these conditions and get streaminfo again.
+                /*for (HDHomeRunProgram program : programs) {
+                    if (program.NO_DATA || program.CHANNEL.equals("0")) {
+                        incompleteInfo = true;
+                        break;
+                    }
+                }*/
+
+                /*if (!incompleteInfo) {
+                    break;
+                }*/
+            }
+        } catch (IOException e) {
+            logger.error("Unable to get programs on HDHomeRun capture device" +
+                    " because it cannot be reached => ", e);
+        } catch (GetSetException e) {
+            logger.error("Unable to get programs on HDHomeRun capture device" +
+                    " because the command did not work => ", e);
+        }
+
+        if (programs != null) {
+
+            StringBuilder stringBuilder = new StringBuilder();
+            StringBuilder tuneChannel = new StringBuilder();
+
+            for (HDHomeRunProgram program : programs) {
+                if (!program.isTunable()) {
+                    continue;
+                }
+
+                tuneChannel.setLength(0);
+                tuneChannel.append(scanChannelIndex)
+                        .append('-')
+                        .append(program.CHANNEL.replace(".", "-"));
+                stringBuilder.append(tuneChannel)
+                        .append('(')
+                        .append(program.CALLSIGN)
+                        .append(')')
+                        .append(format)
+                        .append(';');
+
+                TVChannel tvChannel = new TVChannelImpl(
+                        tuneChannel.toString(), program.CHANNEL, true, program.CALLSIGN,
+                        "", "auto", lookupMap[scanChannelIndex].FREQUENCY, program.PROGRAM,
+                        100, CopyProtection.NONE, false);
+                ChannelManager.addChannel(encoderLineup, tvChannel);
+            }
+
+            // Remove the extra ;.
+            if (stringBuilder.length() > 0) {
+                stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+            }
+
+            return stringBuilder.toString();
+        }
+
+        return "";
+    }
 
     @Override
     public String scanChannelInfo(String channel) {
@@ -1299,175 +1463,25 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         switch (encoderDeviceType) {
             case DVBC_HDHOMERUN:
             case DVBT_HDHOMERUN:
+                if (!HDHomeRunDiscoverer.getAlwaysTuneLegacy() &&
+                        !isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
+                    return getNonLegacyChannel(channel);
+                }
+                return getLegacyScan(channel, "DVB");
             case ATSC_HDHOMERUN:
-                if (!isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
-                    String nextChannel = super.scanChannelInfo(channel, false);
-
-                    int firstDash = nextChannel.indexOf("-");
-                    int secondDash = nextChannel.lastIndexOf("-");
-
-                    if (firstDash > -1 && firstDash == secondDash) {
-                        try {
-                            tuner.setVirtualChannel(nextChannel.replace("-", "."));
-                        } catch (IOException e) {
-                            logger.error("Unable to set virtual channel on HDHomeRun capture" +
-                                    " device because it cannot be reached => ", e);
-                        } catch (GetSetException e) {
-                            logger.error("Unable to set virtual channel on HDHomeRun capture" +
-                                    " device because the command did not work => ", e);
-                        }
-
-                        TVChannel tvChannel = updateChannelMapping(
-                                ChannelManager.getChannel(encoderLineup, nextChannel));
-
-                        if (tvChannel != null) {
-                            nextChannel = tvChannel.getChannelRemap();
-                        }
-
-                        try {
-                            tuner.clearVirtualChannel();
-                        } catch (IOException e) {
-                            logger.error("Unable to clear virtual channel on HDHomeRun capture" +
-                                    " device because it cannot be reached => ", e);
-                        } catch (GetSetException e) {
-                            logger.error("Unable to clear virtual channel on HDHomeRun capture" +
-                                    " device because the command did not work => ", e);
-                        }
-                    }
-
-                    return nextChannel;
+                if (!HDHomeRunDiscoverer.getAlwaysTuneLegacy() &&
+                        !isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
+                    return getNonLegacyChannel(channel);
                 }
-
-                if (channel.equals("-1")) {
-                    scanChannelIndex = 2;
-                    channelScanFirstZero = true;
-                    return "OK";
-                }
-
-                if (channelScanFirstZero) {
-                    channelScanFirstZero = false;
-                    return "OK";
-                }
-
-                int timeout = 12;
-
-                if (scanChannelIndex++ > lookupMap.length) {
-                    return "ERROR";
-                }
-
-                try {
-                    tuner.setChannel(
-                            "auto",
-                            lookupMap[scanChannelIndex].FREQUENCY,
-                            false);
-
-                } catch (IOException e) {
-                    logger.error("Unable to set virtual channel on HDHomeRun capture device" +
-                            " because it cannot be reached => ", e);
-                } catch (GetSetException e) {
-                    logger.error("Unable to set virtual channel on HDHomeRun capture device" +
-                            " because the command did not work => ", e);
-                }
-
-                while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
-                    try {
-                        Thread.sleep(250);
-                    } catch (InterruptedException e) {
-                        return "ERROR";
-                    }
-
-                    try {
-                        if (tuner.getStatus().SIGNAL_PRESENT) {
-                            break;
-                        }
-                    } catch (IOException e) {
-                        logger.error("Unable to get signal present on HDHomeRun capture device" +
-                                " because it cannot be reached => ", e);
-                    } catch (GetSetException e) {
-                        logger.error("Unable to get signal present on HDHomeRun capture device" +
-                                " because the command did not work => ", e);
-                    }
-                }
-
-
-                HDHomeRunStreamInfo streamInfo = null;
-                HDHomeRunProgram programs[] = null;
-
-                timeout = 12;
-                while (timeout-- > 0 && !Thread.currentThread().isInterrupted()) {
-                    try {
-                        streamInfo = tuner.getStreamInfo();
-
-                        if (streamInfo != null && streamInfo.getProgramsRaw().length > 0) {
-                            programs = streamInfo.getProgramsParsed();
-                            boolean incompleteInfo = false;
-
-                            // Sometimes, it takes longer for the HDHomeRun to detect the info
-                            // for the tuned channel (guide number and callsign), and sometimes,
-                            // even when it has this info, it hasn't detected the datastreams yet.
-                            // We will check for these conditions and get streaminfo again.
-                            for (HDHomeRunProgram program : programs) {
-                                if (program.NO_DATA || program.CHANNEL.equals("0")) {
-                                	incompleteInfo = true;
-                                    break;
-                                }
-                            }
-
-                            if (!incompleteInfo) {
-                                break;
-                            }
-                        }
-                    } catch (IOException e) {
-                        logger.error("Unable to get programs on HDHomeRun capture device" +
-                                " because it cannot be reached => ", e);
-                    } catch (GetSetException e) {
-                        logger.error("Unable to get programs on HDHomeRun capture device" +
-                                " because the command did not work => ", e);
-                    }
-
-                    try {
-                        Thread.sleep(250);
-                    } catch (InterruptedException e) {
-                        return "ERROR";
-                    }
-                }
-
-                if (streamInfo != null && programs != null) {
-
-                    StringBuilder stringBuilder = new StringBuilder();
-                    StringBuilder tuneChannel = new StringBuilder();
-
-                    for (HDHomeRunProgram program : programs) {
-                        if (!program.isTunable()) {
-                            continue;
-                        }
-
-                        tuneChannel.setLength(0);
-                        tuneChannel.append(scanChannelIndex)
-                                .append("-")
-                                .append(program.CHANNEL.replace(".", "-"));
-                        stringBuilder.append(tuneChannel)
-                        		.append("(")
-                        		.append(program.CALLSIGN)
-                        		.append(")")
-                        		.append("ATSC")
-                        		.append(";");
-
-                        TVChannel tvChannel = new TVChannelImpl(tuneChannel.toString(), program.CHANNEL, true, program.CALLSIGN, "", "auto", lookupMap[scanChannelIndex].FREQUENCY, program.PROGRAM, 100, CopyProtection.NONE, false);
-                        ChannelManager.addChannel(encoderLineup, tvChannel);
-                    }
-
-                    // Remove the extra ;.
-                    if (stringBuilder.length() > 0) {
-                        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-                    }
-
-                    return stringBuilder.toString();
-                }
-
-                return "";
+                return getLegacyScan(channel, "ATSC");
             case QAM_HDHOMERUN:
-                return super.scanChannelInfo(channel, true);
+                if (SageTVManager.getCableCardAvailable()) {
+                    return super.scanChannelInfo(channel, true);
+                } else if (!HDHomeRunDiscoverer.getAlwaysTuneLegacy() &&
+                        !isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
+                    return getNonLegacyChannel(channel);
+                }
+                return getLegacyScan(channel, "QAM");
             case DCT_HDHOMERUN:
                 return super.scanChannelInfo(channel, true);
         }

@@ -87,7 +87,7 @@ public class HDHomeRunProgram {
     }
 
     public boolean isTunable() {
-        return !ENCRYPTED && !CONTROL && !NO_DATA;
+        return !ENCRYPTED && !CONTROL && !NO_DATA && PROGRAM != 0;
     }
 
     @Override

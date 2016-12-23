@@ -1382,7 +1382,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
         // Give the HDHomeRun some time to read the programs on the tuned frequency.
         try {
-            Thread.sleep(4000);
+            Thread.sleep(6000);
         } catch (InterruptedException e) {
             return "ERROR";
         }
@@ -1428,7 +1428,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 }
 
                 tuneChannel.setLength(0);
-                if (program.CHANNEL != null) {
+                if (program.CHANNEL != null && !program.CHANNEL.equals("0")) {
                     tuneChannel.append(scanChannelIndex)
                             .append('-')
                             .append(program.CHANNEL.replace(".", "-"));
@@ -1442,9 +1442,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     stringBuilder.append('(')
                             .append(program.CALLSIGN)
                             .append(')')
-                            .append(format)
-                            .append(';');
+                            .append(format);
                 }
+                stringBuilder.append(';');
+
 
                 TVChannel tvChannel = new TVChannelImpl(
                         tuneChannel.toString(), program.CHANNEL, true, program.CALLSIGN,

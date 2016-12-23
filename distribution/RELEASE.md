@@ -1489,3 +1489,6 @@
 > the HDHomeRun Prime when it has a CableCARD inserted.
 
 > *Improved HDHomeRun QAM and DVB scanning in legacy mode.
+
+> *Fixed situation whereby the lock can be lost while performing a
+> channel scan on HDHomeRun devices.

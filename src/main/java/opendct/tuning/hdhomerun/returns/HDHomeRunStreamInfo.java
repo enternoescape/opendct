@@ -39,13 +39,12 @@ public class HDHomeRunStreamInfo {
             for (String line : split) {
                 if (line.contains(":")) {
                     programs[i++] = line;
-                } else if (line.contains("tsid=")) {
+                } else if (line.startsWith("tsid=")) {
                     tsid = line.substring(5);
                 }
             }
 
-            if (i != programs.length)
-            {
+            if (i != programs.length) {
                 programs = Arrays.copyOf(programs, i);
             }
         }

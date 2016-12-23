@@ -343,10 +343,6 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
-        /*if (device.getResolutionChangeDelay()) {
-            waitForResolutionChange(channel);
-        }*/
-
         if (returnCode == 12000) {
             logger.debug("Clearing buffer.");
             newConsumer.clearBuffer();

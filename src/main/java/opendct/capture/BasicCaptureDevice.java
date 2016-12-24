@@ -560,15 +560,15 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
                 switch (encoderDeviceType) {
                     case DVBC_HDHOMERUN:
-					     stringBuilder.append("DVB");
+                         stringBuilder.append("DVB");
                     case DVBT_HDHOMERUN:
-					     stringBuilder.append("DVB");
+                         stringBuilder.append("DVB");
                     case ATSC_HDHOMERUN:
-					     stringBuilder.append("ATSC");
+                         stringBuilder.append("ATSC");
                     case QAM_HDHOMERUN:
-					     stringBuilder.append("QAM");
+                         stringBuilder.append("QAM");
                     case DCT_HDHOMERUN:
-					     stringBuilder.append("DCT");
+                         stringBuilder.append("DCT");
                 }
 
                 stringBuilder.append(";");

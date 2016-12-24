@@ -556,8 +556,19 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
                 stringBuilder.append(returnChannel);
 
-                if (scanChannels[scanChannelIndex].getName().length() > 0) {
-                   stringBuilder.append("(").append(scanChannels[scanChannelIndex].getName()).append(")");
+                stringBuilder.append("(").append(scanChannels[scanChannelIndex].getName()).append(")");
+
+                switch (encoderDeviceType) {
+                    case DVBC_HDHOMERUN:
+					     stringBuilder.append("DVB");
+                    case DVBT_HDHOMERUN:
+					     stringBuilder.append("DVB");
+                    case ATSC_HDHOMERUN:
+					     stringBuilder.append("ATSC");
+                    case QAM_HDHOMERUN:
+					     stringBuilder.append("QAM");
+                    case DCT_HDHOMERUN:
+					     stringBuilder.append("DCT");
                 }
 
                 stringBuilder.append(";");

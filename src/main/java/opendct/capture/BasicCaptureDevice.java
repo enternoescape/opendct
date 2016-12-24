@@ -554,9 +554,15 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                     returnChannel = scanChannels[scanChannelIndex].getChannel();
                 }
 
-                scanChannelIndex += 1;
+                stringBuilder.append(returnChannel);
 
-                stringBuilder.append(returnChannel).append(";");
+                if (scanChannels[scanChannelIndex].getName().length() > 0) {
+                   stringBuilder.append("(").append(scanChannels[scanChannelIndex].getName()).append(")");
+                }
+
+                stringBuilder.append(";");
+
+                scanChannelIndex += 1;
 
                 if (scanChannelIndex % scanIncrement == 0) {
                     break;

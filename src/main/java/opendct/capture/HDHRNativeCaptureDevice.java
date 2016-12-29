@@ -1292,48 +1292,65 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
     private int scanChannelIndex = 2;
 
-    private String getNonLegacyChannel(String channel) {
-        String nextChannel = super.scanChannelInfo(channel, false);
+    private String getNonLegacyChannel(String channel, String format) {
+        TVChannel[] channels = super.scanRawChannelInfo(channel);
+        StringBuilder stringBuilder = new StringBuilder();
 
-        int firstDash = nextChannel.indexOf("-");
-        int secondDash = nextChannel.lastIndexOf("-");
-
-        if (firstDash > -1 && firstDash == secondDash) {
-            try {
-                tuner.setVirtualChannel(nextChannel.replace("-", "."));
-            } catch (IOException e) {
-                logger.error("Unable to set virtual channel on HDHomeRun capture" +
-                        " device because it cannot be reached => ", e);
-            } catch (GetSetException e) {
-                logger.error("Unable to set virtual channel on HDHomeRun capture" +
-                        " device because the command did not work => ", e);
+        for (TVChannel nextChannel : channels) {
+            String channelNumber = nextChannel.getChannelRemap();
+            if (channelNumber == null) {
+                channelNumber = nextChannel.getChannel();
             }
+            int firstDash = channelNumber.indexOf("-");
+            int secondDash = channelNumber.lastIndexOf("-");
+            if (firstDash > -1 && firstDash == secondDash) {
+                try {
+                    tuner.setVirtualChannel(channelNumber.replace("-", "."));
+                } catch (IOException e) {
+                    logger.error("Unable to set virtual channel on HDHomeRun capture" +
+                            " device because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to set virtual channel on HDHomeRun capture" +
+                            " device because the command did not work => ", e);
+                }
 
-            TVChannel tvChannel = updateChannelMapping(
-                    ChannelManager.getChannel(encoderLineup, nextChannel));
+                TVChannel tvChannel = updateChannelMapping(
+                        ChannelManager.getChannel(encoderLineup, channelNumber));
 
-            if (tvChannel != null) {
-                nextChannel = tvChannel.getChannelRemap();
-            }
+                if (tvChannel != null) {
+                    channelNumber = tvChannel.getChannelRemap();
+                }
 
-            try {
-                tuner.clearVirtualChannel();
-            } catch (IOException e) {
-                logger.error("Unable to clear virtual channel on HDHomeRun capture" +
-                        " device because it cannot be reached => ", e);
-            } catch (GetSetException e) {
-                logger.error("Unable to clear virtual channel on HDHomeRun capture" +
-                        " device because the command did not work => ", e);
+                stringBuilder.append(channelNumber)
+                        .append('(')
+                        .append(nextChannel.getName())
+                        .append(')')
+                        .append(format)
+                        .append(';');
+
+                try {
+                    tuner.clearVirtualChannel();
+                } catch (IOException e) {
+                    logger.error("Unable to clear virtual channel on HDHomeRun capture" +
+                            " device because it cannot be reached => ", e);
+                } catch (GetSetException e) {
+                    logger.error("Unable to clear virtual channel on HDHomeRun capture" +
+                            " device because the command did not work => ", e);
+                }
             }
         }
 
-        return nextChannel;
+        // Remove last ;
+        if (stringBuilder.length() > 0) {
+            stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+        }
+        return stringBuilder.toString();
     }
 
     private String getLegacyScan(String channel, String format) {
         if (channel.equals("0") || channel.equals("-1") || channel.equals("-2")) {
             scanChannelIndex = 2;
-            return "OK";
+            return "";
         }
 
         if (scanChannelIndex++ >= lookupMap.length) {
@@ -1478,13 +1495,13 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             case DVBT_HDHOMERUN:
                 if (!HDHomeRunDiscoverer.getAlwaysTuneLegacy() &&
                         !isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
-                    return getNonLegacyChannel(channel);
+                    return getNonLegacyChannel(channel, "DVB");
                 }
                 return getLegacyScan(channel, "DVB");
             case ATSC_HDHOMERUN:
                 if (!HDHomeRunDiscoverer.getAlwaysTuneLegacy() &&
                         !isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
-                    return getNonLegacyChannel(channel);
+                    return getNonLegacyChannel(channel, "ATSC");
                 }
                 return getLegacyScan(channel, "ATSC");
             case QAM_HDHOMERUN:
@@ -1492,7 +1509,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     return super.scanChannelInfo(channel, true);
                 } else if (!HDHomeRunDiscoverer.getAlwaysTuneLegacy() &&
                         !isTuneLegacy() && ChannelManager.hasChannels(encoderLineup)) {
-                    return getNonLegacyChannel(channel);
+                    return getNonLegacyChannel(channel, "QAM");
                 }
                 return getLegacyScan(channel, "QAM");
             case DCT_HDHOMERUN:

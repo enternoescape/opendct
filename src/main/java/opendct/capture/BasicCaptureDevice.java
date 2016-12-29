@@ -32,6 +32,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -504,6 +506,37 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     private int scanIncrement = 20;
     private TVChannel scanChannels[];
 
+    public TVChannel[] scanRawChannelInfo(String channel) {
+        if (scanChannels == null ||
+                channel.equals("0") || channel.equals("-1") || channel.equals("-2")) {
+            // Always update the channels with the latest from the capture device when starting a
+            // new channel scan.
+            if (channel.equals("0")) {
+                ChannelManager.updateChannelLineup(ChannelManager.getChannelLineup(getChannelLineup()));
+            }
+            scanChannels = ChannelManager.getChannelList(encoderLineup, false, false);
+            scanChannelIndex = 0;
+
+            if (scanChannels.length > 0) {
+                // Ensure the number is at least 1.
+                scanIncrement = scanChannels.length / 79 + 1;
+            }
+
+            return null;
+        }
+
+        List<TVChannel> returnValue = new ArrayList<>();
+        while (scanChannelIndex < scanChannels.length) {
+            returnValue.add(scanChannels[scanChannelIndex++]);
+
+            if (scanChannelIndex % scanIncrement == 0) {
+                break;
+            }
+        }
+
+        return returnValue.toArray(new TVChannel[returnValue.size()]);
+    }
+
     /**
      * This pulls from the last offline channel scan data. If an offline scan has never happened,
      * this will likely return that none of the channels are tunable.
@@ -529,7 +562,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 scanIncrement = scanChannels.length / 79 + 1;
             }
 
-            return "OK";
+            return "";
         }
 
         if (!combine) {

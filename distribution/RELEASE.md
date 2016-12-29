@@ -1492,3 +1492,5 @@
 
 > *Fixed situation whereby the lock can be lost while performing a
 > channel scan on HDHomeRun devices.
+
+> *Improved channel scanning in general. (thanks Fuzzy)

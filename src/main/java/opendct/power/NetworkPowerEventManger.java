@@ -218,7 +218,8 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                         InetAddress address = interfaceAddr.getAddress();
 
                         if (address instanceof Inet4Address) {
-                            if (failApipa && address.getHostAddress().startsWith("169.254."))
+                            if (failApipa && address.getHostAddress().startsWith("169.254.") &&
+                                    !networkInterface.getDisplayName().equals("Npcap Loopback Adapter"))
                             {
                                 logger.info("Extending wait for interface {}, APIPA address detected: {}",
                                         networkInterface, address.getHostAddress());

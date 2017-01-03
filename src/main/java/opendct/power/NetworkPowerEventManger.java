@@ -54,20 +54,33 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     private HashSet<String> monitoredInterfaceNames = new HashSet<String>();
 
     static {
-        // This will print out the current interfaces when the program first starts.
-        getNetworkInterfaces(true, true);
+        // The network adapters are rarely available the instant this service starts up, and once
+        // detection actually starts, it finishes every fast for most devices, so this delay does
+        // not introduce any noticeable problems.
+        try {
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {}
 
+        boolean apipaPresent;
         int timeout = startNetworkTimeout;
 
-        while (currentInterfaceNames.size() == 0) {
+        while (true) {
             try {
-                logger.error("No network interfaces currently have an IP address. {} {}" +
-                        " remaining. Checking again in 1 second...",
-                        timeout, timeout == 1 ? "attempt" : "attempts");
                 Thread.sleep(1000);
-                getNetworkInterfaces(true, timeout > 1);
+                // This will print out the current interfaces when the program first starts.
+                apipaPresent = discoverNetworkInterfaces(true, timeout > 1, timeout > 1);
+
+                if (currentInterfaceNames.size() > 0) {
+                    break;
+                }
+
+                if (!apipaPresent) {
+                    logger.error("No network interfaces currently have an IP address. {} {}" +
+                                    " remaining. Checking again in 1 second...",
+                            timeout, timeout == 1 ? "attempt" : "attempts");
+                }
             } catch (InterruptedException e) {
-                logger.debug("");
+                timeout = 0;
             }
 
             if (timeout-- <= 0) {
@@ -97,7 +110,9 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                             "This indicates how many times the program will attempt to find a" +
                                     " usable network interface at one second intervals. At least" +
                                     " one network interface must be available and assigned an IP" +
-                                    " address for this program to work."
+                                    " address for this program to work. The timeout between retry" +
+                                    " attempts is 1-13 seconds depending on what interfaces are" +
+                                    " discovered and their state when they are discovered."
                     )
             };
         } catch (DeviceOptionException e) {
@@ -111,10 +126,14 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     @Override
     public void setOptions(JsonOption... deviceOptions) throws DeviceOptionException {
         for (JsonOption deviceOption : deviceOptions) {
-            // This covers all values that should not be changed instantly and makes the values persistent.
-            Config.setJsonOption(deviceOption);
+            // Only apply properties we know about.
+            if (deviceOption.getProperty().equals("pm.network.start_retry")) {
+                // This covers all values that should not be changed instantly and makes the values persistent.
+                Config.setJsonOption(deviceOption);
+            }
 
             if (deviceOption.getProperty().equals("pm.network.resume_timeout_ms")) {
+                Config.setJsonOption(deviceOption);
                 try {
                     resumeNetworkTimeout = Math.max(0, Integer.parseInt(deviceOption.getValue()));
                 } catch (NumberFormatException e) {
@@ -125,7 +144,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     }
 
     public static synchronized NetworkInterface[] getInterfaces() {
-        getNetworkInterfaces(false, false);
+        discoverNetworkInterfaces(false, false, false);
 
         NetworkInterface returnValues[] = new NetworkInterface[currentInterfaceNames.size()];
 
@@ -152,7 +171,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         if (!currentInterfaceNames.contains(interfaceLower)) {
             // Try updating the devices just in case we missed something when we first started the
             // program.
-            getNetworkInterfaces(false, false);
+            discoverNetworkInterfaces(false, false, false);
 
             if (!currentInterfaceNames.contains(interfaceLower)) {
                 throw new IOException("The interface '" + interfaceLower + "' does not exist on this computer.");
@@ -200,16 +219,50 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         waitForNetworkInterfaces();
     }
 
-    private static void getNetworkInterfaces(boolean printOutput, boolean failApipa) {
+    private static boolean discoverNetworkInterfaces(boolean printOutput, boolean failApipa, boolean waitCeton) {
         currentInterfaceNames.clear();
-
-        StringBuilder msg = new StringBuilder("Network interfaces which are up and have an IP4 address are: ");
+        StringBuilder msg =
+                new StringBuilder("Network interfaces which are up and have an IP4 address are: ");
 
         try {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
 
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface networkInterface = networkInterfaces.nextElement();
+
+                String displayName = networkInterface.getDisplayName();
+                if (displayName == null) {
+                    continue;
+                }
+
+                // The InfiniTV 4 adapters can take a very long time to load, so when we see one of
+                // those adapters, we will add to the waiting time in hopes that it will come online
+                // in a reasonable amount of time. If there are multiple interfaces, they will have
+                // #number appended (e.g. Ceton InfiniTV Network Device #2). There will be other
+                // interfaces we are not interested in that might also start with Ceton InfiniTV
+                // Network Device, so we need to limit the range that we are allowing this to match.
+                if (Config.IS_WINDOWS && displayName.startsWith("Ceton InfiniTV Network Device") &&
+                        displayName.length() < "Ceton InfiniTV Network Device".length() + 4) {
+                    // If we are still allowing this to fail on APIPA, we will fail if any InfiniTV
+                    // interface is not up with an IP address.
+                    if (failApipa && networkInterface.getInterfaceAddresses().size() == 0) {
+                        logger.info("InfiniTV network interface '{}' detected without IP address. Extending wait...", displayName);
+                        Thread.sleep(10000);
+                        currentInterfaceNames.clear();
+                        return true;
+                    } else if (failApipa && waitCeton) {
+                        // We are waiting more time here in case one interface means we might have
+                        // more that would otherwise go undetected since they are not running yet.
+                        logger.info("InfiniTV network interface '{}' detected. Extending wait...", displayName);
+                        Thread.sleep(8000);
+                        return discoverNetworkInterfaces(printOutput, true, false);
+                    }
+                }
+
+                // Some adapters are never of interest, so we filter them out here.
+                if (Config.IS_WINDOWS && "Npcap Loopback Adapter".equals(displayName)) {
+                    continue;
+                }
 
                 if (!networkInterface.isLoopback() && networkInterface.isUp()) {
                     List<InterfaceAddress> addresses = networkInterface.getInterfaceAddresses();
@@ -218,19 +271,23 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                         InetAddress address = interfaceAddr.getAddress();
 
                         if (address instanceof Inet4Address) {
-                            if (failApipa && address.getHostAddress().startsWith("169.254."))
+                            String hostAddress = address.getHostAddress();
+                            if (failApipa && hostAddress.startsWith("169.254."))
                             {
                                 logger.info("Extending wait for interface {}, APIPA address detected: {}",
-                                        networkInterface, address.getHostAddress());
+                                        networkInterface, hostAddress);
 
                                 // It will take longer than 250ms for DHCP to do it's thing and fix this problem.
                                 Thread.sleep(2000);
                                 currentInterfaceNames.clear();
-                                return;
+                                return true;
                             }
 
                             currentInterfaceNames.add(networkInterface.getName().toLowerCase());
-                            msg.append(Config.NEW_LINE).append(networkInterface).append(" ").append(address.getHostAddress());
+                            msg.append(Config.NEW_LINE)
+                                    .append(networkInterface)
+                                    .append(" ")
+                                    .append(address.getHostAddress());
                             break;
                         }
                     }
@@ -243,6 +300,8 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         if (printOutput && currentInterfaceNames.size() > 0) {
             logger.info(msg.toString());
         }
+
+        return false;
     }
 
     private void waitForNetworkInterfaces() {

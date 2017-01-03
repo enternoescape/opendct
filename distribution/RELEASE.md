@@ -1484,6 +1484,9 @@
 > *Added a slight performance improvement when replacing %c% with the
 > desired channel.
 
+> *Added more delays for detection of available network interfaces
+> when InfiniTV devices could be discovered.
+
 > *The property hdhr.always_tune_legacy=false when set to true now
 > also forces HDHomeRun legacy channel scanning with the exception of
 > the HDHomeRun Prime when it has a CableCARD inserted.
@@ -1494,3 +1497,6 @@
 > channel scan on HDHomeRun devices.
 
 > *Improved channel scanning in general. (thanks Fuzzy)
+
+> *Cleaned up some inaccurate logging related to APIPA rejection on
+> startup.

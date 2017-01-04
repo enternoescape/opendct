@@ -482,7 +482,6 @@ public class HDHomeRunDiscovery implements Runnable {
                             continue;
                         }
 
-                        device.setTunerCount(0);
                         // Silicondust fixes for old firmware.
                         if (device.getTunerCount() <= 0) {
                             switch (device.getDeviceId() >> 20) {

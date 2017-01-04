@@ -31,10 +31,15 @@ import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -110,6 +115,39 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private StringBuilder errOutBuilder = new StringBuilder();
     private int executeCommand(String execute) throws InterruptedException {
         if (Util.isNullOrEmpty(execute)) {
+            return 0;
+        }
+
+        if (execute.startsWith("http://") || execute.startsWith("https://")) {
+            BufferedReader reader = null;
+            InputStream stream = null;
+            try {
+                URL url = new URL(execute);
+                URLConnection connection = url.openConnection();
+                connection.setReadTimeout(10000);
+                connection.setConnectTimeout(10000);
+                stream = connection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                while (true) {
+                    String line = reader.readLine();
+                    if (line == null) {
+                        break;
+                    }
+                    logger.info("stdout: {}", line);
+                }
+            } catch (Exception e) {
+                logger.error("Unable to use the URL '{}' => ", execute, e);
+            } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (Exception e) {}
+                } else if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (Exception e) {}
+                }
+            }
             return 0;
         }
 

@@ -171,7 +171,7 @@ public class HDHomeRunChannels {
 
 
             URL url = new URL("http://" + ipAddress.getHostAddress() + ":80/lineup.xml");
-            logger.info("Connecting to Prime DCT using the URL '{}'", url);
+            logger.info("Connecting to HDHomeRun using the URL '{}'", url);
 
             httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.setRequestMethod("GET");
@@ -216,19 +216,17 @@ public class HDHomeRunChannels {
 
                     if (channel != null && name != null && channelUrl != null) {
 
-                        if (channel.equals("5000")) {
-                            //enableAllChannels = false;
+                        if (channel.contains(".")) {
+                            isAtsc = true;
+                        }
+
+                        if (channel.equals("5000") && !isAtsc) {
                             isQam = true;
                             logger.warn("The HDHomeRun Prime appears to be in ClearQAM mode. You" +
                                     " either need to use a channel lineup from a device with a" +
                                     " CableCARD or manually map the channels with their programs" +
                                     " and frequencies. Auto-mapping is enabled by default and" +
                                     " will find the best match based on other lineups.");
-                        }
-
-                        if (channel.contains(".")) {
-                            isAtsc = true;
-                            //channel = channel.replace(".", "-");
                         }
 
                         // Check if the name is on the ignore list.

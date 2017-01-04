@@ -1004,12 +1004,12 @@
 > **pretuning_executable** is an optional executable that if defined,
 > will always be run before actually tuning the channel. You can add the
 > channel as an argument by using the variable %c%. Don't forget to
-> escape backslashes (\ needs to be \\).
+> escape backslashes (\ needs to be \\\\).
 >
 > **stopping_executable** is an optional executable that if defined,
 > will always be run when the capture device is told to stop. You can
 > add the last tuned channel as an argument by using the variable %c%.
-> Don't forget to escape backslashes (\ needs to be \\).
+> Don't forget to escape backslashes (\ needs to be \\\\).
 >
 > **streaming_url** is a URL that points directly to an audio/video
 > stream. HLS and m3u8 playlists are not supported at this time.
@@ -1031,8 +1031,8 @@
 > channel needs to be provided to the executable. If %c% isn't provided,
 > but this property is defined, the channel number will be appended as
 > a final parameter. Don't forget to escape backslashes (\ needs to be
-> \\).
-> e.g. /full/path/tune 0 %c% or C:\\Full\\Path\\tune.exe 0 %c%
+> \\\\).
+> e.g. /full/path/tune 0 %c% or C:\\\\Full\\\\Path\\\\tune.exe 0 %c%
 
 > *Added 59 second videos that will be streamed in place of an actual
 > recording if the channel is detected to be Copy Once or Copy Never.

@@ -125,6 +125,19 @@ public class HDHomeRunTuner {
     }
 
     /**
+     * Custom get for a tuner on the device.
+     *
+     * @param key The key to get.
+     * @return A value from the device. If the reply was invalid, this will be <i>null</i>.
+     * @throws IOException     Thrown if communication with the device was incomplete or is not possible
+     *                         at this time.
+     * @throws GetSetException Thrown if the device returns an error instead of a value.
+     */
+    public String get(String key, int timeout) throws IOException, GetSetException {
+        return CONTROL.getVariable(DEVICE.getIpAddress(), getTunerGetString(key), timeout);
+    }
+
+    /**
      * Custom set for a tuner on the device.
      *
      * @param key   The key to set.
@@ -607,13 +620,14 @@ public class HDHomeRunTuner {
     /**
      * Get debug information for Silicondust for this tuner on the device.
      *
+     * @param timeout Timeout in milliseconds to wait for reply.
      * @return Returns debug information for Silicondust.
      * @throws IOException Thrown if communication with the device was incomplete or is not possible
      *                     at this time.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
-    public String getDebug() throws IOException, GetSetException {
-        debug = get("debug");
+    public String getDebug(int timeout) throws IOException, GetSetException {
+        debug = get("debug", timeout);
 
         return debug;
     }

@@ -66,6 +66,20 @@ public class HDHomeRunControl {
         return setVariable(address, key, null, 0);
     }
 
+    /**
+     * Get a variable from a device.
+     *
+     * @param address The address of the device to be controlled.
+     * @param key     The key to set.
+     * @param receiveTimeout The amount of time in milliseconds to wait for a response.
+     * @return A value from the device. If the reply was invalid, this will be <i>null</i>.
+     * @throws IOException     Thrown if communication with the device is not possible.
+     * @throws GetSetException Thrown if the device returns an error instead of a value.
+     */
+    public synchronized String getVariable(InetAddress address, String key, int receiveTimeout) throws GetSetException, IOException {
+        return setVariable(address, key, null, 0, receiveTimeout);
+    }
+
 
     /**
      * Set a variable on a device.
@@ -94,6 +108,23 @@ public class HDHomeRunControl {
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
     public synchronized String setVariable(InetAddress address, String key, String value, int lockkey) throws GetSetException, IOException {
+        return setVariable(address, key, value, lockkey, HDHOMERUN_CONTROL_RECV_TIMEOUT);
+    }
+
+    /**
+     * Set a variable on a device that has a lock key.
+     *
+     * @param address The address of the device to be controlled.
+     * @param key     The key to set.
+     * @param value   The value to set for the key.
+     * @param lockkey The lockkey needed to set the key.
+     * @param receiveTimeout The amount of time in milliseconds to wait for a response.
+     * @return A value from the device. If the reply was invalid, this will be <i>null</i>.
+     * @throws IOException     Thrown if communication with the device was incomplete or is not possible
+     *                         at this time.
+     * @throws GetSetException Thrown if the device returns an error instead of a value.
+     */
+    public synchronized String setVariable(InetAddress address, String key, String value, int lockkey, int receiveTimeout) throws GetSetException, IOException {
         logger.entry(address, key, value, lockkey);
 
         txPacket.startPacket(HDHomeRunPacketType.HDHOMERUN_TYPE_GETSET_REQ);
@@ -125,7 +156,7 @@ public class HDHomeRunControl {
 
         while (!success && retryCount++ <= retryLimit && !Thread.currentThread().isInterrupted()) {
             try {
-                packetSendReceive(txPacket.BUFFER.slice(), HDHOMERUN_CONTROL_RECV_TIMEOUT);
+                packetSendReceive(txPacket.BUFFER.slice(), receiveTimeout);
                 success = true;
             } catch (IOException e) {
                 // Signal to the discoverer that we might need a new IP address.

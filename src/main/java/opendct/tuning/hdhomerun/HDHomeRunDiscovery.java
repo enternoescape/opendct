@@ -36,6 +36,8 @@ import java.util.Map;
 public class HDHomeRunDiscovery implements Runnable {
     private static final Logger logger = LogManager.getLogger(HDHomeRunDiscovery.class);
 
+    private final static int MAX_FAILS = 2;
+
     public final InetAddress BROADCAST_ADDRESS[];
     public final int BROADCAST_PORT;
     public final InetSocketAddress BROADCAST_SOCKET[];
@@ -121,18 +123,20 @@ public class HDHomeRunDiscovery implements Runnable {
     }
 
     public void setTunerCount(HDHomeRunDevice device) {
-        logger.info("Tuner count was not provided. Detecting up to 8 tuners.");
+        logger.debug("Tuner count was not provided. Detecting up to 8 tuners.");
         // Set the tuner count high since there is logic to return null if the tuner is out the
         // defined range.
         device.setTunerCount(8);
         for (int i = 0; i < 8; i++) {
             try {
-                device.getTuner(i).getDebug();
+                // We need to use a very fast timeout because some of the devices that will respond
+                // are not HDHomeRun devices.
+                device.getTuner(i).getDebug(100);
             } catch (GetSetException e) {
-                device.setTunerCount(i + 1);
+                device.setTunerCount(i);
                 break;
             } catch (Exception e) {
-                logger.error("Unable to get a tuner count => ", e);
+                logger.error("Unable to get a tuner count => {}", e.getMessage());
                 device.setTunerCount(0);
                 break;
             }
@@ -329,6 +333,21 @@ public class HDHomeRunDiscovery implements Runnable {
         protected int listenIndex = -1;
         protected Map<Integer, Integer> ignoreDevices = new HashMap<>();
 
+        private boolean ignoreDevice(Integer deviceId) {
+            Integer failCount = ignoreDevices.get(deviceId);
+            return failCount != null && failCount >= MAX_FAILS;
+        }
+
+        private boolean incrementIgnoreDevice(Integer deviceId) {
+            Integer failCount = ignoreDevices.get(deviceId);
+            if (failCount == null) {
+                ignoreDevices.put(deviceId, 0);
+            } else {
+                ignoreDevices.put(deviceId, failCount + 1);
+            }
+            return ignoreDevice(deviceId);
+        }
+
         public void run() {
             logger.info("HDHomeRun discovery receive thread for {} broadcast started.", BROADCAST_SOCKET[listenIndex]);
 
@@ -457,6 +476,13 @@ public class HDHomeRunDiscovery implements Runnable {
                             }
                         }
 
+                        // If the device doesn't have a valid ID or have been problematic, don't
+                        // even try to load it.
+                        if (device.getDeviceId() <= 0 || ignoreDevice(device.getDeviceId())) {
+                            continue;
+                        }
+
+                        device.setTunerCount(0);
                         // Silicondust fixes for old firmware.
                         if (device.getTunerCount() <= 0) {
                             switch (device.getDeviceId() >> 20) {
@@ -487,23 +513,12 @@ public class HDHomeRunDiscovery implements Runnable {
                                         // due to the error that just happened here.
                                         HDHomeRunDiscoverer.needBroadcast();
 
-                                        Integer fails = ignoreDevices.get(device.getDeviceId());
-
-                                        if (fails == null) {
-                                            ignoreDevices.put(device.getDeviceId(), 0);
+                                        if (!incrementIgnoreDevice(device.getDeviceId())) {
+                                            logger.warn("Ignoring non-capture device after" +
+                                                            " attempting to use it {} times => ",
+                                                    MAX_FAILS, e);
                                         } else {
-                                            fails += 1;
-                                            ignoreDevices.put(device.getDeviceId(), fails);
-
-                                            if (fails > 2) {
-                                                // We have tried to load this capture device too
-                                                // many times and failed. Stop trying.
-                                                continue;
-                                            } else {
-                                                logger.warn("Ignoring non-capture device after" +
-                                                        " attempting to use it {} times => ",
-                                                        fails, e);
-                                            }
+                                            continue;
                                         }
                                     }
                                     break;

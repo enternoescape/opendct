@@ -1500,3 +1500,13 @@
 
 > *Cleaned up some inaccurate logging related to APIPA rejection on
 > startup.
+
+#### 0.5.20-RC2
+> *Added support for URL's for tuning executables in Generic HTTP
+> Capture Devices.
+
+> *Fixed HDHomeRun tuner count detection logic to run a lot faster
+> when a device is not responding.
+
+> *Fixed some issues with rejecting devices that act like an
+> HDHomeRun, but are not.

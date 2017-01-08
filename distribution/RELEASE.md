@@ -1511,5 +1511,14 @@
 > *Fixed some issues with rejecting devices that act like an
 > HDHomeRun, but are not.
 
-#### 0.5.20-RC3
+#### 0.5.21-RC3
 > *Fixed non-legacy channel scanning.
+
+> *Fixed Generic Pipe producer stall being detected when there isn't
+> a stall.
+
+> *Fixed some Generic Pipe logging.
+
+> *Changed Generic Pipe to required the use of %c% to specify the
+> requested channel for
+> sagetv.device.\<unique_id\>.streaming_executable

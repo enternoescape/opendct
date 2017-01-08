@@ -322,7 +322,11 @@ public class GenericPipeCaptureDevice extends BasicCaptureDevice {
 
         InputStream stream;
         try {
-            stream = executeStreamCommand(device.getStreamingExecutable() + " " + channel);
+            String streamingExecutable = device.getStreamingExecutable();
+            if (streamingExecutable.contains("%c%")) {
+                streamingExecutable = streamingExecutable.replace("%c%", channel);
+            }
+            stream = executeStreamCommand(streamingExecutable);
             if (stream == null) {
                 logger.error("Failed to run streaming executable.");
                 return false;

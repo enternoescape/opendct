@@ -99,6 +99,7 @@ public class InputStreamProducerImpl implements InputStreamProducer {
                     }
 
                     if (bytesRead > 0) {
+                        bytesStreamed.addAndGet(bytesRead);
                         consumer.write(localBuffer, 0, bytesRead);
                     }
                 } catch (Exception e) {

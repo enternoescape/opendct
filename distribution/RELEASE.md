@@ -1510,3 +1510,6 @@
 
 > *Fixed some issues with rejecting devices that act like an
 > HDHomeRun, but are not.
+
+#### 0.5.20-RC3
+> *Fixed non-legacy channel scanning.

@@ -1294,6 +1294,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
     private String getNonLegacyChannel(String channel, String format) {
         TVChannel[] channels = super.scanRawChannelInfo(channel);
+        if (channels == null) {
+            scanChannelIndex = 2;
+            return "";
+        }
         StringBuilder stringBuilder = new StringBuilder();
 
         for (TVChannel nextChannel : channels) {
@@ -1337,6 +1341,13 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     logger.error("Unable to clear virtual channel on HDHomeRun capture" +
                             " device because the command did not work => ", e);
                 }
+            } else {
+                stringBuilder.append(channelNumber)
+                        .append('(')
+                        .append(nextChannel.getName())
+                        .append(')')
+                        .append(format)
+                        .append(';');
             }
         }
 

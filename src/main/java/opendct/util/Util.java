@@ -243,7 +243,7 @@ public class Util {
 
     public static boolean isNullOrEmpty(String value) {
         if (value != null) {
-            if (value.equals("")) {
+            if (value.length() == 0) {
                 return true;
             }
             return false;

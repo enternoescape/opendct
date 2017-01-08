@@ -17,6 +17,7 @@ package opendct.util;
 
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
@@ -75,6 +76,8 @@ public class StreamLogger implements Runnable {
                     }
                 }
             }
+        } catch (IOException e) {
+            logger.debug("Stream logger terminated => {}", e.getMessage());
         } catch (Exception e) {
             logger.error("Stream logger terminated in an unexpected way => ", e);
         } finally {

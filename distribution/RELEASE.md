@@ -1522,3 +1522,8 @@
 > *Changed Generic Pipe to required the use of %c% to specify the
 > requested channel for
 > sagetv.device.\<unique_id\>.streaming_executable
+
+#### 0.5.22-RC4
+> *Added check for valid modulation for InfiniTV ClearQAM tuning.
+
+> *Added some detection between QAM64 and QAM256.

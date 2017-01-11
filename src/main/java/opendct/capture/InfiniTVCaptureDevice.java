@@ -289,41 +289,6 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
 
             tvChannel.setSignalStrength(getSignalStrength());
 
-            /*if (encoderDeviceType == CaptureDeviceType.DCT_HDHOMERUN) {
-                String encoderAddress = parent.getRemoteAddress().getHostAddress();
-
-                try {
-                    tvChannel.setModulation(
-                            InfiniTVStatus.getModulationString(encoderAddress, encoderNumber));
-                } catch (IOException e) {
-                    logger.error("Unable to get current modulation because the tuner {} on the" +
-                            " device at address {} is unreachable.", encoderNumber, encoderAddress);
-                }
-
-
-                try {
-                    int frequency = InfiniTVStatus.getFrequency(encoderAddress, encoderNumber);
-
-                    if (frequency > 0) {
-                        tvChannel.setFrequency(frequency);
-                    }
-                } catch (IOException e) {
-                    logger.error("Unable to get current frequency because the tuner {} on the" +
-                            " device at address {} is unreachable.", encoderNumber, encoderAddress);
-                }
-
-                try {
-                    int program = InfiniTVStatus.getProgram(encoderAddress, encoderNumber);
-
-                    if (program > 0) {
-                        tvChannel.setProgram(String.valueOf(program));
-                    }
-                } catch (IOException e) {
-                    logger.error("Unable to get current program because the tuner {} on the" +
-                            " device at address {} is unreachable.", encoderNumber, encoderAddress);
-                }
-            }*/
-
             if (copyProtection == CopyProtection.COPY_FREELY ||
                     copyProtection == CopyProtection.NONE) {
 
@@ -367,7 +332,7 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
         if(encoderDeviceType == CaptureDeviceType.QAM_INFINITV) {
             tvChannel = ChannelManager.getChannel(encoderLineup, channel);
 
-            boolean includeQam = tvChannel == null || tvChannel.getFrequency() <= 0 || tvChannel.getProgram() <= 0;
+            boolean includeQam = tvChannel == null || tvChannel.getFrequency() <= 0 || tvChannel.getProgram() <= 0 || !InfiniTVTuning.isValidModulation(tvChannel);
 
             if (includeQam || UpnpDiscoverer.getQamAlwaysRemapLookup()) {
                 tvChannel = ChannelManager.autoDctToQamMap(this, encoderLineup, new TVChannelImpl(channel, "Unknown"), includeQam);

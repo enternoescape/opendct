@@ -34,6 +34,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class InfiniTVCaptureDevice extends BasicCaptureDevice {
@@ -431,11 +432,16 @@ public class InfiniTVCaptureDevice extends BasicCaptureDevice {
                     InfiniTVTuning.tuneVChannel(channel, encoderAddress, encoderNumber, 5);
                     break;
                 case QAM_INFINITV:
+                    String preTuneModulation = tvChannel.getModulation();
                     InfiniTVTuning.tuneQamChannel(
                             tvChannel,
                             encoderAddress,
                             encoderNumber,
                             5);
+                    // If the tuning process fixed the modulation, save it.
+                    if (!Objects.equals(preTuneModulation, tvChannel.getModulation())) {
+                        ChannelManager.updateChannel(encoderLineup, tvChannel);
+                    }
                     break;
                 default:
                     logger.error("This device has been assigned an " +

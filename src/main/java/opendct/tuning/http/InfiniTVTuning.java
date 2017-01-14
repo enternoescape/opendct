@@ -183,7 +183,7 @@ public class InfiniTVTuning {
 
         String frequency = "frequency=" + (tvChannel.getFrequency() / 1000);
 
-        int fuzzyModulation = -1;
+        int tryModulation = -1;
         String modulation;
         if (tvChannel.getModulation().equalsIgnoreCase("QAM256")) {
             modulation = "modulation=2";
@@ -196,7 +196,7 @@ public class InfiniTVTuning {
         } else {
             logger.info("Trying QAM64 modulation...");
             modulation = "modulation=0";
-            fuzzyModulation = 0;
+            tryModulation = 0;
         }
 
         String tuner = "tuner=1";
@@ -207,7 +207,7 @@ public class InfiniTVTuning {
         boolean returnValue = postContent(deviceAddress, "/tune_request.cgi", retry, instanceId,
                 frequency, modulation, tuner, demod, rstChnl, forceTune);
 
-        while (fuzzyModulation != -1) {
+        while (tryModulation != -1) {
             returnValue = false;
             int timeout = 20;
             while (!returnValue && timeout-- > 0) {
@@ -219,15 +219,15 @@ public class InfiniTVTuning {
             }
             // This worked, so store the good value.
             if (returnValue) {
-                tvChannel.setModulation(fuzzyModulation == 0 ? "QAM64" : "QAM256");
+                tvChannel.setModulation(tryModulation == 0 ? "QAM64" : "QAM256");
                 break;
-            } else if (fuzzyModulation == 2) {
+            } else if (tryModulation == 2) {
                 break;
             }
 
             logger.info("Trying QAM256 modulation...");
             modulation = "modulation=2";
-            fuzzyModulation = 2;
+            tryModulation = 2;
 
             postContent(deviceAddress, "/tune_request.cgi", retry, instanceId,
                     frequency, modulation, tuner, demod, rstChnl, forceTune);

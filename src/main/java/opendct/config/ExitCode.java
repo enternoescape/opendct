@@ -41,7 +41,7 @@ public enum ExitCode {
     PM_INIT(10, "PowerMessageManager was unable to determine what PowerMessagePump to use."),
     PM_EXCEPTION(11, "PowerMessagePump encountered an unhandled exception."),
     PM_GET_MESSAGE(12, "PowerMessagePump encountered a problem receiving messages."),
-    PM_NETWORK_RESUME(13, "NetworkPowerMessagePump what unable to resume within the allowed time."),
+    PM_NETWORK_RESUME(13, "NetworkPowerMessagePump was unable to resume within the allowed time."),
 
     // Failures from the SageTV related code.
     SAGETV_DISCOVERY(20, "SageTVDiscovery was unable to open a required listening port."),

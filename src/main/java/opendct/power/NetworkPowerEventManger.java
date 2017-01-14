@@ -42,7 +42,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     // will disable the timeout.
     private int resumeNetworkTimeout = Math.max(
             0,
-            Config.getInteger("pm.network.resume_timeout_ms", 120000)
+            Config.getInteger("pm.network.resume_timeout_ms", 240000)
     );
 
     private final static int startNetworkTimeout = Math.max(
@@ -137,7 +137,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 try {
                     resumeNetworkTimeout = Math.max(0, Integer.parseInt(deviceOption.getValue()));
                 } catch (NumberFormatException e) {
-                    resumeNetworkTimeout = 120000;
+                    resumeNetworkTimeout = 240000;
                 }
             }
         }
@@ -305,7 +305,13 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     }
 
     private void waitForNetworkInterfaces() {
-        long timeout = System.currentTimeMillis() + resumeNetworkTimeout;
+        // Wait a little before checking the interfaces.
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {}
+
+        long timeout = resumeNetworkTimeout > 0 ?
+                System.currentTimeMillis() + resumeNetworkTimeout : 0;
         List<String> remainingNames = new ArrayList<>();
 
         for (String monitoredInterfaceName : monitoredInterfaceNames) {
@@ -336,7 +342,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                                 {
                                     logger.info("Found network interface: {}. APIPA address detected: {}", networkInterface, address4);
 
-                                    // It will take longer than 250ms for DHCP to do it's thing and fix this problem.
+                                    // It will take longer than 1000ms for DHCP to do it's thing and fix this problem.
                                     Thread.sleep(2000);
                                     continue;
                                 }
@@ -361,7 +367,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
 
             if (keepPolling) {
                 try {
-                    Thread.sleep(250);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     logger.debug("waitForNetworkInterfaces was interrupted => {}", e);
                     ExitCode.PM_EXCEPTION.terminateJVM();

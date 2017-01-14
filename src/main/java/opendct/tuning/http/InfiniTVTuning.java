@@ -34,6 +34,14 @@ import java.net.URL;
 public class InfiniTVTuning {
     private static final Logger logger = LogManager.getLogger(InfiniTVTuning.class);
 
+    public static boolean isValidModulation(TVChannel tvChannel) {
+        return tvChannel.getModulation().equalsIgnoreCase("QAM") ||
+                tvChannel.getModulation().equalsIgnoreCase("QAM256") ||
+                tvChannel.getModulation().equalsIgnoreCase("QAM64") ||
+                tvChannel.getModulation().equalsIgnoreCase("NTSC-M") ||
+                tvChannel.getModulation().equalsIgnoreCase("8VSB");
+    }
+
     public static boolean tuneChannel(String lineupName, String channel, String deviceAddress, int tunerNumber, boolean useVChannel, int retry) throws InterruptedException {
 
         if (!useVChannel) {
@@ -175,18 +183,20 @@ public class InfiniTVTuning {
 
         String frequency = "frequency=" + (tvChannel.getFrequency() / 1000);
 
-        String modulation = null;
-        if (tvChannel.getModulation().equals("QAM256")) {
+        int tryModulation = -1;
+        String modulation;
+        if (tvChannel.getModulation().equalsIgnoreCase("QAM256")) {
             modulation = "modulation=2";
-        } else if (tvChannel.getModulation().equals("QAM64")) {
+        } else if (tvChannel.getModulation().equalsIgnoreCase("QAM64")) {
             modulation = "modulation=0";
-        } else if (tvChannel.getModulation().equals("NTSC-M")) {
+        } else if (tvChannel.getModulation().equalsIgnoreCase("NTSC-M")) {
             modulation = "modulation=4";
-        } else if (tvChannel.getModulation().equals("8VSB")) {
+        } else if (tvChannel.getModulation().equalsIgnoreCase("8VSB")) {
             modulation = "modulation=6";
         } else {
-            logger.error("Cannot get the modulation index value for POST.");
-            return logger.exit(false);
+            logger.info("Trying QAM64 modulation...");
+            modulation = "modulation=0";
+            tryModulation = 0;
         }
 
         String tuner = "tuner=1";
@@ -196,6 +206,32 @@ public class InfiniTVTuning {
 
         boolean returnValue = postContent(deviceAddress, "/tune_request.cgi", retry, instanceId,
                 frequency, modulation, tuner, demod, rstChnl, forceTune);
+
+        while (tryModulation != -1) {
+            returnValue = false;
+            int timeout = 20;
+            while (!returnValue && timeout-- > 0) {
+                tuneProgram(tvChannel, deviceAddress, tunerNumber, 5);
+                Thread.sleep(200);
+                try {
+                    returnValue = InfiniTVStatus.getProgram(deviceAddress, tunerNumber, 2) == tvChannel.getProgram();
+                } catch (IOException e) {}
+            }
+            // This worked, so store the good value.
+            if (returnValue) {
+                tvChannel.setModulation(tryModulation == 0 ? "QAM64" : "QAM256");
+                break;
+            } else if (tryModulation == 2) {
+                break;
+            }
+
+            logger.info("Trying QAM256 modulation...");
+            modulation = "modulation=2";
+            tryModulation = 2;
+
+            postContent(deviceAddress, "/tune_request.cgi", retry, instanceId,
+                    frequency, modulation, tuner, demod, rstChnl, forceTune);
+        }
 
         return logger.exit(returnValue);
     }
@@ -228,22 +264,6 @@ public class InfiniTVTuning {
             logger.error("The tuner number cannot be less than 1.");
             return logger.exit(false);
         }
-
-        /*try {
-            String currentIP = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "diag", "Streaming_IP");
-            String currentPort = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "diag", "Streaming_Port");
-            String playback = InfiniTVStatus.getVar(deviceAddress, tunerNumber, "av", "TransportState");
-
-            if (currentIP.equals(localIPAddress) &&
-                    currentPort.equals(String.valueOf(rtpStreamLocalPort)) &&
-                    playback.equals("PLAYING")) {
-
-                logger.info("The IP address and port for RTP are already set.");
-                return logger.exit(true);
-            }
-        } catch (IOException e) {
-            logger.error("Unable to get the current ip address, transport state and streaming port => {}", e);
-        }*/
 
         String instanceId = "instance_id=" + String.valueOf(tunerNumber - 1);
 
@@ -312,7 +332,7 @@ public class InfiniTVTuning {
 
         byte postBytes[] = postParameters.toString().getBytes(Config.STD_BYTE);
 
-        URL url = null;
+        URL url;
         try {
             url = new URL("http://" + deviceAddress + postPath);
         } catch (MalformedURLException e) {
@@ -343,7 +363,7 @@ public class InfiniTVTuning {
         httpURLConnection.setRequestProperty("charset", "utf-8");
         httpURLConnection.setRequestProperty("Content-Length", String.valueOf(postBytes.length));
 
-        OutputStream dataOutputStream = null;
+        OutputStream dataOutputStream;
         try {
             httpURLConnection.connect();
             dataOutputStream = httpURLConnection.getOutputStream();
@@ -354,7 +374,6 @@ public class InfiniTVTuning {
             return logger.exit(false);
         }
 
-        String line = null;
         try {
             dataOutputStream.close();
 

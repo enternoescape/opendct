@@ -69,7 +69,7 @@ public class ServerManager {
                 public void run() {
                     DatagramSocket socket = null;
                     try {
-                        socket = new DatagramSocket(0, address);
+                        socket = new DatagramSocket();
                         socket.setBroadcast(true);
 
                         byte packetBytes[] = new byte[1500];

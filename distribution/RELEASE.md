@@ -1527,3 +1527,8 @@
 > *Added check for valid modulation for InfiniTV ClearQAM tuning.
 
 > *Added some detection between QAM64 and QAM256.
+
+> *Adjusted default timeout for detection of network interfaces
+> after standby to 4 minutes.
+
+> *Relaxed timing on detection of network interfaces after standby.

@@ -94,7 +94,7 @@ public class ServerManager {
                         long timeout = System.currentTimeMillis() + 3000;
                         do {
                             packet.setLength(packetBytes.length);
-                            socket.setSoTimeout((int)Math.min(Math.max(timeout - System.currentTimeMillis(), 1000), 3000));
+                            socket.setSoTimeout((int) Math.min(Math.max(timeout - System.currentTimeMillis(), 1000), 3000));
                             socket.receive(packet);
 
                             if (packet.getLength() >= 9) {
@@ -112,6 +112,12 @@ public class ServerManager {
                                 if (descriptionLength > packet.getLength() - 9) continue;
                                 newServer.setServerName(new String(packetBytes, 9, descriptionLength, StandardCharsets.UTF_8));
                                 newServer.setAddress(packet.getAddress());
+
+                                if (newServer.getServerName().equals("0.0.0.0") ||
+                                        newServer.getServerName().equals("0:0:0:0:0:0:0:0")) {
+                                    newServer.setServerName(packet.getAddress().getHostName());
+                                }
+
                                 // Determines if this address is an interface on this server or not.
                                 newServer.isLocal();
 
@@ -119,6 +125,8 @@ public class ServerManager {
                                 servers.put(newServer.getServerName(), newServer);
                             }
                         } while (timeout < System.currentTimeMillis());
+                    } catch (SocketTimeoutException e) {
+                        System.out.println("OpenDCT - Discovery timed out.");
                     } catch (Exception e) {
                         System.out.println("OpenDCT - ERROR: Discovery exception => ");
                         e.printStackTrace(System.out);

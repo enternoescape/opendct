@@ -136,7 +136,7 @@ public class Discovery {
 
     private static JsonDiscoverer getDiscoverer(String server) {
         JsonDiscoverer cachedDiscoverer = currentDiscoverer;
-        if (cachedDiscoverer == null) {
+        if (cachedDiscoverer == null && selectedDiscovery != null) {
             JsonDiscoverer discoverers[] = ServerManager.getInstance().getJson(server, JsonDiscoverer[].class, DISCOVERY + "/" + selectedDiscovery);
             if (discoverers != null && discoverers.length != 0) {
                 cachedDiscoverer = discoverers[0];
@@ -148,7 +148,7 @@ public class Discovery {
 
     private static OptionsHandler getOptions(String server, JsonDiscoverer discoverer) {
         OptionsHandler cachedOptions = currentOptions;
-        if (cachedOptions == null) {
+        if (cachedOptions == null && discoverer != null) {
             cachedOptions = new OptionsHandler(server, DISCOVERY, discoverer.getOptions());
             currentOptions = cachedOptions;
         }

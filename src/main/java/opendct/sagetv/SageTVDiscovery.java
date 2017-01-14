@@ -151,6 +151,8 @@ public class SageTVDiscovery implements Runnable {
                 byte hostnameBytes[];
                 if (useLoopback && datagramSocketAddress.toString().contains(datagramChannel.socket().getLocalAddress().getHostAddress())) {
                     hostnameBytes = "127.0.0.1".getBytes(Config.STD_BYTE);
+                } else if (webDiscovery) {
+                    hostnameBytes = datagramChannel.socket().getLocalAddress().getHostName().getBytes(Config.STD_BYTE);
                 } else {
                     hostnameBytes = datagramChannel.socket().getLocalAddress().getHostAddress().getBytes(Config.STD_BYTE);
                 }

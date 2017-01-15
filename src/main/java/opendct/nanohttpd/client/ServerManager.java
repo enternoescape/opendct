@@ -31,6 +31,7 @@ import static opendct.config.StaticConfig.*;
 public class ServerManager {
 
     private final static int CONNECTION_TIMEOUT = 10000;
+    public final static String HTTP_ENCODING = "UTF-8";
 
     private static class InstanceHolder {
         private static final ServerManager instance = new ServerManager();
@@ -38,6 +39,14 @@ public class ServerManager {
 
     public static ServerManager getInstance() {
         return InstanceHolder.instance;
+    }
+
+    public static String encodeFile(String file) {
+        try {
+            return URLEncoder.encode(file, HTTP_ENCODING);
+        } catch (UnsupportedEncodingException e) {
+            return file;
+        }
     }
 
     private final Map<String, ServerProperties> servers = new ConcurrentHashMap<>();

@@ -86,7 +86,7 @@ public class Devices {
             StringBuilder builder = new StringBuilder();
             builder.append(DEVICES);
             for (String device : devices) {
-                builder.append('/').append(device);
+                builder.append('/').append(ServerManager.encodeFile(device));
             }
             // We only need the IDs, names and if the device is enabled.
             builder.append("?name=true&enabled=true");
@@ -183,9 +183,9 @@ public class Devices {
         }
         JsonCaptureDevice cachedDevice = captureDevice;
         if (cachedDevice == null) {
-            JsonCaptureDevice devices[] = ServerManager.getInstance().getJson(server, JsonCaptureDevice[].class, DEVICES + "/" + cachedSelectedDevice);
+            JsonCaptureDevice devices[] = ServerManager.getInstance().getJson(server, JsonCaptureDevice[].class, DEVICES + "/" + ServerManager.encodeFile(cachedSelectedDevice));
             if (devices != null && devices.length > 0) {
-                cachedDevice = ServerManager.getInstance().getJson(server, JsonCaptureDevice[].class, DEVICES + "/" + cachedSelectedDevice)[0];
+                cachedDevice = ServerManager.getInstance().getJson(server, JsonCaptureDevice[].class, DEVICES + "/" + ServerManager.encodeFile(cachedSelectedDevice))[0];
                 captureDevice = cachedDevice;
             } else {
                 return null;

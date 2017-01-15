@@ -63,7 +63,7 @@ public class Discovery {
         String names[] = getAllDiscovererNames(server);
         StringBuilder builder = new StringBuilder();
         for (String name : names) {
-            builder.append('/').append(name);
+            builder.append('/').append(ServerManager.encodeFile(name));
         }
         JsonDiscoverer discoverers[] = ServerManager.getInstance().getJson(server, JsonDiscoverer[].class, DISCOVERY + builder.toString());
         return discoverers != null ? discoverers : new JsonDiscoverer[0];
@@ -73,7 +73,7 @@ public class Discovery {
         String names[] = getAllDiscovererNames(server);
         StringBuilder builder = new StringBuilder();
         for (String name : names) {
-            builder.append('/').append(name);
+            builder.append('/').append(ServerManager.encodeFile(name));
         }
         builder.append("?name=true&enabled=true");
         JsonDiscoverer discoverers[] = ServerManager.getInstance().getJson(server, JsonDiscoverer[].class, DISCOVERY + builder.toString());
@@ -107,7 +107,7 @@ public class Discovery {
                     // Only enable discovery methods that actually show they are not currently
                     // enabled.
                     if (!discoverers[i].isEnabled()) {
-                        enable.append('/').append(discovererString);
+                        enable.append('/').append(ServerManager.encodeFile(discovererString));
                     }
                     // When we find a discovery method is on the enabled list, make it null so
                     // that we can make sure everything that is not intended to be enabled gets
@@ -119,7 +119,7 @@ public class Discovery {
         }
         for (JsonDiscoverer discoverer : discoverers) {
             if (discoverer != null && discoverer.isEnabled()) {
-                disable.append('/').append(discoverer.getName());
+                disable.append('/').append(ServerManager.encodeFile(discoverer.getName()));
             }
         }
         // Disable first in the rare occurrence that loading these new discovery method creates a
@@ -137,7 +137,7 @@ public class Discovery {
     private static JsonDiscoverer getDiscoverer(String server) {
         JsonDiscoverer cachedDiscoverer = currentDiscoverer;
         if (cachedDiscoverer == null && selectedDiscovery != null) {
-            JsonDiscoverer discoverers[] = ServerManager.getInstance().getJson(server, JsonDiscoverer[].class, DISCOVERY + "/" + selectedDiscovery);
+            JsonDiscoverer discoverers[] = ServerManager.getInstance().getJson(server, JsonDiscoverer[].class, DISCOVERY + "/" + ServerManager.encodeFile(selectedDiscovery));
             if (discoverers != null && discoverers.length != 0) {
                 cachedDiscoverer = discoverers[0];
                 currentDiscoverer = cachedDiscoverer;

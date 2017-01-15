@@ -40,6 +40,8 @@ import org.apache.logging.log4j.Logger;
 import java.net.SocketException;
 import java.util.Map;
 
+import static opendct.nanohttpd.HttpUtil.JSON_OK;
+
 public class CaptureDevicesJsonServlet {
     private static final Logger logger = LogManager.getLogger(CaptureDevicesJsonServlet.class);
 
@@ -220,7 +222,7 @@ public class CaptureDevicesJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));
+            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
         }
 
         @Override

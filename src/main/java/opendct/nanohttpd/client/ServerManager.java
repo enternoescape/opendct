@@ -18,6 +18,7 @@ package opendct.nanohttpd.client;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonSyntaxException;
 
 import java.io.*;
 import java.net.*;
@@ -301,6 +302,7 @@ public class ServerManager {
             connection.setRequestMethod("POST");
             connection.setReadTimeout(CONNECTION_TIMEOUT);
             connection.setConnectTimeout(CONNECTION_TIMEOUT);
+            connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
             // POST must have a length or we will not get a reply.
@@ -308,8 +310,12 @@ public class ServerManager {
 
             outputStream = connection.getOutputStream();
             outputStream.write(transmit, 0, transmit.length);
+            outputStream.flush();
             inputStream = new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8);
             return gson.fromJson(new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8), returnObject);
+        } catch (JsonSyntaxException e) {
+            // Handle legacy server issue.
+            return null;
         } catch (IOException e) {
             System.out.println("OpenDCT - ERROR: HTTP POST exception for server " + server + " => " + e.getMessage());
             e.printStackTrace(System.out);

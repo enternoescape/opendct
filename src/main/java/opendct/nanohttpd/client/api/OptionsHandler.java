@@ -132,7 +132,7 @@ public class OptionsHandler {
 
         if (jsonSetting != null) {
             JsonException exception = ServerManager.getInstance().postJson(server, JsonException.class, path, jsonSetting);
-            if (exception.isException()) {
+            if (exception != null && exception.isException()) {
                 System.out.println("Unable to set the property '" + exception.getObject() + "': " + exception.getMessage());
             }
         }

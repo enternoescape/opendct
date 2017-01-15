@@ -33,6 +33,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
 
+import static opendct.nanohttpd.HttpUtil.JSON_OK;
+
 public class DiscovererJsonServlet {
     private static final Logger logger = LogManager.getLogger(DiscovererJsonServlet.class);
 
@@ -152,7 +154,7 @@ public class DiscovererJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));
+            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
         }
 
         @Override

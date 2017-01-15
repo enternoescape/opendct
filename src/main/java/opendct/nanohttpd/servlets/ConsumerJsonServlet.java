@@ -32,6 +32,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
 
+import static opendct.nanohttpd.HttpUtil.JSON_OK;
+
 public class ConsumerJsonServlet {
     private static final Logger logger = LogManager.getLogger(ConsumerJsonServlet.class);
 
@@ -130,7 +132,7 @@ public class ConsumerJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));
+            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
         }
 
         @Override

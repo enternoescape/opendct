@@ -288,7 +288,7 @@ public class Plugin {
                 // completely safe to provide in the list with the actual server options.
                 servers[servers.length - 1] = SELECTED_SERVER_REDETECT;
 
-                return ServerManager.getInstance().getServers();
+                return servers;
             case ENABLED_DEVICES_PROP:
                 return Devices.getAllCaptureDeviceNames(selectedServer);
             default:

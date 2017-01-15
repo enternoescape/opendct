@@ -238,6 +238,9 @@ public class Plugin {
                     autoSelectServer();
                 } else if (ServerManager.getInstance().getServer(value) != null) {
                     selectedServer = value;
+                    General.newServer();
+                    Discovery.newServer();
+                    Devices.newServer();
                 }
                 break;
             case START_SERVICE_PROP:

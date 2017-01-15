@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class HttpUtil {
+    public static final String JSON_OK = "{ \"message\": \"OK\" }";
     private static final Gson gson = new Gson();
 
     public static String getPostContent(NanoHTTPD.IHTTPSession session) {
@@ -61,11 +62,12 @@ public class HttpUtil {
 
             return new String(response, 0, index).trim();
         } finally {
-            if (inputStream != null) {
+            // Do not close this here. It will close the stream needed for the response.
+            /*if (inputStream != null) {
                 try {
                     inputStream.close();
                 } catch (IOException e) {}
-            }
+            }*/
         }
     }
 

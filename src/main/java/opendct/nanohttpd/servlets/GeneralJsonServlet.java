@@ -36,6 +36,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
 
+import static opendct.nanohttpd.HttpUtil.JSON_OK;
+
 public class GeneralJsonServlet {
     private static final Logger logger = LogManager.getLogger(GeneralJsonServlet.class);
 
@@ -185,7 +187,7 @@ public class GeneralJsonServlet {
                     false,
                     DeviceOptionType.INTEGER,
                     new String[0],
-                    Config.getString(SAGETV_EARLY_PORT_ASSIGNMENT_PROP));
+                    Config.getString(SAGETV_DISCOVERY_PORT_PROP));
 
             jsonOptions[2] = new JsonOption(
                     SAGETV_AUTO_LOOPBACK_PROP,
@@ -277,7 +279,7 @@ public class GeneralJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));
+            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
         }
 
         @Override

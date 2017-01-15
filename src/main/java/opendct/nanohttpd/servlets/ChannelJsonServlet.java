@@ -37,6 +37,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
 
+import static opendct.nanohttpd.HttpUtil.JSON_OK;
+
 public class ChannelJsonServlet {
     private static final Logger logger = LogManager.getLogger(ChannelJsonServlet.class);
 
@@ -176,7 +178,7 @@ public class ChannelJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));
+            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
         }
 
         @Override
@@ -209,7 +211,7 @@ public class ChannelJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));
+            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
         }
 
         @Override
@@ -247,7 +249,7 @@ public class ChannelJsonServlet {
                 ChannelManager.removeChannelLineup(channelLineupLookup, true);
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson("OK"));
+            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
         }
 
         @Override

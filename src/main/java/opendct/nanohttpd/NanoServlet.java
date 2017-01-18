@@ -29,6 +29,9 @@ public class NanoServlet extends RouterNanoHTTPD {
     public void addMappings() {
         super.addMappings();
 
+        // GET: Landing page.
+        addRoute("/", RootServlet.Get.class);
+
         // GET: Get program version, host OS and path information.
         addRoute("/version", VersionJsonServlet.List.class);
 

@@ -1532,3 +1532,8 @@
 > after standby to 4 minutes.
 
 > *Relaxed timing on detection of network interfaces after standby.
+
+> *Fixed some issues with the JSON web interface.
+
+> *Fixed the Windows installer adding write permissions to the wrong
+> folder.

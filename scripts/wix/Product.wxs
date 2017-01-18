@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:fire="http://schemas.microsoft.com/wix/FirewallExtension" >
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:fire="http://schemas.microsoft.com/wix/FirewallExtension" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 
 	<!--
 	Unattended setup: The following variable can be set:
@@ -229,15 +229,14 @@
 		</Directory>
 
 		<Directory Id="CommonAppDataFolder">
-			<Component Id="CommonAppDataFolderDCT" Guid="{0acc4829-4194-4aa4-acde-4afb5da4929c}">
-				<CreateFolder>
-					<Permission ChangePermission="yes" GenericAll="yes" User="[WIX_ACCOUNT_LOCALSYSTEM]" />
-					<Permission ChangePermission="yes" GenericAll="yes" User="[WIX_ACCOUNT_USERS]" />
-				</CreateFolder>
-				<RegistryValue Root="HKCU" Key="Software\!(loc.ManufacturerName)\!(loc.ApplicationName)\CommonAppDataFolderDCT" Name="installed" Type="integer" Value="1" KeyPath="yes"/>				
-			</Component>
-		
 			<Directory Id="CommonAppDataFolderDCT" Name="OpenDCT">
+			    <Component Id="CommonAppDataFolderDCT" Guid="{0acc4829-4194-4aa4-acde-4afb5da4929c}">
+                    <CreateFolder>
+                        <util:PermissionEx GenericAll="yes" User="[WIX_ACCOUNT_LOCALSYSTEM]" />
+                        <util:PermissionEx GenericAll="yes" User="[WIX_ACCOUNT_USERS]" />
+                    </CreateFolder>
+                    <RegistryValue Root="HKCU" Key="Software\!(loc.ManufacturerName)\!(loc.ApplicationName)\CommonAppDataFolderDCT" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+                </Component>
 				<Directory Id="CommonAppDataFolderConfig" Name="config">					
 					<Component Id="configOpendct.properties" Guid="{0acc4829-4194-4aa4-acde-4afb5da4929b}" NeverOverwrite="yes" Permanent="yes">
 						<File Source="$(var.configSourcePath)\opendct.properties" Id="configOpendct.properties" KeyPath="yes" Vital="yes">

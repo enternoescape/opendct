@@ -312,6 +312,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             for (Map.Entry<String, Boolean> entry : infiniTVDevices.entrySet()) {
                 Boolean value = entry.getValue();
                 if (value != null && !value) {
+                    currentInterfaceNames.clear();
                     logger.info("InfiniTV device '{}' does not have an IP address. Extending wait...", entry.getKey());
                     try {
                         Thread.sleep(10000);

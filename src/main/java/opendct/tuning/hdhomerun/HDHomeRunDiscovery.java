@@ -548,12 +548,42 @@ public class HDHomeRunDiscovery implements Runnable {
         for (NetworkInterface networkInterface : networkInterfaces) {
             for (InterfaceAddress interfaceAddress : networkInterface.getInterfaceAddresses()) {
                 if (interfaceAddress.getAddress() instanceof Inet4Address) {
-                    addresses.add(interfaceAddress.getBroadcast());
+                    InetAddress broadcast = interfaceAddress.getBroadcast();
+                    if (!broadcast.isAnyLocalAddress()) {
+                        addresses.add(broadcast);
+                    } else {
+                        byte address[] = interfaceAddress.getAddress().getAddress();
+                        short mask = interfaceAddress.getNetworkPrefixLength();
+                        broadcast = extractBroadcast(address, mask);
+                        if (broadcast != null) {
+                            addresses.add(broadcast);
+                        } else {
+                            logger.warn("Unable to broadcast using: " + interfaceAddress);
+                            try {
+                                addresses.add(InetAddress.getByName("255.255.255.255"));
+                            } catch (UnknownHostException e) {}
+                        }
+                    }
                 }
             }
         }
 
         return addresses.toArray(new InetAddress[addresses.size()]);
+    }
+
+    public static InetAddress extractBroadcast(byte address[], short mask) {
+        if (address.length != 4 || mask == 0 || mask == 24)
+            return null;
+        byte returnAddress[] = new byte[4];
+        for (int i = 4; i > 0; i--)
+        {
+            returnAddress[i] = address[i];
+        }
+        try {
+            return InetAddress.getByAddress(returnAddress);
+        } catch (UnknownHostException e) {
+            return null;
+        }
     }
 
     public static boolean isLegacy(int deviceId) {

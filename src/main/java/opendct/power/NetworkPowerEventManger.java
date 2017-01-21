@@ -29,10 +29,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 public class NetworkPowerEventManger implements PowerEventListener, DeviceOptions {
     private static final Logger logger = LogManager.getLogger(NetworkPowerEventManger.class);
@@ -63,12 +60,13 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
 
         boolean apipaPresent;
         int timeout = startNetworkTimeout;
+        int cetonLimit = Math.min(timeout - 1, 2);
 
         while (true) {
             try {
                 Thread.sleep(1000);
                 // This will print out the current interfaces when the program first starts.
-                apipaPresent = discoverNetworkInterfaces(true, timeout > 1, timeout > 1);
+                apipaPresent = discoverNetworkInterfaces(true, cetonLimit > 0, cetonLimit-- > 0);
 
                 if (currentInterfaceNames.size() > 0) {
                     break;
@@ -224,9 +222,10 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         StringBuilder msg =
                 new StringBuilder("Network interfaces which are up and have an IP4 address are: ");
 
+        Map<String, Boolean> infiniTVDevices = new HashMap<>();
+
         try {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface networkInterface = networkInterfaces.nextElement();
 
@@ -241,21 +240,30 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 // #number appended (e.g. Ceton InfiniTV Network Device #2). There will be other
                 // interfaces we are not interested in that might also start with Ceton InfiniTV
                 // Network Device, so we need to limit the range that we are allowing this to match.
-                if (Config.IS_WINDOWS && displayName.startsWith("Ceton InfiniTV Network Device") &&
-                        displayName.length() < "Ceton InfiniTV Network Device".length() + 4) {
-                    // If we are still allowing this to fail on APIPA, we will fail if any InfiniTV
-                    // interface is not up with an IP address.
-                    if (failApipa && networkInterface.getInterfaceAddresses().size() == 0) {
-                        logger.info("InfiniTV network interface '{}' detected without IP address. Extending wait...", displayName);
-                        Thread.sleep(10000);
-                        currentInterfaceNames.clear();
-                        return true;
-                    } else if (failApipa && waitCeton) {
-                        // We are waiting more time here in case one interface means we might have
-                        // more that would otherwise go undetected since they are not running yet.
-                        logger.info("InfiniTV network interface '{}' detected. Extending wait...", displayName);
-                        Thread.sleep(8000);
-                        return discoverNetworkInterfaces(printOutput, true, false);
+                if (Config.IS_WINDOWS) {
+                    // If a bridge is in use, an IP address might not ever be assigned to the
+                    // InfiniTV interfaces.
+                    if (displayName.startsWith("Network Bridge")) {
+                        infiniTVDevices.put("Network Bridge", true);
+                    } else if (displayName.startsWith("Ceton InfiniTV Network Device")) {
+                        int hashIndex = displayName.indexOf("#");
+                        String name;
+                        if (hashIndex != -1) {
+                            int space = displayName.indexOf("-", hashIndex);
+                            if (space == -1) {
+                                space = displayName.indexOf(" ", hashIndex);
+                            }
+                            if (space == -1) {
+                                space = displayName.length();
+                            }
+                            name = displayName.substring(0, space).trim();
+                        } else {
+                            name = "Ceton InfiniTV Network Device";
+                        }
+                        Boolean found = infiniTVDevices.get(name);
+                        if (found == null || !found) {
+                            infiniTVDevices.put(name, networkInterface.getInterfaceAddresses().size() > 0);
+                        }
                     }
                 }
 
@@ -295,6 +303,22 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             }
         } catch (Throwable e) {
             msg.append(e);
+        }
+
+        if (Config.getBoolean("pm.network.infinitv_wait", true) &&
+                failApipa && waitCeton &&
+                infiniTVDevices.size() > 0 &&
+                !infiniTVDevices.containsKey("Network Bridge")) {
+            for (Map.Entry<String, Boolean> entry : infiniTVDevices.entrySet()) {
+                Boolean value = entry.getValue();
+                if (value != null && !value) {
+                    logger.info("InfiniTV device '{}' does not have an IP address. Extending wait...", entry.getKey());
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e) {}
+                    return true;
+                }
+            }
         }
 
         if (printOutput && currentInterfaceNames.size() > 0) {

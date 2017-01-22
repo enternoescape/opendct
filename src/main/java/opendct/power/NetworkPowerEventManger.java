@@ -60,7 +60,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
 
         boolean apipaPresent;
         int timeout = startNetworkTimeout;
-        int cetonLimit = Math.min(timeout - 1, 2);
+        int cetonLimit = Math.min(timeout - 1, Config.getInteger("pm.network.infinitv_wait", 2));
 
         while (true) {
             try {
@@ -305,8 +305,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             msg.append(e);
         }
 
-        if (Config.getBoolean("pm.network.infinitv_wait", true) &&
-                failApipa && waitCeton &&
+        if (failApipa && waitCeton &&
                 infiniTVDevices.size() > 0 &&
                 !infiniTVDevices.containsKey("Network Bridge")) {
             for (Map.Entry<String, Boolean> entry : infiniTVDevices.entrySet()) {
@@ -335,9 +334,10 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             Thread.sleep(2000);
         } catch (InterruptedException e) {}
 
+        long lastCheck = 0;
         long timeout = resumeNetworkTimeout > 0 ?
                 System.currentTimeMillis() + resumeNetworkTimeout : 0;
-        List<String> remainingNames = new ArrayList<>();
+        List<String> remainingNames = new ArrayList<>(monitoredInterfaceNames.size());
 
         for (String monitoredInterfaceName : monitoredInterfaceNames) {
             remainingNames.add(monitoredInterfaceName);
@@ -383,9 +383,23 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 logger.warn("Error while waiting on network interfaces => ", e);
             }
 
-            if (System.currentTimeMillis() > timeout && timeout != 0) {
-                ExitCode.PM_NETWORK_RESUME.terminateJVM();
-                break;
+            if (timeout != 0) {
+                long thisCheck = System.currentTimeMillis();
+                // If we have more than a 30 seconds difference between this check and the last
+                // check, we are missing significant amounts of time. That most likely means we just
+                // came out of standby.
+                if (Math.abs(thisCheck - lastCheck) > 30000) {
+                    timeout = thisCheck + resumeNetworkTimeout;
+                    // Re-add interfaces so that they get checked a second time.
+                    remainingNames.clear();
+                    for (String monitoredInterfaceName : monitoredInterfaceNames) {
+                        remainingNames.add(monitoredInterfaceName);
+                    }
+                }
+                if (thisCheck > timeout) {
+                    ExitCode.PM_NETWORK_RESUME.terminateJVM();
+                    break;
+                }
             }
 
             keepPolling = remainingNames.size() > 0;

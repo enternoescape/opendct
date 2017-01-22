@@ -271,11 +271,12 @@ public class Plugin {
                 // This will disable anything that is not on the values list.
                 Devices.setEnableCaptureDeviceNames(selectedServer, values);
             default:
-                if (General.getConfigValues(selectedServer, setting) != null) {
+                String returnValue[];
+                if ((returnValue = General.getConfigValues(selectedServer, setting)) != null && returnValue.length > 0) {
                     General.setConfigValues(selectedServer, setting, values);
-                } else if (Discovery.getConfigValues(selectedServer, setting) != null) {
+                } else if ((returnValue = Discovery.getConfigValues(selectedServer, setting)) != null && returnValue.length > 0) {
                     Discovery.setConfigValues(selectedServer, setting, values);
-                } else if (Devices.getConfigValues(selectedServer, setting) != null) {
+                } else if ((returnValue = Devices.getConfigValues(selectedServer, setting)) != null && returnValue.length > 0) {
                     Devices.setConfigValues(selectedServer, setting, values);
                 }
         }
@@ -296,11 +297,11 @@ public class Plugin {
                 return Devices.getAllCaptureDeviceNames(selectedServer);
             default:
                 String returnValue[];
-                if ((returnValue = General.getConfigOptions(selectedServer, setting)) != null) {
+                if ((returnValue = General.getConfigOptions(selectedServer, setting)) != null && returnValue.length > 0) {
                     return returnValue;
-                } else if ((returnValue = Discovery.getConfigOptions(selectedServer, setting)) != null) {
+                } else if ((returnValue = Discovery.getConfigOptions(selectedServer, setting)) != null && returnValue.length > 0) {
                     return returnValue;
-                } else if ((returnValue = Devices.getConfigOptions(selectedServer, setting)) != null) {
+                } else if ((returnValue = Devices.getConfigOptions(selectedServer, setting)) != null && returnValue.length > 0) {
                     return returnValue;
                 }
                 return null;

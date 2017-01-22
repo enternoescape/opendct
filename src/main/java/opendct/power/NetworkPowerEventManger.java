@@ -383,7 +383,9 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 logger.warn("Error while waiting on network interfaces => ", e);
             }
 
-            if (timeout != 0) {
+            keepPolling = remainingNames.size() > 0;
+
+            if (keepPolling && timeout != 0) {
                 long thisCheck = System.currentTimeMillis();
                 // If we have more than a 30 seconds difference between this check and the last
                 // check, we are missing significant amounts of time. That most likely means we just
@@ -403,8 +405,6 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 }
                 lastCheck = thisCheck;
             }
-
-            keepPolling = remainingNames.size() > 0;
 
             if (keepPolling) {
                 try {

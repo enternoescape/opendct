@@ -99,23 +99,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private FFmpegContext ctx;
 
     public FFmpegTransSageTVConsumerImpl() {
-        //circularBuffer = null;
-
-        /*try {
-            circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            logger.debug("Interrupted while recycling buffer => {}", e.toString());
-        }*/
-
         if (circularBuffer == null) {
-            // So we don't keep allocating new buffers if for some reason we don't get one here.
-            /*if (buffers.size() != 0) {
-                buffers.clear();
-                // GC in case we really did allocate a lot of memory. Otherwise the next allocation
-                // might fail with OutOfMemoryError.
-                System.gc();
-            }*/
-
             try
             {
                 circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
@@ -142,14 +126,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             logger.error("FFmpeg Transcoder consumer is already running.");
             return;
         }
-
-        /*if (circularBuffer == null) {
-            try {
-                circularBuffer = buffers.poll(10, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                logger.debug("Interrupted while recycling buffer => {}", e.toString());
-            }
-        }*/
 
         if (circularBuffer == null) {
             circularBuffer = new FFmpegCircularBufferNIO(FFmpegConfig.getCircularBufferSize());
@@ -266,15 +242,6 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             ctx.interrupt();
         }
         circularBuffer.close();
-
-        /*if (currentWriter instanceof FFmpegUploadIDWriter &&
-                ((FFmpegUploadIDWriter) currentWriter).mediaServer != null) {
-            try {
-                ((FFmpegUploadIDWriter)currentWriter).mediaServer.endUpload();
-            } catch (IOException e) {
-                logger.debug("There was a problem while disconnecting from Media Server => ", e);
-            }
-        }*/
     }
 
     @Override

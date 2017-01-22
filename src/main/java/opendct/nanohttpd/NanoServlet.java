@@ -29,7 +29,7 @@ public class NanoServlet extends RouterNanoHTTPD {
     public void addMappings() {
         super.addMappings();
 
-        // GET: Landing page.
+        // GET: OpenDCT version and some basic information about the loaded capture devices.
         addRoute("/", RootServlet.Get.class);
         addRoute("/index.html", RootServlet.Get.class);
 

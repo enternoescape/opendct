@@ -16,9 +16,11 @@
 
 package opendct.sagetv;
 
+import opendct.capture.BasicCaptureDevice;
 import opendct.capture.CaptureDevice;
 import opendct.channel.CopyProtection;
 import opendct.config.Config;
+import opendct.consumer.MediaServerConsumerImpl;
 import opendct.util.Util;
 import opendct.video.java.VideoUtil;
 import org.apache.logging.log4j.LogManager;
@@ -370,10 +372,15 @@ public class SageTVTuningMonitor {
                                 break;
                             }
 
+                            // Don't try to re-tune when using the media server. You could end up
+                            // overwriting what we do have. Let SageTV handle this situation.
+                            boolean noRetune = captureDevice instanceof BasicCaptureDevice &&
+                                    ((BasicCaptureDevice) captureDevice).getConsumer() instanceof MediaServerConsumerImpl;
+
                             // If we have decided not to try to re-tune when there is a problem and
                             // instead wait for SageTV to restart the stream if it thinks there's a
                             // problem.
-                            if (retuneEnabled) {
+                            if (retuneEnabled && !noRetune) {
                                 recording.retuneThread = new Thread(new Runnable() {
                                     @Override
                                     public void run() {

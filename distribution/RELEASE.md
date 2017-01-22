@@ -1537,3 +1537,10 @@
 
 > *Fixed the Windows installer adding write permissions to the wrong
 > folder.
+
+#### 0.5.23-RC5
+> *Adjusted timeout when InfiniTV network adapters are discovered.
+
+> *Added handling for unexpected standby events.
+
+> *Removed tuning monitor handling when using the media server remuxer.

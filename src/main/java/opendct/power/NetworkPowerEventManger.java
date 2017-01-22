@@ -334,7 +334,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             Thread.sleep(2000);
         } catch (InterruptedException e) {}
 
-        long lastCheck = 0;
+        long lastCheck = System.currentTimeMillis();
         long timeout = resumeNetworkTimeout > 0 ?
                 System.currentTimeMillis() + resumeNetworkTimeout : 0;
         List<String> remainingNames = new ArrayList<>(monitoredInterfaceNames.size());
@@ -389,6 +389,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                 // check, we are missing significant amounts of time. That most likely means we just
                 // came out of standby.
                 if (Math.abs(thisCheck - lastCheck) > 30000) {
+                    logger.warn("This check was {} and the last check was {}. Restarting timer.", thisCheck, lastCheck);
                     timeout = thisCheck + resumeNetworkTimeout;
                     // Re-add interfaces so that they get checked a second time.
                     remainingNames.clear();
@@ -400,6 +401,7 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                     ExitCode.PM_NETWORK_RESUME.terminateJVM();
                     break;
                 }
+                lastCheck = thisCheck;
             }
 
             keepPolling = remainingNames.size() > 0;

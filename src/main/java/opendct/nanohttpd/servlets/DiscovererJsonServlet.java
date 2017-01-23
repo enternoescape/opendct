@@ -154,7 +154,7 @@ public class DiscovererJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
+            return NanoHTTPD.newFixedLengthResponse(JSON_OK);
         }
 
         @Override

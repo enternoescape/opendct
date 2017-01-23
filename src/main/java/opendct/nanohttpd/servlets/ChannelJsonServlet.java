@@ -178,7 +178,7 @@ public class ChannelJsonServlet {
                 }
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
+            return NanoHTTPD.newFixedLengthResponse(JSON_OK);
         }
 
         @Override
@@ -249,7 +249,7 @@ public class ChannelJsonServlet {
                 ChannelManager.removeChannelLineup(channelLineupLookup, true);
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
+            return NanoHTTPD.newFixedLengthResponse(JSON_OK);
         }
 
         @Override

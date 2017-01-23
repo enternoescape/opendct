@@ -18,7 +18,7 @@ package opendct.nanohttpd.client;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonSyntaxException;
+import opendct.nanohttpd.pojo.JsonException;
 
 import java.io.*;
 import java.net.*;
@@ -57,6 +57,7 @@ public class ServerManager {
         // This is not required, but if we need to add special deserializers in the future, this
         // will make it a little easier to determine where they should go.
         GsonBuilder builder = new GsonBuilder();
+        builder.setLenient();
         gson = builder.create();
     }
 
@@ -310,12 +311,13 @@ public class ServerManager {
 
             outputStream = connection.getOutputStream();
             outputStream.write(transmit, 0, transmit.length);
-            outputStream.flush();
+            outputStream.close();
             inputStream = new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8);
-            return gson.fromJson(new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8), returnObject);
-        } catch (JsonSyntaxException e) {
-            // Handle legacy server issue.
-            return null;
+            // Fix for legacy incorrect formatting.
+            if (returnObject == JsonException.class) {
+                return removeQuotes(returnObject, inputStream);
+            }
+            return gson.fromJson(inputStream, returnObject);
         } catch (IOException e) {
             System.out.println("OpenDCT - ERROR: HTTP POST exception for server " + server + " => " + e.getMessage());
             e.printStackTrace(System.out);
@@ -368,6 +370,7 @@ public class ServerManager {
             connection.setRequestMethod("PUT");
             connection.setReadTimeout(CONNECTION_TIMEOUT);
             connection.setConnectTimeout(CONNECTION_TIMEOUT);
+            connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
             // PUT must have a length or we will not get a reply.
@@ -375,8 +378,13 @@ public class ServerManager {
 
             outputStream = connection.getOutputStream();
             outputStream.write(transmit, 0, transmit.length);
+            outputStream.close();
             inputStream = new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8);
-            return gson.fromJson(new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8), returnObject);
+            // Fix for legacy incorrect formatting.
+            if (returnObject == JsonException.class) {
+                return removeQuotes(returnObject, inputStream);
+            }
+            return gson.fromJson(inputStream, returnObject);
         } catch (IOException e) {
             System.out.println("OpenDCT - ERROR: HTTP PUT exception for server " + server + " => " + e.getMessage());
             e.printStackTrace(System.out);
@@ -429,6 +437,7 @@ public class ServerManager {
             connection.setRequestMethod("DELETE");
             connection.setReadTimeout(CONNECTION_TIMEOUT);
             connection.setConnectTimeout(CONNECTION_TIMEOUT);
+            connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
             // DELETE must have a length or we will not get a reply.
@@ -436,8 +445,13 @@ public class ServerManager {
 
             outputStream = connection.getOutputStream();
             outputStream.write(transmit, 0, transmit.length);
+            outputStream.close();
             inputStream = new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8);
-            return gson.fromJson(new InputStreamReader(new BufferedInputStream(connection.getInputStream()), StandardCharsets.UTF_8), returnObject);
+            // Fix for legacy incorrect formatting.
+            if (returnObject == JsonException.class) {
+                return removeQuotes(returnObject, inputStream);
+            }
+            return gson.fromJson(inputStream, returnObject);
         } catch (IOException e) {
             System.out.println("OpenDCT - ERROR: HTTP DELETE exception for server " + server + " => " + e.getMessage());
             e.printStackTrace(System.out);
@@ -454,5 +468,31 @@ public class ServerManager {
             }
         }
         return null;
+    }
+
+    // Fix for incorrect JSON formatting.
+    private <T> T removeQuotes(Class<T> returnObject, InputStreamReader inputStream) throws IOException {
+        BufferedReader reader = new BufferedReader(inputStream);
+        reader.mark(1);
+        if (reader.read() == '"') {
+            StringBuilder buffer = new StringBuilder();
+            char inputBuffer[] = new char[8192];
+            int read;
+            while (true) {
+                read = reader.read(inputBuffer, 0, inputBuffer.length);
+                if (read == -1) {
+                    break;
+                }
+                buffer.append(buffer, 0, read);
+            }
+            // Remove last double quote.
+            if (buffer.length() > 0) {
+                buffer.setLength(buffer.length() - 1);
+            }
+            return gson.fromJson(buffer.toString(), returnObject);
+        } else {
+            reader.reset();
+            return gson.fromJson(reader, returnObject);
+        }
     }
 }

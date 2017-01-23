@@ -131,7 +131,7 @@ public class ChannelLinupsJsonServlet {
                 ChannelLineupSerializer.setProperties(jsonChannelLineup, lineup);
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
+            return NanoHTTPD.newFixedLengthResponse(JSON_OK);
         }
 
         @Override
@@ -164,7 +164,7 @@ public class ChannelLinupsJsonServlet {
                 ChannelManager.addChannelLineup(lineup, true);
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
+            return NanoHTTPD.newFixedLengthResponse(JSON_OK);
         }
 
         @Override
@@ -202,7 +202,7 @@ public class ChannelLinupsJsonServlet {
                 ChannelManager.removeChannelLineup(channelLineupLookup, true);
             }
 
-            return NanoHTTPD.newFixedLengthResponse(gson.toJson(JSON_OK));
+            return NanoHTTPD.newFixedLengthResponse(JSON_OK);
         }
 
         @Override

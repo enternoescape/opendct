@@ -57,7 +57,6 @@ public class ServerManager {
         // This is not required, but if we need to add special deserializers in the future, this
         // will make it a little easier to determine where they should go.
         GsonBuilder builder = new GsonBuilder();
-        builder.setLenient();
         gson = builder.create();
     }
 

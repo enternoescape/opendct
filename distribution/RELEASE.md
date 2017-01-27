@@ -1557,3 +1557,6 @@
 > *Fixed some issues with the JSON web interface.
 
 > *Added media server support to error messages.
+
+> *Fixed out of bounds exception when a broadcast address is not
+> available.

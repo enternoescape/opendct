@@ -1560,3 +1560,5 @@
 
 > *Fixed out of bounds exception when a broadcast address is not
 > available.
+
+> *Fixed rare null pointer exception in Generic Pipe capture device.

@@ -17,6 +17,7 @@
 package opendct.util;
 
 import opendct.config.Config;
+import opendct.consumer.upload.NIOSageTVMediaServer;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -31,6 +32,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -242,13 +244,36 @@ public class Util {
     }
 
     public static boolean isNullOrEmpty(String value) {
-        if (value != null) {
-            if (value.length() == 0) {
-                return true;
+        return value == null || value.length() == 0;
+    }
+
+    /**
+     * Appends to the end of a file opened via the SageTV media server.
+     *
+     * @param source The source file.
+     * @param mediaServer The connected media server.
+     * @throws IOException Thrown if there is a problem copying or if the media server is not
+     *                     connected.
+     */
+    public static void appendFile(File source, NIOSageTVMediaServer mediaServer) throws IOException {
+        FileChannel inputChannel = null;
+        try {
+            inputChannel = new FileInputStream(source).getChannel();
+            ByteBuffer buffer = ByteBuffer.allocateDirect(1048576);
+            while (true) {
+                buffer.clear();
+                int read = inputChannel.read(buffer);
+                if (read == -1) {
+                    break;
+                }
+                buffer.flip();
+                mediaServer.uploadAutoIncrement(buffer);
             }
-            return false;
+        } finally {
+            if (inputChannel != null && inputChannel.isOpen()) {
+                inputChannel.close();
+            }
         }
-        return true;
     }
 
     /**
@@ -338,9 +363,7 @@ public class Util {
                 try {
                     newFile.createNewFile();
                     return newFile;
-                } catch (IOException e) {
-
-                }
+                } catch (IOException e) {}
             }
         }
 

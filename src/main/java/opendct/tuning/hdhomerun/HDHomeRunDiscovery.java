@@ -549,9 +549,9 @@ public class HDHomeRunDiscovery implements Runnable {
             for (InterfaceAddress interfaceAddress : networkInterface.getInterfaceAddresses()) {
                 if (interfaceAddress.getAddress() instanceof Inet4Address) {
                     InetAddress broadcast = interfaceAddress.getBroadcast();
-                    if (!broadcast.isAnyLocalAddress()) {
+                    //if (!broadcast.isAnyLocalAddress()) {
                         addresses.add(broadcast);
-                    } else {
+                    /*} else {
                         byte address[] = interfaceAddress.getAddress().getAddress();
                         short mask = interfaceAddress.getNetworkPrefixLength();
                         broadcast = extractBroadcast(address, mask);
@@ -563,7 +563,7 @@ public class HDHomeRunDiscovery implements Runnable {
                                 addresses.add(InetAddress.getByName("255.255.255.255"));
                             } catch (UnknownHostException e) {}
                         }
-                    }
+                    }*/
                 }
             }
         }
@@ -575,8 +575,9 @@ public class HDHomeRunDiscovery implements Runnable {
         if (address.length != 4 || mask == 0 || mask == 24)
             return null;
         byte returnAddress[] = new byte[4];
-        for (int i = 4; i > 0; i--)
+        for (int i = 3; i > 0; i--)
         {
+            // TODO: Calculate based on subnet.
             returnAddress[i] = address[i];
         }
         try {

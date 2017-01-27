@@ -334,7 +334,7 @@ public class FFmpegContext {
             FFmpegContext context = getContext(opaque);
 
             if (context.interrupted) {
-                context.logger.info("Interrupt callback is returning 1");
+                logger.info("Interrupt callback is returning 1");
                 return 1;
             }
 
@@ -354,7 +354,7 @@ public class FFmpegContext {
             try {
                 returnValue = context.SEEK_BUFFER.seek(whence, offset);
             } catch (Exception e) {
-                context.logger.error("There was an exception while seeking => ", e);
+                logger.error("There was an exception while seeking => ", e);
             }
 
             return returnValue;
@@ -385,7 +385,7 @@ public class FFmpegContext {
                         context.readBuffer = buf.position(0).limit(bufSize).asByteBuffer();
                         context.lastReadAddress = context.readAddress;
                         context.lastReadCapacity = bufSize;
-                        context.minRead = bufSize / 4;
+                        context.minRead = bufSize / 16;
                     } else {
                         context.readBuffer.limit(bufSize).position(0);
                     }
@@ -403,8 +403,8 @@ public class FFmpegContext {
                     } else {
                         // Smaller chunks of data are ok for initialization.
 
-                        // Limit the time spent here to 250ms at most.
-                        int passes = 20;
+                        // Limit the time spent here to 2000ms at most.
+                        int passes = 80;
 
                         while (passes-- > 0 &&
                                 context.SEEK_BUFFER.readAvailable() < context.minRead &&
@@ -424,15 +424,15 @@ public class FFmpegContext {
                     if (e instanceof InterruptedException) {
                         context.interrupted = true;
                         context.SEEK_BUFFER.close();
-                        context.logger.debug("FFmpeg consumer was interrupted while reading.");
+                        logger.debug("FFmpeg consumer was interrupted while reading.");
                     } else {
-                        context.logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
+                        logger.error("FFmpeg consumer was closed while reading by an exception => ", e);
                     }
                 }
             }
 
             if (nBytes == -1) {
-                context.logger.info("Returning AVERROR_EOF in readCallback.call()");
+                logger.info("Returning AVERROR_EOF in readCallback.call()");
                 return AVERROR_EOF;
             }
 

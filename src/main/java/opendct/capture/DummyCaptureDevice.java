@@ -23,6 +23,7 @@ import opendct.sagetv.SageTVDeviceCrossbar;
 
 import java.io.File;
 import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DummyCaptureDevice implements CaptureDevice {
@@ -232,7 +233,7 @@ public class DummyCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public void streamError(File sourceFile) {
+    public void streamError(File sourceFile, SocketAddress address, int uploadId) {
 
     }
 

@@ -1544,3 +1544,19 @@
 > *Added handling for unexpected standby events.
 
 > *Removed tuning monitor handling when using the media server remuxer.
+
+#### 0.5.24-Stable
+> *Lowered the minimum read threshold for the FFmpeg consumer.
+
+> *Limited re-tuning to only Ceton devices. This is limit is enabled by
+> default.
+
+> *Added some additional time when a UNC path is being used before
+> re-tuning will be triggered.
+
+> *Fixed some issues with the JSON web interface.
+
+> *Added media server support to error messages.
+
+> *Fixed out of bounds exception when a broadcast address is not
+> available.

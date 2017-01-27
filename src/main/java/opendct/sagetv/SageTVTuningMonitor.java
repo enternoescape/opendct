@@ -18,6 +18,7 @@ package opendct.sagetv;
 
 import opendct.capture.BasicCaptureDevice;
 import opendct.capture.CaptureDevice;
+import opendct.capture.InfiniTVCaptureDevice;
 import opendct.channel.CopyProtection;
 import opendct.config.Config;
 import opendct.consumer.MediaServerConsumerImpl;
@@ -28,6 +29,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -35,6 +37,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class SageTVTuningMonitor {
     private final static Logger logger = LogManager.getLogger(SageTVTuningMonitor.class);
     private final static boolean retuneEnabled = Config.getBoolean("retune_enable", true);
+    private final static boolean retuneCetonOnly = Config.getBoolean("retune_ceton_only", true);
 
     private static final ReentrantReadWriteLock queueLock = new ReentrantReadWriteLock(true);
 
@@ -172,7 +175,7 @@ public class SageTVTuningMonitor {
     }
 
     public static class MonitoredRecording {
-        protected boolean active = true;
+        protected volatile boolean active = true;
         protected Thread retuneThread = null;
         protected String filename = null;
         protected long lessThanRecordedBytes = 0;
@@ -207,6 +210,12 @@ public class SageTVTuningMonitor {
             this.crossbarIndex = crossbarIndex;
             this.uploadID = uploadID;
             this.remoteAddress = remoteAddress;
+            this.filename = captureDevice.getRecordFilename();
+            // If we know we are working with a network share, increase the delay before we assume
+            // there's a problem.
+            if (filename.startsWith("\\\\")) {
+                this.checkDelay *= 2;
+            }
         }
     }
 
@@ -264,9 +273,19 @@ public class SageTVTuningMonitor {
                                 // The capture device needs to stream the message because the user
                                 // will not see anything if the bytes streamed doesn't increment.
                                 if (recording.copyProtection == CopyProtection.COPY_ONCE) {
-                                    recording.captureDevice.streamError(VideoUtil.COPY_ONCE_TS);
+                                    recording.captureDevice.streamError(VideoUtil.COPY_ONCE_TS,
+                                            new InetSocketAddress(
+                                                    recording.remoteAddress,
+                                                    Config.getInteger(
+                                                            "consumer.ffmpeg.upload_id_port", 7818)
+                                            ), recording.uploadID);
                                 } else {
-                                    recording.captureDevice.streamError(VideoUtil.COPY_NEVER_TS);
+                                    recording.captureDevice.streamError(VideoUtil.COPY_NEVER_TS,
+                                            new InetSocketAddress(
+                                                    recording.remoteAddress,
+                                                    Config.getInteger(
+                                                            "consumer.ffmpeg.upload_id_port", 7818)
+                                            ), recording.uploadID);
                                 }
 
                                 // We need to break here or the next iteration might fail. The
@@ -300,9 +319,21 @@ public class SageTVTuningMonitor {
                                 // The capture device needs to stream the message because the user
                                 // will not see anything if the bytes streamed doesn't increment.
                                 if (recording.copyProtection == CopyProtection.COPY_ONCE) {
-                                    recording.captureDevice.streamError(VideoUtil.COPY_ONCE_TS);
+                                    recording.captureDevice.streamError(
+                                            VideoUtil.COPY_ONCE_TS,
+                                            new InetSocketAddress(
+                                                    recording.remoteAddress,
+                                                    Config.getInteger(
+                                                            "consumer.ffmpeg.upload_id_port", 7818)
+                                            ), recording.uploadID);
                                 } else {
-                                    recording.captureDevice.streamError(VideoUtil.COPY_NEVER_TS);
+                                    recording.captureDevice.streamError(
+                                            VideoUtil.COPY_NEVER_TS,
+                                            new InetSocketAddress(
+                                                    recording.remoteAddress,
+                                                    Config.getInteger(
+                                                            "consumer.ffmpeg.upload_id_port", 7818)
+                                            ), recording.uploadID);
                                 }
 
                                 // We need to break here or the next iteration might fail. The
@@ -366,16 +397,20 @@ public class SageTVTuningMonitor {
                             final InetAddress remoteAddress = recording.remoteAddress;
                             recording.noRecordedBytes = 0;
 
+                            // Don't try to re-tune when using the media server. You could end up
+                            // overwriting what we do have. Let SageTV handle this situation. Also
+                            // by default we are only re-tuning Ceton devices because this is a
+                            // function that SageTV should really be handling, not the network
+                            // encoder.
+                            boolean noRetune = (retuneCetonOnly && !(captureDevice instanceof InfiniTVCaptureDevice)) ||
+                                    captureDevice instanceof BasicCaptureDevice &&
+                                            ((BasicCaptureDevice) captureDevice).getConsumer() instanceof MediaServerConsumerImpl;
+
                             // This keeps the monitoring from holding up new tuning request and
                             // potentially re-tuning when a tuner is changing channels anyway.
                             if (queueLock.hasQueuedThreads()) {
                                 break;
                             }
-
-                            // Don't try to re-tune when using the media server. You could end up
-                            // overwriting what we do have. Let SageTV handle this situation.
-                            boolean noRetune = captureDevice instanceof BasicCaptureDevice &&
-                                    ((BasicCaptureDevice) captureDevice).getConsumer() instanceof MediaServerConsumerImpl;
 
                             // If we have decided not to try to re-tune when there is a problem and
                             // instead wait for SageTV to restart the stream if it thinks there's a
@@ -413,12 +448,11 @@ public class SageTVTuningMonitor {
                                                         deviceType, crossbarIndex,
                                                         uploadID, remoteAddress);
                                             } else {
-                                                logger.info("Re-tune was cancelled because the capture" +
-                                                        " device is no longer internally locked." +
-                                                        " Stopping device monitoring.");
+                                                logger.info("Re-tune was cancelled because the" +
+                                                        " capture device is no longer internally" +
+                                                        " locked. Stopping device monitoring.");
 
                                                 stopMonitorRecording(captureDevice);
-
                                                 return;
                                             }
                                         }
@@ -430,13 +464,10 @@ public class SageTVTuningMonitor {
                                             if (Util.isNullOrEmpty(localFilename) &&
                                                     recording.filename == null) {
 
-                                                logger.error(
-                                                        "Unable to tune because there isn't a filename." +
-                                                                " Stopping device monitoring."
-                                                );
+                                                logger.error("Unable to tune because there isn't a" +
+                                                        " filename. Stopping device monitoring.");
 
                                                 stopMonitorRecording(captureDevice);
-
                                                 return;
                                             }
 
@@ -464,6 +495,7 @@ public class SageTVTuningMonitor {
                                 // This keeps the monitoring from holding up new tuning request and
                                 // potentially re-tuning when a tuner is changing channels anyway.
                                 if (queueLock.hasQueuedThreads()) {
+                                    recording.retuneThread = null;
                                     break;
                                 }
 

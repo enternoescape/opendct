@@ -23,6 +23,7 @@ import opendct.config.options.DeviceOptionException;
 import opendct.consumer.DynamicConsumerImpl;
 import opendct.consumer.FFmpegTransSageTVConsumerImpl;
 import opendct.consumer.SageTVConsumer;
+import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.sagetv.SageTVManager;
 import opendct.util.Util;
@@ -32,6 +33,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -409,7 +411,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     }
 
     @Override
-    public void streamError(File sourceFile) {
+    public void streamError(File sourceFile, SocketAddress address, int uploadId) {
 
         if (!streamErrors) {
             return;
@@ -417,7 +419,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         String currentFile = getRecordFilename();
 
-        if (Util.isNullOrEmpty(currentFile)) {
+        if (Util.isNullOrEmpty(currentFile) || !isInternalLocked()) {
             logger.debug("Recording appears to have already stopped." +
                     " Returning without streaming error message.");
             return;
@@ -438,21 +440,42 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
 
         try {
             int retry = 25;
+            boolean usingMediaServer = sageTVConsumerRunnable.acceptsUploadID();
+            if (usingMediaServer) {
+                stopConsuming(true);
+            }
 
             while (retry-- > 0) {
                 try {
                     long sourceLength = sourceFile.length();
 
-                    if (!inProgress) {
+                    NIOSageTVMediaServer mediaServer = null;
+                    if (usingMediaServer) {
+                        mediaServer = new NIOSageTVMediaServer();
+                        mediaServer.startUpload(address, currentFile, uploadId);
+                        if (inProgress) {
+                            long size = mediaServer.getSize();
+                            mediaServer.endUpload();
+                            mediaServer.startUpload(address, currentFile, uploadId, size);
+                        }
+                        Util.appendFile(sourceFile, mediaServer);
+                    } else if (!inProgress) {
                         Util.copyFile(sourceFile, new File(currentFile), true);
                         errorBytesStreamed = sourceLength;
                     }
 
                     for (int i = 0; i < 7; i++) {
-                        Util.appendFile(sourceFile, new File(currentFile));
+                        if (usingMediaServer) {
+                            Util.appendFile(sourceFile, mediaServer);
+                        } else {
+                            Util.appendFile(sourceFile, new File(currentFile));
+                        }
                         errorBytesStreamed += sourceLength;
                     }
 
+                    if (mediaServer != null) {
+                        mediaServer.endUpload();
+                    }
                     break;
                 } catch (IOException e) {
                     logger.error("Unable to write video message '{}' to '{}' => ", sourceFile, currentFile, e);

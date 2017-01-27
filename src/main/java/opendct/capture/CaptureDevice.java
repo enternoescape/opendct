@@ -24,6 +24,7 @@ import opendct.sagetv.SageTVRequestHandler;
 
 import java.io.File;
 import java.net.InetAddress;
+import java.net.SocketAddress;
 
 public interface CaptureDevice {
 /*
@@ -541,8 +542,10 @@ DCTRTSPClientImpl - Configures the connection for RTP streaming to this IP addre
      *
      * @param sourceFile The full path of the file to be copied in place of the recording. The
      *                   length of this file should replace the file length reported
+     * @param address The address of the server for media server uploading.
+     * @param uploadId The upload ID to be used to connect to the media server.
      */
-    public void streamError(File sourceFile);
+    public void streamError(File sourceFile, SocketAddress address, int uploadId);
 
     /**
      * This returns the name of the currently selected consumer.

@@ -198,7 +198,7 @@ eclipse {
 
 jar {
 	exclude 'log4j2.xml'
-	exclude 'opendct.properties'
+	exclude 'opendct.properties.default'
 }
 
 ospackage {
@@ -212,10 +212,10 @@ ospackage {
     os = LINUX
     type = BINARY
 
-    configurationFile = "/etc/opendct/conf/opendct.properties"
+    configurationFile = "/etc/opendct/conf/opendct.properties.default"
 
     from('src/main/resources') {
-        include 'opendct.properties'
+        include 'opendct.properties.default'
         fileType CONFIG | NOREPLACE
         into '/etc/opendct/conf'
     }
@@ -362,7 +362,6 @@ def changeBin(String arch, String dependency) {
         counter += 1
     }
 
-
     copy {
         from "jsw/${arch}"
         include "conf/wrapper.conf"
@@ -420,8 +419,12 @@ def sourceWin() {
 
     copy {
         from 'src/main/resources'
-        include 'opendct.properties'
+        include 'opendct.properties.default'
         into winWixConfig
+        rename (
+            'opendct.properties.default',
+            'opendct.properties'
+        )
     }
 
     copy {
@@ -668,7 +671,7 @@ bintray {
     dryRun = false //Whether to run this as dry-run, without deploying
     publish = true //If version should be auto published after an upload
     pkg {
-        repo = 'Stable'
+        repo = 'Releases'
         name = 'OpenDCT'
         userOrg = 'opendct'
         desc = "OpenDCT Release"

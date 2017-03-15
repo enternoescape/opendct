@@ -270,12 +270,19 @@ public class Main {
         if (Config.IS_DAEMON) {
             logger.info("Running in daemon mode...");
 
+            Thread.sleep(30000);
+            logger.info("Saving config...");
+            Config.saveConfig();
+
             // Maybe we can do more with this thread than just wait for the program to terminate.
             while (!Config.isShutdown()) {
                 Thread.sleep(60000);
                 Config.logCleanup();
+                Thread.sleep(240000);
+                Config.saveConfig();
             }
         } else {
+
             if (Config.SUSPEND_TEST) {
                 logger.info("Press ENTER at any time to suspend...");
                 System.in.read();

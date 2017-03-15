@@ -1567,3 +1567,6 @@
 > *Fixed Linux installs to create opendct.properties.default instead of
 > opendct.properties so you don't need to deal with a conflict on
 > upgrades.
+
+> *Added saving the configuration if it changed after the first 30
+> seconds. Then every 5 minutes.

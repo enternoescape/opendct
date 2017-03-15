@@ -44,6 +44,7 @@ public class Config {
     private static final Object getRTSPPort = new Object();
     private static Properties properties = new Properties();
     private static volatile boolean isShutdown = false;
+    private static boolean isDirty = true;
     private static final Map<Integer, String> rtspPortMap = new HashMap<>();
 
     public static final OSVersion OS_VERSION = getOsVersion();
@@ -92,11 +93,15 @@ public class Config {
     public static final Charset STD_BYTE = StandardCharsets.UTF_8;
 
     static {
+        IS_DAEMON = System.getProperty("daemon_mode", "false").equalsIgnoreCase("true");
         String projectDir = System.getProperty("user.dir");
         boolean dev = true;
 
-        if (projectDir.endsWith("jsw")) {
-            projectDir = projectDir.substring(0, projectDir.length() - 4);
+        if (Config.IS_DAEMON) {
+            if (projectDir.endsWith("jsw")) {
+                projectDir = projectDir.substring(0, projectDir.length() - 4);
+            }
+            logger.info("Current directory is '{}'", projectDir);
             dev = false;
         }
 
@@ -124,7 +129,6 @@ public class Config {
         CONFIG_DIR = System.getProperty("config_dir", PROJECT_DIR);
         createConfigDirectory();
 
-        IS_DAEMON = System.getProperty("daemon_mode", "false").equalsIgnoreCase("true");
         SUSPEND_TEST = System.getProperty("suspend_test", "false").equalsIgnoreCase("true");
         CONSOLE_LOG = System.getProperty("log_to_console", "false").equalsIgnoreCase("true");
         LOG_UPNP_LEVEL = System.getProperty("log_upnp_level", "severe");
@@ -255,6 +259,7 @@ public class Config {
             }
         }
 
+        isDirty = true;
         return logger.exit(true);
     }
 
@@ -361,6 +366,8 @@ public class Config {
 
             properties.setProperty(key, value);
         }
+
+        isDirty = true;
     }
 
     public static synchronized void versionBackup() {
@@ -380,10 +387,14 @@ public class Config {
         }
 
         properties.setProperty("version.program", VERSION_PROGRAM);
+        isDirty = true;
     }
 
     public static synchronized boolean saveConfig() {
         logger.entry();
+
+        if (!isDirty)
+            return logger.exit(true);
 
         if (Config.CONFIG_DIR == null) {
             logger.fatal("The configuration directory must be defined before any properties can be saved.");
@@ -423,6 +434,8 @@ public class Config {
             logger.error("Unable to write the configuration file '{}' => {}", filename, e);
             return logger.exit(false);
         }
+
+        isDirty = false;
 
         return logger.exit(true);
     }
@@ -543,6 +556,7 @@ public class Config {
         logger.entry(key, value);
 
         Config.properties.setProperty(key, value);
+        isDirty = true;
 
         logger.exit();
     }
@@ -569,6 +583,7 @@ public class Config {
         logger.entry(key, value);
 
         Config.properties.setProperty(key, Boolean.toString(value));
+        isDirty = true;
 
         logger.exit();
     }
@@ -577,6 +592,7 @@ public class Config {
         logger.entry(key, value);
 
         Config.properties.setProperty(key, Short.toString(value));
+        isDirty = true;
 
         logger.exit();
     }
@@ -585,6 +601,7 @@ public class Config {
         logger.entry(key, value);
 
         Config.properties.setProperty(key, Integer.toString(value));
+        isDirty = true;
 
         logger.exit();
     }
@@ -605,6 +622,7 @@ public class Config {
         }
 
         Config.properties.setProperty(key, mergedArray.toString());
+        isDirty = true;
 
         logger.exit();
     }
@@ -625,6 +643,7 @@ public class Config {
         }
 
         Config.properties.setProperty(key, mergedArray.toString());
+        isDirty = true;
 
         logger.exit();
     }
@@ -633,6 +652,7 @@ public class Config {
         logger.entry(key, value);
 
         Config.properties.setProperty(key, Long.toString(value));
+        isDirty = true;
 
         logger.exit();
     }
@@ -641,6 +661,7 @@ public class Config {
         logger.entry(key, value);
 
         Config.properties.setProperty(key, Float.toString(value));
+        isDirty = true;
 
         logger.exit();
     }
@@ -649,6 +670,7 @@ public class Config {
         logger.entry(key, value);
 
         Config.properties.setProperty(key, Double.toString(value));
+        isDirty = true;
 
         logger.exit();
     }
@@ -666,6 +688,7 @@ public class Config {
         }
 
         setBoolean(key, returnValue);
+        isDirty = true;
 
         return logger.exit(returnValue);
     }
@@ -683,6 +706,7 @@ public class Config {
         }
 
         setShort(key, returnValue);
+        isDirty = true;
 
         return logger.exit(returnValue);
     }
@@ -813,6 +837,7 @@ public class Config {
             }
 
             properties.setProperty(key, mergedArray.toString());
+            isDirty = true;
             returnValue = defaultValues;
         }
 
@@ -846,6 +871,7 @@ public class Config {
         }
 
         properties.setProperty(key, mergedArray.toString());
+        isDirty = true;
 
         logger.exit();
     }
@@ -866,6 +892,7 @@ public class Config {
         } else {
             properties.setProperty(key, value.getHostAddress());
         }
+        isDirty = true;
 
         logger.exit();
     }
@@ -1027,6 +1054,7 @@ public class Config {
         }
 
         properties.setProperty(key, returnValue.getClass().getName());
+        isDirty = true;
 
         return logger.exit(returnValue);
     }
@@ -1160,6 +1188,7 @@ public class Config {
         } else if (consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
             returnValue = DynamicConsumerImpl.getConsumer(channel);
             properties.setProperty(key, DynamicConsumerImpl.class.getName());
+            isDirty = true;
         } else {
             try {
                 returnValue = (SageTVConsumer) Class.forName(consumerName).newInstance();
@@ -1178,6 +1207,7 @@ public class Config {
                 !consumerName.endsWith(DynamicConsumerImpl.class.getSimpleName())) {
 
             properties.setProperty(key, returnValue.getClass().getName());
+            isDirty = true;
         }
 
         return logger.exit(returnValue);
@@ -1206,6 +1236,7 @@ public class Config {
         }
 
         properties.setProperty(key, returnValue.getClass().getName());
+        isDirty = true;
 
         return logger.exit(returnValue);
     }
@@ -1236,6 +1267,7 @@ public class Config {
         }
 
         properties.setProperty(key, returnValue.getClass().getName());
+        isDirty = true;
 
         return logger.exit(returnValue);
     }
@@ -1263,6 +1295,7 @@ public class Config {
         }
 
         properties.setProperty(key, returnValue.getClass().getName());
+        isDirty = true;
 
         return logger.exit(returnValue);
     }

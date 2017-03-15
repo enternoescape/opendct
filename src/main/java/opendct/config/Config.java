@@ -98,7 +98,10 @@ public class Config {
         boolean dev = true;
 
         if (Config.IS_DAEMON) {
-            projectDir = projectDir.substring(0, projectDir.length() - 4);
+            if (projectDir.endsWith("jsw")) {
+                projectDir = projectDir.substring(0, projectDir.length() - 4);
+            }
+            logger.info("Current directory is '{}'", projectDir);
             dev = false;
         }
 

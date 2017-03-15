@@ -1570,3 +1570,6 @@
 
 > *Added saving the configuration if it changed after the first 30
 > seconds. Then every 5 minutes.
+
+> *Added conversion of any local IP address to 255.255.255.255 when it
+> is returned as a broadcast address. 

@@ -453,8 +453,10 @@ public class GenericPipeCaptureDevice extends BasicCaptureDevice {
                     logger.debug("Stop was interrupted => ", e);
                 }
             }
-            currentProcess.destroy();
-            currentProcess = null;
+            if (currentProcess != null) {
+                currentProcess.destroy();
+                currentProcess = null;
+            }
         }
     }
 

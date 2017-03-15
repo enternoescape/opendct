@@ -161,7 +161,7 @@ public class DiscoveryManager implements PowerEventListener {
 
         if (!supportedOS) {
             logger.info("The discovery method {} does not support the OS {}.",
-                    newDiscoverer.getName(), Config.getOsVersion());
+                    newDiscoverer.getName(), Config.OS_VERSION);
             return;
         }
 

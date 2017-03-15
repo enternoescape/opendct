@@ -1560,3 +1560,10 @@
 
 > *Fixed out of bounds exception when a broadcast address is not
 > available.
+
+> *Fixed rare null pointer exception in Generic Pipe capture device.
+
+#### 0.5.25-Stable
+> *Fixed Linux installs to create opendct.properties.default instead of
+> opendct.properties so you don't need to deal with a conflict on
+> upgrades.

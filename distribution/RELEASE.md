@@ -1572,4 +1572,8 @@
 > seconds. Then every 5 minutes.
 
 > *Added conversion of any local IP address to 255.255.255.255 when it
-> is returned as a broadcast address. 
+> is returned as a broadcast address.
+
+#### 0.5.26-Stable
+> *Fixed null pointer exception when a broadcast address is not defined
+> for a network adapter.

@@ -549,10 +549,14 @@ public class HDHomeRunDiscovery implements Runnable {
             for (InterfaceAddress interfaceAddress : networkInterface.getInterfaceAddresses()) {
                 if (interfaceAddress.getAddress() instanceof Inet4Address) {
                     InetAddress broadcast = interfaceAddress.getBroadcast();
-                    if (!broadcast.isAnyLocalAddress()) {
+                    if (broadcast != null && !broadcast.isAnyLocalAddress()) {
                         addresses.add(broadcast);
                     } else {
-                        logger.warn("Broadcast IP address was any local address. Using 255.255.255.255 instead.");
+                        if (broadcast != null) {
+                            logger.warn("Broadcast IP address was any local address. Using 255.255.255.255 instead.");
+                        } else {
+                            logger.warn("Broadcast IP address does not exist. Using 255.255.255.255 instead.");
+                        }
                         try {
                             addresses.add(InetAddress.getByName("255.255.255.255"));
                         } catch (UnknownHostException e) {}

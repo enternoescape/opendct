@@ -39,7 +39,6 @@ import java.nio.channels.FileChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class RawSageTVConsumerImpl implements SageTVConsumer {
     private static final Logger logger = LogManager.getLogger(RawSageTVConsumerImpl.class);
@@ -50,10 +49,8 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private final int bufferSize = bufferSizeOpt.getInteger();
     private final int rawThreadPriority = threadPriorityOpt.getInteger();
 
-    // Atomic because long values take two clocks to process in 32-bit. We could get incomplete
-    // values otherwise. Don't ever forget to set this value and increment it correctly. This is
-    // crucial to playback actually starting in SageTV.
-    private AtomicLong bytesStreamed = new AtomicLong(0);
+    // volatile long is atomic as long as only one thread ever updates it.
+    private volatile long bytesStreamed = 0;
 
     private boolean consumeToNull = false;
     private FileOutputStream currentFileOutputStream = null;
@@ -68,7 +65,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
     private AtomicBoolean running = new AtomicBoolean(false);
     private long stvRecordBufferSize = 0;
-    private AtomicLong stvRecordBufferPos = new AtomicLong(0);
+    private long stvRecordBufferPos = 0;
 
     private int switchAttempts = 100;
     private volatile boolean switchFile = false;
@@ -80,7 +77,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     private NIOSageTVMediaServer mediaServer = null;
 
     private final int uploadIDPort = uploadIdPortOpt.getInteger();
-    private SocketAddress uploadIDSocket = null;
+    private SocketAddress uploadSocket = null;
 
     static {
         deviceOptions = new ConcurrentHashMap<>();
@@ -99,6 +96,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         int bytesReceivedCount = 0;
         int bytesReceivedBuffer = 0;
 
+        boolean isFailed = false;
         boolean uploadEnabled = false;
         int bytesToStream = 0;
         FileChannel currentFile = null;
@@ -119,7 +117,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
                 try {
                     uploadIDConfigured = mediaServer.startUpload(
-                            uploadIDSocket, currentRecordingFilename, currentUploadID);
+                            uploadSocket, currentRecordingFilename, currentUploadID);
                 } catch (IOException e) {
                     logger.error("Unable to connect to SageTV server to start transfer via uploadID.");
                 }
@@ -129,7 +127,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                     logger.error("Raw consumer did not receive OK from SageTV server to start" +
                                     " uploading to the file '{}' via the upload id '{}'" +
                                     " using the socket '{}'.",
-                            currentRecordingFilename, currentUploadID, uploadIDSocket);
+                            currentRecordingFilename, currentUploadID, uploadSocket);
 
                     if (currentRecordingFilename != null) {
                         logger.info("Attempting to write the file directly...");
@@ -228,11 +226,11 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                         }
                                     }
 
-                                    bytesStreamed.addAndGet(lastBytesToStream);
+                                    bytesStreamed += lastBytesToStream;
 
                                     mediaServer.endUpload();
                                     mediaServer.reset();
-                                    if (!mediaServer.startUpload(uploadIDSocket,
+                                    if (!mediaServer.startUpload(uploadSocket,
                                             switchRecordingFilename, switchUploadID)) {
 
                                         logger.error("Raw consumer did not receive OK from SageTV" +
@@ -242,7 +240,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                     } else {
                                         currentRecordingFilename = switchRecordingFilename;
                                         currentUploadID = switchUploadID;
-                                        bytesStreamed.set(0);
+                                        bytesStreamed = 0;
                                         switchFile = false;
 
                                         switchMonitor.notifyAll();
@@ -253,14 +251,35 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                             }
                         }
 
+                        boolean retry = true;
                         bytesToStream = streamBuffer.remaining();
-                        if (stvRecordBufferSize > 0) {
-                            mediaServer.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
-                        } else {
-                            mediaServer.uploadAutoIncrement(streamBuffer);
+                        while (true) {
+                            try {
+                                if (stvRecordBufferSize > 0) {
+                                    mediaServer.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
+                                } else {
+                                    mediaServer.uploadAutoIncrement(streamBuffer);
+                                }
+                            } catch (IOException e) {
+                                if (retry && !isFailed) {
+                                    retry = false;
+                                    isFailed = true;
+                                    try {
+                                        mediaServer.endUpload();
+                                    } catch (Exception e1) {
+                                        logger.debug("Error cleaning up broken connection => {}" + e1.getMessage());
+                                    }
+                                    mediaServer.startUpload(uploadSocket, currentRecordingFilename, currentUploadID, mediaServer.getAutoOffset());
+                                    isFailed = false;
+                                    continue;
+                                } else {
+                                    throw e;
+                                }
+                            }
+                            break;
                         }
 
-                        bytesStreamed.addAndGet(bytesToStream);
+                        bytesStreamed += bytesToStream;
                     } else if (!consumeToNull) {
                         if (switchFile) {
                             int switchIndex = VideoUtil.getTsVideoPatStartByte(
@@ -280,18 +299,18 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
                                         while (lastWriteBuffer.hasRemaining()) {
                                             int savedSize = currentFile.write(lastWriteBuffer);
-                                            bytesStreamed.addAndGet(savedSize);
+                                            bytesStreamed += savedSize;
 
-                                            if (stvRecordBufferSize > 0 && stvRecordBufferPos.get() >
+                                            if (stvRecordBufferSize > 0 && stvRecordBufferPos >
                                                     stvRecordBufferSize) {
 
                                                 currentFile.position(0);
                                             }
-                                            stvRecordBufferPos.set(currentFile.position());
+                                            stvRecordBufferPos = currentFile.position();
                                         }
                                     }
 
-                                    bytesStreamed.addAndGet(lastBytesToStream);
+                                    bytesStreamed += lastBytesToStream;
 
                                     if (switchFileOutputStream != null) {
                                         if (currentFile != null && currentFile.isOpen()) {
@@ -308,7 +327,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                                         currentFileOutputStream = switchFileOutputStream;
                                         currentRecordingFilename = switchRecordingFilename;
                                         switchFileOutputStream = null;
-                                        bytesStreamed.set(0);
+                                        bytesStreamed = 0;
                                     }
                                     switchFile = false;
 
@@ -321,18 +340,18 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
                         while (currentFile != null && streamBuffer.hasRemaining()) {
                             int savedSize = currentFile.write(streamBuffer);
 
-                            bytesStreamed.addAndGet(savedSize);
+                            bytesStreamed += savedSize;
 
-                            if (stvRecordBufferSize > 0 && stvRecordBufferPos.get() >
+                            if (stvRecordBufferSize > 0 && stvRecordBufferPos >
                                     stvRecordBufferSize) {
 
                                 currentFile.position(0);
                             }
-                            stvRecordBufferPos.set(currentFile.position());
+                            stvRecordBufferPos = currentFile.position();
                         }
                     } else {
                         // Write to null.
-                        bytesStreamed.addAndGet(streamBuffer.limit());
+                        bytesStreamed += streamBuffer.limit();
                     }
                 } catch (IOException e) {
                     logger.error("Raw consumer created an unexpected IO exception => {}", e);
@@ -345,7 +364,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         } finally {
             logger.info("Raw consumer thread is now stopping.");
 
-            bytesStreamed.set(0);
+            bytesStreamed = 0;
 
             seekableBuffer.clear();
 
@@ -418,7 +437,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
     }
 
     public long getBytesStreamed() {
-        return bytesStreamed.get();
+        return bytesStreamed;
     }
 
     public boolean acceptsUploadID() {
@@ -439,7 +458,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         this.currentRecordingFilename = filename;
         this.currentUploadID = uploadId;
 
-        uploadIDSocket = new InetSocketAddress(inetAddress, uploadIDPort);
+        uploadSocket = new InetSocketAddress(inetAddress, uploadIDPort);
 
         return logger.exit(true);
     }
@@ -579,7 +598,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
         while (true) {
             try {
                 uploadIdEnabledOpt = new BooleanDeviceOption(
-                        Config.getBoolean("consumer.raw.upload_id_enabled", false),
+                        Config.getBoolean("consumer.raw.upload_id_enabled", true),
                         false,
                         "Enable Upload ID",
                         "consumer.raw.upload_id_enabled",
@@ -621,7 +640,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
 
 
                 threadPriorityOpt = new IntegerDeviceOption(
-                        Config.getInteger("consumer.raw.thread_priority", Thread.MAX_PRIORITY - 2),
+                        Config.getInteger("consumer.raw.thread_priority", Thread.MAX_PRIORITY - 1),
                         false,
                         "Raw Thread Priority",
                         "consumer.raw.thread_priority",
@@ -647,7 +666,7 @@ public class RawSageTVConsumerImpl implements SageTVConsumer {
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid options. Reverting to defaults => ", e);
 
-                Config.setBoolean("consumer.raw.upload_id_enabled", false);
+                Config.setBoolean("consumer.raw.upload_id_enabled", true);
                 Config.setInteger("consumer.raw.min_transfer_size", 65536);
                 Config.setInteger("consumer.raw.max_transfer_size", 1048476);
                 Config.setInteger("consumer.raw.stream_buffer_size", 2097152);

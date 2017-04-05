@@ -436,16 +436,24 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             stopConsuming(true);
         }
 
-        sageTVConsumerLock.readLock().lock();
+        boolean readLocked = false;
+        sageTVConsumerLock.writeLock().lock();
 
         try {
+            if (sageTVConsumerRunnable == null)
+                return;
             int retry = 25;
             boolean usingMediaServer = sageTVConsumerRunnable.acceptsUploadID();
-            if (usingMediaServer) {
-                stopConsuming(true);
-            }
+            // We only need to positively stop the media server if we are going to use the media
+            // server to stream the error message.
+            stopConsuming(usingMediaServer);
 
-            while (retry-- > 0) {
+            // Change back to a read lock so that SageTV can read the bytes we are streaming.
+            sageTVConsumerLock.readLock().lock();
+            sageTVConsumerLock.writeLock().unlock();
+            readLocked = true;
+
+            while (retry-- > 0 && !sageTVConsumerLock.hasQueuedThreads()) {
                 try {
                     long sourceLength = sourceFile.length();
 
@@ -471,6 +479,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                             Util.appendFile(sourceFile, new File(currentFile));
                         }
                         errorBytesStreamed += sourceLength;
+                        // Don't hold up new requests.
+                        if (sageTVConsumerLock.hasQueuedThreads())
+                            break;
                     }
 
                     if (mediaServer != null) {
@@ -492,7 +503,10 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 }
             }
         } finally {
-            sageTVConsumerLock.readLock().unlock();
+            if (readLocked)
+                sageTVConsumerLock.readLock().unlock();
+            else
+                sageTVConsumerLock.writeLock().unlock();
         }
     }
 
@@ -907,7 +921,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
                 recordLastFilename = null;
                 recordLastUploadID = 0;
             } else {
-                logger.debug("Consumer is was not in progress.");
+                logger.debug("Consumer is not in progress.");
             }
         } catch (InterruptedException e) {
             logger.debug("'{}' thread was interrupted => {}",

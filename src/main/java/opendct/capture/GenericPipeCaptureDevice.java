@@ -173,7 +173,7 @@ public class GenericPipeCaptureDevice extends BasicCaptureDevice {
     public boolean setLocked(boolean locked) {
         // This means the lock was already set
         if (this.locked.getAndSet(locked) == locked) {
-            logger.info("Capture device is was already {}.", (locked ? "locked" : "unlocked"));
+            logger.info("Capture device was already {}.", (locked ? "locked" : "unlocked"));
             return false;
         }
 

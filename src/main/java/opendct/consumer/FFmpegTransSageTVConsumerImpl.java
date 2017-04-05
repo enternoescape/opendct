@@ -44,16 +44,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private final static Logger logger = LogManager.getLogger(FFmpegTransSageTVConsumerImpl.class);
-    //private final static BlockingQueue<FFmpegCircularBufferNIO> buffers = new LinkedBlockingQueue<>();
 
     private final boolean acceptsUploadID = FFmpegConfig.getUploadIdEnabled();
-
-    // We must have at a minimum a 5 MB buffer plus 1MB to catch up. This ensures that if
-    // someone changes this setting to a lower value, it will be overridden.
-    //private final int circularBufferSize = FFmpegConfig.getCircularBufferSize();
-
-    // This is the largest analyze duration allowed. 5,000,000 is the minimum allowed value.
-    //private final long maxAnalyzeDuration = FFmpegConfig.getMaxAnalyseDuration();
 
     // This value cannot go any lower than 65536. Lower values result in stream corruption when the
     // RTP packets are larger than the buffer size.
@@ -76,11 +68,8 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
     private String currentRecordingQuality;
     private boolean consumeToNull;
 
-    // Atomic because long values take two clocks just to store in 32-bit. We could get incomplete
-    // values otherwise. Don't ever forget to set this value and increment it correctly. This is
-    // crucial to playback in SageTV.
-    private long bytesStreamed = 0;
-    private final Object bytesStreamedLock = new Object();
+    // volatile long is atomic as long as only one thread ever updates it.
+    private volatile long bytesStreamed = 0;
     private AtomicBoolean running = new AtomicBoolean(false);
     private boolean streaming = false;
     private String currentChannel = "";
@@ -255,9 +244,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
     @Override
     public long getBytesStreamed() {
-        synchronized (bytesStreamedLock) {
-            return bytesStreamed;
-        }
+        return bytesStreamed;
     }
 
     @Override
@@ -431,6 +418,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         private long bytesFlushCounter;
         private boolean firstWrite;
+        private boolean isFailed;
 
         public FFmpegUploadIDWriter (InetSocketAddress uploadSocket, String uploadFilename, int uploadID) throws IOException {
             mediaServer.startUpload(uploadSocket, uploadFilename, uploadID);
@@ -441,6 +429,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
             bytesFlushCounter = 0;
             firstWrite = true;
+            isFailed = false;
         }
 
         @Override
@@ -453,6 +442,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             }
 
             firstWrite = true;
+            isFailed = false;
         }
 
         protected long lastWriteAddress = 0;
@@ -462,10 +452,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
 
         @Override
         public synchronized int write(BytePointer data, int length) throws IOException {
+            if (isFailed)
+                return 0;
+
             if (firstWrite) {
-                synchronized (bytesStreamedLock) {
-                    bytesStreamed = 0;
-                }
+                bytesStreamed = 0;
                 firstWrite = false;
             }
 
@@ -494,16 +485,34 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             int bytesToStream = streamBuffer.remaining();
 
             try {
-                if (stvRecordBufferSize > 0) {
-                    mediaServer.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
-                } else {
-                    mediaServer.uploadAutoIncrement(streamBuffer);
+                boolean retry = true;
+                while (true) {
+                    try {
+                        if (stvRecordBufferSize > 0) {
+                            mediaServer.uploadAutoBuffered(stvRecordBufferSize, streamBuffer);
+                        } else {
+                            mediaServer.uploadAutoIncrement(streamBuffer);
+                        }
+                    } catch (IOException e) {
+                        if (retry && !isFailed) {
+                            retry = false;
+                            isFailed = true;
+                            try {
+                                mediaServer.endUpload();
+                            } catch (Exception e1) {
+                                logger.debug("Error cleaning up broken connection => {}" + e1.getMessage());
+                            }
+                            mediaServer.startUpload(uploadSocket, uploadFilename, uploadID, mediaServer.getAutoOffset());
+                            isFailed = false;
+                            continue;
+                        } else {
+                            throw e;
+                        }
+                    }
+                    break;
                 }
 
-                long currentBytes;
-                synchronized (bytesStreamedLock) {
-                    currentBytes = bytesStreamed += bytesToStream;
-                }
+                long currentBytes = bytesStreamed += bytesToStream;
 
                 if (currentBytes > initBufferedData) {
                     synchronized (streamingMonitor) {
@@ -511,6 +520,9 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                     }
                 }
             } catch (IOException e) {
+                if (isFailed) {
+                    logger.error("Unable to re-connect to server. Waiting for SageTV to restart recording...");
+                }
                 logger.error("Unable to stream '{}' via upload ID {} => ",
                         uploadFilename, uploadID, e);
                 bytesToStream = 0;
@@ -722,9 +734,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             }
 
             if (firstWrite) {
-                synchronized (bytesStreamedLock) {
-                    bytesStreamed = 0;
-                }
+                bytesStreamed = 0;
                 firstWrite = false;
                 asyncBuffer.clear();
             }
@@ -923,9 +933,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
                         asyncBuffer.notifyAll();
                     }
 
-                    synchronized (bytesStreamedLock) {
-                        currentBytes = bytesStreamed += writeBytes;
-                    }
+                    currentBytes = bytesStreamed += writeBytes;
 
                     bytesFlushCounter += writeBytes;
 
@@ -945,15 +953,11 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         @Override
         public int write(BytePointer data, int length) throws IOException {
             if (firstWrite) {
-                synchronized (bytesStreamedLock) {
-                    bytesStreamed = 0;
-                }
+                bytesStreamed = 0;
                 firstWrite = false;
             }
 
-            synchronized (bytesStreamedLock) {
-                bytesStreamed += length;
-            }
+            bytesStreamed += length;
 
             return length;
         }

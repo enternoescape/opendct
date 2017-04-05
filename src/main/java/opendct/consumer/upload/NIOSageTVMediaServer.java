@@ -165,6 +165,13 @@ public class NIOSageTVMediaServer {
         return logger.exit(returnValue);
     }
 
+    public long getAutoOffset()
+    {
+        synchronized (uploadLock) {
+            return autoOffset;
+        }
+    }
+
     public long getSize() throws IOException {
         long returnValue = 0;
 
@@ -315,32 +322,22 @@ public class NIOSageTVMediaServer {
      *
      * @param offset     Specify the offset to upload the data to the remote file.
      * @param byteBuffer This is the data that will be written in it's entirety.
-     * @return Returns <i>true</i> if SageTV accepted the transfer.
      * @throws IOException If there was a problem writing the bytes to the to the SageTV server
      *                     socket.
      */
-    public boolean upload(long offset, ByteBuffer byteBuffer) throws IOException {
+    public void upload(long offset, ByteBuffer byteBuffer) throws IOException {
         synchronized (uploadLock) {
 
-            // This way you can alternate between overloads if somehow that's useful.
-            autoOffset = offset + byteBuffer.remaining();
+            int transferBytes = byteBuffer.remaining();
 
-            boolean returnValue = false;
-
-            try {
-                sendMessage("WRITE " + offset + " " + byteBuffer.remaining());
-                while (byteBuffer.hasRemaining() && !Thread.currentThread().isInterrupted()) {
-                    int sentBytes = socketChannel.write(byteBuffer);
-                    logger.trace("Transferred {} stream bytes to SageTV server. {} bytes remaining.", sentBytes, byteBuffer.remaining());
-                }
-
-                returnValue = true;
-            } catch (IOException e) {
-                logger.warn("The SageTV server communication has stopped => ", e);
-                returnValue = false;
+            sendMessage("WRITE " + offset + " " + transferBytes);
+            while (byteBuffer.hasRemaining() && !Thread.currentThread().isInterrupted()) {
+                int sentBytes = socketChannel.write(byteBuffer);
+                logger.trace("Transferred {} stream bytes to SageTV server. {} bytes remaining.", sentBytes, byteBuffer.remaining());
             }
 
-            return logger.exit(returnValue);
+            // This way you can alternate between overloads if somehow that's useful.
+            autoOffset = offset + (transferBytes - byteBuffer.remaining());
         }
     }
 

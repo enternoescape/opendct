@@ -270,23 +270,31 @@ public class SageTVTuningMonitor {
 
                                 recordingQueue.remove(recording.captureDevice.getEncoderName());
 
-                                // The capture device needs to stream the message because the user
-                                // will not see anything if the bytes streamed doesn't increment.
-                                if (recording.copyProtection == CopyProtection.COPY_ONCE) {
-                                    recording.captureDevice.streamError(VideoUtil.COPY_ONCE_TS,
-                                            new InetSocketAddress(
-                                                    recording.remoteAddress,
-                                                    Config.getInteger(
-                                                            "consumer.ffmpeg.upload_id_port", 7818)
-                                            ), recording.uploadID);
-                                } else {
-                                    recording.captureDevice.streamError(VideoUtil.COPY_NEVER_TS,
-                                            new InetSocketAddress(
-                                                    recording.remoteAddress,
-                                                    Config.getInteger(
-                                                            "consumer.ffmpeg.upload_id_port", 7818)
-                                            ), recording.uploadID);
-                                }
+                                Thread execute = new Thread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // The capture device needs to stream the message because the user
+                                        // will not see anything if the bytes streamed doesn't increment.
+                                        if (recording.copyProtection == CopyProtection.COPY_ONCE) {
+                                            recording.captureDevice.streamError(VideoUtil.COPY_ONCE_TS,
+                                                    new InetSocketAddress(
+                                                            recording.remoteAddress,
+                                                            Config.getInteger(
+                                                                    "consumer.ffmpeg.upload_id_port", 7818)
+                                                    ), recording.uploadID);
+                                        } else {
+                                            recording.captureDevice.streamError(VideoUtil.COPY_NEVER_TS,
+                                                    new InetSocketAddress(
+                                                            recording.remoteAddress,
+                                                            Config.getInteger(
+                                                                    "consumer.ffmpeg.upload_id_port", 7818)
+                                                    ), recording.uploadID);
+                                        }
+                                        logger.debug("Error stream finished.");
+                                    }
+                                });
+                                execute.setName("AsyncError-" + execute.getId());
+                                execute.start();
 
                                 // We need to break here or the next iteration might fail. The
                                 // alternative is to collect what needs to be removed and remove it
@@ -316,25 +324,34 @@ public class SageTVTuningMonitor {
 
                                 recordingQueue.remove(recording.captureDevice.getEncoderName());
 
-                                // The capture device needs to stream the message because the user
-                                // will not see anything if the bytes streamed doesn't increment.
-                                if (recording.copyProtection == CopyProtection.COPY_ONCE) {
-                                    recording.captureDevice.streamError(
-                                            VideoUtil.COPY_ONCE_TS,
-                                            new InetSocketAddress(
-                                                    recording.remoteAddress,
-                                                    Config.getInteger(
-                                                            "consumer.ffmpeg.upload_id_port", 7818)
-                                            ), recording.uploadID);
-                                } else {
-                                    recording.captureDevice.streamError(
-                                            VideoUtil.COPY_NEVER_TS,
-                                            new InetSocketAddress(
-                                                    recording.remoteAddress,
-                                                    Config.getInteger(
-                                                            "consumer.ffmpeg.upload_id_port", 7818)
-                                            ), recording.uploadID);
-                                }
+                                Thread execute = new Thread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // The capture device needs to stream the message because
+                                        // the user will not see anything if the bytes streamed
+                                        // doesn't increment.
+                                        if (recording.copyProtection == CopyProtection.COPY_ONCE) {
+                                            recording.captureDevice.streamError(
+                                                    VideoUtil.COPY_ONCE_TS,
+                                                    new InetSocketAddress(
+                                                            recording.remoteAddress,
+                                                            Config.getInteger(
+                                                                    "consumer.ffmpeg.upload_id_port", 7818)
+                                                    ), recording.uploadID);
+                                        } else {
+                                            recording.captureDevice.streamError(
+                                                    VideoUtil.COPY_NEVER_TS,
+                                                    new InetSocketAddress(
+                                                            recording.remoteAddress,
+                                                            Config.getInteger(
+                                                                    "consumer.ffmpeg.upload_id_port", 7818)
+                                                    ), recording.uploadID);
+                                        }
+                                        logger.debug("Error stream finished.");
+                                    }
+                                });
+                                execute.setName("AsyncError-" + execute.getId());
+                                execute.start();
 
                                 // We need to break here or the next iteration might fail. The
                                 // alternative is to collect what needs to be removed and remove it

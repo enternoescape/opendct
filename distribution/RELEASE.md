@@ -1577,3 +1577,24 @@
 #### 0.5.26-Stable
 > *Fixed null pointer exception when a broadcast address is not defined
 > for a network adapter.
+
+#### 0.5.27-Stable
+> *Normalized how bytes streamed are handled between consumers.
+
+> *Adjusted the default minimum bytes to stream via the SageTV media
+> server to lower values (64k).
+
+> *The media server (upload ID) is now enabled by default.
+
+> *Added single attempt connection failure recovery when the program is
+> unexpectedly disconnected from media server for FFmpeg and raw. This
+> cannot be done for the media server remuxer because it would result
+> in an overwrite of the previously written stream data.
+
+> *Made error messages asynchronous to the monitoring thread so they
+> cannot monopolize the monitoring lock if they get stuck.
+
+> *Fix lock acquisition ordering when using the media server and an
+> error message is to be written. We were going from read to write
+> without releasing the read which caused a deadlock. Now we start
+> with a write and transition to a read which is allowed.

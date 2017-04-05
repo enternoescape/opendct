@@ -76,7 +76,7 @@ public class FFmpegConfig {
         while (true) {
             try {
                 uploadIdEnabled = new BooleanDeviceOption(
-                        Config.getBoolean("consumer.ffmpeg.upload_id_enabled", false),
+                        Config.getBoolean("consumer.ffmpeg.upload_id_enabled", true),
                         false,
                         "Enable Upload ID",
                         "consumer.ffmpeg.upload_id_enabled",
@@ -130,7 +130,7 @@ public class FFmpegConfig {
                         10000000);
 
                 rwBufferSize = new IntegerDeviceOption(
-                        Config.getInteger("consumer.ffmpeg.rw_buffer_size", 262144),
+                        Config.getInteger("consumer.ffmpeg.rw_buffer_size", 65536),
                         false,
                         "Read/Write Transfer Buffer Size",
                         "consumer.ffmpeg.rw_buffer_size",
@@ -142,7 +142,7 @@ public class FFmpegConfig {
                         1048576);
 
                 minUploadIdTransferSize = new IntegerDeviceOption(
-                        Config.getInteger("consumer.ffmpeg.min_upload_id_transfer_size", 262144),
+                        Config.getInteger("consumer.ffmpeg.min_upload_id_transfer_size", 65536),
                         false,
                         "Minimum Upload ID Transfer Size",
                         "consumer.ffmpeg.min_upload_id_transfer_size",
@@ -155,7 +155,7 @@ public class FFmpegConfig {
                         1048576);
 
                 threadPriority = new IntegerDeviceOption(
-                        Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 2),
+                        Config.getInteger("consumer.ffmpeg.thread_priority", Thread.MAX_PRIORITY - 1),
                         false,
                         "FFmpeg Thread Priority",
                         "consumer.ffmpeg.thread_priority",
@@ -252,7 +252,7 @@ public class FFmpegConfig {
             } catch (DeviceOptionException e) {
                 logger.warn("Invalid option {}. Reverting to defaults => ", e.deviceOption, e);
 
-                Config.setBoolean("consumer.ffmpeg.upload_id_enabled", false);
+                Config.setBoolean("consumer.ffmpeg.upload_id_enabled", true);
                 Config.setInteger("consumer.ffmpeg.circular_buffer_size", 7864320);
                 Config.setInteger("consumer.ffmpeg.min_probe_size", 165440);
                 Config.setInteger("consumer.ffmpeg.min_analyze_duration", 165440);

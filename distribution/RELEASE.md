@@ -1598,3 +1598,9 @@
 > error message is to be written. We were going from read to write
 > without releasing the read which caused a deadlock. Now we start
 > with a write and transition to a read which is allowed.
+
+#### 0.5.28-Stable
+> *Added property to allow disabling network adapter checks when coming
+> out of standby. The property is pm.network.wait_for_network_on_resume
+> and defaults to true. Change this property to false to disable network
+> adapter checks when resuming from standby.

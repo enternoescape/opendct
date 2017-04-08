@@ -18,10 +18,7 @@ package opendct.power;
 
 import opendct.config.Config;
 import opendct.config.ExitCode;
-import opendct.config.options.DeviceOption;
-import opendct.config.options.DeviceOptionException;
-import opendct.config.options.DeviceOptions;
-import opendct.config.options.IntegerDeviceOption;
+import opendct.config.options.*;
 import opendct.nanohttpd.pojo.JsonOption;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -46,6 +43,9 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
             0,
             Config.getInteger("pm.network.start_retry", 120)
     );
+
+    private final static boolean waitForNetworkOnResume =
+            Config.getBoolean("pm.network.wait_for_network_on_resume", true);
 
     private static HashSet<String> currentInterfaceNames = new HashSet<String>();
     private HashSet<String> monitoredInterfaceNames = new HashSet<String>();
@@ -111,6 +111,15 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
                                     " address for this program to work. The timeout between retry" +
                                     " attempts is 1-13 seconds depending on what interfaces are" +
                                     " discovered and their state when they are discovered."
+                    ),
+                    new BooleanDeviceOption(
+                            waitForNetworkOnResume,
+                            false,
+                            "Wait For Network On Resume",
+                            "pm.network.wait_for_network_on_resume",
+                            "If this is set false, the program will not wait for the network" +
+                                    " adapters to start communications when resuming from standby." +
+                                    " It will immediately try to use the network adapters instead."
                     )
             };
         } catch (DeviceOptionException e) {
@@ -126,6 +135,11 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
         for (JsonOption deviceOption : deviceOptions) {
             // Only apply properties we know about.
             if (deviceOption.getProperty().equals("pm.network.start_retry")) {
+                // This covers all values that should not be changed instantly and makes the values persistent.
+                Config.setJsonOption(deviceOption);
+            }
+
+            if (deviceOption.getProperty().equals("pm.network.wait_for_network_on_resume")) {
                 // This covers all values that should not be changed instantly and makes the values persistent.
                 Config.setJsonOption(deviceOption);
             }
@@ -206,14 +220,26 @@ public class NetworkPowerEventManger implements PowerEventListener, DeviceOption
     }
 
     public void onResumeSuspendEvent() {
+        if (!waitForNetworkOnResume) {
+            logger.debug("Skipping checks for network interfaces per user preference.");
+            return;
+        }
         waitForNetworkInterfaces();
     }
 
     public void onResumeCriticalEvent() {
+        if (!waitForNetworkOnResume) {
+            logger.debug("Skipping checks for network interfaces per user preference.");
+            return;
+        }
         waitForNetworkInterfaces();
     }
 
     public void onResumeAutomaticEvent() {
+        if (!waitForNetworkOnResume) {
+            logger.debug("Skipping checks for network interfaces per user preference.");
+            return;
+        }
         waitForNetworkInterfaces();
     }
 

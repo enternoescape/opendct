@@ -10,6 +10,8 @@ An open source digital cable tuner network encoder for [SageTV](http://forums.sa
 ##### Latest Beta
 [ ![Download](https://api.bintray.com/packages/opendct/Beta/OpenDCT/images/download.svg) ](https://bintray.com/opendct/Beta/OpenDCT/_latestVersion)
 
+[Java Profiler](https://www.ej-technologies.com/products/jprofiler/overview.html)
+
 *On Linux platforms it is recommended to only use the architecture of your distribution.*
 
 #### Ubuntu 14.04, 16.04

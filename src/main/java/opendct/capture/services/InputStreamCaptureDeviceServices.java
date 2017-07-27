@@ -20,17 +20,19 @@ import opendct.consumer.SageTVConsumer;
 import opendct.producer.InputStreamProducer;
 import opendct.producer.InputStreamProducerImpl;
 import opendct.producer.SageTVProducer;
+import opendct.util.ThreadPool;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.InputStream;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class InputStreamCaptureDeviceServices {
     private final static Logger logger = LogManager.getLogger(InputStreamCaptureDeviceServices.class);
 
     private InputStreamProducer inputStreamProducerRunnable = null;
-    private Thread inputStreamProducerThread = null;
+    private Future inputStreamProducerFuture = null;
     private final ReentrantReadWriteLock inputStreamProducerLock = new ReentrantReadWriteLock(true);
 
     /**
@@ -67,9 +69,9 @@ public class InputStreamCaptureDeviceServices {
             inputStreamProducerRunnable.setConsumer(sageTVConsumer);
             inputStreamProducerRunnable.setInputStream(inputStream);
 
-            inputStreamProducerThread = new Thread(inputStreamProducerRunnable);
-            inputStreamProducerThread.setName(inputStreamProducerRunnable.getClass().getSimpleName() + "-" + inputStreamProducerThread.getId() + ":" + encoderName);
-            inputStreamProducerThread.start();
+            inputStreamProducerFuture = ThreadPool.submit(inputStreamProducerRunnable,
+                    Thread.NORM_PRIORITY, inputStreamProducerRunnable.getClass().getSimpleName(),
+                    encoderName);
 
             returnValue = true;
         } catch (Exception e) {
@@ -143,18 +145,24 @@ public class InputStreamCaptureDeviceServices {
                 logger.debug("Stopping producer thread...");
 
                 inputStreamProducerRunnable.stopProducing();
-                inputStreamProducerThread.interrupt();
+                inputStreamProducerFuture.cancel(true);
 
                 int counter = 0;
-                while (inputStreamProducerRunnable.getIsRunning()) {
-                    if (counter++ < 5) {
-                        logger.debug("Waiting for producer thread to stop...");
-                    } else {
-                        // It should never take 5 seconds for the producer to stop. This
-                        // should make everyone aware that something abnormal is happening.
-                        logger.warn("Waiting for producer thread to stop for over {} seconds...", counter);
+                while (true) {
+                    try {
+                        inputStreamProducerFuture.get(1000, TimeUnit.MILLISECONDS);
+                        break;
+                    } catch (TimeoutException e) {
+                        if (counter++ < 5) {
+                            logger.debug("Waiting for producer thread to stop...");
+                        } else {
+                            // It should never take 5 seconds for the producer to stop. This
+                            // should make everyone aware that something abnormal is happening.
+                            logger.warn("Waiting for producer thread to stop for over {} seconds...", counter);
+                        }
+                    } catch (CancellationException e) {
+                        break;
                     }
-                    inputStreamProducerThread.join(1000);
                 }
             } else {
                 logger.trace("Consumer was not running.");
@@ -162,6 +170,9 @@ public class InputStreamCaptureDeviceServices {
         } catch (InterruptedException e) {
             logger.trace("'{}' thread was interrupted => {}",
                     Thread.currentThread().getClass().toString(), e);
+            returnValue = false;
+        } catch (ExecutionException e) {
+            logger.debug("Thread was terminated badly => {}", e);
             returnValue = false;
         } finally {
             inputStreamProducerLock.readLock().unlock();

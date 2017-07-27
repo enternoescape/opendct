@@ -19,6 +19,7 @@ package opendct.sagetv;
 import opendct.capture.CaptureDevice;
 import opendct.config.ExitCode;
 import opendct.power.NetworkPowerEventManger;
+import opendct.util.ThreadPool;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -177,9 +178,7 @@ public class SageTVSocketServer implements Runnable {
 
                 Socket socket = serverSocket.accept();
 
-                requestThread = new Thread(new SageTVRequestHandler(socket, captureDevice));
-                requestThread.setName("SageTVRequestHandler-" + requestThread.getId() + ":Unknown-" + listenPort);
-                requestThread.start();
+                ThreadPool.submit(new SageTVRequestHandler(socket, captureDevice),  Thread.NORM_PRIORITY, "SageTVRequestHandler", "Unknown-" + listenPort);
 
                 InetAddress remoteAddress = socket.getInetAddress();
 

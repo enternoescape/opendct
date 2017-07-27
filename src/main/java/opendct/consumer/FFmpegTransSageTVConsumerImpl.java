@@ -22,6 +22,7 @@ import opendct.config.options.DeviceOptionException;
 import opendct.consumer.buffers.FFmpegCircularBufferNIO;
 import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.nanohttpd.pojo.JsonOption;
+import opendct.util.ThreadPool;
 import opendct.util.Util;
 import opendct.video.ccextractor.CCExtractorSrtInstance;
 import opendct.video.ffmpeg.*;
@@ -40,6 +41,7 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
@@ -692,7 +694,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
         private final int minWrite = RW_BUFFER_SIZE;
         private volatile boolean canWrite = false;
 
-        private Thread asyncWriter;
+        private Future asyncWriter;
         private FileChannel fileChannel;
         private final String directFilename;
         private final File recordingFile;
@@ -711,9 +713,7 @@ public class FFmpegTransSageTVConsumerImpl implements SageTVConsumer {
             firstWrite = true;
             closed = false;
 
-            asyncWriter = new Thread(new AsyncWriter());
-            asyncWriter.setName("AsyncWriter-" + asyncWriter.getId() + ":" + new File(directFilename).getName());
-            asyncWriter.start();
+            asyncWriter = ThreadPool.submit(new AsyncWriter(), Thread.NORM_PRIORITY, "AsyncWriter", new File(directFilename).getName());
         }
 
         protected long lastWriteAddress = 0;

@@ -62,7 +62,7 @@ public class HDHomeRunControl {
      * @throws IOException     Thrown if communication with the device is not possible.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
-    public synchronized String getVariable(InetAddress address, String key) throws GetSetException, IOException {
+    public String getVariable(InetAddress address, String key) throws GetSetException, IOException {
         return setVariable(address, key, null, 0);
     }
 
@@ -76,7 +76,7 @@ public class HDHomeRunControl {
      * @throws IOException     Thrown if communication with the device is not possible.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
-    public synchronized String getVariable(InetAddress address, String key, int receiveTimeout) throws GetSetException, IOException {
+    public String getVariable(InetAddress address, String key, int receiveTimeout) throws GetSetException, IOException {
         return setVariable(address, key, null, 0, receiveTimeout);
     }
 
@@ -91,7 +91,7 @@ public class HDHomeRunControl {
      * @throws IOException     Thrown if communication with the device is not possible.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
-    public synchronized String setVariable(InetAddress address, String key, String value) throws GetSetException, IOException {
+    public String setVariable(InetAddress address, String key, String value) throws GetSetException, IOException {
         return setVariable(address, key, value, 0);
     }
 
@@ -107,7 +107,7 @@ public class HDHomeRunControl {
      *                         at this time.
      * @throws GetSetException Thrown if the device returns an error instead of a value.
      */
-    public synchronized String setVariable(InetAddress address, String key, String value, int lockkey) throws GetSetException, IOException {
+    public String setVariable(InetAddress address, String key, String value, int lockkey) throws GetSetException, IOException {
         return setVariable(address, key, value, lockkey, HDHOMERUN_CONTROL_RECV_TIMEOUT);
     }
 

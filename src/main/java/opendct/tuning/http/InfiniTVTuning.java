@@ -20,6 +20,7 @@ import opendct.channel.ChannelManager;
 import opendct.channel.TVChannel;
 import opendct.config.Config;
 import opendct.tuning.discovery.discoverers.UpnpDiscoverer;
+import opendct.util.ThreadPool;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,6 +31,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
+import java.util.concurrent.Future;
 
 public class InfiniTVTuning {
     private static final Logger logger = LogManager.getLogger(InfiniTVTuning.class);
@@ -379,7 +381,7 @@ public class InfiniTVTuning {
 
             final HttpURLConnection finalHttpURLConnection = httpURLConnection;
 
-            Thread httpTimeout = new Thread(new Runnable() {
+            Future httpTimeout = ThreadPool.submit(new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -391,11 +393,10 @@ public class InfiniTVTuning {
                     UpnpDiscoverer.requestBroadcast();
                     finalHttpURLConnection.disconnect();
                 }
-            });
+            }, Thread.MIN_PRIORITY, "HttpTimeout", deviceAddress);
 
-            httpTimeout.start();
             InputStream inputStream = httpURLConnection.getInputStream();
-            httpTimeout.interrupt();
+            httpTimeout.cancel(true);
 
             // The InfiniTV requires that at least one byte of data is read or the POST will fail.
             if (inputStream.available() > 0) {

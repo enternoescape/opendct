@@ -18,6 +18,7 @@ package opendct.tuning.http;
 
 import opendct.channel.BroadcastStandard;
 import opendct.channel.CopyProtection;
+import opendct.util.ThreadPool;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.Future;
 
 public class InfiniTVStatus {
     private static final Logger logger = LogManager.getLogger(InfiniTVStatus.class);
@@ -81,7 +83,7 @@ public class InfiniTVStatus {
 
         final HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
 
-        Thread httpTimeout = new Thread(new Runnable() {
+        Future httpTimeout = ThreadPool.submit(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -92,12 +94,11 @@ public class InfiniTVStatus {
 
                 httpURLConnection.disconnect();
             }
-        });
+        }, Thread.MIN_PRIORITY, "HttpTimeout", deviceAddress);
 
-        httpTimeout.start();
         InputStreamReader inputStreamReader = new InputStreamReader(httpURLConnection.getInputStream());
         BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-        httpTimeout.interrupt();
+        httpTimeout.cancel(true);
 
         String line = bufferedReader.readLine();
         logger.debug("InfiniTV DCT returned the value '{}'", line);

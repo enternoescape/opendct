@@ -26,6 +26,7 @@ import opendct.consumer.SageTVConsumer;
 import opendct.consumer.upload.NIOSageTVMediaServer;
 import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.sagetv.SageTVManager;
+import opendct.util.ThreadPool;
 import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,6 +37,7 @@ import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -43,7 +45,7 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
     private final Logger logger = LogManager.getLogger(BasicCaptureDevice.class);
 
     protected SageTVConsumer sageTVConsumerRunnable = null;
-    protected Thread sageTVConsumerThread;
+    protected Future sageTVConsumerFuture;
     protected final ReentrantReadWriteLock sageTVConsumerLock = new ReentrantReadWriteLock();
 
     // Identification
@@ -780,12 +782,8 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             } else {
                 sageTVConsumerRunnable.setEncodingQuality(recordEncodingQuality);
             }
-            sageTVConsumerThread = new Thread(sageTVConsumerRunnable);
-            sageTVConsumerThread.setName(sageTVConsumerRunnable.getClass().getSimpleName() + "-" +
-                    sageTVConsumerThread.getId() + ":" + encoderName);
-
-            sageTVConsumerThread.start();
-
+            sageTVConsumerFuture = ThreadPool.submit(sageTVConsumerRunnable, Thread.NORM_PRIORITY,
+                    sageTVConsumerRunnable.getClass().getSimpleName(), encoderName);
         } catch (Exception e) {
             logger.error("startConsuming created an unexpected exception => ", e);
             returnValue = false;
@@ -903,18 +901,24 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
             if (sageTVConsumerRunnable != null && sageTVConsumerRunnable.getIsRunning()) {
                 logger.debug("Stopping consumer thread...");
                 sageTVConsumerRunnable.stopConsumer();
-                sageTVConsumerThread.interrupt();
+                sageTVConsumerFuture.cancel(true);
 
                 int counter = 0;
-                while (sageTVConsumerThread.isAlive()) {
-                    if (counter++ < 5) {
-                        logger.debug("Waiting for consumer thread to stop...");
-                    } else {
-                        // It should never take 5 seconds for the consumer to stop. This should make
-                        // everyone aware that something abnormal is happening.
-                        logger.warn("Waiting for consumer thread to stop for over {} seconds...", counter);
+                while (true) {
+                    try {
+                        sageTVConsumerFuture.get(1000, TimeUnit.MILLISECONDS);
+                        break;
+                    } catch (TimeoutException e) {
+                        if (counter++ < 5) {
+                            logger.debug("Waiting for consumer thread to stop...");
+                        } else {
+                            // It should never take 5 seconds for the consumer to stop. This should make
+                            // everyone aware that something abnormal is happening.
+                            logger.warn("Waiting for consumer thread to stop for over {} seconds...", counter);
+                        }
+                    } catch (CancellationException e) {
+                        break;
                     }
-                    sageTVConsumerThread.join(1000);
                 }
 
                 recordEncodingQuality = null;
@@ -926,6 +930,9 @@ public abstract class BasicCaptureDevice implements CaptureDevice {
         } catch (InterruptedException e) {
             logger.debug("'{}' thread was interrupted => {}",
                     Thread.currentThread().getClass().toString(), e);
+            returnValue = false;
+        } catch (ExecutionException e) {
+            logger.debug("Thread was terminated badly => {}", e);
             returnValue = false;
         } finally {
             sageTVConsumerLock.writeLock().unlock();

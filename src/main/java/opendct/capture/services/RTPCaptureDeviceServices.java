@@ -20,6 +20,7 @@ import opendct.consumer.SageTVConsumer;
 import opendct.producer.NIORTPProducerImpl;
 import opendct.producer.RTPProducer;
 import opendct.producer.SageTVProducer;
+import opendct.util.ThreadPool;
 import opendct.video.rtsp.DCTRTSPClientImpl;
 import opendct.video.rtsp.RTSPClient;
 import org.apache.logging.log4j.LogManager;
@@ -29,6 +30,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /*
@@ -40,7 +42,7 @@ public class RTPCaptureDeviceServices {
 
     private int rtpLocalPort = -1;
     private RTPProducer rtpProducerRunnable = null;
-    private Thread rtpProducerThread = null;
+    private Future rtpProducerFuture = null;
     private final ReentrantReadWriteLock rtpProducerLock = new ReentrantReadWriteLock(true);
     private final RTSPClient rtspClient;
 
@@ -99,9 +101,8 @@ public class RTPCaptureDeviceServices {
 
                     // In case the port was dynamically assigned.
                     this.rtpLocalPort = rtpProducerRunnable.getLocalPort();
-                    rtpProducerThread = new Thread(rtpProducerRunnable);
-                    rtpProducerThread.setName(rtpProducerRunnable.getClass().getSimpleName() + "-" + rtpProducerThread.getId() + ":" + encoderName);
-                    rtpProducerThread.start();
+                    rtpProducerFuture = ThreadPool.submit(rtpProducerRunnable, Thread.NORM_PRIORITY,
+                            rtpProducerRunnable.getClass().getSimpleName(), encoderName);
 
                     returnValue = true;
                 } catch (IOException e) {
@@ -192,18 +193,24 @@ public class RTPCaptureDeviceServices {
                 logger.debug("Stopping producer thread...");
 
                 rtpProducerRunnable.stopProducing();
-                rtpProducerThread.interrupt();
+                rtpProducerFuture.cancel(true);
 
                 int counter = 0;
-                while (rtpProducerThread.isAlive()) {
-                    if (counter++ < 5) {
-                        logger.debug("Waiting for producer thread to stop...");
-                    } else {
-                        // It should never take 5 seconds for the producer to stop. This
-                        // should make everyone aware that something abnormal is happening.
-                        logger.warn("Waiting for producer thread to stop for over {} seconds...", counter);
+                while (true) {
+                    try {
+                        rtpProducerFuture.get(1000, TimeUnit.MILLISECONDS);
+                        break;
+                    } catch (TimeoutException e) {
+                        if (counter++ < 5) {
+                            logger.debug("Waiting for producer thread to stop...");
+                        } else {
+                            // It should never take 5 seconds for the producer to stop. This
+                            // should make everyone aware that something abnormal is happening.
+                            logger.warn("Waiting for producer thread to stop for over {} seconds...", counter);
+                        }
+                    } catch (CancellationException e) {
+                        break;
                     }
-                    rtpProducerThread.join(1000);
                 }
             } else {
                 logger.debug("Producer was not running.");
@@ -211,6 +218,9 @@ public class RTPCaptureDeviceServices {
         } catch (InterruptedException e) {
             logger.debug("'{}' thread was interrupted => {}",
                     Thread.currentThread().getClass().toString(), e);
+            returnValue = false;
+        } catch (ExecutionException e) {
+            logger.debug("Thread was terminated badly => {}", e);
             returnValue = false;
         } finally {
             rtpProducerLock.readLock().unlock();

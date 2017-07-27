@@ -21,13 +21,14 @@ import opendct.producer.Credentials;
 import opendct.producer.HTTPProducer;
 import opendct.producer.NIOHTTPProducerImpl;
 import opendct.producer.SageTVProducer;
+import opendct.util.ThreadPool;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class HTTPCaptureDeviceServices {
@@ -36,7 +37,7 @@ public class HTTPCaptureDeviceServices {
 
     private URL httpURL[];
     private HTTPProducer httpProducerRunnable = null;
-    private Thread httpProducerThread = null;
+    private Future httpProducerFuture = null;
     private final ReentrantReadWriteLock httpProducerLock = new ReentrantReadWriteLock(true);
 
     public static void addCredentials(URL url, String username, String password)
@@ -97,9 +98,8 @@ public class HTTPCaptureDeviceServices {
             }
             httpProducerRunnable.setSourceUrls(httpURLs);
 
-            httpProducerThread = new Thread(httpProducerRunnable);
-            httpProducerThread.setName(httpProducerRunnable.getClass().getSimpleName() + "-" + httpProducerThread.getId() + ":" + encoderName);
-            httpProducerThread.start();
+            httpProducerFuture = ThreadPool.submit(httpProducerRunnable, Thread.NORM_PRIORITY,
+                    httpProducerRunnable.getClass().getSimpleName(), encoderName);
 
             returnValue = true;
         } catch (IOException e) {
@@ -172,18 +172,24 @@ public class HTTPCaptureDeviceServices {
                 logger.debug("Stopping producer thread...");
 
                 httpProducerRunnable.stopProducing();
-                httpProducerThread.interrupt();
+                httpProducerFuture.cancel(true);
 
                 int counter = 0;
-                while (httpProducerRunnable.getIsRunning()) {
-                    if (counter++ < 5) {
-                        logger.debug("Waiting for producer thread to stop...");
-                    } else {
-                        // It should never take 5 seconds for the producer to stop. This
-                        // should make everyone aware that something abnormal is happening.
-                        logger.warn("Waiting for producer thread to stop for over {} seconds...", counter);
+                while (true) {
+                    try {
+                        httpProducerFuture.get(1000, TimeUnit.MILLISECONDS);
+                        break;
+                    } catch (TimeoutException e) {
+                        if (counter++ < 5) {
+                            logger.debug("Waiting for producer thread to stop...");
+                        } else {
+                            // It should never take 5 seconds for the producer to stop. This
+                            // should make everyone aware that something abnormal is happening.
+                            logger.warn("Waiting for producer thread to stop for over {} seconds...", counter);
+                        }
+                    } catch (CancellationException e) {
+                        break;
                     }
-                    httpProducerThread.join(1000);
                 }
             } else {
                 logger.trace("Consumer was not running.");
@@ -191,6 +197,9 @@ public class HTTPCaptureDeviceServices {
         } catch (InterruptedException e) {
             logger.trace("'{}' thread was interrupted => {}",
                     Thread.currentThread().getClass().toString(), e);
+            returnValue = false;
+        } catch (ExecutionException e) {
+            logger.debug("Thread was terminated badly => {}", e);
             returnValue = false;
         } finally {
             httpProducerLock.readLock().unlock();
@@ -208,7 +217,7 @@ public class HTTPCaptureDeviceServices {
         return httpProducerRunnable;
     }
 
-    public Thread getHttpProducerThread() {
-        return httpProducerThread;
+    public Future getHttpProducerFuture() {
+        return httpProducerFuture;
     }
 }

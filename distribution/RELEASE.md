@@ -1604,3 +1604,10 @@
 > out of standby. The property is pm.network.wait_for_network_on_resume
 > and defaults to true. Change this property to false to disable network
 > adapter checks when resuming from standby.
+
+#### 0.5.29-Stable
+> *Changed to thread pooling for starting and stopping channel tuning to
+> improve responsiveness.
+
+> *Added ability to tune Virtual Channels for Clear QAM lineups without
+> a CableCARD for reference.

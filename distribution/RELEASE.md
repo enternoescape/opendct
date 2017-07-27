@@ -1611,3 +1611,6 @@
 
 > *Added ability to tune Virtual Channels for Clear QAM lineups without
 > a CableCARD for reference.
+
+> *Fixed sagetv.device.parent.<parent_id>.channel_map=. The value wasn't
+> being read from properties and could not be set.

@@ -47,7 +47,7 @@ public class HDHomeRunDiscoveredDeviceParent extends NetworkDiscoveredDevicePare
         while(true) {
             try {
                 channelMap = new StringDeviceOption(
-                        "",
+                        Config.getString(propertiesDeviceParent + "channel_map", ""),
                         false,
                         "Channel Map",
                         propertiesDeviceParent + "channel_map",

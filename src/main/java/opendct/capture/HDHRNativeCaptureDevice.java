@@ -440,7 +440,9 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
     }
 
     @Override
-    public boolean startEncoding(String channel, String filename, String encodingQuality, long bufferSize, SageTVDeviceCrossbar deviceType, int crossbarIndex, int uploadID, InetAddress remoteAddress) {
+    public boolean startEncoding(String channel, String filename, String encodingQuality,
+                                 long bufferSize, SageTVDeviceCrossbar deviceType,
+                                 int crossbarIndex, int uploadID, InetAddress remoteAddress) {
         logger.entry(channel, filename, encodingQuality, bufferSize, deviceType, crossbarIndex, uploadID, remoteAddress);
 
         //tuningThread = Thread.currentThread();
@@ -660,16 +662,22 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     }
 
                     if (tvChannel == null) {
-                        logger.error("Unable to tune channel because no references" +
-                                " were found for this channel number.");
-                        return logger.exit(false);
+                        logger.warn("Unable to tune channel because no references" +
+                                " were found for this channel number. Attempting to tune as vchannel.");
+                    } else {
+                        logger.info("Added the channel '{}' to the lineup '{}'.",
+                                channel, encoderLineup);
                     }
-
-                    logger.info("Added the channel '{}' to the lineup '{}'.",
-                            channel, encoderLineup);
                 }
 
                 try {
+                    if (tvChannel == null)
+                    {
+                        // This will throw an exception if it fails.
+                        tuner.setVirtualChannel(channel);
+                        return logger.exit(true);
+                    }
+
                     String modulation = tvChannel.getModulation();
                     int frequency = tvChannel.getFrequency();
                     int program = tvChannel.getProgram();

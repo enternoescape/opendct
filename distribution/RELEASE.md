@@ -1614,3 +1614,5 @@
 
 > *Fixed sagetv.device.parent.<parent_id>.channel_map=. The value wasn't
 > being read from properties and could not be set.
+
+> *Added logic to handle HDHomeRun Premium TV on a device in QAM mode.

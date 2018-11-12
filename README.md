@@ -12,7 +12,7 @@ An open source digital cable tuner network encoder for [SageTV](http://forums.sa
 
 *On Linux platforms it is recommended to only use the architecture of your distribution.*
 
-#### Ubuntu 14.04, 16.04
+#### Ubuntu 16.04, 18.04
 ```
 apt-get install default-jre-headless
 dpkg -i opendct_x.x.x-x_arch.deb
@@ -24,7 +24,7 @@ yum install java-1.8.0-openjdk-headless
 rpm -U opendct_x.x.x-x_arch.rpm
 ```
 
-#### Fedora 23, 24
+#### Fedora 28, 29
 ```
 dnf install java-1.8.0-openjdk-headless
 rpm -U opendct_x.x.x-x_arch.rpm

@@ -123,7 +123,6 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                         encoderDeviceType = CaptureDeviceType.ATSC_HDHOMERUN;
                         setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "atsc_" + device.getDeviceIdHex().toLowerCase()));
                         break;
-
                     case US_CABLE:
                         encoderDeviceType = CaptureDeviceType.QAM_HDHOMERUN;
                         setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "qam"));
@@ -663,7 +662,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
 
                     if (tvChannel == null) {
                         logger.warn("Unable to tune channel because no references" +
-                                " were found for this channel number. Attempting to tune as vchannel.");
+                                " were found for this channel number. Will attempt to tune as vchannel.");
                     } else {
                         logger.info("Added the channel '{}' to the lineup '{}'.",
                                 channel, encoderLineup);
@@ -683,7 +682,9 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     int program = tvChannel.getProgram();
 
                     if (!isTuneLegacy() &&
-                            !HDHomeRunDiscoverer.getQamRemap()) {
+                            (!HDHomeRunDiscoverer.getQamRemap() ||
+                                    /* Support for HDHomeRun Premium TV channels with tuner in QAM mode. */
+                                    (tvChannel.getUrl() != null && frequency <= 0 && program == 0))) {
 
                         if (HDHomeRunDiscoverer.getAllowHttpTuning()) {
                             httpProducing = tuneUrl(
@@ -1147,7 +1148,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         return programSelected;
     }
 
-    public boolean tuneUrl(TVChannel channel, String transcodeProfile, SageTVConsumer newConsumer) {
+    private boolean tuneUrl(TVChannel channel, String transcodeProfile, SageTVConsumer newConsumer) {
         if (isTuneLegacy() ||
                 Util.isNullOrEmpty(channel.getUrl()) ||
                 !HDHomeRunDiscoverer.getAllowHttpTuning()) {
@@ -1171,7 +1172,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             16:9 content, not exceeding 320x240 30fps for 4:3 content.
          */
 
-        ChannelLineup lineup = ChannelManager.getChannelLineup(encoderLineup);
+        //ChannelLineup lineup = ChannelManager.getChannelLineup(encoderLineup);
 
         String tunerUrl = channel.getUrl();
 
@@ -1414,7 +1415,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             }
         }
 
-        HDHomeRunStreamInfo streamInfo = null;
+        HDHomeRunStreamInfo streamInfo;
         HDHomeRunProgram programs[] = null;
 
         // Give the HDHomeRun some time to read the programs on the tuned frequency.
@@ -1564,7 +1565,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         return 0;
     }
 
-    public String getTunerStatusString() {
+    private String getTunerStatusString() {
         logger.entry();
 
         StringBuilder stringBuilder = new StringBuilder();

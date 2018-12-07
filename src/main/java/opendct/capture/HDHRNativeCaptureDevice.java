@@ -98,6 +98,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
         // =========================================================================================
         encoderDeviceType = CaptureDeviceType.HDHOMERUN;
         boolean cableCardPresent = false;
+        HDHomeRunChannelMap channelMap = HDHomeRunChannelMap.US_CABLE;
 
         try {
             if (device.isCableCardTuner()) {
@@ -116,7 +117,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 }
 
                 String channelMapName = tuner.getChannelmap();
-                HDHomeRunChannelMap channelMap = HDHomeRunFeatures.getEnumForChannelmap(channelMapName);
+                channelMap = HDHomeRunFeatures.getEnumForChannelmap(channelMapName);
 
                 switch (channelMap) {
                     case US_BCAST:
@@ -134,6 +135,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                     case EU_CABLE:
                         encoderDeviceType = CaptureDeviceType.DVBC_HDHOMERUN;
                         setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-c"));
+                        break;
+                    case AU_BCAST:
+                        encoderDeviceType = CaptureDeviceType.DVBT_HDHOMERUN;
+                        setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "dvb-t"));
                         break;
                     case UNKNOWN:
                         throw new CaptureDeviceLoadException("The program currently does not" +
@@ -189,7 +194,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
                 lookupMap = Frequencies.EU_CABLE;
                 break;
             case DVBT_HDHOMERUN:
-                lookupMap = Frequencies.EU_BCAST;
+                if ( channelMap == HDHomeRunChannelMap.AU_BCAST )
+                  lookupMap = Frequencies.AU_BCAST;
+                else
+                  lookupMap = Frequencies.EU_BCAST;
                 break;
             case ATSC_HDHOMERUN:
                 lookupMap = Frequencies.US_BCAST;

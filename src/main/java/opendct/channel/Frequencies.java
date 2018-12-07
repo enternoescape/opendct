@@ -25,6 +25,7 @@ public class Frequencies {
     public final static Frequency US_CABLE[];
     public final static Frequency EU_BCAST[];
     public final static Frequency EU_CABLE[];
+    public final static Frequency AU_BCAST[];
 
     /**
      * Returns the first channel that corresponds with the requested frequency.
@@ -49,6 +50,9 @@ public class Frequencies {
                 break;
             case EU_CABLE:
                 searchTable = EU_CABLE;
+                break;
+            case AU_BCAST:
+                searchTable = AU_BCAST;
                 break;
             default:
                 return -1;
@@ -580,6 +584,63 @@ public class Frequencies {
         EU_CABLE[156] = new Frequency(FrequencyType.EU_CABLE, 156, 987000000);
         EU_CABLE[157] = new Frequency(FrequencyType.EU_CABLE, 157, 993000000);
         EU_CABLE[158] = new Frequency(FrequencyType.EU_CABLE, 158, 999000000);
+
+        //  Taken from ACMA - Radio and Television Broadcasting Stations (Internet Edition, October 2018) - Page 403
+
+        AU_BCAST = new Frequency[52];
+
+        AU_BCAST[0] = null;
+        AU_BCAST[1] = null;
+        AU_BCAST[2] = null;
+        AU_BCAST[3] = null;
+        AU_BCAST[4] = null;
+        AU_BCAST[5] = new Frequency(FrequencyType.AU_BCAST, 5, 177500000);
+        AU_BCAST[6] = new Frequency(FrequencyType.AU_BCAST, 6, 184500000);
+        AU_BCAST[7] = new Frequency(FrequencyType.AU_BCAST, 7, 191500000);
+        AU_BCAST[8] = new Frequency(FrequencyType.AU_BCAST, 8, 198500000);
+        AU_BCAST[9] = new Frequency(FrequencyType.AU_BCAST, 9, 205500000);
+        AU_BCAST[10] = new Frequency(FrequencyType.AU_BCAST, 10, 212500000);
+        AU_BCAST[11] = new Frequency(FrequencyType.AU_BCAST, 11, 219500000);
+        AU_BCAST[12] = new Frequency(FrequencyType.AU_BCAST, 12, 226500000);
+        AU_BCAST[13] = null;
+        AU_BCAST[14] = null;
+        AU_BCAST[15] = null;
+        AU_BCAST[16] = null;
+        AU_BCAST[17] = null;
+        AU_BCAST[18] = null;
+        AU_BCAST[19] = null;
+        AU_BCAST[20] = null;
+        AU_BCAST[21] = null;
+        AU_BCAST[22] = null;
+        AU_BCAST[23] = null;
+        AU_BCAST[24] = null;
+        AU_BCAST[25] = null;
+        AU_BCAST[26] = null;
+        AU_BCAST[27] = null;
+        AU_BCAST[28] = new Frequency(FrequencyType.AU_BCAST, 28, 529500000);
+        AU_BCAST[29] = new Frequency(FrequencyType.AU_BCAST, 29, 536500000);
+        AU_BCAST[30] = new Frequency(FrequencyType.AU_BCAST, 30, 543500000);
+        AU_BCAST[31] = new Frequency(FrequencyType.AU_BCAST, 31, 550500000);
+        AU_BCAST[32] = new Frequency(FrequencyType.AU_BCAST, 32, 557500000);
+        AU_BCAST[33] = new Frequency(FrequencyType.AU_BCAST, 33, 564500000);
+        AU_BCAST[34] = new Frequency(FrequencyType.AU_BCAST, 34, 571500000);
+        AU_BCAST[35] = new Frequency(FrequencyType.AU_BCAST, 35, 578500000);
+        AU_BCAST[36] = new Frequency(FrequencyType.AU_BCAST, 36, 585500000);
+        AU_BCAST[37] = new Frequency(FrequencyType.AU_BCAST, 37, 592500000);
+        AU_BCAST[38] = new Frequency(FrequencyType.AU_BCAST, 38, 599500000);
+        AU_BCAST[39] = new Frequency(FrequencyType.AU_BCAST, 39, 606500000);
+        AU_BCAST[40] = new Frequency(FrequencyType.AU_BCAST, 40, 613500000);
+        AU_BCAST[41] = new Frequency(FrequencyType.AU_BCAST, 41, 620500000);
+        AU_BCAST[42] = new Frequency(FrequencyType.AU_BCAST, 42, 627500000);
+        AU_BCAST[43] = new Frequency(FrequencyType.AU_BCAST, 43, 634500000);
+        AU_BCAST[44] = new Frequency(FrequencyType.AU_BCAST, 44, 641500000);
+        AU_BCAST[45] = new Frequency(FrequencyType.AU_BCAST, 45, 648500000);
+        AU_BCAST[46] = new Frequency(FrequencyType.AU_BCAST, 46, 655500000);
+        AU_BCAST[47] = new Frequency(FrequencyType.AU_BCAST, 47, 662500000);
+        AU_BCAST[48] = new Frequency(FrequencyType.AU_BCAST, 48, 669500000);
+        AU_BCAST[49] = new Frequency(FrequencyType.AU_BCAST, 49, 676500000);
+        AU_BCAST[50] = new Frequency(FrequencyType.AU_BCAST, 50, 683500000);
+        AU_BCAST[51] = new Frequency(FrequencyType.AU_BCAST, 51, 690500000);
 
     }
 }

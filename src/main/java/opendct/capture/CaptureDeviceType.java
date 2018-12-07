@@ -24,7 +24,7 @@ public enum CaptureDeviceType {
     QAM_HDHOMERUN, // Silicondust HDHomeRun Prime without a cable card or other device configured for ClearQAM.
     ATSC_HDHOMERUN,// Silicondust HDHomeRun configured for US ATSC broadcast.
     DVBC_HDHOMERUN,// Silicondust HDHomeRun configured for EU cable.
-    DVBT_HDHOMERUN,// Silicondust HDHomeRun configured for EU over the air.
+    DVBT_HDHOMERUN,// Silicondust HDHomeRun configured for EU & AU over the air.
     HDHOMERUN,     // Silicondust HDHomeRun devices.
     PI_HDPVR,      // HD-PVR connected to a Raspberry Pi
     PI_TUNER,      // any USB tuner connected to a Raspberry Pi

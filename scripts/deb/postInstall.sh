@@ -15,17 +15,18 @@ chown opendct:opendct /var/log/opendct
 chown opendct:opendct /var/run/opendct
 chown opendct:opendct /opt/opendct
 
-if test -e /usr/share/upstart; then
+##  Setup init.d daemon configuration if system is not running systemd
+##  The systemd service is setup by default on debian package install
+if test ! -e /run/systemd/system; then
     ln -fs /opt/opendct/service /etc/init.d/opendct
     chmod 755 /etc/init.d/opendct
+    update-rc.d -f opendct defaults
 fi
 
 ##### 0.4.18 Upgrade START#####
 if test ! -e /etc/opendct/conf; then
     mkdir -p /etc/opendct/conf
 fi
-
-update-rc.d -f opendct defaults
 
 chown opendct:opendct /etc/opendct/conf
 
@@ -55,6 +56,7 @@ if test -e /opt/opendct/conf; then
 fi
 ##### 0.4.18 Upgrade END #####
 
+echo ""
 echo "To use the provided ufw rules type:"
 echo "/opt/opendct/enable-ufw-ports"
 echo ""
@@ -64,7 +66,7 @@ echo ""
 echo "To start the OpenDCT service type:"
 echo "Ubuntu 14.04:"
 echo "sudo service opendct start"
-echo "Ubuntu 16.04:"
+echo "Ubuntu 16.04 & 18.04:"
 echo "sudo systemctl enable opendct.service"
 echo "sudo systemctl start opendct.service"
 

@@ -20,5 +20,6 @@ public enum  FrequencyType {
     US_BCAST,
     US_CABLE,
     EU_BCAST,
-    EU_CABLE
+    EU_CABLE,
+    AU_BCAST
 }

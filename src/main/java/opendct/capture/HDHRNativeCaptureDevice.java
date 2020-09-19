@@ -1080,7 +1080,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             case DVBT_HDHOMERUN:
             case ATSC_HDHOMERUN:
                 if (channelNumber <= 1 || channelNumber > lookupMap.length) {
-                    logger.error("legacyTuneChannel: The channel number {} is not a valid ATSC channel.");
+                    logger.error("legacyTuneChannel: The channel number {} is not a valid ATSC channel.", channelNumber);
                     return false;
                 }
 

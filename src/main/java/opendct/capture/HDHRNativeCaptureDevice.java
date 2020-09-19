@@ -1385,6 +1385,10 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             return "ERROR";
         }
 
+        if(lookupMap[scanChannelIndex] == null) {
+            return "";
+        }
+
         try {
             setExternalLock(true);
             tuner.setChannel(

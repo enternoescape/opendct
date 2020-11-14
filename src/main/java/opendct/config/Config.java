@@ -1193,11 +1193,15 @@ public class Config {
             try {
                 returnValue = (SageTVConsumer) Class.forName(consumerName).newInstance();
             } catch (Throwable e) {
-                logger.error("The property '{}' with the value '{}' does not refer to a valid SageTVConsumer implementation. Using default implementation '{}' => ", key, consumerName, sageTVConsumer, e);
+                logger.error("The property '{}' with the value '{}' does not refer to a valid" +
+                        " SageTVConsumer implementation. Using default implementation '{}' => ",
+                        key, consumerName, sageTVConsumer, e);
                 try {
                     returnValue = (SageTVConsumer) Class.forName(sageTVConsumer).newInstance();
                 } catch (Throwable e1) {
-                    logger.error("The default property '{}' with the value '{}' does not refer to a valid SageTVConsumer implementation. Returning built in default 'FFmpegTransSageTVConsumerImpl' => ", key, consumerName, sageTVConsumer, e1);
+                    logger.error("The default property '{}' with the value '{}' does not refer to" +
+                            " a valid SageTVConsumer implementation. Returning built in default '{}}' => ",
+                            key, consumerName, FFmpegTransSageTVConsumerImpl.class, e1);
                     returnValue = new FFmpegTransSageTVConsumerImpl();
                 }
             }
@@ -1225,11 +1229,15 @@ public class Config {
             try {
                 returnValue = (RTPProducer) Class.forName(clientName).newInstance();
             } catch (Exception e) {
-                logger.error("The property '{}' with the value '{}' does not refer to a valid RTPProducer implementation. Using default implementation '{}' => ", key, clientName, rtpProducer, e);
+                logger.error("The property '{}' with the value '{}' does not refer to a valid" +
+                        " RTPProducer implementation. Using default implementation '{}' => ",
+                        key, clientName, rtpProducer, e);
                 try {
                     returnValue = (RTPProducer) Class.forName(rtpProducer).newInstance();
                 } catch (Exception e1) {
-                    logger.error("The default property '{}' with the value '{}' does not refer to a valid RTPProducer implementation. Returning built in default 'NIORTPProducerImpl' => ", key, clientName, rtpProducer, e1);
+                    logger.error("The default property '{}' with the value '{}' does not refer to" +
+                            " a valid RTPProducer implementation. Returning built in default '{}' => ",
+                            key, clientName, NIORTPProducerImpl.class, e1);
                     returnValue = new NIORTPProducerImpl();
                 }
             }
@@ -1241,6 +1249,37 @@ public class Config {
         return logger.exit(returnValue);
     }
 
+    public static UDPProducer getUDProducer(String key, String udpProducer) {
+        logger.entry(key, udpProducer);
+
+        UDPProducer returnValue;
+        String clientName = properties.getProperty(key, udpProducer);
+
+        if (clientName.endsWith(NIORTPProducerImpl.class.getSimpleName())) {
+            returnValue = new NIOUDPProducerImpl();
+        } else {
+            try {
+                returnValue = (UDPProducer) Class.forName(clientName).newInstance();
+            } catch (Exception e) {
+                logger.error("The property '{}' with the value '{}' does not refer to a valid" +
+                        " UDPProducer implementation. Using default implementation '{}' => ",
+                        key, clientName, udpProducer, e);
+                try {
+                    returnValue = (UDPProducer) Class.forName(udpProducer).newInstance();
+                } catch (Exception e1) {
+                    logger.error("The default property '{}' with the value '{}' does not refer to" +
+                            " a valid UDPProducer implementation. Returning built in default '{}' => ",
+                            key, clientName, NIOUDPProducerImpl.class, e1);
+                    returnValue = new NIOUDPProducerImpl();
+                }
+            }
+        }
+
+        properties.setProperty(key, returnValue.getClass().getName());
+        isDirty = true;
+
+        return logger.exit(returnValue);
+    }
 
     public static HTTPProducer getHttpProducer(String key, String httpProducer) {
         logger.entry(key, httpProducer);
@@ -1256,11 +1295,50 @@ public class Config {
             try {
                 returnValue = (HTTPProducer) Class.forName(clientName).newInstance();
             } catch (Exception e) {
-                logger.error("The property '{}' with the value '{}' does not refer to a valid HTTPProducer implementation. Using default implementation '{}' => ", key, clientName, httpProducer, e);
+                logger.error("The property '{}' with the value '{}' does not refer to a valid" +
+                        " HTTPProducer implementation. Using default implementation '{}' => ",
+                        key, clientName, httpProducer, e);
                 try {
                     returnValue = (HTTPProducer) Class.forName(httpProducer).newInstance();
                 } catch (Exception e1) {
-                    logger.error("The default property '{}' with the value '{}' does not refer to a valid HTTPProducer implementation. Returning built in default 'HTTPProducerImpl' => ", key, clientName, httpProducer, e1);
+                    logger.error("The default property '{}' with the value '{}' does not refer to" +
+                            " a valid HTTPProducer implementation. Returning built in default '{}' => ",
+                            key, clientName, HTTPProducerImpl.class, e1);
+                    returnValue = new HTTPProducerImpl();
+                }
+            }
+        }
+
+        properties.setProperty(key, returnValue.getClass().getName());
+        isDirty = true;
+
+        return logger.exit(returnValue);
+    }
+
+    public static HTTPProducer getHttpsProducer(String key, String httpsProducer) {
+        logger.entry(key, httpsProducer);
+
+        HTTPProducer returnValue;
+        String clientName = properties.getProperty(key, httpsProducer);
+
+        if (clientName.endsWith(NIOHTTPProducerImpl.class.getSimpleName())) {
+            logger.warn("NIOHTTPProducerImpl does not support HTTPS, using HTTPProducerImpl");
+            returnValue = new HTTPProducerImpl();
+        } else if (clientName.endsWith(HTTPProducerImpl.class.getSimpleName())) {
+            returnValue = new HTTPProducerImpl();
+        } else {
+            try {
+                returnValue = (HTTPProducer) Class.forName(clientName).newInstance();
+            } catch (Exception e) {
+                logger.error("The property '{}' with the value '{}' does not refer to a valid" +
+                        "HTTPProducer implementation. Using default implementation '{}' => ",
+                        key, clientName, httpsProducer, e);
+                try {
+                    returnValue = (HTTPProducer) Class.forName(httpsProducer).newInstance();
+                } catch (Exception e1) {
+                    logger.error("The default property '{}' with the value '{}' does not refer to" +
+                            "a valid HTTPProducer implementation. Returning built in default '{}'" +
+                            " 'HTTPProducerImpl' => ", key, clientName, HTTPProducerImpl.class, e1);
                     returnValue = new HTTPProducerImpl();
                 }
             }
@@ -1284,11 +1362,15 @@ public class Config {
             try {
                 returnValue = (InputStreamProducer) Class.forName(clientName).newInstance();
             } catch (Exception e) {
-                logger.error("The property '{}' with the value '{}' does not refer to a valid InputStreamProducer implementation. Using default implementation '{}' => ", key, clientName, httpProducer, e);
+                logger.error("The property '{}' with the value '{}' does not refer to a valid" +
+                        " InputStreamProducer implementation. Using default implementation '{}' => ",
+                        key, clientName, httpProducer, e);
                 try {
                     returnValue = (InputStreamProducer) Class.forName(httpProducer).newInstance();
                 } catch (Exception e1) {
-                    logger.error("The default property '{}' with the value '{}' does not refer to a valid InputStreamProducer implementation. Returning built in default 'InputStreamProducerImpl' => ", key, clientName, httpProducer, e1);
+                    logger.error("The default property '{}' with the value '{}' does not refer to" +
+                            " a valid InputStreamProducer implementation. Returning built in default '{}' => ",
+                            key, clientName, InputStreamProducerImpl.class, e1);
                     returnValue = new InputStreamProducerImpl();
                 }
             }

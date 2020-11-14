@@ -61,7 +61,6 @@ public class RTPCaptureDeviceServices {
         rtpLocalPort = Config.getFreeRTSPPort(encoderName);
     }
 
-
     /**
      * Start receiving RTP content on a specific port.
      *
@@ -70,7 +69,7 @@ public class RTPCaptureDeviceServices {
      *                       producer.
      * @param remoteIP       This is the IP address of the RTP server.
      * @param localPort      This is the suggested port to listen for RTP packets. If this port is
-     *                       already in use, this method will use
+     *                       already in use, this method will use another port from the pool.
      * @param encoderName    Used to get a new port if the currently selected port is already in
      *                       use.
      * @return <i>true</i> if the producer was able to start.
@@ -172,6 +171,10 @@ public class RTPCaptureDeviceServices {
     }
 
     public SageTVProducer getProducer() {
+        return rtpProducerRunnable;
+    }
+
+    public RTPProducer getRtpProducerRunnable() {
         return rtpProducerRunnable;
     }
 

@@ -17,10 +17,13 @@
 package opendct.capture;
 
 import opendct.capture.services.HTTPCaptureDeviceServices;
+import opendct.capture.services.UDPCaptureDeviceServices;
 import opendct.channel.*;
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
 import opendct.producer.HTTPProducer;
+import opendct.producer.SageTVProducer;
+import opendct.producer.UDPProducer;
 import opendct.sagetv.SageTVDeviceCrossbar;
 import opendct.tuning.discovery.CaptureDeviceLoadException;
 import opendct.tuning.discovery.discoverers.GenericHttpDiscoverer;
@@ -35,10 +38,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -52,13 +52,15 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     private final GenericHttpDiscoveredDevice device;
 
     private final static Runtime runtime = Runtime.getRuntime();
-    private final HTTPCaptureDeviceServices httpServices = new HTTPCaptureDeviceServices();
-    private URL sourceUrl;
+    private HTTPCaptureDeviceServices httpServices;
+    private UDPCaptureDeviceServices udpServices;
     long lastTuneTime = System.currentTimeMillis();
 
     private Thread stoppingThread;
 
-    private HTTPProducer httpProducer;
+    private SageTVProducer producer;
+    //private HTTPProducer httpProducer;
+    //private UDPProducer udpProducer;
 
     public GenericHttpCaptureDevice(GenericHttpDiscoveredDeviceParent loadParent, GenericHttpDiscoveredDevice loadDevice) throws CaptureDeviceIgnoredException, CaptureDeviceLoadException {
         super(loadParent.getFriendlyName(), loadDevice.getFriendlyName(), loadParent.getParentId(), loadDevice.getId());
@@ -66,10 +68,11 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         parent = loadParent;
         device = loadDevice;
 
-        try {
-            device.getURL(null);
-        } catch (MalformedURLException e) {
-            throw new CaptureDeviceLoadException(e);
+        configureServices(device.getStreamingUrl());
+
+        String altStreamingUrl = device.getAltStreamingUrl();
+        if (!altStreamingUrl.isEmpty()) {
+            configureServices(altStreamingUrl);
         }
 
         encoderDeviceType = CaptureDeviceType.LIVE_STREAM;
@@ -81,11 +84,48 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         super.setPoolName(Config.getString(propertiesDeviceRoot + "encoder_pool", "generic_http"));
+
+    }
+
+    private void configureServices(String uri) throws CaptureDeviceLoadException {
+        try {
+            URI testUri = URI.create(uri);
+            String testProtocol = testUri.getScheme().toLowerCase();
+            if (testProtocol.equals("udp")) {
+                int testPort = testUri.getPort();
+                if (testPort > 0){
+                    InetAddress udpRemoteServer = InetAddress.getByName(testUri.getHost());
+                    udpServices = new UDPCaptureDeviceServices(encoderName, propertiesDeviceParent, testPort, udpRemoteServer);
+                } else {
+                    throw new CaptureDeviceLoadException("UDP URI must contain a specific port.");
+                }
+            } else if (testProtocol.equals("http") || testProtocol.equals("https")) {
+                httpServices = new HTTPCaptureDeviceServices();
+            } else {
+                throw new CaptureDeviceLoadException("Unsupported protocol: " + testProtocol);
+            }
+        } catch (UnknownHostException e) {
+            throw new CaptureDeviceLoadException(e);
+        }
     }
 
     @Override
     public SageTVDeviceCrossbar[] getSageTVDeviceCrossbars() {
         return new SageTVDeviceCrossbar[] { SageTVDeviceCrossbar.HDMI };
+    }
+
+    private SageTVProducer getNewProducer(URI uri) {
+        String testProtocol = uri.getScheme().toLowerCase();
+        switch (testProtocol) {
+            case "http":
+                return httpServices.getNewHTTPProducer(propertiesDeviceParent, false);
+            case "https":
+                return httpServices.getNewHTTPProducer(propertiesDeviceParent, true);
+            case "udp":
+                return udpServices.getNewUDPProducer(propertiesDeviceParent);
+        }
+
+        return null;
     }
 
     private String getExecutionString(String execute, String channel, boolean appendChannel) {
@@ -300,7 +340,12 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
             }
         }
 
-        httpServices.stopProducing(false);
+        if (producer instanceof HTTPProducer) {
+            httpServices.stopProducing(false);
+        } else {
+            udpServices.stopProducing(false);
+        }
+
 
         // If we are trying to restart the stream, we don't need to stop the consumer.
         if (!retune) {
@@ -308,7 +353,15 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         }
 
         // Get a new producer and consumer.
-        HTTPProducer newHTTPProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
+        URI connectURI;
+        try {
+            connectURI = device.getURI(channel);
+        } catch (URISyntaxException e) {
+            logger.error("Unable to start streaming because the URI is invalid.");
+            return false;
+        }
+
+        SageTVProducer newProducer = getNewProducer(connectURI);
         SageTVConsumer newConsumer;
 
         // If we are trying to restart the stream, we don't need to get a new consumer.
@@ -352,22 +405,29 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         logger.info("Configuring and starting the new SageTV producer...");
 
         try {
-            URL connectURL = device.getURL(channel);
-            String username = device.getHttpUsername();
-            String password = device.getHttpPassword();
-            boolean enableAuth = username.length() > 0 && password.length() > 0;
-            if (enableAuth) {
-                HTTPCaptureDeviceServices.addCredentials(connectURL, username, password);
+            if (newProducer instanceof HTTPProducer) {
+                URL connectURL = device.getURL(channel);
+                String username = device.getHttpUsername();
+                String password = device.getHttpPassword();
+                boolean enableAuth = username.length() > 0 && password.length() > 0;
+                if (enableAuth) {
+                    HTTPCaptureDeviceServices.addCredentials(connectURL, username, password);
+                }
+                if (!httpServices.startProducing(encoderName, (HTTPProducer) newProducer, newConsumer, enableAuth, connectURL)) {
+                    return false;
+                }
+            } else {
+                if (!udpServices.startProducing(encoderName, (UDPProducer) newProducer, newConsumer, connectURI)) {
+                    return false;
+                }
             }
-            if (!httpServices.startProducing(encoderName, newHTTPProducer, newConsumer, enableAuth, connectURL)) {
-                return false;
-            }
-
-            httpProducer = newHTTPProducer;
         } catch (MalformedURLException e) {
             logger.error("Unable to start streaming because the URL is invalid.");
             return false;
         }
+
+        // Now that the producer is running, set this value so we have a way to call back and stop it.
+        producer = newProducer;
 
         int returnCode;
         execute = getExecutionString(device.getTuningExecutable(), channel, true);
@@ -463,15 +523,12 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
     @Override
     public long getProducedPackets() {
         synchronized (exclusiveLock) {
-            if (httpProducer == null) {
-                httpProducer = httpServices.getHttpProducerRunnable();
-
-                if (httpProducer == null) {
-                    return 0;
-                }
+            SageTVProducer localProducer = producer;
+            if (localProducer == null) {
+                return 0;
+            } else {
+                return localProducer.getPackets();
             }
-
-            return httpProducer.getPackets();
         }
     }
 
@@ -495,8 +552,12 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         logger.debug("Stopping encoding...");
 
         synchronized (exclusiveLock) {
-            httpServices.stopProducing(false);
-            httpProducer = null;
+            if (producer instanceof HTTPProducer) {
+                httpServices.stopProducing(false);
+            } else {
+                udpServices.stopProducing(false);
+            }
+            producer = null;
 
             super.stopEncoding();
 

@@ -17,10 +17,7 @@ package opendct.capture.services;
 
 import opendct.config.Config;
 import opendct.consumer.SageTVConsumer;
-import opendct.producer.Credentials;
-import opendct.producer.HTTPProducer;
-import opendct.producer.NIOHTTPProducerImpl;
-import opendct.producer.SageTVProducer;
+import opendct.producer.*;
 import opendct.util.ThreadPool;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -120,11 +117,18 @@ public class HTTPCaptureDeviceServices {
      *
      * @return A new HTTP producer.
      */
-    public HTTPProducer getNewHTTPProducer(String propertiesDeviceParent) {
-        return Config.getHttpProducer(
-                propertiesDeviceParent + "http.producer",
-                Config.getString("http.new.default_producer",
-                        NIOHTTPProducerImpl.class.getName()));
+    public HTTPProducer getNewHTTPProducer(String propertiesDeviceParent, boolean ssl) {
+        if (ssl) {
+            return Config.getHttpsProducer(
+                    propertiesDeviceParent + "https.producer",
+                    Config.getString("https.new.default_producer",
+                            HTTPProducerImpl.class.getName()));
+        } else {
+            return Config.getHttpProducer(
+                    propertiesDeviceParent + "http.producer",
+                    Config.getString("http.new.default_producer",
+                            NIOHTTPProducerImpl.class.getName()));
+        }
     }
 
     /**

@@ -1210,7 +1210,7 @@ public class HDHRNativeCaptureDevice extends BasicCaptureDevice {
             return false;
         }
 
-        httpProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent);
+        httpProducer = httpServices.getNewHTTPProducer(propertiesDeviceParent, false);
 
         try {
             tuner.clearLockkey();

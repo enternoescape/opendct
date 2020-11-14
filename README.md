@@ -14,25 +14,25 @@ An open source digital cable tuner network encoder for [SageTV](http://forums.sa
 
 *On Linux platforms it is recommended to only use the architecture of your distribution.*
 
-#### Ubuntu 16.04, 18.04
+#### Ubuntu 16.04, 18.04, 20.04
 ```
 apt-get install default-jre-headless
 dpkg -i opendct_x.x.x-x_arch.deb
 ```
 
-#### CentOS 7
+#### CentOS 8
 ```
 yum install java-1.8.0-openjdk-headless
 rpm -U opendct_x.x.x-x_arch.rpm
 ```
 
-#### Fedora 28, 29
+#### Fedora 32, 33
 ```
 dnf install java-1.8.0-openjdk-headless
 rpm -U opendct_x.x.x-x_arch.rpm
 ```
 
-#### Windows 7+
+#### Windows 10+
 On Windows platforms, unless you have the 64-bit Java Runtime installed, use the 32-bit (x86)
 installer. The Windows installer will do upgrades so it is unnecessary to uninstall before
 installing a new version. It is however necessary to stop the service before upgrading.
@@ -156,7 +156,7 @@ ffmpeg:os-arch to Runtime in Project Structure to be able to debug.
  functional installers and for now is not a recommended way to build msi packages.*
 
 1. Install the latest [Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/) for your
-   OS architecture.
+   OS architecture (Java 8 is recommended until Gradle is upgraded).
 
 2. Install the [WiX Toolset](http://wixtoolset.org/) so you can build the packages for Windows.
 

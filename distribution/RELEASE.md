@@ -1617,7 +1617,7 @@
 >
 > * Added logic to handle HDHomeRun Premium TV on a device in QAM mode.
 
->#### 0.5.30-Stable
+#### 0.5.30-Stable
 > * Fixed missing log parameter when a frequency channel is not found for
 > HDHomeRun legacy tuning.
 >

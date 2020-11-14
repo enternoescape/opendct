@@ -209,10 +209,8 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
             // This information is used to ensure that the interface that will be used to
             // communicate with the device will be waited for when resuming from suspend.
             try {
-                URL getRemoteIP = new URL(streamingUrl.getValue());
+                URI getRemoteIP = URI.create(streamingUrl.getValue());
                 parent.setRemoteAddress(InetAddress.getByName(getRemoteIP.getHost()));
-            } catch (MalformedURLException e) {
-                logger.debug("Unable to parse remote address => ", e);
             } catch (UnknownHostException e) {
                 logger.debug("Unable to resolve remote address => ", e);
             }
@@ -295,7 +293,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
         if (!Util.isNullOrEmpty(tuningUrl)) {
             try {
                 URL altStreamingUrl = new URL(tuningUrl);
-                String channels[] = getAltStreamingChannels();
+                String[] channels = getAltStreamingChannels();
 
                 for (String channel : channels) {
                     channelUrlMap.put(channel, altStreamingUrl);

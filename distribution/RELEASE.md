@@ -1624,3 +1624,6 @@
 > * Added support for UDP streams using the Generic HTTP Capture Device.
 > You need to specify the UDP protocol, remote server name and local
 > listening port. e.g. udp://remoteserver:20282
+
+#### 0.5.31-Stable
+> * Fixed getting remote IP address of UDP source for resume from sleep.

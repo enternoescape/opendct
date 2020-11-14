@@ -27,10 +27,7 @@ import opendct.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -40,8 +37,10 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     // Pre-pend this value for saving and getting properties related to just this tuner.
     protected final String propertiesDeviceRoot;
 
-    private final Map<String, URL> channelMap = new ConcurrentHashMap<>();
+    private final Map<String, URL> channelUrlMap = new ConcurrentHashMap<>();
+    private final Map<String, URI> channelUriMap = new ConcurrentHashMap<>();
     private URL sourceUrl = null;
+    private URI sourceUri = null;
 
     private final Map<String, DeviceOption> deviceOptions;
     private StringDeviceOption streamingUrl;
@@ -291,7 +290,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
     private void updateChannelMap() {
         // Update channel map.
         String tuningUrl = getAltStreamingUrl();
-        channelMap.clear();
+        channelUrlMap.clear();
 
         if (!Util.isNullOrEmpty(tuningUrl)) {
             try {
@@ -299,7 +298,7 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
                 String channels[] = getAltStreamingChannels();
 
                 for (String channel : channels) {
-                    channelMap.put(channel, altStreamingUrl);
+                    channelUrlMap.put(channel, altStreamingUrl);
                 }
 
                 logger.info("The secondary URL '{}'" +
@@ -312,11 +311,53 @@ public class GenericHttpDiscoveredDevice extends BasicDiscoveredDevice {
         }
     }
 
+    public URI getURI(String channel) throws URISyntaxException {
+        URI newUri;
+
+        if (channel != null) {
+            newUri = channelUriMap.get(channel);
+
+            if (newUri != null) {
+                String externalForm = newUri.toString();
+                if (externalForm.contains("%c%")) {
+                    return new URI(externalForm.replace("%c%", channel));
+                }
+                return newUri;
+            }
+        }
+
+        String loadUri = getStreamingUrl();
+
+        try {
+            if (loadUri.contains("%c%")) {
+                if (channel == null) {
+                    channel = "";
+                }
+                return new URI(loadUri.replace("%c%", channel));
+            } else {
+                newUri = new URI(loadUri);
+                sourceUri = newUri;
+            }
+        } catch (URISyntaxException e) {
+            if (sourceUri == null && !loadUri.contains("%c%")) {
+                if (channel == null) {
+                    channel = "";
+                }
+                loadUri = loadUri.replace("%c%", channel);
+                throw new URISyntaxException(loadUri,
+                        "Unable to start capture device because '" +
+                                loadUri + "' is not a valid URI.");
+            }
+        }
+
+        return sourceUri;
+    }
+
     public URL getURL(String channel) throws MalformedURLException {
         URL newUrl;
 
         if (channel != null) {
-            newUrl = channelMap.get(channel);
+            newUrl = channelUrlMap.get(channel);
 
             if (newUrl != null) {
                 String externalForm = newUrl.toExternalForm();

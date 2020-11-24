@@ -342,8 +342,10 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
 
         if (producer instanceof HTTPProducer) {
             httpServices.stopProducing(false);
-        } else {
+        } else if (producer instanceof UDPProducer) {
             udpServices.stopProducing(false);
+        } else {
+            logger.info("No producer was running.");
         }
 
 
@@ -554,8 +556,10 @@ public class GenericHttpCaptureDevice extends BasicCaptureDevice {
         synchronized (exclusiveLock) {
             if (producer instanceof HTTPProducer) {
                 httpServices.stopProducing(false);
-            } else {
+            } else if (producer instanceof UDPProducer) {
                 udpServices.stopProducing(false);
+            } else {
+                logger.info("No producer to stop.");
             }
             producer = null;
 

@@ -1627,3 +1627,6 @@
 
 #### 0.5.31-Stable
 > * Fixed getting remote IP address of UDP source for resume from sleep.
+
+#### 0.5.32-Stable
+> * Fixed null pointer exception that happens when no producer is defined.

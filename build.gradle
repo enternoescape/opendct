@@ -49,7 +49,7 @@ ext {
     winWixConfig = 'build/wix/config'
 
     ffmpegVersion = '2.8.1-1.1'
-    log4jVersion = '2.5'
+    log4jVersion = '2.17.1'
     jnaVersion = '4.2.1'
 
     versionText = new File('src/main/java/opendct/config/StaticConfig.java').text

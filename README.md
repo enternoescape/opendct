@@ -4,11 +4,7 @@ An open source digital cable tuner network encoder for [SageTV](http://forums.sa
 
 ## Download
 
-##### Latest Stable
-[ ![Download](https://api.bintray.com/packages/opendct/Releases/OpenDCT/images/download.svg) ](https://bintray.com/opendct/Releases/OpenDCT/_latestVersion)
-
-##### Latest Beta
-[ ![Download](https://api.bintray.com/packages/opendct/Beta/OpenDCT/images/download.svg) ](https://bintray.com/opendct/Beta/OpenDCT/_latestVersion)
+[Releases](https://github.com/enternoescape/opendct/releases)
 
 [Java Profiler](https://www.ej-technologies.com/products/jprofiler/overview.html)
 

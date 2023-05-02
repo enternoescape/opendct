@@ -686,23 +686,28 @@ public class SageTVManager implements PowerEventListener {
 
                 // This allows us to make a capture device only appear in detection for a server on
                 // a specific IP address.
+                // Specifying the loopback address means 'restrict to THIS server', regardless it's IP addr.
                 String dedicatedServerAddress = Config.getString("sagetv.device." +
                         captureDevice.getEncoderUniqueHash() + ".exclusive_server_address", "");
-                if (dedicatedServerAddress.length() > 0 && !dedicatedServerAddress.equals(requestHandler.getRemoteAddress())) {
+                String localAddress = requestHandler.getLocalAddress();
+                String remoteAddress = requestHandler.getRemoteAddress();
+
+                if (dedicatedServerAddress.length() > 0 && 
+                   !(dedicatedServerAddress.equals(remoteAddress) ||
+                    (dedicatedServerAddress.equals("127.0.0.1") && localAddress.equals(remoteAddress)) ) ) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Skipping the capture device '{}'" +
                                         " for discovery because it is exclusive to '{}'" +
                                         " and the remote server IP address is '{}'",
                                 captureDevice.getEncoderName(),
                                 dedicatedServerAddress,
-                                requestHandler.getRemoteAddress()
+                                remoteAddress
                         );
                     }
                     continue;
                 }
 
-                String localAddress = requestHandler.getLocalAddress();
-                if (localAddress.equals(requestHandler.getRemoteAddress())) {
+                if (localAddress.equals(remoteAddress)) {
                     // The addresses match, let's use the loopback address.
                     localAddress = "127.0.0.1";
                 }

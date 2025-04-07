@@ -1,6 +1,6 @@
 # [OpenDCT](http://forums.sagetv.com/forums/showthread.php?p=581743)
 
-An open source digital cable tuner network encoder for [SageTV](http://forums.sagetv.com/forums/index.php).
+An open source digital cable tuner network encoder for [SageTV](https://github.com/google/sagetv/wiki).
 
 ## Download
 
